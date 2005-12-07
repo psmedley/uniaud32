@@ -1,0 +1,74 @@
+LOGO=-h
+
+NMAKEOPTS=-f makefile.os2 $(LOGO)
+
+!if "$(DEBUG)" == "1"
+NMAKEOPTS += DEBUG=1
+!endif
+
+!if "$(KEE)" == "0"
+NMAKEOPTS += KEE=0
+KEE=0
+!else
+NMAKEOPTS += KEE=1
+KEE=1
+!endif
+
+
+!if "$(DEBUG)" == "1"
+!Message BUILDING DEBUG VERSION
+!else
+!Message BUILDING RELEASE VERSION
+!endif
+
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: subdirs
+
+subdirs: .SYMBOLIC
+    @echo BUILDING core
+    @cd core
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING drivers
+    @cd drivers
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING isa
+    @cd isa
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING pci
+    @cd pci
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING synth
+    @cd synth
+    @wmake $(NMAKEOPTS)
+    @cd ..
+
+clean: .SYMBOLIC
+    @echo CLEANING core
+    @cd core
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING drivers
+    @cd drivers
+    @wmake $(NMAKEOPTS) clean
+    @cd .. 
+    @echo CLEANING isa
+    @cd isa
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING pci
+    @cd pci
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING synth
+    @cd synth
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
