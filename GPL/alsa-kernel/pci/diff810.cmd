@@ -1,1 +1,0 @@
-diff.exe -Nuwr E:\DEV\USS\ua2\GPL\alsa-kernel\pci\intel8x0.c E:\DEV\alsa\alsa-kernel\pci\intel8x0.c >i810.diff

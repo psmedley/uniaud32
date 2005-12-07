@@ -1,1 +1,0 @@
-diff.exe -Nuwr E:\DEV\USS\from_z\ua2\GPL\alsa-kernel\core\%1 E:\dev\alsa\alsa-kernel\core\%1 >%1.diff

@@ -1,1 +1,0 @@
-diff.exe -Nuwr E:\DEV\USS\from_z\ua2\GPL\alsa-kernel\drivers\mpu401\%1 E:\DEV\alsa\alsa-kernel\drivers\mpu401\%1 >%1.diff
