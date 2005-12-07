@@ -1,1 +1,0 @@
-diff.exe -Nuwr e:\dev\uss\from_z\ua2\GPL\lib32\sound.c e:\dev\uss\from_z\ua2\GPL\lib32\sound.c.old > snd.diff
