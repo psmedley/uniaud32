@@ -1,0 +1,1 @@
+diff.exe -Nuwr e:\dev\uss\from_z\ua2\GPL\alsa-kernel\pci\trident\%1 E:\DEV\alsa\alsa-kernel\pci\trident\%1 >%1.diff
