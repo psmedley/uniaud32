@@ -2155,7 +2155,7 @@ static int __devinit snd_via82xx_create(snd_card_t * card,
     if ((err = pci_enable_device(pci)) < 0)
         return err;
 
-    if ((chip = kzalloc(sizeof(*chip), GFP_KERNEL)) == NULL)
+    if ((chip = (via82xx_t *)kzalloc(sizeof(*chip), GFP_KERNEL)) == NULL)
         return -ENOMEM;
 
     chip->chip_type = chip_type;

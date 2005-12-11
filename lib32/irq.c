@@ -46,14 +46,14 @@ extern BOOL fSuspended; //pci.c
 //******************************************************************************
 //******************************************************************************
 int request_irq(unsigned int irq,
-                void (*handler)(int, void *, struct pt_regs *),
+                int (near *handler)(int, void *, struct pt_regs *),
                 unsigned long x0, const char *x1, void *x2)
 {
     int i;
 
     if(RMRequestIRQ(hResMgr, irq, (x0 & SA_SHIRQ) ? TRUE : FALSE) == FALSE) {
         dprintf(("RMRequestIRQ failed for irq %d", irq));
-        return NULL;
+        return 0;
     }
 
     if(irq > 0xF) {
@@ -108,7 +108,7 @@ void free_irq(unsigned int irq, void *userdata)
 //******************************************************************************
 void eoi_irq(unsigned int irq)
 {
-    if(irq > 0xf) {
+    if(irq > 0xff) {
         DebugInt3();
         return;
     }
@@ -118,7 +118,7 @@ void eoi_irq(unsigned int irq)
 //******************************************************************************
 BOOL oss_process_interrupt(int irq)
 {
- BOOL rc;
+ int rc;
  int  i;
 
 #ifdef DEBUG
@@ -141,10 +141,10 @@ BOOL oss_process_interrupt(int irq)
         if(irqHandlers[irq][i].handler != 0)
         {
             fInInterrupt = TRUE;
-            irqHandlers[irq][i].handler(irq, irqHandlers[irq][i].x2, 0);
-            rc = (eoiIrq[irq] > 0);
+            rc = irqHandlers[irq][i].handler(irq, irqHandlers[irq][i].x2, 0);
+            //rc = (eoiIrq[irq] > 0);
             fInInterrupt = FALSE;
-            if(rc) {
+            if(rc == 1) {
                 //ok, this interrupt was intended for us; notify the 16 bits MMPM/2 driver
                 OSS32_ProcessIRQ();
                 eoiIrq[irq] = 0;

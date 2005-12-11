@@ -189,15 +189,15 @@ static unsigned short log_from_linear( unsigned short value )
  * Sample handling operations
  */
 
-static void sample_start(trident_t * trident, snd_trident_voice_t * voice, snd_seq_position_t position);
-static void sample_stop(trident_t * trident, snd_trident_voice_t * voice, snd_seq_stop_mode_t mode);
-static void sample_freq(trident_t * trident, snd_trident_voice_t * voice, snd_seq_frequency_t freq);
-static void sample_volume(trident_t * trident, snd_trident_voice_t * voice, snd_seq_ev_volume_t * volume);
-static void sample_loop(trident_t * trident, snd_trident_voice_t * voice, snd_seq_ev_loop_t * loop);
-static void sample_pos(trident_t * trident, snd_trident_voice_t * voice, snd_seq_position_t position);
-static void sample_private1(trident_t * trident, snd_trident_voice_t * voice, unsigned char *data);
+static void sample_start(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_position_t position);
+static void sample_stop(struct snd_trident * trident, struct snd_trident_voice * voice, int mode);
+static void sample_freq(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_frequency_t freq);
+static void sample_volume(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_ev_volume_t * volume);
+static void sample_loop(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_ev_loop_t * loop);
+static void sample_pos(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_position_t position);
+static void sample_private1(struct snd_trident * trident, struct snd_trident_voice * voice, unsigned char *data);
 
-static snd_trident_sample_ops_t sample_ops =
+static struct snd_trident_sample_ops sample_ops =
 {
     sample_start,
     sample_stop,
@@ -208,7 +208,7 @@ static snd_trident_sample_ops_t sample_ops =
     sample_private1
 };
 
-static void snd_trident_simple_init(snd_trident_voice_t * voice)
+static void snd_trident_simple_init(struct snd_trident_voice * voice)
 {
     //voice->handler_wave = interrupt_wave;
     //voice->handler_volume = interrupt_volume;
@@ -217,7 +217,7 @@ static void snd_trident_simple_init(snd_trident_voice_t * voice)
     voice->sample_ops = &sample_ops;
 }
 
-static void sample_start(trident_t * trident, snd_trident_voice_t * voice, snd_seq_position_t position)
+static void sample_start(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_position_t position)
 {
     simple_instrument_t *simple;
     snd_seq_kinstr_t *instr;
@@ -302,7 +302,7 @@ static void sample_start(trident_t * trident, snd_trident_voice_t * voice, snd_s
     snd_seq_instr_free_use(trident->synth.ilist, instr);
 }
 
-static void sample_stop(trident_t * trident, snd_trident_voice_t * voice, snd_seq_stop_mode_t mode)
+static void sample_stop(struct snd_trident * trident, struct snd_trident_voice * voice, int mode)
 {
     unsigned long flags;
 
@@ -326,7 +326,7 @@ static void sample_stop(trident_t * trident, snd_trident_voice_t * voice, snd_se
     }
 }
 
-static void sample_freq(trident_t * trident, snd_trident_voice_t * voice, snd_seq_frequency_t freq)
+static void sample_freq(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_frequency_t freq)
 {
     unsigned long flags;
     freq >>= 4;
@@ -352,7 +352,7 @@ static void sample_freq(trident_t * trident, snd_trident_voice_t * voice, snd_se
     spin_unlock_irqrestore(&trident->reg_lock, flags);
 }
 
-static void sample_volume(trident_t * trident, snd_trident_voice_t * voice, snd_seq_ev_volume_t * volume)
+static void sample_volume(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_ev_volume_t * volume)
 {
     unsigned long flags;
     unsigned short value;
@@ -404,7 +404,7 @@ static void sample_volume(trident_t * trident, snd_trident_voice_t * voice, snd_
     spin_unlock_irqrestore(&trident->reg_lock, flags);
 }
 
-static void sample_loop(trident_t * trident, snd_trident_voice_t * voice, snd_seq_ev_loop_t * loop)
+static void sample_loop(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_ev_loop_t * loop)
 {
     unsigned long flags;
     simple_instrument_t *simple;
@@ -443,7 +443,7 @@ static void sample_loop(trident_t * trident, snd_trident_voice_t * voice, snd_se
     snd_seq_instr_free_use(trident->synth.ilist, instr);
 }
 
-static void sample_pos(trident_t * trident, snd_trident_voice_t * voice, snd_seq_position_t position)
+static void sample_pos(struct snd_trident * trident, struct snd_trident_voice * voice, snd_seq_position_t position)
 {
     unsigned long flags;
     simple_instrument_t *simple;
@@ -493,7 +493,7 @@ static void sample_pos(trident_t * trident, snd_trident_voice_t * voice, snd_seq
     snd_seq_instr_free_use(trident->synth.ilist, instr);
 }
 
-static void sample_private1(trident_t * trident, snd_trident_voice_t * voice, unsigned char *data)
+static void sample_private1(struct snd_trident * trident, struct snd_trident_voice * voice, unsigned char *data)
 {
 }
 
@@ -504,7 +504,7 @@ static void sample_private1(trident_t * trident, snd_trident_voice_t * voice, un
 static int snd_trident_simple_put_sample(void *private_data, simple_instrument_t * instr,
 					 char __user *data, long len, int atomic)
 {
-	trident_t *trident = private_data;
+	struct snd_trident *trident = private_data;
 	int size = instr->size;
 	int shift = 0;
 
@@ -558,7 +558,7 @@ static int snd_trident_simple_put_sample(void *private_data, simple_instrument_t
 static int snd_trident_simple_get_sample(void *private_data, simple_instrument_t * instr,
                                          char *data, long len, int atomic)
 {
-    //trident_t *trident = private_data;
+    //struct snd_trident *trident = private_data;
     int size = instr->size;
     int shift = 0;
 
@@ -579,7 +579,7 @@ static int snd_trident_simple_get_sample(void *private_data, simple_instrument_t
 static int snd_trident_simple_remove_sample(void *private_data, simple_instrument_t * instr,
                                             int atomic)
 {
-    trident_t *trident = private_data;
+    struct snd_trident *trident = private_data;
     int size = instr->size;
 
     if (instr->format & SIMPLE_WAVE_16BIT)
@@ -610,7 +610,7 @@ static int snd_trident_simple_remove_sample(void *private_data, simple_instrumen
     return 0;
 }
 
-static void select_instrument(trident_t * trident, snd_trident_voice_t * v)
+static void select_instrument(struct snd_trident * trident, struct snd_trident_voice * v)
 {
     snd_seq_kinstr_t *instr;
     instr = snd_seq_instr_find(trident->synth.ilist, &v->instr, 0, 1);
@@ -627,7 +627,7 @@ static void select_instrument(trident_t * trident, snd_trident_voice_t * v)
 
 */
 
-static void event_sample(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v)
+static void event_sample(snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v)
 {
     if (v->sample_ops && v->sample_ops->sample_stop)
         v->sample_ops->sample_stop(p->trident, v, SAMPLE_STOP_IMMEDIATELY);
@@ -641,7 +641,7 @@ static void event_sample(snd_seq_event_t * ev, snd_trident_port_t * p, snd_tride
     select_instrument(p->trident, v);
 }
 
-static void event_cluster(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v)
+static void event_cluster(snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v)
 {
     if (v->sample_ops && v->sample_ops->sample_stop)
         v->sample_ops->sample_stop(p->trident, v, SAMPLE_STOP_IMMEDIATELY);
@@ -649,49 +649,49 @@ static void event_cluster(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trid
     select_instrument(p->trident, v);
 }
 
-static void event_start(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v)
+static void event_start(snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v)
 {
     if (v->sample_ops && v->sample_ops->sample_start)
         v->sample_ops->sample_start(p->trident, v, ev->data.sample.param.position);
 }
 
-static void event_stop(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v)
+static void event_stop(snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v)
 {
     if (v->sample_ops && v->sample_ops->sample_stop)
         v->sample_ops->sample_stop(p->trident, v, ev->data.sample.param.stop_mode);
 }
 
-static void event_freq(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v)
+static void event_freq(snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v)
 {
     if (v->sample_ops && v->sample_ops->sample_freq)
         v->sample_ops->sample_freq(p->trident, v, ev->data.sample.param.frequency);
 }
 
-static void event_volume(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v)
+static void event_volume(snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v)
 {
     if (v->sample_ops && v->sample_ops->sample_volume)
         v->sample_ops->sample_volume(p->trident, v, &ev->data.sample.param.volume);
 }
 
-static void event_loop(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v)
+static void event_loop(snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v)
 {
     if (v->sample_ops && v->sample_ops->sample_loop)
         v->sample_ops->sample_loop(p->trident, v, &ev->data.sample.param.loop);
 }
 
-static void event_position(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v)
+static void event_position(snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v)
 {
     if (v->sample_ops && v->sample_ops->sample_pos)
         v->sample_ops->sample_pos(p->trident, v, ev->data.sample.param.position);
 }
 
-static void event_private1(snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v)
+static void event_private1(snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v)
 {
     if (v->sample_ops && v->sample_ops->sample_private1)
         v->sample_ops->sample_private1(p->trident, v, (unsigned char *) &ev->data.sample.param.raw8);
 }
 
-typedef void (trident_sample_event_handler_t) (snd_seq_event_t * ev, snd_trident_port_t * p, snd_trident_voice_t * v);
+typedef void (trident_sample_event_handler_t) (snd_seq_event_t * ev, struct snd_trident_port * p, struct snd_trident_voice * v);
 
 static trident_sample_event_handler_t *trident_sample_event_handlers[9] =
 {
@@ -706,11 +706,11 @@ static trident_sample_event_handler_t *trident_sample_event_handlers[9] =
     event_private1
 };
 
-static void snd_trident_sample_event(snd_seq_event_t * ev, snd_trident_port_t * p)
+static void snd_trident_sample_event(snd_seq_event_t * ev, struct snd_trident_port * p)
 {
     int idx, voice;
-    trident_t *trident = p->trident;
-    snd_trident_voice_t *v;
+    struct snd_trident *trident = p->trident;
+    struct snd_trident_voice *v;
     unsigned long flags;
 
     idx = ev->type - SNDRV_SEQ_EVENT_SAMPLE;
@@ -733,10 +733,10 @@ static void snd_trident_sample_event(snd_seq_event_t * ev, snd_trident_port_t * 
 
 */
 
-static void snd_trident_synth_free_voices(trident_t * trident, int client, int port)
+static void snd_trident_synth_free_voices(struct snd_trident * trident, int client, int port)
 {
     int idx;
-    snd_trident_voice_t *voice;
+    struct snd_trident_voice *voice;
 
     for (idx = 0; idx < 32; idx++) {
         voice = &trident->synth.voices[idx];
@@ -747,9 +747,9 @@ static void snd_trident_synth_free_voices(trident_t * trident, int client, int p
 
 static int snd_trident_synth_use(void *private_data, snd_seq_port_subscribe_t * info)
 {
-    snd_trident_port_t *port = (snd_trident_port_t *) private_data;
-    trident_t *trident = port->trident;
-    snd_trident_voice_t *voice;
+    struct snd_trident_port *port = (struct snd_trident_port *) private_data;
+    struct snd_trident *trident = port->trident;
+    struct snd_trident_voice *voice;
     unsigned int idx;
     unsigned long flags;
 
@@ -786,8 +786,8 @@ static int snd_trident_synth_use(void *private_data, snd_seq_port_subscribe_t * 
 
 static int snd_trident_synth_unuse(void *private_data, snd_seq_port_subscribe_t * info)
 {
-    snd_trident_port_t *port = (snd_trident_port_t *) private_data;
-    trident_t *trident = port->trident;
+    struct snd_trident_port *port = (struct snd_trident_port *) private_data;
+    struct snd_trident *trident = port->trident;
     unsigned long flags;
 
     spin_lock_irqsave(&trident->reg_lock, flags);
@@ -800,7 +800,7 @@ static int snd_trident_synth_unuse(void *private_data, snd_seq_port_subscribe_t 
 
 */
 
-static void snd_trident_synth_free_private_instruments(snd_trident_port_t * p, int client)
+static void snd_trident_synth_free_private_instruments(struct snd_trident_port * p, int client)
 {
     snd_seq_instr_header_t ifree;
 
@@ -811,7 +811,7 @@ static void snd_trident_synth_free_private_instruments(snd_trident_port_t * p, i
 
 int snd_trident_synth_event_input(snd_seq_event_t * ev, int direct, void *private_data, int atomic, int hop)
 {
-    snd_trident_port_t *p = (snd_trident_port_t *) private_data;
+    struct snd_trident_port *p = (struct snd_trident_port *) private_data;
 
     if (p == NULL)
         return -EINVAL;
@@ -843,8 +843,8 @@ static void snd_trident_synth_instr_notify(void *private_data,
                                            int what)
 {
     int idx;
-    trident_t *trident = private_data;
-    snd_trident_voice_t *pvoice;
+    struct snd_trident *trident = private_data;
+    struct snd_trident_voice *pvoice;
     unsigned long flags;
 
     spin_lock_irqsave(&trident->event_lock, flags);
@@ -868,16 +868,16 @@ static void snd_trident_synth_instr_notify(void *private_data,
 
 static void snd_trident_synth_free_port(void *private_data)
 {
-    snd_trident_port_t *p = (snd_trident_port_t *) private_data;
+    struct snd_trident_port *p = (struct snd_trident_port *) private_data;
 
     if (p)
         snd_midi_channel_free_set(p->chset);
 }
 
-static int snd_trident_synth_create_port(trident_t * trident, int idx)
+static int snd_trident_synth_create_port(struct snd_trident * trident, int idx)
 {
-    snd_trident_port_t *p;
-    snd_seq_port_callback_t callbacks;
+    struct snd_trident_port *p;
+    struct snd_seq_port_callback callbacks;
     char name[32];
     char *str;
     int result;
@@ -927,15 +927,15 @@ static int snd_trident_synth_create_port(trident_t * trident, int idx)
 
 static int snd_trident_synth_new_device(snd_seq_device_t *dev)
 {
-    trident_t *trident;
+    struct snd_trident *trident;
     int client, i;
-    snd_seq_client_callback_t callbacks;
+    struct snd_seq_client_callback callbacks;
     snd_seq_client_info_t cinfo;
     snd_seq_port_subscribe_t sub;
     snd_simple_ops_t *simpleops;
     char *str;
 
-    trident = *(trident_t **)SNDRV_SEQ_DEVICE_ARGPTR(dev);
+    trident = *(struct snd_trident **)SNDRV_SEQ_DEVICE_ARGPTR(dev);
     if (trident == NULL)
         return -EINVAL;
 
@@ -993,9 +993,9 @@ static int snd_trident_synth_new_device(snd_seq_device_t *dev)
 
 static int snd_trident_synth_delete_device(snd_seq_device_t *dev)
 {
-    trident_t *trident;
+    struct snd_trident *trident;
 
-    trident = *(trident_t **)SNDRV_SEQ_DEVICE_ARGPTR(dev);
+    trident = *(struct snd_trident **)SNDRV_SEQ_DEVICE_ARGPTR(dev);
     if (trident == NULL)
         return -EINVAL;
 
@@ -1017,7 +1017,7 @@ static int __init alsa_trident_synth_init(void)
     };
 
     return snd_seq_device_register_driver(SNDRV_SEQ_DEV_ID_TRIDENT, &ops,
-                                          sizeof(trident_t*));
+                                          sizeof(struct snd_trident*));
 }
 
 static void __exit alsa_trident_synth_exit(void)

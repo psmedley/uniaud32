@@ -1,3 +1,6 @@
+#ifndef __SOUND_SFNT_INFO_H
+#define __SOUND_SFNT_INFO_H
+
 /*
  *  Patch record compatible with AWE driver on OSS
  *
@@ -15,23 +18,26 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#ifndef __SFNT_INFO_H
-#define __SFNT_INFO_H
-
-#include "seq_oss_legacy.h"
+#include <sound/asound.h>
 
 /*
  * patch information record
  */
 
+#ifdef SNDRV_BIG_ENDIAN
+#define SNDRV_OSS_PATCHKEY(id) (0xfd00|id)
+#else
+#define SNDRV_OSS_PATCHKEY(id) ((id<<8)|0xfd)
+#endif
+
 /* patch interface header: 16 bytes */
-typedef struct soundfont_patch_info_t {
+struct soundfont_patch_info {
 	unsigned short key;		/* use the key below */
-#define SNDRV_OSS_SOUNDFONT_PATCH		_PATCHKEY(0x07)
+#define SNDRV_OSS_SOUNDFONT_PATCH		SNDRV_OSS_PATCHKEY(0x07)
 
 	short device_no;		/* synthesizer number */
 	unsigned short sf_id;		/* file id (should be zero) */
@@ -53,7 +59,7 @@ typedef struct soundfont_patch_info_t {
 	short reserved;			/* word alignment data */
 
 	/* the actual patch data begins after this */
-} soundfont_patch_info_t;
+};
 
 
 /*
@@ -62,7 +68,7 @@ typedef struct soundfont_patch_info_t {
 
 #define SNDRV_SFNT_PATCH_NAME_LEN	32
 
-typedef struct soundfont_open_parm_t {
+struct soundfont_open_parm {
 	unsigned short type;		/* sample type */
 #define SNDRV_SFNT_PAT_TYPE_MISC	0
 #define SNDRV_SFNT_PAT_TYPE_GUS	6
@@ -72,7 +78,7 @@ typedef struct soundfont_open_parm_t {
 
 	short reserved;
 	char name[SNDRV_SFNT_PATCH_NAME_LEN];
-} soundfont_open_parm_t;
+};
 
 
 /*
@@ -80,7 +86,7 @@ typedef struct soundfont_open_parm_t {
  */
 
 /* wave table envelope & effect parameters to control EMU8000 */
-typedef struct soundfont_voice_parm_t {
+struct soundfont_voice_parm {
 	unsigned short moddelay;	/* modulation delay (0x8000) */
 	unsigned short modatkhld;	/* modulation attack & hold time (0x7f7f) */
 	unsigned short moddcysus;	/* modulation decay & sustain (0x7f7f) */
@@ -102,11 +108,11 @@ typedef struct soundfont_voice_parm_t {
 	unsigned char chorus;		/* chorus send (0x00) */
 	unsigned char reverb;		/* reverb send (0x00) */
 	unsigned short reserved[4];	/* not used */
-} soundfont_voice_parm_t;
+};
 
 
 /* wave table parameters: 92 bytes */
-typedef struct soundfont_voice_info_t {
+struct soundfont_voice_info {
 	unsigned short sf_id;		/* file id (should be zero) */
 	unsigned short sample;		/* sample id */
 	int start, end;			/* sample offset correction */
@@ -129,13 +135,13 @@ typedef struct soundfont_voice_info_t {
 	unsigned char amplitude;	/* sample volume (127 max) */
 	unsigned char attenuation;	/* attenuation (0.375dB) */
 	short scaleTuning;		/* pitch scale tuning(%), normally 100 */
-	soundfont_voice_parm_t parm;	/* voice envelope parameters */
+	struct soundfont_voice_parm parm;	/* voice envelope parameters */
 	unsigned short sample_mode;	/* sample mode_flag (set by driver) */
-} soundfont_voice_info_t;
+};
 
 
 /* instrument info header: 4 bytes */
-typedef struct soundfont_voice_rec_hdr_t {
+struct soundfont_voice_rec_hdr {
 	unsigned char bank;		/* midi bank number */
 	unsigned char instr;		/* midi preset number */
 	char nvoices;			/* number of voices */
@@ -143,7 +149,7 @@ typedef struct soundfont_voice_rec_hdr_t {
 #define SNDRV_SFNT_WR_APPEND		0	/* append anyway */
 #define SNDRV_SFNT_WR_EXCLUSIVE		1	/* skip if already exists */
 #define SNDRV_SFNT_WR_REPLACE		2	/* replace if already exists */
-} soundfont_voice_rec_hdr_t;
+};
 
 
 /*
@@ -151,7 +157,7 @@ typedef struct soundfont_voice_rec_hdr_t {
  */
 
 /* wave table sample header: 32 bytes */
-typedef struct soundfont_sample_info_t {
+struct soundfont_sample_info {
 	unsigned short sf_id;		/* file id (should be zero) */
 	unsigned short sample;		/* sample id */
 	int start, end;			/* start & end offset */
@@ -168,17 +174,41 @@ typedef struct soundfont_sample_info_t {
 #define SNDRV_SFNT_SAMPLE_STEREO_RIGHT	64	/* stereo right sound */
 #define SNDRV_SFNT_SAMPLE_REVERSE_LOOP	128	/* reverse looping */
 	unsigned int truesize;		/* used memory size (set by driver) */
-} soundfont_sample_info_t;
+};
 
 
 /*
  * voice preset mapping (aliasing)
  */
 
-typedef struct soundfont_voice_map_t {
+struct soundfont_voice_map {
 	int map_bank, map_instr, map_key;	/* key = -1 means all keys */
 	int src_bank, src_instr, src_key;
-} soundfont_voice_map_t;
+};
 
 
-#endif
+/*
+ * ioctls for hwdep
+ */
+
+#define SNDRV_EMUX_HWDEP_NAME	"Emux WaveTable"
+
+#define SNDRV_EMUX_VERSION	((1 << 16) | (0 << 8) | 0)	/* 1.0.0 */
+
+struct snd_emux_misc_mode {
+	int port;	/* -1 = all */
+	int mode;
+	int value;
+	int value2;	/* reserved */
+};
+
+enum {
+	SNDRV_EMUX_IOCTL_VERSION = _IOR('H', 0x80, unsigned int),
+	SNDRV_EMUX_IOCTL_LOAD_PATCH = _IOWR('H', 0x81, struct soundfont_patch_info),
+	SNDRV_EMUX_IOCTL_RESET_SAMPLES = _IO('H', 0x82),
+	SNDRV_EMUX_IOCTL_REMOVE_LAST_SAMPLES = _IO('H', 0x83),
+	SNDRV_EMUX_IOCTL_MEM_AVAIL = _IOW('H', 0x84, int),
+	SNDRV_EMUX_IOCTL_MISC_MODE = _IOWR('H', 0x84, struct snd_emux_misc_mode),
+};
+
+#endif /* __SOUND_SFNT_INFO_H */

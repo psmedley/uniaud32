@@ -1315,9 +1315,6 @@ static int snd_cmipci_capture_spdif_hw_free(struct snd_pcm_substream *subs)
  */
 static irqreturn_t snd_cmipci_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
-#ifdef TARGET_OS2
-    int fOurIrq = FALSE;
-#endif
     struct cmipci *cm = dev_id;
     unsigned int status, mask = 0;
 #ifdef DEBUG
@@ -1328,9 +1325,6 @@ static irqreturn_t snd_cmipci_interrupt(int irq, void *dev_id, struct pt_regs *r
     if (!(status & CM_INTR))
         return IRQ_NONE;
 
-#ifdef TARGET_OS2
-    fOurIrq = TRUE;
-#endif
 
     /* acknowledge interrupt */
     spin_lock(&cm->reg_lock);
@@ -1351,11 +1345,6 @@ static irqreturn_t snd_cmipci_interrupt(int irq, void *dev_id, struct pt_regs *r
         if ((status & CM_CHINT1) && cm->channel[1].running)
             snd_pcm_period_elapsed(cm->channel[1].substream);
     }
-#ifdef TARGET_OS2
-    if (fOurIrq) {
-        eoi_irq(irq);
-    }
-#endif //TARGET_OS2
     return IRQ_HANDLED;
 }
 

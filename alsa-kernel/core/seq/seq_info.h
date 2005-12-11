@@ -1,6 +1,6 @@
 /*
  *   ALSA sequencer /proc info
- *   Copyright (c) 1998 by Frank van de Pol <fvdpol@home.nl>
+ *   Copyright (c) 1998 by Frank van de Pol <fvdpol@coil.demon.nl>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 #ifndef __SND_SEQ_INFO_H
@@ -24,14 +24,13 @@
 #include <sound/info.h>
 #include <sound/seq_kernel.h>
 
-extern void snd_seq_info_clients_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer);
-extern void snd_seq_info_memory_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer);
-extern void snd_seq_info_timer_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer);
-extern void snd_seq_info_queues_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer);
+void snd_seq_info_clients_read(struct snd_info_entry *entry, struct snd_info_buffer *buffer);
+void snd_seq_info_timer_read(struct snd_info_entry *entry, struct snd_info_buffer *buffer);
+void snd_seq_info_queues_read(struct snd_info_entry *entry, struct snd_info_buffer *buffer);
 
 
-extern int snd_seq_info_init( void );
-extern int snd_seq_info_done( void );
+int snd_seq_info_init( void );
+int snd_seq_info_done( void );
 
 
 #endif

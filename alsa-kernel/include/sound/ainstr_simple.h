@@ -136,7 +136,7 @@ typedef struct simple_xinstrument {
 
 extern char *snd_seq_simple_id;
 
-typedef struct {
+typedef struct snd_simple_ops {
 	void *private_data;
 	int (*info)(void *private_data, simple_instrument_info_t *info);
 	int (*put_sample)(void *private_data, simple_instrument_t *instr,

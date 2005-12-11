@@ -43,7 +43,7 @@
 #endif
 #include "parse.h"
 
-#pragma comment(copyright,"@#Netlabs: Universal audio driver for OS/2 v.1.1.3#@ (c) Netlabs 2005")
+char copyright[]="@#Netlabs:1.13#@.Universal audio driver for OS/2 (c) Netlabs 2005\0x0\0x0\0xb";
 
 const char ERR_ERROR[]   = "ERROR: ";
 const char ERR_LOCK[]    = "Unable to lock 32 bit data & code segments, exiting...\r\r\n";

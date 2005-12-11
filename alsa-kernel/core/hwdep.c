@@ -303,55 +303,29 @@ static int snd_hwdep_control_ioctl(snd_card_t * card, snd_ctl_file_t * control,
 
 */
 
-#ifdef TARGET_OS2
 static struct file_operations snd_hwdep_f_ops =
 {
-#ifdef LINUX_2_3
-    THIS_MODULE,
+#ifndef TARGET_OS2
+    .owner = 	THIS_MODULE,
 #endif
-    snd_hwdep_llseek,
-    snd_hwdep_read,
-    snd_hwdep_write,
-    0,
-    snd_hwdep_poll,
-    snd_hwdep_ioctl,
-    0,
-    snd_hwdep_open,
-    0,
-    snd_hwdep_release,
-    0,0,0,0,0
+    .llseek =	snd_hwdep_llseek,
+    .read = 	snd_hwdep_read,
+    .write =	snd_hwdep_write,
+    .open =		snd_hwdep_open,
+    .release =	snd_hwdep_release,
+    .poll =		snd_hwdep_poll,
+    .ioctl =	snd_hwdep_ioctl,
+#ifndef TARGET_OS2
+    .compat_ioctl =	snd_hwdep_ioctl_compat,
+    .mmap =		snd_hwdep_mmap,
+#endif
 };
 
-static snd_minor_t snd_hwdep_reg =
+static struct snd_minor snd_hwdep_reg =
 {
-    {0,0},
-    0,0,
-    "hardware dependent",
-    0,
-    &snd_hwdep_f_ops
+    .comment =	"hardware dependent",
+    .f_ops =	&snd_hwdep_f_ops,
 };
-#else
-static struct file_operations snd_hwdep_f_ops =
-{
-#ifdef LINUX_2_3
-owner:		THIS_MODULE,
-#endif
-    llseek:		snd_hwdep_llseek,
-    read:		snd_hwdep_read,
-    write:		snd_hwdep_write,
-    open:		snd_hwdep_open,
-    release:	snd_hwdep_release,
-    poll:		snd_hwdep_poll,
-    ioctl:		snd_hwdep_ioctl,
-    mmap:		snd_hwdep_mmap,
-};
-
-static snd_minor_t snd_hwdep_reg =
-{
-comment:	"hardware dependent",
-    f_ops:		&snd_hwdep_f_ops,
-};
-#endif
 
 /**
  * snd_hwdep_new - create a new hwdep instance

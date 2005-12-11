@@ -31,7 +31,7 @@
 #include <sound/core.h>
 #include <sound/emu10k1.h>
 
-static void snd_emu10k1_proc_spdif_status(emu10k1_t * emu,
+static void snd_emu10k1_proc_spdif_status(struct snd_emu10k1 * emu,
                                           snd_info_buffer_t * buffer,
                                           char *title,
                                           int status_reg,
@@ -174,7 +174,7 @@ static void snd_emu10k1_proc_read(snd_info_entry_t *entry,
         /* 63 */ "FXBUS2_31"
     };
 
-    emu10k1_t *emu = entry->private_data;
+    struct snd_emu10k1 *emu = entry->private_data;
     unsigned int val;
     int nefx = emu->audigy ? 64 : 32;
     char **outputs = emu->audigy ? audigy_outs : creative_outs;
@@ -222,7 +222,7 @@ static void snd_emu10k1_proc_acode_read(snd_info_entry_t *entry,
                                         snd_info_buffer_t * buffer)
 {
     u32 pc;
-    emu10k1_t *emu = entry->private_data;
+    struct snd_emu10k1 *emu = entry->private_data;
 
     snd_iprintf(buffer, "FX8010 Instruction List '%s'\n", emu->fx8010.name);
     snd_iprintf(buffer, "  Code dump      :\n");
@@ -266,7 +266,7 @@ static long snd_emu10k1_fx8010_read(snd_info_entry_t *entry, void *file_private_
                                     unsigned long count, unsigned long pos)
 {
     long size;
-    emu10k1_t *emu = entry->private_data;
+    struct snd_emu10k1 *emu = entry->private_data;
     unsigned int offset;
     int tram_addr = 0;
 
@@ -309,8 +309,8 @@ static long snd_emu10k1_fx8010_read(snd_info_entry_t *entry, void *file_private_
 static void snd_emu10k1_proc_voices_read(snd_info_entry_t *entry,
                                          snd_info_buffer_t * buffer)
 {
-    emu10k1_t *emu = entry->private_data;
-    emu10k1_voice_t *voice;
+    struct snd_emu10k1 *emu = entry->private_data;
+    struct snd_emu10k1_voice *voice;
     int idx;
 
     snd_iprintf(buffer, "ch\tuse\tpcm\tefx\tsynth\tmidi\n");
@@ -330,7 +330,7 @@ static void snd_emu10k1_proc_voices_read(snd_info_entry_t *entry,
 static void snd_emu_proc_io_reg_read(snd_info_entry_t *entry,
                                      snd_info_buffer_t * buffer)
 {
-    emu10k1_t *emu = entry->private_data;
+    struct snd_emu10k1 *emu = entry->private_data;
     unsigned long value;
     unsigned long flags;
     int i;
@@ -346,10 +346,11 @@ static void snd_emu_proc_io_reg_read(snd_info_entry_t *entry,
 static void snd_emu_proc_io_reg_write(snd_info_entry_t *entry,
                                       snd_info_buffer_t * buffer)
 {
-    emu10k1_t *emu = entry->private_data;
+    struct snd_emu10k1 *emu = entry->private_data;
     unsigned long flags;
     char line[64];
     u32 reg, val;
+#if 0
     while (!snd_info_get_line(buffer, line, sizeof(line))) {
         if (sscanf(line, "%x %x", &reg, &val) != 2)
             continue;
@@ -359,9 +360,10 @@ static void snd_emu_proc_io_reg_write(snd_info_entry_t *entry,
             spin_unlock_irqrestore(&emu->emu_lock, flags);
         }
     }
+#endif
 }
 
-static unsigned int snd_ptr_read(emu10k1_t * emu,
+static unsigned int snd_ptr_read(struct snd_emu10k1 * emu,
                                  unsigned int iobase,
                                  unsigned int reg,
                                  unsigned int chn)
@@ -378,7 +380,7 @@ static unsigned int snd_ptr_read(emu10k1_t * emu,
     return val;
 }
 
-static void snd_ptr_write(emu10k1_t *emu,
+static void snd_ptr_write(struct snd_emu10k1 *emu,
                           unsigned int iobase,
                           unsigned int reg,
                           unsigned int chn,
@@ -399,7 +401,7 @@ static void snd_ptr_write(emu10k1_t *emu,
 static void snd_emu_proc_ptr_reg_read(snd_info_entry_t *entry,
                                       snd_info_buffer_t * buffer, int iobase, int offset, int length)
 {
-    emu10k1_t *emu = entry->private_data;
+    struct snd_emu10k1 *emu = entry->private_data;
     unsigned long value;
     int i,j;
     if (offset+length > 0x80) {
@@ -423,15 +425,17 @@ static void snd_emu_proc_ptr_reg_read(snd_info_entry_t *entry,
 static void snd_emu_proc_ptr_reg_write(snd_info_entry_t *entry,
                                        snd_info_buffer_t * buffer, int iobase)
 {
-    emu10k1_t *emu = entry->private_data;
+    struct snd_emu10k1 *emu = entry->private_data;
     char line[64];
     unsigned int reg, channel_id , val;
+#if 0
     while (!snd_info_get_line(buffer, line, sizeof(line))) {
         if (sscanf(line, "%x %x %x", &reg, &channel_id, &val) != 3)
             continue;
         if ((reg < 0x80) && (reg >=0) && (val <= 0xffffffff) && (channel_id >=0) && (channel_id <= 3) )
             snd_ptr_write(emu, iobase, reg, channel_id, val);
     }
+#endif
 }
 
 static void snd_emu_proc_ptr_reg_write00(snd_info_entry_t *entry,
@@ -482,7 +486,7 @@ static struct snd_info_entry_ops snd_emu10k1_proc_ops_fx8010 = {
 read: snd_emu10k1_fx8010_read,
 };
 #endif
-int __devinit snd_emu10k1_proc_init(emu10k1_t * emu)
+int __devinit snd_emu10k1_proc_init(struct snd_emu10k1 * emu)
 {
     snd_info_entry_t *entry;
 #ifdef CONFIG_SND_DEBUG

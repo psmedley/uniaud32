@@ -110,13 +110,13 @@ static void snd_request_other(int minor)
 
 #endif				/* request_module support */
 
-static snd_minor_t *snd_minor_search(int minor)
+static struct snd_minor *snd_minor_search(int minor)
 {
     struct list_head *list;
     snd_minor_t *mptr;
 
     list_for_each(list, &snd_minors_hash[SNDRV_MINOR_CARD(minor)]) {
-        mptr = list_entry(list, snd_minor_t, list);
+        mptr = list_entry(list, struct snd_minor, list);
         if (mptr->number == minor)
             return mptr;
     }
@@ -177,7 +177,7 @@ owner:		THIS_MODULE,
 };
 #endif
 
-static int snd_kernel_minor(int type, snd_card_t * card, int dev)
+static int snd_kernel_minor(int type, struct snd_card * card, int dev)
 {
     int minor;
 
@@ -217,7 +217,7 @@ static int snd_kernel_minor(int type, snd_card_t * card, int dev)
  *
  * Retrurns zero if successful, or a negative error code on failure.
  */
-int snd_register_device(int type, snd_card_t * card, int dev, snd_minor_t * reg, const char *name)
+int snd_register_device(int type, struct snd_card * card, int dev, snd_minor_t * reg, const char *name)
 {
     int minor = snd_kernel_minor(type, card, dev);
     snd_minor_t *preg;
@@ -264,7 +264,7 @@ int snd_register_device(int type, snd_card_t * card, int dev, snd_minor_t * reg,
  *
  * Returns zero if sucecessful, or a negative error code on failure
  */
-int snd_unregister_device(int type, snd_card_t * card, int dev)
+int snd_unregister_device(int type, struct snd_card * card, int dev)
 {
     int minor = snd_kernel_minor(type, card, dev);
     snd_minor_t *mptr;
@@ -294,7 +294,7 @@ int snd_unregister_device(int type, snd_card_t * card, int dev)
 
 static snd_info_entry_t *snd_minor_info_entry = NULL;
 
-static void snd_minor_info_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)
+static void snd_minor_info_read(snd_info_entry_t *entry, struct snd_info_buffer * buffer)
 {
     int card, device;
     struct list_head *list;

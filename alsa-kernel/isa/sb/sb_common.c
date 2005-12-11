@@ -33,7 +33,7 @@ MODULE_CLASSES("{sound}");
 
 #undef IO_DEBUG
 
-int snd_sbdsp_command(sb_t *chip, unsigned char val)
+int snd_sbdsp_command(struct snd_sb *chip, unsigned char val)
 {
     int i;
 #ifdef IO_DEBUG
@@ -48,7 +48,7 @@ int snd_sbdsp_command(sb_t *chip, unsigned char val)
     return 0;
 }
 
-int snd_sbdsp_get_byte(sb_t *chip)
+int snd_sbdsp_get_byte(struct snd_sb *chip)
 {
     int val;
     int i;
@@ -65,7 +65,7 @@ int snd_sbdsp_get_byte(sb_t *chip)
     return -ENODEV;
 }
 
-int snd_sbdsp_reset(sb_t *chip)
+int snd_sbdsp_reset(struct snd_sb *chip)
 {
     int i;
 
@@ -84,7 +84,7 @@ int snd_sbdsp_reset(sb_t *chip)
     return -ENODEV;
 }
 
-int snd_sbdsp_version(sb_t * chip)
+int snd_sbdsp_version(struct snd_sb * chip)
 {
     unsigned int result = -ENODEV;
 
@@ -94,7 +94,7 @@ int snd_sbdsp_version(sb_t * chip)
     return result;
 }
 
-static int snd_sbdsp_probe(sb_t * chip)
+static int snd_sbdsp_probe(struct snd_sb * chip)
 {
     int version;
     int major, minor;
@@ -165,12 +165,10 @@ static int snd_sbdsp_probe(sb_t * chip)
     return 0;
 }
 
-static int snd_sbdsp_free(sb_t *chip)
+static int snd_sbdsp_free(struct snd_sb *chip)
 {
     if (chip->res_port)
         release_resource(chip->res_port);
-    if (chip->res_alt_port)
-        release_resource(chip->res_alt_port);
     if (chip->irq >= 0)
         free_irq(chip->irq, (void *) chip);
     if (chip->dma8 >= 0) {
@@ -187,20 +185,20 @@ static int snd_sbdsp_free(sb_t *chip)
 
 static int snd_sbdsp_dev_free(snd_device_t *device)
 {
-    sb_t *chip = device->device_data;
+    struct snd_sb *chip = device->device_data;
     return snd_sbdsp_free(chip);
 }
 
 int snd_sbdsp_create(snd_card_t *card,
                      unsigned long port,
                      int irq,
-                     void (*irq_handler)(int, void *, struct pt_regs *),
+                     irqreturn_t (*irq_handler)(int, void *, struct pt_regs *),
                      int dma8,
                      int dma16,
                      unsigned short hardware,
-                     sb_t **r_chip)
+                     struct snd_sb **r_chip)
 {
-    sb_t *chip;
+    struct snd_sb *chip;
     int err;
 #ifdef TARGET_OS2
     static snd_device_ops_t ops = {

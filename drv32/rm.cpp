@@ -211,7 +211,7 @@ BOOL ResourceManager::GetRMDetectedResources ( DEVID DevID , ULONG ulSearchFlags
 {
    //Fill in resources read from PCI Configuration space
    detectedResources.uIRQLevel[0]  = pciConfigData->InterruptLine;
-   if(detectedResources.uIRQLevel[0] == 0 || detectedResources.uIRQLevel[0] > 15)  {
+   if(detectedResources.uIRQLevel[0] == 0 || detectedResources.uIRQLevel[0] > 255)  {
        //Does not matter if device doesn't have any resources (like a PCI bus controller)
        dprintf(("Invalid PCI irq %x", (int)detectedResources.uIRQLevel[0]));
        detectedResources.uIRQLevel[0] = NoIOValue;

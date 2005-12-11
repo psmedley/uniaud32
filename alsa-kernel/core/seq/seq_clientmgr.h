@@ -1,6 +1,6 @@
 /*
  *   ALSA sequencer Client Manager
- *   Copyright (c) 1998-1999 by Frank van de Pol <fvdpol@home.nl>
+ *   Copyright (c) 1998-1999 by Frank van de Pol <fvdpol@coil.demon.nl>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -15,13 +15,14 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 #ifndef __SND_SEQ_CLIENTMGR_H
 #define __SND_SEQ_CLIENTMGR_H
 
 #include <sound/seq_kernel.h>
+#include <linux/bitops.h>
 #include "seq_fifo.h"
 #include "seq_ports.h"
 #include "seq_lock.h"
@@ -29,24 +30,24 @@
 
 /* client manager */
 
-struct _snd_seq_user_client {
+struct snd_seq_user_client {
 	struct file *file;	/* file struct of client */
 	/* ... */
 	
 	/* fifo */
-	fifo_t *fifo;	/* queue for incoming events */
+	struct snd_seq_fifo *fifo;	/* queue for incoming events */
 	int fifo_pool_size;
 };
 
-struct _snd_seq_kernel_client {
-	snd_card_t *card;
+struct snd_seq_kernel_client {
+	struct snd_card *card;
 	/* pointer to client functions */
 	void *private_data;			/* private data for client */
 	/* ... */
 };
 
 
-struct _snd_seq_client {
+struct snd_seq_client {
 	snd_seq_client_type_t type;
 	unsigned int accept_input: 1,
 		accept_output: 1;
@@ -64,41 +65,42 @@ struct _snd_seq_client {
 	int convert32;		/* convert 32->64bit */
 
 	/* output pool */
-	pool_t *pool;		/* memory pool for this client */
+	struct snd_seq_pool *pool;		/* memory pool for this client */
 
 	union {
-		user_client_t user;
-		kernel_client_t kernel;
+		struct snd_seq_user_client user;
+		struct snd_seq_kernel_client kernel;
 	} data;
 };
 
 /* usage statistics */
-typedef struct {
+struct snd_seq_usage {
 	int cur;
 	int peak;
-} usage_t;
+};
 
 
-extern int client_init_data(void);
-extern int snd_sequencer_device_init(void);
-extern void snd_sequencer_device_done(void);
+int client_init_data(void);
+int snd_sequencer_device_init(void);
+void snd_sequencer_device_done(void);
 
 /* get locked pointer to client */
-extern client_t *snd_seq_client_use_ptr(int clientid);
+struct snd_seq_client *snd_seq_client_use_ptr(int clientid);
 
 /* unlock pointer to client */
 #define snd_seq_client_unlock(client) snd_use_lock_free(&(client)->use_lock)
 
 /* dispatch event to client(s) */
-extern int snd_seq_dispatch_event(snd_seq_event_cell_t *cell, int atomic, int hop);
+int snd_seq_dispatch_event(struct snd_seq_event_cell *cell, int atomic, int hop);
 
 /* exported to other modules */
-extern int snd_seq_register_kernel_client(snd_seq_client_callback_t *callback, void *private_data);
-extern int snd_seq_unregister_kernel_client(int client);
-extern int snd_seq_kernel_client_enqueue(int client, snd_seq_event_t *ev, int atomic, int hop);
-int snd_seq_kernel_client_enqueue_blocking(int client, snd_seq_event_t * ev, struct file *file, int atomic, int hop);
+int snd_seq_register_kernel_client(struct snd_seq_client_callback *callback, void *private_data);
+int snd_seq_unregister_kernel_client(int client);
+int snd_seq_kernel_client_enqueue(int client, struct snd_seq_event *ev, int atomic, int hop);
+int snd_seq_kernel_client_enqueue_blocking(int client, struct snd_seq_event * ev,
+					   struct file *file, int atomic, int hop);
 int snd_seq_kernel_client_write_poll(int clientid, struct file *file, poll_table *wait);
-int snd_seq_client_notify_subscription(int client, int port, snd_seq_port_subscribe_t *info, int evtype);
-int snd_seq_deliver_event(client_t *client, snd_seq_event_t *event, int atomic, int hop);
+int snd_seq_client_notify_subscription(int client, int port,
+				       struct snd_seq_port_subscribe *info, int evtype);
 
 #endif

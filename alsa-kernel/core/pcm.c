@@ -33,10 +33,10 @@ snd_pcm_t *snd_pcm_devices[SNDRV_CARDS * SNDRV_PCM_DEVICES];
 static LIST_HEAD(snd_pcm_notify_list);
 static DECLARE_MUTEX(register_mutex);
 static int snd_pcm_free(snd_pcm_t *pcm);
-static int snd_pcm_dev_free(snd_device_t *device);
-static int snd_pcm_dev_register(snd_device_t *device);
-static int snd_pcm_dev_disconnect(snd_device_t *device);
-static int snd_pcm_dev_unregister(snd_device_t *device);
+static int snd_pcm_dev_free(struct snd_device *device);
+static int snd_pcm_dev_register(struct snd_device *device);
+static int snd_pcm_dev_disconnect(struct snd_device *device);
+static int snd_pcm_dev_unregister(struct snd_device *device);
 
 static int snd_pcm_control_ioctl(snd_card_t * card,
                                  snd_ctl_file_t * control,
@@ -68,7 +68,7 @@ static int snd_pcm_control_ioctl(snd_card_t * card,
         {
             snd_pcm_info_t *info = (snd_pcm_info_t *)arg;
             unsigned int device, subdevice;
-            snd_pcm_stream_t stream;
+            int stream;
             snd_pcm_t *pcm;
             snd_pcm_str_t *pstr;
             snd_pcm_substream_t *substream;
@@ -194,7 +194,7 @@ char *snd_pcm_tstamp_mode_names[] = {
     "MMAP",
 };
 
-const char *snd_pcm_stream_name(snd_pcm_stream_t stream)
+const char *snd_pcm_stream_name(int stream)
 {
     snd_assert(stream <= SNDRV_PCM_STREAM_LAST, return 0);
     return snd_pcm_stream_names[stream];
@@ -218,7 +218,7 @@ const char *snd_pcm_subformat_name(snd_pcm_subformat_t subformat)
     return snd_pcm_subformat_names[subformat];
 }
 
-const char *snd_pcm_tstamp_mode_name(snd_pcm_tstamp_t mode)
+const char *snd_pcm_tstamp_mode_name(int mode)
 {
     snd_assert(mode <= SNDRV_PCM_TSTAMP_LAST, return 0);
     return snd_pcm_tstamp_mode_names[mode];
@@ -565,7 +565,7 @@ int snd_pcm_new_stream(snd_pcm_t *pcm, int stream, int substream_count)
 {
     int idx, err;
     snd_pcm_str_t *pstr = &pcm->streams[stream];
-    snd_pcm_substream_t *substream, *prev;
+    struct snd_pcm_substream *substream, *prev;
 
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
     init_MUTEX(&pstr->oss.setup_mutex);
@@ -581,7 +581,7 @@ int snd_pcm_new_stream(snd_pcm_t *pcm, int stream, int substream_count)
     }
     prev = NULL;
     for (idx = 0, prev = NULL; idx < substream_count; idx++) {
-        substream = kzalloc(sizeof(*substream), GFP_KERNEL);
+        substream = (struct snd_pcm_substream *)kzalloc(sizeof(*substream), GFP_KERNEL);
         if (substream == NULL)
             return -ENOMEM;
         substream->pcm = pcm;

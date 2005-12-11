@@ -43,14 +43,10 @@ static inline snd_ctl_elem_id_t *snd_ctl_build_ioff(snd_ctl_elem_id_t *dst_id,
         return dst_id;
 }
 
-static int snd_trident_pcm_mixer_build(trident_t *trident, snd_trident_voice_t * voice, snd_pcm_substream_t *substream);
-static int snd_trident_pcm_mixer_free(trident_t *trident, snd_trident_voice_t * voice, snd_pcm_substream_t *substream);
+static int snd_trident_pcm_mixer_build(struct snd_trident *trident, struct snd_trident_voice* voice, snd_pcm_substream_t *substream);
+static int snd_trident_pcm_mixer_free(struct snd_trident *trident, struct snd_trident_voice* voice, snd_pcm_substream_t *substream);
 static irqreturn_t snd_trident_interrupt(int irq, void *dev_id, struct pt_regs *regs);
-#ifdef CONFIG_PM
-static int snd_trident_suspend(snd_card_t *card, unsigned int state);
-static int snd_trident_resume(snd_card_t *card, unsigned int state);
-#endif
-static int snd_trident_sis_reset(trident_t *trident);
+static int snd_trident_sis_reset(struct snd_trident *trident);
 
 /*
  *  common I/O routines
@@ -58,7 +54,7 @@ static int snd_trident_sis_reset(trident_t *trident);
 
 
 #if 0
-static void snd_trident_print_voice_regs(trident_t *trident, int voice)
+static void snd_trident_print_voice_regs(struct snd_trident *trident, int voice)
 {
     unsigned int val, tmp;
 
@@ -116,7 +112,7 @@ static unsigned short snd_trident_codec_read(ac97_t *ac97, unsigned short reg)
     unsigned int data = 0, treg;
     unsigned short count = 0xffff;
     unsigned long flags;
-    trident_t *trident = ac97->private_data;
+    struct snd_trident *trident = ac97->private_data;
 
     spin_lock_irqsave(&trident->reg_lock, flags);
     if (trident->device == TRIDENT_DEVICE_ID_DX) {
@@ -175,7 +171,7 @@ static void snd_trident_codec_write(ac97_t *ac97, unsigned short reg, unsigned s
     unsigned int address, data;
     unsigned short count = 0xffff;
     unsigned long flags;
-    trident_t *trident = ac97->private_data;
+    struct snd_trident *trident = ac97->private_data;
 
     data = ((unsigned long) wdata) << 16;
 
@@ -226,7 +222,7 @@ static void snd_trident_codec_write(ac97_t *ac97, unsigned short reg, unsigned s
 }
 
 /*---------------------------------------------------------------------------
- void snd_trident_enable_eso(trident_t *trident)
+ void snd_trident_enable_eso(struct snd_trident *trident)
 
  Description: This routine will enable end of loop interrupts.
  End of loop interrupts will occur when a running
@@ -237,7 +233,7 @@ static void snd_trident_codec_write(ac97_t *ac97, unsigned short reg, unsigned s
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_enable_eso(trident_t * trident)
+static void snd_trident_enable_eso(struct snd_trident * trident)
 {
     unsigned int val;
 
@@ -250,7 +246,7 @@ static void snd_trident_enable_eso(trident_t * trident)
 }
 
 /*---------------------------------------------------------------------------
- void snd_trident_disable_eso(trident_t *trident)
+ void snd_trident_disable_eso(struct snd_trident *trident)
 
  Description: This routine will disable end of loop interrupts.
  End of loop interrupts will occur when a running
@@ -264,7 +260,7 @@ static void snd_trident_enable_eso(trident_t * trident)
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_disable_eso(trident_t * trident)
+static void snd_trident_disable_eso(struct snd_trident * trident)
 {
     unsigned int tmp;
 
@@ -275,7 +271,7 @@ static void snd_trident_disable_eso(trident_t * trident)
 }
 
 /*---------------------------------------------------------------------------
- void snd_trident_start_voice(trident_t * trident, unsigned int voice)
+ void snd_trident_start_voice(struct snd_trident * trident, unsigned int voice)
 
  Description: Start a voice, any channel 0 thru 63.
  This routine automatically handles the fact that there are
@@ -288,7 +284,7 @@ static void snd_trident_disable_eso(trident_t * trident)
 
  ---------------------------------------------------------------------------*/
 
-void snd_trident_start_voice(trident_t * trident, unsigned int voice)
+void snd_trident_start_voice(struct snd_trident * trident, unsigned int voice)
 {
     unsigned int mask = 1 << (voice & 0x1f);
     unsigned int reg = (voice & 0x20) ? T4D_START_B : T4D_START_A;
@@ -297,7 +293,7 @@ void snd_trident_start_voice(trident_t * trident, unsigned int voice)
 }
 
 /*---------------------------------------------------------------------------
- void snd_trident_stop_voice(trident_t * trident, unsigned int voice)
+ void snd_trident_stop_voice(struct snd_trident * trident, unsigned int voice)
 
  Description: Stop a voice, any channel 0 thru 63.
  This routine automatically handles the fact that there are
@@ -310,7 +306,7 @@ void snd_trident_start_voice(trident_t * trident, unsigned int voice)
 
  ---------------------------------------------------------------------------*/
 
-void snd_trident_stop_voice(trident_t * trident, unsigned int voice)
+void snd_trident_stop_voice(struct snd_trident * trident, unsigned int voice)
 {
     unsigned int mask = 1 << (voice & 0x1f);
     unsigned int reg = (voice & 0x20) ? T4D_STOP_B : T4D_STOP_A;
@@ -319,7 +315,7 @@ void snd_trident_stop_voice(trident_t * trident, unsigned int voice)
 }
 
 /*---------------------------------------------------------------------------
- int snd_trident_allocate_pcm_channel(trident_t *trident)
+ int snd_trident_allocate_pcm_channel(struct snd_trident *trident)
 
  Description: Allocate hardware channel in Bank B (32-63).
 
@@ -329,7 +325,7 @@ void snd_trident_stop_voice(trident_t * trident, unsigned int voice)
 
  ---------------------------------------------------------------------------*/
 
-static int snd_trident_allocate_pcm_channel(trident_t * trident)
+static int snd_trident_allocate_pcm_channel(struct snd_trident * trident)
 {
     int idx;
 
@@ -357,7 +353,7 @@ static int snd_trident_allocate_pcm_channel(trident_t * trident)
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_free_pcm_channel(trident_t *trident, int channel)
+static void snd_trident_free_pcm_channel(struct snd_trident *trident, int channel)
 {
     if (channel < 32 || channel > 63)
         return;
@@ -379,7 +375,7 @@ static void snd_trident_free_pcm_channel(trident_t *trident, int channel)
 
  ---------------------------------------------------------------------------*/
 
-static int snd_trident_allocate_synth_channel(trident_t * trident)
+static int snd_trident_allocate_synth_channel(struct snd_trident * trident)
 {
     int idx;
 
@@ -405,7 +401,7 @@ static int snd_trident_allocate_synth_channel(trident_t * trident)
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_free_synth_channel(trident_t *trident, int channel)
+static void snd_trident_free_synth_channel(struct snd_trident *trident, int channel)
 {
     if (channel < 0 || channel > 31)
         return;
@@ -428,8 +424,8 @@ static void snd_trident_free_synth_channel(trident_t *trident, int channel)
 
  ---------------------------------------------------------------------------*/
 
-void snd_trident_write_voice_regs(trident_t * trident,
-                                  snd_trident_voice_t * voice)
+void snd_trident_write_voice_regs(struct snd_trident * trident,
+                                  struct snd_trident_voice* voice)
 {
     unsigned int FmcRvolCvol;
     unsigned int regs[5];
@@ -500,7 +496,7 @@ void snd_trident_write_voice_regs(trident_t * trident,
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_write_cso_reg(trident_t * trident, snd_trident_voice_t * voice, unsigned int CSO)
+static void snd_trident_write_cso_reg(struct snd_trident * trident, struct snd_trident_voice* voice, unsigned int CSO)
 {
     voice->CSO = CSO;
     outb(voice->number, TRID_REG(trident, T4D_LFO_GC_CIR));
@@ -523,7 +519,7 @@ static void snd_trident_write_cso_reg(trident_t * trident, snd_trident_voice_t *
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_write_eso_reg(trident_t * trident, snd_trident_voice_t * voice, unsigned int ESO)
+static void snd_trident_write_eso_reg(struct snd_trident * trident, struct snd_trident_voice* voice, unsigned int ESO)
 {
     voice->ESO = ESO;
     outb(voice->number, TRID_REG(trident, T4D_LFO_GC_CIR));
@@ -546,7 +542,7 @@ static void snd_trident_write_eso_reg(trident_t * trident, snd_trident_voice_t *
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_write_vol_reg(trident_t * trident, snd_trident_voice_t * voice, unsigned int Vol)
+static void snd_trident_write_vol_reg(struct snd_trident * trident, struct snd_trident_voice* voice, unsigned int Vol)
 {
     voice->Vol = Vol;
     outb(voice->number, TRID_REG(trident, T4D_LFO_GC_CIR));
@@ -574,7 +570,7 @@ static void snd_trident_write_vol_reg(trident_t * trident, snd_trident_voice_t *
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_write_pan_reg(trident_t * trident, snd_trident_voice_t * voice, unsigned int Pan)
+static void snd_trident_write_pan_reg(struct snd_trident * trident, struct snd_trident_voice* voice, unsigned int Pan)
 {
     voice->Pan = Pan;
     outb(voice->number, TRID_REG(trident, T4D_LFO_GC_CIR));
@@ -593,7 +589,7 @@ static void snd_trident_write_pan_reg(trident_t * trident, snd_trident_voice_t *
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_write_rvol_reg(trident_t * trident, snd_trident_voice_t * voice, unsigned int RVol)
+static void snd_trident_write_rvol_reg(struct snd_trident * trident, struct snd_trident_voice* voice, unsigned int RVol)
 {
     voice->RVol = RVol;
     outb(voice->number, TRID_REG(trident, T4D_LFO_GC_CIR));
@@ -613,7 +609,7 @@ static void snd_trident_write_rvol_reg(trident_t * trident, snd_trident_voice_t 
 
  ---------------------------------------------------------------------------*/
 
-static void snd_trident_write_cvol_reg(trident_t * trident, snd_trident_voice_t * voice, unsigned int CVol)
+static void snd_trident_write_cvol_reg(struct snd_trident * trident, struct snd_trident_voice* voice, unsigned int CVol)
 {
     voice->CVol = CVol;
     outb(voice->number, TRID_REG(trident, T4D_LFO_GC_CIR));
@@ -773,9 +769,9 @@ static int snd_trident_ioctl(snd_pcm_substream_t * substream,
 int snd_trident_allocate_pcm_mem(snd_pcm_substream_t * substream,
                                  snd_pcm_hw_params_t * hw_params)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
     int err;
 
     if ((err = snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params))) < 0)
@@ -807,10 +803,10 @@ int snd_trident_allocate_pcm_mem(snd_pcm_substream_t * substream,
 int snd_trident_allocate_evoice(snd_pcm_substream_t * substream,
                                 snd_pcm_hw_params_t * hw_params)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
-    snd_trident_voice_t *evoice = voice->extra;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
+    struct snd_trident_voice*evoice = voice->extra;
 
     /* voice management */
 
@@ -868,10 +864,10 @@ static int snd_trident_hw_params(snd_pcm_substream_t * substream,
 
 static int snd_trident_hw_free(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
-    snd_trident_voice_t *evoice = voice ? voice->extra : NULL;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
+    struct snd_trident_voice*evoice = voice ? voice->extra : NULL;
 
     if (trident->tlb.entries) {
         if (voice && voice->memblk) {
@@ -900,11 +896,11 @@ static int snd_trident_hw_free(snd_pcm_substream_t * substream)
 
 static int snd_trident_playback_prepare(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
-    snd_trident_voice_t *evoice = voice->extra;
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[substream->number];
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
+    struct snd_trident_voice*evoice = voice->extra;
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[substream->number];
 
     spin_lock_irq(&trident->reg_lock);
 
@@ -1003,9 +999,9 @@ static int snd_trident_capture_hw_params(snd_pcm_substream_t * substream,
 
 static int snd_trident_capture_prepare(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
     unsigned int val, ESO_bytes;
 
     spin_lock_irq(&trident->reg_lock);
@@ -1117,10 +1113,10 @@ static int snd_trident_si7018_capture_hw_params(snd_pcm_substream_t * substream,
 
 static int snd_trident_si7018_capture_hw_free(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
-    snd_trident_voice_t *evoice = voice ? voice->extra : NULL;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
+    struct snd_trident_voice*evoice = voice ? voice->extra : NULL;
 
     snd_pcm_lib_free_pages(substream);
     if (evoice != NULL) {
@@ -1143,10 +1139,10 @@ static int snd_trident_si7018_capture_hw_free(snd_pcm_substream_t * substream)
 
 static int snd_trident_si7018_capture_prepare(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
-    snd_trident_voice_t *evoice = voice->extra;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
+    struct snd_trident_voice*evoice = voice->extra;
 
     spin_lock_irq(&trident->reg_lock);
 
@@ -1213,10 +1209,10 @@ static int snd_trident_si7018_capture_prepare(snd_pcm_substream_t * substream)
 
 static int snd_trident_foldback_prepare(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
-    snd_trident_voice_t *evoice = voice->extra;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
+    struct snd_trident_voice*evoice = voice->extra;
 
     spin_lock_irq(&trident->reg_lock);
 
@@ -1292,7 +1288,7 @@ static int snd_trident_foldback_prepare(snd_pcm_substream_t * substream)
 static int snd_trident_spdif_hw_params(snd_pcm_substream_t * substream,
                                        snd_pcm_hw_params_t * hw_params)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     unsigned int old_bits = 0, change = 0;
     int err;
 
@@ -1356,11 +1352,11 @@ static int snd_trident_spdif_hw_params(snd_pcm_substream_t * substream,
 
 static int snd_trident_spdif_prepare(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
-    snd_trident_voice_t *evoice = voice->extra;
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[substream->number];
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
+    struct snd_trident_voice*evoice = voice->extra;
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[substream->number];
     unsigned int RESO, LBAO;
     unsigned int temp;
 
@@ -1497,11 +1493,11 @@ static int snd_trident_trigger(snd_pcm_substream_t *substream,
                                int cmd)
 
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     struct list_head *pos;
     snd_pcm_substream_t *s;
     unsigned int what, whati, capture_flag, spdif_flag;
-    snd_trident_voice_t *voice, *evoice;
+    struct snd_trident_voice*voice, *evoice;
     unsigned int val, go;
 
     switch (cmd) {
@@ -1523,8 +1519,8 @@ static int snd_trident_trigger(snd_pcm_substream_t *substream,
     val = inl(TRID_REG(trident, T4D_STIMER)) & 0x00ffffff;
     snd_pcm_group_for_each(pos, substream) {
         s = snd_pcm_group_substream_entry(pos);
-        if ((trident_t *) snd_pcm_substream_chip(s) == trident) {
-            voice = (snd_trident_voice_t *) s->runtime->private_data;
+        if ((struct snd_trident *) snd_pcm_substream_chip(s) == trident) {
+            voice = (struct snd_trident_voice*) s->runtime->private_data;
             evoice = voice->extra;
             what |= 1 << (voice->number & 0x1f);
             if (evoice == NULL) {
@@ -1593,9 +1589,9 @@ static int snd_trident_trigger(snd_pcm_substream_t *substream,
 
 static snd_pcm_uframes_t snd_trident_playback_pointer(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
     unsigned int cso;
 
     if (!voice->running)
@@ -1632,9 +1628,9 @@ static snd_pcm_uframes_t snd_trident_playback_pointer(snd_pcm_substream_t * subs
 
 static snd_pcm_uframes_t snd_trident_capture_pointer(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
     unsigned int result;
 
     if (!voice->running)
@@ -1662,9 +1658,9 @@ static snd_pcm_uframes_t snd_trident_capture_pointer(snd_pcm_substream_t * subst
 
 static snd_pcm_uframes_t snd_trident_spdif_pointer(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
     unsigned int result;
 
     if (!voice->running)
@@ -1796,8 +1792,8 @@ static snd_pcm_hardware_t snd_trident_spdif_7018 =
 };
 static void snd_trident_pcm_free_substream(snd_pcm_runtime_t *runtime)
 {
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
-    trident_t *trident;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
+    struct snd_trident *trident;
 
     if (voice) {
         trident = voice->trident;
@@ -1807,9 +1803,9 @@ static void snd_trident_pcm_free_substream(snd_pcm_runtime_t *runtime)
 
 static int snd_trident_playback_open(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice;
+    struct snd_trident_voice*voice;
 
     voice = snd_trident_alloc_voice(trident, SNDRV_TRIDENT_VOICE_TYPE_PCM, 0, 0);
     if (voice == NULL)
@@ -1835,9 +1831,9 @@ static int snd_trident_playback_open(snd_pcm_substream_t * substream)
  ---------------------------------------------------------------------------*/
 static int snd_trident_playback_close(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_trident_voice_t *voice = (snd_trident_voice_t *) runtime->private_data;
+    struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
 
     snd_trident_pcm_mixer_free(trident, voice, substream);
     return 0;
@@ -1856,8 +1852,8 @@ static int snd_trident_playback_close(snd_pcm_substream_t * substream)
 
 static int snd_trident_spdif_open(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
-    snd_trident_voice_t *voice;
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident_voice*voice;
     snd_pcm_runtime_t *runtime = substream->runtime;
 
     voice = snd_trident_alloc_voice(trident, SNDRV_TRIDENT_VOICE_TYPE_PCM, 0, 0);
@@ -1897,7 +1893,7 @@ static int snd_trident_spdif_open(snd_pcm_substream_t * substream)
 
 static int snd_trident_spdif_close(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
     unsigned int temp;
 
     spin_lock_irq(&trident->reg_lock);
@@ -1935,8 +1931,8 @@ static int snd_trident_spdif_close(snd_pcm_substream_t * substream)
 
 static int snd_trident_capture_open(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
-    snd_trident_voice_t *voice;
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident_voice*voice;
     snd_pcm_runtime_t *runtime = substream->runtime;
 
     voice = snd_trident_alloc_voice(trident, SNDRV_TRIDENT_VOICE_TYPE_PCM, 0, 0);
@@ -1979,8 +1975,8 @@ static int snd_trident_capture_close(snd_pcm_substream_t * substream)
 
 static int snd_trident_foldback_open(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
-    snd_trident_voice_t *voice;
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident_voice*voice;
     snd_pcm_runtime_t *runtime = substream->runtime;
 
     voice = snd_trident_alloc_voice(trident, SNDRV_TRIDENT_VOICE_TYPE_PCM, 0, 0);
@@ -2006,10 +2002,10 @@ static int snd_trident_foldback_open(snd_pcm_substream_t * substream)
  ---------------------------------------------------------------------------*/
 static int snd_trident_foldback_close(snd_pcm_substream_t * substream)
 {
-    trident_t *trident = snd_pcm_substream_chip(substream);
-    snd_trident_voice_t *voice;
+    struct snd_trident *trident = snd_pcm_substream_chip(substream);
+    struct snd_trident_voice*voice;
     snd_pcm_runtime_t *runtime = substream->runtime;
-    voice = (snd_trident_voice_t *) runtime->private_data;
+    voice = (struct snd_trident_voice*) runtime->private_data;
 
     /* stop capture channel */
     spin_lock_irq(&trident->reg_lock);
@@ -2124,21 +2120,21 @@ static snd_pcm_ops_t snd_trident_spdif_7018_ops = {
  ---------------------------------------------------------------------------*/
 static void snd_trident_pcm_free(snd_pcm_t *pcm)
 {
-    trident_t *trident = pcm->private_data;
+    struct snd_trident *trident = pcm->private_data;
     trident->pcm = NULL;
     snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
 static void snd_trident_foldback_pcm_free(snd_pcm_t *pcm)
 {
-    trident_t *trident = pcm->private_data;
+    struct snd_trident *trident = pcm->private_data;
     trident->foldback = NULL;
     snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
 static void snd_trident_spdif_pcm_free(snd_pcm_t *pcm)
 {
-    trident_t *trident = pcm->private_data;
+    struct snd_trident *trident = pcm->private_data;
     trident->spdif = NULL;
     snd_pcm_lib_preallocate_free_for_all(pcm);
 }
@@ -2154,7 +2150,7 @@ static void snd_trident_spdif_pcm_free(snd_pcm_t *pcm)
 
  ---------------------------------------------------------------------------*/
 
-int __devinit snd_trident_pcm(trident_t * trident, int device, snd_pcm_t ** rpcm)
+int __devinit snd_trident_pcm(struct snd_trident * trident, int device, snd_pcm_t ** rpcm)
 {
 	snd_pcm_t *pcm;
 	int err;
@@ -2212,7 +2208,7 @@ int __devinit snd_trident_pcm(trident_t * trident, int device, snd_pcm_t ** rpcm
 
  ---------------------------------------------------------------------------*/
 
-int __devinit snd_trident_foldback_pcm(trident_t * trident, int device, snd_pcm_t ** rpcm)
+int __devinit snd_trident_foldback_pcm(struct snd_trident * trident, int device, snd_pcm_t ** rpcm)
 {
 	snd_pcm_t *foldback;
 	int err;
@@ -2270,7 +2266,7 @@ int __devinit snd_trident_foldback_pcm(trident_t * trident, int device, snd_pcm_
 
  ---------------------------------------------------------------------------*/
 
-int __devinit snd_trident_spdif_pcm(trident_t * trident, int device, snd_pcm_t ** rpcm)
+int __devinit snd_trident_spdif_pcm(struct snd_trident * trident, int device, snd_pcm_t ** rpcm)
 {
 	snd_pcm_t *spdif;
 	int err;
@@ -2320,7 +2316,7 @@ static int snd_trident_spdif_control_info(snd_kcontrol_t *kcontrol, snd_ctl_elem
 static int snd_trident_spdif_control_get(snd_kcontrol_t * kcontrol,
                                          snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
     unsigned char val;
 
     spin_lock_irq(&trident->reg_lock);
@@ -2333,7 +2329,7 @@ static int snd_trident_spdif_control_get(snd_kcontrol_t * kcontrol,
 static int snd_trident_spdif_control_put(snd_kcontrol_t * kcontrol,
                                          snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
     unsigned char val;
     int change;
 
@@ -2387,7 +2383,7 @@ static int snd_trident_spdif_default_info(snd_kcontrol_t *kcontrol, snd_ctl_elem
 static int snd_trident_spdif_default_get(snd_kcontrol_t * kcontrol,
                                          snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
 
     spin_lock_irq(&trident->reg_lock);
     ucontrol->value.iec958.status[0] = (trident->spdif_bits >> 0) & 0xff;
@@ -2401,7 +2397,7 @@ static int snd_trident_spdif_default_get(snd_kcontrol_t * kcontrol,
 static int snd_trident_spdif_default_put(snd_kcontrol_t * kcontrol,
                                          snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
     unsigned int val;
     int change;
 
@@ -2480,7 +2476,7 @@ static int snd_trident_spdif_stream_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_
 static int snd_trident_spdif_stream_get(snd_kcontrol_t * kcontrol,
                                         snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
 
     spin_lock_irq(&trident->reg_lock);
     ucontrol->value.iec958.status[0] = (trident->spdif_pcm_bits >> 0) & 0xff;
@@ -2494,7 +2490,7 @@ static int snd_trident_spdif_stream_get(snd_kcontrol_t * kcontrol,
 static int snd_trident_spdif_stream_put(snd_kcontrol_t * kcontrol,
                                         snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
     unsigned int val;
     int change;
 
@@ -2544,7 +2540,7 @@ static int snd_trident_ac97_control_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_
 static int snd_trident_ac97_control_get(snd_kcontrol_t * kcontrol,
                                         snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
     unsigned char val;
 
     spin_lock_irq(&trident->reg_lock);
@@ -2557,7 +2553,7 @@ static int snd_trident_ac97_control_get(snd_kcontrol_t * kcontrol,
 static int snd_trident_ac97_control_put(snd_kcontrol_t * kcontrol,
                                         snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
     unsigned char val;
     int change = 0;
 
@@ -2601,7 +2597,7 @@ static int snd_trident_vol_control_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_i
 static int snd_trident_vol_control_get(snd_kcontrol_t * kcontrol,
                                        snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
     unsigned int val;
 
     val = trident->musicvol_wavevol;
@@ -2613,7 +2609,7 @@ static int snd_trident_vol_control_get(snd_kcontrol_t * kcontrol,
 static int snd_trident_vol_control_put(snd_kcontrol_t * kcontrol,
                                        snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
     unsigned int val;
     int change = 0;
 
@@ -2658,7 +2654,7 @@ static snd_kcontrol_new_t snd_trident_vol_wave_control __devinitdata =
 
 static int snd_trident_pcm_vol_control_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
 
     uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
     uinfo->count = 1;
@@ -2672,8 +2668,8 @@ static int snd_trident_pcm_vol_control_info(snd_kcontrol_t *kcontrol, snd_ctl_el
 static int snd_trident_pcm_vol_control_get(snd_kcontrol_t * kcontrol,
                                            snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
 
     if (trident->device == TRIDENT_DEVICE_ID_SI7018) {
         ucontrol->value.integer.value[0] = 1023 - mix->vol;
@@ -2686,8 +2682,8 @@ static int snd_trident_pcm_vol_control_get(snd_kcontrol_t * kcontrol,
 static int snd_trident_pcm_vol_control_put(snd_kcontrol_t * kcontrol,
                                            snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
     unsigned int val;
     int change = 0;
 
@@ -2734,8 +2730,8 @@ static int snd_trident_pcm_pan_control_info(snd_kcontrol_t *kcontrol, snd_ctl_el
 static int snd_trident_pcm_pan_control_get(snd_kcontrol_t * kcontrol,
                                            snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
 
     ucontrol->value.integer.value[0] = mix->pan;
     if (ucontrol->value.integer.value[0] & 0x40) {
@@ -2749,8 +2745,8 @@ static int snd_trident_pcm_pan_control_get(snd_kcontrol_t * kcontrol,
 static int snd_trident_pcm_pan_control_put(snd_kcontrol_t * kcontrol,
                                            snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
     unsigned char val;
     int change = 0;
 
@@ -2796,8 +2792,8 @@ static int snd_trident_pcm_rvol_control_info(snd_kcontrol_t *kcontrol, snd_ctl_e
 static int snd_trident_pcm_rvol_control_get(snd_kcontrol_t * kcontrol,
                                             snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
 
     ucontrol->value.integer.value[0] = 127 - mix->rvol;
     return 0;
@@ -2806,8 +2802,8 @@ static int snd_trident_pcm_rvol_control_get(snd_kcontrol_t * kcontrol,
 static int snd_trident_pcm_rvol_control_put(snd_kcontrol_t * kcontrol,
                                             snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
     unsigned short val;
     int change = 0;
 
@@ -2850,8 +2846,8 @@ static int snd_trident_pcm_cvol_control_info(snd_kcontrol_t *kcontrol, snd_ctl_e
 static int snd_trident_pcm_cvol_control_get(snd_kcontrol_t * kcontrol,
                                             snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
 
     ucontrol->value.integer.value[0] = 127 - mix->cvol;
     return 0;
@@ -2860,8 +2856,8 @@ static int snd_trident_pcm_cvol_control_get(snd_kcontrol_t * kcontrol,
 static int snd_trident_pcm_cvol_control_put(snd_kcontrol_t * kcontrol,
                                             snd_ctl_elem_value_t * ucontrol)
 {
-    trident_t *trident = snd_kcontrol_chip(kcontrol);
-    snd_trident_pcm_mixer_t *mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
+    struct snd_trident *trident = snd_kcontrol_chip(kcontrol);
+    struct snd_trident_pcm_mixer*mix = &trident->pcm_mixer[snd_ctl_get_ioffnum(kcontrol, &ucontrol->id)];
     unsigned short val;
     int change = 0;
 
@@ -2900,7 +2896,7 @@ static void snd_trident_notify_pcm_change1(snd_card_t * card, snd_kcontrol_t *kc
                    snd_ctl_build_ioff(&id, kctl, num));
 }
 
-static void snd_trident_notify_pcm_change(trident_t *trident, snd_trident_pcm_mixer_t *tmix, int num, int activate)
+static void snd_trident_notify_pcm_change(struct snd_trident *trident, struct snd_trident_pcm_mixer*tmix, int num, int activate)
 {
     snd_trident_notify_pcm_change1(trident->card, trident->ctl_vol, num, activate);
     snd_trident_notify_pcm_change1(trident->card, trident->ctl_pan, num, activate);
@@ -2908,9 +2904,9 @@ static void snd_trident_notify_pcm_change(trident_t *trident, snd_trident_pcm_mi
     snd_trident_notify_pcm_change1(trident->card, trident->ctl_cvol, num, activate);
 }
 
-static int snd_trident_pcm_mixer_build(trident_t *trident, snd_trident_voice_t *voice, snd_pcm_substream_t *substream)
+static int snd_trident_pcm_mixer_build(struct snd_trident *trident, struct snd_trident_voice*voice, snd_pcm_substream_t *substream)
 {
-    snd_trident_pcm_mixer_t *tmix;
+    struct snd_trident_pcm_mixer*tmix;
 
     snd_assert(trident != NULL && voice != NULL && substream != NULL, return -EINVAL);
     tmix = &trident->pcm_mixer[substream->number];
@@ -2923,9 +2919,9 @@ static int snd_trident_pcm_mixer_build(trident_t *trident, snd_trident_voice_t *
     return 0;
 }
 
-static int snd_trident_pcm_mixer_free(trident_t *trident, snd_trident_voice_t *voice, snd_pcm_substream_t *substream)
+static int snd_trident_pcm_mixer_free(struct snd_trident *trident, struct snd_trident_voice*voice, snd_pcm_substream_t *substream)
 {
-    snd_trident_pcm_mixer_t *tmix;
+    struct snd_trident_pcm_mixer*tmix;
 
     snd_assert(trident != NULL && substream != NULL, return -EINVAL);
     tmix = &trident->pcm_mixer[substream->number];
@@ -2945,7 +2941,7 @@ static int snd_trident_pcm_mixer_free(trident_t *trident, snd_trident_voice_t *v
 
  ---------------------------------------------------------------------------*/
 
-static int __devinit snd_trident_mixer(trident_t * trident, int pcm_spdif_device)
+static int __devinit snd_trident_mixer(struct snd_trident * trident, int pcm_spdif_device)
 {
     ac97_template_t _ac97;
     snd_card_t * card = trident->card;
@@ -3012,7 +3008,7 @@ __again:
     }
 
     for (idx = 0; idx < 32; idx++) {
-        snd_trident_pcm_mixer_t *tmix;
+        struct snd_trident_pcm_mixer*tmix;
 
         tmix = &trident->pcm_mixer[idx];
         tmix->voice = NULL;
@@ -3106,13 +3102,13 @@ __again:
 
 typedef struct snd_trident_gameport {
     struct gameport info;
-    trident_t *chip;
+    struct snd_trident *chip;
 } trident_gameport_t;
 
 static unsigned char snd_trident_gameport_read(struct gameport *gameport)
 {
     trident_gameport_t *gp = (trident_gameport_t *)gameport;
-    trident_t *chip;
+    struct snd_trident *chip;
     snd_assert(gp, return 0);
     chip = gp->chip;
     return inb(TRID_REG(chip, GAMEPORT_LEGACY));
@@ -3121,7 +3117,7 @@ static unsigned char snd_trident_gameport_read(struct gameport *gameport)
 static void snd_trident_gameport_trigger(struct gameport *gameport)
 {
     trident_gameport_t *gp = (trident_gameport_t *)gameport;
-    trident_t *chip;
+    struct snd_trident *chip;
     snd_assert(gp, return);
     chip = gp->chip;
     outb(0xff, TRID_REG(chip, GAMEPORT_LEGACY));
@@ -3130,7 +3126,7 @@ static void snd_trident_gameport_trigger(struct gameport *gameport)
 static int snd_trident_gameport_cooked_read(struct gameport *gameport, int *axes, int *buttons)
 {
     trident_gameport_t *gp = (trident_gameport_t *)gameport;
-    trident_t *chip;
+    struct snd_trident *chip;
     int i;
 
     snd_assert(gp, return 0);
@@ -3149,7 +3145,7 @@ static int snd_trident_gameport_cooked_read(struct gameport *gameport, int *axes
 static int snd_trident_gameport_open(struct gameport *gameport, int mode)
 {
     trident_gameport_t *gp = (trident_gameport_t *)gameport;
-    trident_t *chip;
+    struct snd_trident *chip;
     snd_assert(gp, return -1);
     chip = gp->chip;
 
@@ -3166,7 +3162,7 @@ static int snd_trident_gameport_open(struct gameport *gameport, int mode)
     }
 }
 
-void __devinit snd_trident_gameport(trident_t *chip)
+void __devinit snd_trident_gameport(struct snd_trident *chip)
 {
     trident_gameport_t *gp;
     gp = kmalloc(sizeof(*gp), GFP_KERNEL);
@@ -3187,7 +3183,7 @@ void __devinit snd_trident_gameport(trident_t *chip)
 }
 
 #else
-void __devinit snd_trident_gameport(trident_t *chip)
+void __devinit snd_trident_gameport(struct snd_trident *chip)
 {
 }
 #endif /* CONFIG_GAMEPORT */
@@ -3195,7 +3191,7 @@ void __devinit snd_trident_gameport(trident_t *chip)
 /*
  * delay for 1 tick
  */
-inline static void do_delay(trident_t *chip)
+inline static void do_delay(struct snd_trident *chip)
 {
     set_current_state(TASK_UNINTERRUPTIBLE);
     schedule_timeout(1);
@@ -3205,7 +3201,7 @@ inline static void do_delay(trident_t *chip)
  *  SiS reset routine
  */
 
-static int snd_trident_sis_reset(trident_t *trident)
+static int snd_trident_sis_reset(struct snd_trident *trident)
 {
     unsigned long end_time;
     unsigned int i;
@@ -3261,7 +3257,7 @@ __si7018_ok:
 static void snd_trident_proc_read(snd_info_entry_t *entry,
                                   snd_info_buffer_t * buffer)
 {
-    trident_t *trident = entry->private_data;
+    struct snd_trident *trident = entry->private_data;
     char *s;
 
     switch (trident->device) {
@@ -3299,7 +3295,7 @@ static void snd_trident_proc_read(snd_info_entry_t *entry,
 #endif
 }
 
-static void __devinit snd_trident_proc_init(trident_t * trident)
+static void __devinit snd_trident_proc_init(struct snd_trident * trident)
 {
     snd_info_entry_t *entry;
     const char *s = "trident";
@@ -3312,7 +3308,7 @@ static void __devinit snd_trident_proc_init(trident_t * trident)
 
 static int snd_trident_dev_free(snd_device_t *device)
 {
-    trident_t *trident = device->device_data;
+    struct snd_trident *trident = device->device_data;
     return snd_trident_free(trident);
 }
 
@@ -3328,7 +3324,7 @@ static int snd_trident_dev_free(snd_device_t *device)
 
  ---------------------------------------------------------------------------*/
 
-static int __devinit snd_trident_tlb_alloc(trident_t *trident)
+static int __devinit snd_trident_tlb_alloc(struct snd_trident *trident)
 {
 	int i;
 
@@ -3365,7 +3361,7 @@ static int __devinit snd_trident_tlb_alloc(trident_t *trident)
 	if (trident->tlb.memhdr == NULL)
 		return -ENOMEM;
 
-	trident->tlb.memhdr->block_extra_size = sizeof(snd_trident_memblk_arg_t);
+	trident->tlb.memhdr->block_extra_size = sizeof(struct snd_trident_memblk_arg);
 	return 0;
 }
 
@@ -3373,7 +3369,7 @@ static int __devinit snd_trident_tlb_alloc(trident_t *trident)
  * initialize 4D DX chip
  */
 
-static void snd_trident_stop_all_voices(trident_t *trident)
+static void snd_trident_stop_all_voices(struct snd_trident *trident)
 {
     outl(0xffffffff, TRID_REG(trident, T4D_STOP_A));
     outl(0xffffffff, TRID_REG(trident, T4D_STOP_B));
@@ -3381,7 +3377,7 @@ static void snd_trident_stop_all_voices(trident_t *trident)
     outl(0, TRID_REG(trident, T4D_AINTEN_B));
 }
 
-static int snd_trident_4d_dx_init(trident_t *trident)
+static int snd_trident_4d_dx_init(struct snd_trident *trident)
 {
     struct pci_dev *pci = trident->pci;
     unsigned long end_time;
@@ -3421,7 +3417,7 @@ static int snd_trident_4d_dx_init(trident_t *trident)
 /*
  * initialize 4D NX chip
  */
-static int snd_trident_4d_nx_init(trident_t *trident)
+static int snd_trident_4d_nx_init(struct snd_trident *trident)
 {
     struct pci_dev *pci = trident->pci;
     unsigned long end_time;
@@ -3478,7 +3474,7 @@ static int snd_trident_4d_nx_init(trident_t *trident)
 /*
  * initialize sis7018 chip
  */
-static int snd_trident_sis_init(trident_t *trident)
+static int snd_trident_sis_init(struct snd_trident *trident)
 {
     int err;
 
@@ -3514,12 +3510,12 @@ int __devinit snd_trident_create(snd_card_t * card,
                                  int pcm_streams,
                                  int pcm_spdif_device,
                                  int max_wavetable_size,
-                                 trident_t ** rtrident)
+                                 struct snd_trident ** rtrident)
 {
-    trident_t *trident;
+    struct snd_trident *trident;
     int i, err;
-    snd_trident_voice_t *voice;
-    snd_trident_pcm_mixer_t *tmix;
+    struct snd_trident_voice*voice;
+    struct snd_trident_pcm_mixer*tmix;
 #ifdef TARGET_OS2
     static snd_device_ops_t ops = {
         snd_trident_dev_free,0,0,0
@@ -3626,8 +3622,6 @@ int __devinit snd_trident_create(snd_card_t * card,
 
     snd_trident_enable_eso(trident);
 
-    snd_card_set_pm_callback(card, snd_trident_suspend, snd_trident_resume, trident);
-
     snd_trident_proc_init(trident);
     if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, trident, &ops)) < 0) {
         snd_trident_free(trident);
@@ -3649,7 +3643,7 @@ int __devinit snd_trident_create(snd_card_t * card,
 
  ---------------------------------------------------------------------------*/
 
-int snd_trident_free(trident_t *trident)
+int snd_trident_free(struct snd_trident *trident)
 {
 #if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
 	if (trident->gameport) {
@@ -3701,10 +3695,10 @@ int snd_trident_free(trident_t *trident)
 
 static irqreturn_t snd_trident_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
-    trident_t *trident = dev_id;
+    struct snd_trident *trident = dev_id;
     unsigned int audio_int, chn_int, stimer, channel, mask, tmp;
     int delta;
-    snd_trident_voice_t *voice;
+    struct snd_trident_voice*voice;
 #ifdef TARGET_OS2
     int fOurIrq = FALSE;
 #endif
@@ -3820,19 +3814,19 @@ static irqreturn_t snd_trident_interrupt(int irq, void *dev_id, struct pt_regs *
  Returns:     None.
 
  ---------------------------------------------------------------------------*/
-int snd_trident_attach_synthesizer(trident_t *trident)
+int snd_trident_attach_synthesizer(struct snd_trident *trident)
 {
 #ifdef CONFIG_SND_SEQUENCER
     if (snd_seq_device_new(trident->card, 1, SNDRV_SEQ_DEV_ID_TRIDENT,
-                           sizeof(trident_t*), &trident->seq_dev) >= 0) {
+                           sizeof(struct snd_trident*), &trident->seq_dev) >= 0) {
         strcpy(trident->seq_dev->name, "4DWave");
-        *(trident_t**)SNDRV_SEQ_DEVICE_ARGPTR(trident->seq_dev) = trident;
+        *(struct snd_trident**)SNDRV_SEQ_DEVICE_ARGPTR(trident->seq_dev) = trident;
     }
 #endif
     return 0;
 }
 
-int snd_trident_detach_synthesizer(trident_t *trident)
+int snd_trident_detach_synthesizer(struct snd_trident *trident)
 {
 #ifdef CONFIG_SND_SEQUENCER
     if (trident->seq_dev) {
@@ -3843,9 +3837,9 @@ int snd_trident_detach_synthesizer(trident_t *trident)
     return 0;
 }
 
-snd_trident_voice_t *snd_trident_alloc_voice(trident_t * trident, int type, int client, int port)
+struct snd_trident_voice*snd_trident_alloc_voice(struct snd_trident * trident, int type, int client, int port)
 {
-    snd_trident_voice_t *pvoice;
+    struct snd_trident_voice*pvoice;
     unsigned long flags;
     int idx;
 
@@ -3887,10 +3881,10 @@ snd_trident_voice_t *snd_trident_alloc_voice(trident_t * trident, int type, int 
     return NULL;
 }
 
-void snd_trident_free_voice(trident_t * trident, snd_trident_voice_t *voice)
+void snd_trident_free_voice(struct snd_trident * trident, struct snd_trident_voice*voice)
 {
     unsigned long flags;
-    void (*private_free)(snd_trident_voice_t *);
+    void (*private_free)(struct snd_trident_voice*);
     void *private_data;
 
     if (voice == NULL || !voice->use)
@@ -3915,7 +3909,7 @@ void snd_trident_free_voice(trident_t * trident, snd_trident_voice_t *voice)
         private_free(voice);
 }
 
-void snd_trident_clear_voices(trident_t * trident, unsigned short v_min, unsigned short v_max)
+void snd_trident_clear_voices(struct snd_trident * trident, unsigned short v_min, unsigned short v_max)
 {
     unsigned int i, val, mask[2] = { 0, 0 };
 
@@ -3936,21 +3930,19 @@ void snd_trident_clear_voices(trident_t * trident, unsigned short v_min, unsigne
 }
 
 #ifdef CONFIG_PM
-
-static int snd_trident_suspend(snd_card_t *card, unsigned int state)
+int snd_trident_suspend(struct pci_dev *pci, pm_message_t state)
 {
-    trident_t *trident = card->pm_private_data;
+    struct snd_card *card = pci_get_drvdata(pci);
+    struct snd_trident *trident = card->private_data;
 
     trident->in_suspend = 1;
+    snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
     snd_pcm_suspend_all(trident->pcm);
-    if (trident->foldback)
-        snd_pcm_suspend_all(trident->foldback);
-    if (trident->spdif)
-        snd_pcm_suspend_all(trident->spdif);
+    snd_pcm_suspend_all(trident->foldback);
+    snd_pcm_suspend_all(trident->spdif);
 
     snd_ac97_suspend(trident->ac97);
-    if (trident->ac97_sec)
-        snd_ac97_suspend(trident->ac97_sec);
+    snd_ac97_suspend(trident->ac97_sec);
 
     switch (trident->device) {
     case TRIDENT_DEVICE_ID_DX:
@@ -3959,16 +3951,19 @@ static int snd_trident_suspend(snd_card_t *card, unsigned int state)
     case TRIDENT_DEVICE_ID_SI7018:
         break;
     }
+    pci_disable_device(pci);
+    pci_save_state(pci);
     return 0;
 }
 
-static int snd_trident_resume(snd_card_t *card, unsigned int state)
+int snd_trident_resume(struct pci_dev *pci)
 {
-    trident_t *trident = card->pm_private_data;
+    struct snd_card *card = pci_get_drvdata(pci);
+    struct snd_trident *trident = card->private_data;
 
-    pci_enable_device(trident->pci);
-    pci_set_dma_mask(trident->pci, 0x3fffffff); /* to be sure */
-    pci_set_master(trident->pci); /* to be sure */
+    pci_restore_state(pci);
+    pci_enable_device(pci);
+    pci_set_master(pci); /* to be sure */
 
     switch (trident->device) {
     case TRIDENT_DEVICE_ID_DX:
@@ -3983,13 +3978,14 @@ static int snd_trident_resume(snd_card_t *card, unsigned int state)
     }
 
     snd_ac97_resume(trident->ac97);
-    if (trident->ac97_sec)
-        snd_ac97_resume(trident->ac97_sec);
+    snd_ac97_resume(trident->ac97_sec);
+
     /* restore some registers */
     outl(trident->musicvol_wavevol, TRID_REG(trident, T4D_MUSICVOL_WAVEVOL));
 
     snd_trident_enable_eso(trident);
 
+    snd_power_change_state(card, SNDRV_CTL_POWER_D0);
     trident->in_suspend = 0;
     return 0;
 }

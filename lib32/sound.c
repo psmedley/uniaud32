@@ -1156,7 +1156,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
 //            printk("written: now: %i, buffer: %i, total: %i\n", ret, transferred, total);
             buffer += ret;
             size   -= ret;
-            if(size <= 0) {
+            if((int)size <= 0) {
                 break;
             }
         }
@@ -1256,7 +1256,7 @@ OSSRET OSS32_WaveSetVolume(OSSSTREAMID streamid, ULONG volume)
     soundhandle *pHandle = (soundhandle *)streamid;
     int          ret;
     int          leftvol, rightvol;
-    snd_pcm_volume_t pcm_volume;
+    struct snd_pcm_volume pcm_volume;
 
     if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
           DebugInt3();

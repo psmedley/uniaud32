@@ -1,6 +1,6 @@
 /*
  *   ALSA sequencer System services Client
- *   Copyright (c) 1998-1999 by Frank van de Pol <fvdpol@home.nl>
+ *   Copyright (c) 1998-1999 by Frank van de Pol <fvdpol@coil.demon.nl>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -15,11 +15,13 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <sound/core.h>
 #include "seq_system.h"
 #include "seq_timer.h"
 #include "seq_queue.h"
@@ -64,12 +66,12 @@ static int announce_port = -1;
 
 
 /* fill standard header data, source port & channel are filled in */
-static int setheader(snd_seq_event_t * ev, int client, int port)
+static int setheader(struct snd_seq_event * ev, int client, int port)
 {
 	if (announce_port < 0)
 		return -ENODEV;
 
-	memset(ev, 0, sizeof(snd_seq_event_t));
+	memset(ev, 0, sizeof(struct snd_seq_event));
 
 	ev->flags &= ~SNDRV_SEQ_EVENT_LENGTH_MASK;
 	ev->flags |= SNDRV_SEQ_EVENT_LENGTH_FIXED;
@@ -90,7 +92,7 @@ static int setheader(snd_seq_event_t * ev, int client, int port)
 /* entry points for broadcasting system events */
 void snd_seq_system_broadcast(int client, int port, int type)
 {
-	snd_seq_event_t ev;
+	struct snd_seq_event ev;
 	
 	if (setheader(&ev, client, port) < 0)
 		return;
@@ -99,7 +101,7 @@ void snd_seq_system_broadcast(int client, int port, int type)
 }
 
 /* entry points for broadcasting system events */
-int snd_seq_system_notify(int client, int port, snd_seq_event_t *ev)
+int snd_seq_system_notify(int client, int port, struct snd_seq_event *ev)
 {
 	ev->flags = SNDRV_SEQ_EVENT_LENGTH_FIXED;
 	ev->source.client = sysclient;
@@ -110,7 +112,7 @@ int snd_seq_system_notify(int client, int port, snd_seq_event_t *ev)
 }
 
 /* call-back handler for timer events */
-static int event_input_timer(snd_seq_event_t * ev, int direct, void *private_data, int atomic, int hop)
+static int event_input_timer(struct snd_seq_event * ev, int direct, void *private_data, int atomic, int hop)
 {
 	return snd_seq_control_queue(ev, atomic, hop);
 }
@@ -119,15 +121,21 @@ static int event_input_timer(snd_seq_event_t * ev, int direct, void *private_dat
 int __init snd_seq_system_client_init(void)
 {
 
-	snd_seq_client_callback_t callbacks;
-	snd_seq_port_callback_t pcallbacks;
-	snd_seq_client_info_t inf;
-	snd_seq_port_info_t port;
+	struct snd_seq_client_callback callbacks;
+	struct snd_seq_port_callback pcallbacks;
+	struct snd_seq_client_info *inf;
+	struct snd_seq_port_info *port;
+
+	inf = (struct snd_seq_client_info *)kzalloc(sizeof(*inf), GFP_KERNEL);
+	port = (struct snd_seq_port_info *)kzalloc(sizeof(*port), GFP_KERNEL);
+	if (! inf || ! port) {
+		kfree(inf);
+		kfree(port);
+		return -ENOMEM;
+	}
 
 	memset(&callbacks, 0, sizeof(callbacks));
 	memset(&pcallbacks, 0, sizeof(pcallbacks));
-	memset(&inf, 0, sizeof(inf));
-	memset(&port, 0, sizeof(port));
 	pcallbacks.owner = THIS_MODULE;
 	pcallbacks.event_input = event_input_timer;
 
@@ -136,33 +144,35 @@ int __init snd_seq_system_client_init(void)
 	sysclient = snd_seq_create_kernel_client(NULL, 0, &callbacks);
 
 	/* set our name */
-	inf.client = 0;
-	inf.type = KERNEL_CLIENT;
-	strcpy(inf.name, "System");
-	snd_seq_kernel_client_ctl(sysclient, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, &inf);
+	inf->client = 0;
+	inf->type = KERNEL_CLIENT;
+	strcpy(inf->name, "System");
+	snd_seq_kernel_client_ctl(sysclient, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, inf);
 
 	/* register timer */
-	strcpy(port.name, "Timer");
-	port.capability = SNDRV_SEQ_PORT_CAP_WRITE; /* accept queue control */
-	port.capability |= SNDRV_SEQ_PORT_CAP_READ|SNDRV_SEQ_PORT_CAP_SUBS_READ; /* for broadcast */
-	port.kernel = &pcallbacks;
-	port.type = 0;
-	port.flags = SNDRV_SEQ_PORT_FLG_GIVEN_PORT;
-	port.addr.client = sysclient;
-	port.addr.port = SNDRV_SEQ_PORT_SYSTEM_TIMER;
-	snd_seq_kernel_client_ctl(sysclient, SNDRV_SEQ_IOCTL_CREATE_PORT, &port);
+	strcpy(port->name, "Timer");
+	port->capability = SNDRV_SEQ_PORT_CAP_WRITE; /* accept queue control */
+	port->capability |= SNDRV_SEQ_PORT_CAP_READ|SNDRV_SEQ_PORT_CAP_SUBS_READ; /* for broadcast */
+	port->kernel = &pcallbacks;
+	port->type = 0;
+	port->flags = SNDRV_SEQ_PORT_FLG_GIVEN_PORT;
+	port->addr.client = sysclient;
+	port->addr.port = SNDRV_SEQ_PORT_SYSTEM_TIMER;
+	snd_seq_kernel_client_ctl(sysclient, SNDRV_SEQ_IOCTL_CREATE_PORT, port);
 
 	/* register announcement port */
-	strcpy(port.name, "Announce");
-	port.capability = SNDRV_SEQ_PORT_CAP_READ|SNDRV_SEQ_PORT_CAP_SUBS_READ; /* for broadcast only */
-	port.kernel = NULL;
-	port.type = 0;
-	port.flags = SNDRV_SEQ_PORT_FLG_GIVEN_PORT;
-	port.addr.client = sysclient;
-	port.addr.port = SNDRV_SEQ_PORT_SYSTEM_ANNOUNCE;
-	snd_seq_kernel_client_ctl(sysclient, SNDRV_SEQ_IOCTL_CREATE_PORT, &port);
-	announce_port = port.addr.port;
+	strcpy(port->name, "Announce");
+	port->capability = SNDRV_SEQ_PORT_CAP_READ|SNDRV_SEQ_PORT_CAP_SUBS_READ; /* for broadcast only */
+	port->kernel = NULL;
+	port->type = 0;
+	port->flags = SNDRV_SEQ_PORT_FLG_GIVEN_PORT;
+	port->addr.client = sysclient;
+	port->addr.port = SNDRV_SEQ_PORT_SYSTEM_ANNOUNCE;
+	snd_seq_kernel_client_ctl(sysclient, SNDRV_SEQ_IOCTL_CREATE_PORT, port);
+	announce_port = port->addr.port;
 
+	kfree(inf);
+	kfree(port);
 	return 0;
 }
 

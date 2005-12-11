@@ -111,10 +111,9 @@ static int snd_rawmidi_done_buffer(snd_rawmidi_runtime_t *runtime)
 
 int snd_rawmidi_drop_output(snd_rawmidi_substream_t * substream)
 {
-    snd_rawmidi_runtime_t *runtime = substream->runtime;
+    struct snd_rawmidi_runtime *runtime = substream->runtime;
 
     if (substream->ops->trigger) substream->ops->trigger(substream, 0);
-    runtime->trigger = 0;
     runtime->drain = 0;
     /* interrupts are not enabled at this moment,
      so spinlock is not required */
@@ -162,7 +161,6 @@ int snd_rawmidi_drain_input(snd_rawmidi_substream_t * substream)
     snd_rawmidi_runtime_t *runtime = substream->runtime;
 
     if (substream->ops->trigger) substream->ops->trigger(substream, 0);
-    runtime->trigger = 0;
     runtime->drain = 0;
     /* interrupts aren't enabled at this moment, so spinlock isn't needed */
     runtime->appl_ptr = runtime->hw_ptr = 0;
@@ -465,7 +463,6 @@ int snd_rawmidi_kernel_release(snd_rawmidi_file_t * rfile)
         substream = rfile->input;
         rfile->input = NULL;
         runtime = substream->runtime;
-        runtime->trigger = 0;
         if (substream->ops->trigger)
             substream->ops->trigger(substream, 0);
         if (substream->ops->close)
@@ -692,7 +689,7 @@ static int snd_rawmidi_ioctl(struct inode *inode, struct file *file,
         return put_user(SNDRV_RAWMIDI_VERSION, (int *)arg) ? -EFAULT : 0;
     case SNDRV_RAWMIDI_IOCTL_INFO:
         {
-            snd_rawmidi_stream_t stream;
+            int stream;
             snd_rawmidi_info_t *info = (snd_rawmidi_info_t *) arg;
             if (get_user(stream, &info->stream))
                 return -EFAULT;
@@ -934,7 +931,6 @@ static long snd_rawmidi_kernel_read1(snd_rawmidi_substream_t *substream,
 
 long snd_rawmidi_kernel_read(snd_rawmidi_substream_t *substream, unsigned char *buf, long count)
 {
-    substream->runtime->trigger = 1;
     if (substream->ops->trigger)
         substream->ops->trigger(substream, 1);
     return snd_rawmidi_kernel_read1(substream, buf, count, 1);
@@ -953,7 +949,6 @@ static ssize_t snd_rawmidi_read(struct file *file, char *buf, size_t count, loff
     if (substream == NULL)
         return -EIO;
     runtime = substream->runtime;
-    runtime->trigger = 1;
     if (substream->ops->trigger)
         substream->ops->trigger(substream, 1);
     result = 0;
@@ -1006,8 +1001,6 @@ int snd_rawmidi_transmit_empty(snd_rawmidi_substream_t * substream)
     }
     spin_lock_irqsave(&runtime->lock, flags);
     result = runtime->avail >= runtime->buffer_size;
-    if (result)
-        runtime->trigger = 1;
     spin_unlock_irqrestore(&runtime->lock, flags);
     return result;
 }
@@ -1040,7 +1033,6 @@ int snd_rawmidi_transmit_peek(snd_rawmidi_substream_t * substream, unsigned char
     spin_lock_irqsave(&runtime->lock, flags);
     if (runtime->avail >= runtime->buffer_size) {
         /* warning: lowlevel layer MUST trigger down the hardware */
-        runtime->trigger = 0;
         goto __skip;
     }
     if (count == 1) {	/* special case, faster code */
@@ -1162,8 +1154,6 @@ static long snd_rawmidi_kernel_write1(snd_rawmidi_substream_t * substream, const
         count -= count1;
     }
 __end:
-    if (result > 0)
-        runtime->trigger = 1;
     count1 = runtime->avail < runtime->buffer_size;
     spin_unlock_irqrestore(&runtime->lock, flags);
     if (count1)
@@ -1253,7 +1243,6 @@ static unsigned int snd_rawmidi_poll(struct file *file, poll_table * wait)
     rfile = file->private_data;
     if (rfile->input != NULL) {
         runtime = rfile->input->runtime;
-        runtime->trigger = 1;
         rfile->input->ops->trigger(rfile->input, 1);
         poll_wait(file, &runtime->sleep, wait);
     }
@@ -1335,52 +1324,28 @@ static void snd_rawmidi_proc_info_read(snd_info_entry_t *entry,
  *  Register functions
  */
 
-#ifdef TARGET_OS2
 static struct file_operations snd_rawmidi_f_ops =
 {
-#ifdef LINUX_2_3
-    THIS_MODULE,
+#ifndef TARGET_OS2
+    .owner =	THIS_MODULE,
 #endif
-    0,
-    snd_rawmidi_read,
-    snd_rawmidi_write,
-    0,
-    snd_rawmidi_poll,
-    snd_rawmidi_ioctl,
-    0,
-    snd_rawmidi_open,
-    0,
-    snd_rawmidi_release,
-    0,0,0,0,0
+    .read =		snd_rawmidi_read,
+    .write =	snd_rawmidi_write,
+    .open =		snd_rawmidi_open,
+    .release =	snd_rawmidi_release,
+    .poll =		snd_rawmidi_poll,
+    .ioctl =	snd_rawmidi_ioctl,
+#ifndef TARGET_OS2
+    .compat_ioctl =	snd_rawmidi_ioctl_compat,
+#endif
 };
 
-static snd_minor_t snd_rawmidi_reg =
+static struct snd_minor snd_rawmidi_reg =
 {
-    {0,0},
-    0,0,
-    "raw midi",0,
-    &snd_rawmidi_f_ops,
-};
-#else
-static struct file_operations snd_rawmidi_f_ops =
-{
-#ifdef LINUX_2_3
-owner:		THIS_MODULE,
-#endif
-    read:		snd_rawmidi_read,
-    write:		snd_rawmidi_write,
-    open:		snd_rawmidi_open,
-    release:	snd_rawmidi_release,
-    poll:		snd_rawmidi_poll,
-    ioctl:		snd_rawmidi_ioctl,
+    .comment =	"raw midi",
+    .f_ops =	&snd_rawmidi_f_ops,
 };
 
-static snd_minor_t snd_rawmidi_reg =
-{
-comment:	"raw midi",
-    f_ops:		&snd_rawmidi_f_ops,
-};
-#endif
 
 static int snd_rawmidi_alloc_substreams(snd_rawmidi_t *rmidi,
                                         snd_rawmidi_str_t *stream,

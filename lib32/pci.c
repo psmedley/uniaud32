@@ -31,6 +31,7 @@
 #include <asm/hardirq.h>
 #include <asm/io.h>
 #include <sound/config.h>
+#include <sound/driver.h>
 #include <sound/asound.h>
 
 #define LINUX
@@ -525,7 +526,7 @@ int pci_register_driver(struct pci_driver *driver)
                         pcidev->current_state = 4;
                         //return 1;
                     }
-                    else pcidev->devfn = NULL;
+                    else pcidev->devfn = 0;
 
                     RMDestroy(hResMgr);
                     hResMgr = 0;
@@ -764,7 +765,7 @@ struct saved_config_tbl {
         struct pci_dev *pci;
         u32 config[16];
 };
-statuc struct saved_config_tbl saved_tbl[16];
+static struct saved_config_tbl saved_tbl[16];
 
 void pci_save_state(struct pci_dev *pci)
 {

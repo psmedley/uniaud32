@@ -14,34 +14,39 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
  
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/sched.h>
+#include <sound/core.h>
 #include <sound/ainstr_fm.h>
 #include <sound/initval.h>
+#include <asm/uaccess.h>
 
-char *snd_seq_fm_id = SNDRV_SEQ_INSTR_ID_OPL2_3;
+MODULE_AUTHOR("Uros Bizjak <uros@kss-loka.si>");
+MODULE_DESCRIPTION("Advanced Linux Sound Architecture FM Instrument support.");
+MODULE_LICENSE("GPL");
 
-static int snd_seq_fm_put(void *private_data, snd_seq_kinstr_t *instr,
-			  char *instr_data, long len, int atomic, int cmd)
+static int snd_seq_fm_put(void *private_data, struct snd_seq_kinstr *instr,
+			  char __user *instr_data, long len, int atomic, int cmd)
 {
-	fm_instrument_t *ip;
-	fm_xinstrument_t ix;
+	struct fm_instrument *ip;
+	struct fm_xinstrument ix;
 	int idx;
 
 	if (cmd != SNDRV_SEQ_INSTR_PUT_CMD_CREATE)
 		return -EINVAL;
 	/* copy instrument data */
-	if (len < sizeof(ix))
+	if (len < (long)sizeof(ix))
 		return -EINVAL;
 	if (copy_from_user(&ix, instr_data, sizeof(ix)))
 		return -EFAULT;
 	if (ix.stype != FM_STRU_INSTR)
 		return -EINVAL;
-	ip = (fm_instrument_t *)KINSTR_DATA(instr);
+	ip = (struct fm_instrument *)KINSTR_DATA(instr);
 	ip->share_id[0] = le32_to_cpu(ix.share_id[0]);
 	ip->share_id[1] = le32_to_cpu(ix.share_id[1]);
 	ip->share_id[2] = le32_to_cpu(ix.share_id[2]);
@@ -67,19 +72,20 @@ static int snd_seq_fm_put(void *private_data, snd_seq_kinstr_t *instr,
 	return 0;
 }
 
-static int snd_seq_fm_get(void *private_data, snd_seq_kinstr_t *instr,
-			  char *instr_data, long len, int atomic, int cmd)
+static int snd_seq_fm_get(void *private_data, struct snd_seq_kinstr *instr,
+			  char __user *instr_data, long len, int atomic,
+			  int cmd)
 {
-	fm_instrument_t *ip;
-	fm_xinstrument_t ix;
+	struct fm_instrument *ip;
+	struct fm_xinstrument ix;
 	int idx;
 	
 	if (cmd != SNDRV_SEQ_INSTR_GET_CMD_FULL)
 		return -EINVAL;
-	if (len < sizeof(ix))
+	if (len < (long)sizeof(ix))
 		return -ENOMEM;
 	memset(&ix, 0, sizeof(ix));
-	ip = (fm_instrument_t *)KINSTR_DATA(instr);
+	ip = (struct fm_instrument *)KINSTR_DATA(instr);
 	ix.stype = FM_STRU_INSTR;
 	ix.share_id[0] = cpu_to_le32(ip->share_id[0]);
 	ix.share_id[1] = cpu_to_le32(ip->share_id[1]);
@@ -108,20 +114,20 @@ static int snd_seq_fm_get(void *private_data, snd_seq_kinstr_t *instr,
 	return 0;
 }
 
-static int snd_seq_fm_get_size(void *private_data, snd_seq_kinstr_t *instr,
+static int snd_seq_fm_get_size(void *private_data, struct snd_seq_kinstr *instr,
 			       long *size)
 {
-	*size = sizeof(fm_xinstrument_t);
+	*size = sizeof(struct fm_xinstrument);
 	return 0;
 }
 
-int snd_seq_fm_init(snd_seq_kinstr_ops_t *ops,
-		    snd_seq_kinstr_ops_t *next)
+int snd_seq_fm_init(struct snd_seq_kinstr_ops *ops,
+		    struct snd_seq_kinstr_ops *next)
 {
 	memset(ops, 0, sizeof(*ops));
 	// ops->private_data = private_data;
-	ops->add_len = sizeof(fm_instrument_t);
-	ops->instr_type = snd_seq_fm_id;
+	ops->add_len = sizeof(struct fm_instrument);
+	ops->instr_type = SNDRV_SEQ_INSTR_ID_OPL2_3;
 	ops->put = snd_seq_fm_put;
 	ops->get = snd_seq_fm_get;
 	ops->get_size = snd_seq_fm_get_size;
@@ -147,10 +153,4 @@ static void __exit alsa_ainstr_fm_exit(void)
 module_init(alsa_ainstr_fm_init)
 module_exit(alsa_ainstr_fm_exit)
 
-MODULE_AUTHOR("Uros Bizjak <uros@kss-loka.si>");
-MODULE_DESCRIPTION("Advanced Linux Sound Architecture FM Instrument support.");
-MODULE_CLASSES("{sound}");
-MODULE_SUPPORTED_DEVICE("sound");
-
-EXPORT_SYMBOL(snd_seq_fm_id);
 EXPORT_SYMBOL(snd_seq_fm_init);

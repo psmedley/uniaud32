@@ -1193,7 +1193,7 @@ static long snd_cs4281_BA0_read(snd_info_entry_t *entry, void *file_private_data
     if (pos + size > CS4281_BA0_SIZE)
         size = (long)CS4281_BA0_SIZE - pos;
     if (size > 0) {
-        if (copy_to_user_fromio(buf, chip->ba0 + pos, size))
+        if (copy_to_user_fromio(buf, (char*)chip->ba0 + pos, size))
             return -EFAULT;
     }
     return size;
@@ -1210,34 +1210,19 @@ static long snd_cs4281_BA1_read(snd_info_entry_t *entry, void *file_private_data
     if (pos + size > CS4281_BA1_SIZE)
         size = (long)CS4281_BA1_SIZE - pos;
     if (size > 0) {
-        if (copy_to_user_fromio(buf, chip->ba1 + pos, size))
+        if (copy_to_user_fromio(buf, (char*)chip->ba1 + pos, size))
             return -EFAULT;
     }
     return size;
 }
 
-#ifdef TARGET_OS2
 static struct snd_info_entry_ops snd_cs4281_proc_ops_BA0 = {
-    0, 0,
-    snd_cs4281_BA0_read,
-    0, 0, 0, 0, 0
+	.read = snd_cs4281_BA0_read,
 };
 
 static struct snd_info_entry_ops snd_cs4281_proc_ops_BA1 = {
-    0, 0,
-    snd_cs4281_BA1_read,
-    0, 0, 0, 0, 0
+	.read = snd_cs4281_BA1_read,
 };
-#else
-static struct snd_info_entry_ops snd_cs4281_proc_ops_BA0 = {
-read: snd_cs4281_BA0_read,
-};
-
-static struct snd_info_entry_ops snd_cs4281_proc_ops_BA1 = {
-read: snd_cs4281_BA1_read,
-};
-
-#endif
 
 static void __devinit snd_cs4281_proc_init(cs4281_t * chip)
 {
@@ -1845,36 +1830,19 @@ static void snd_cs4281_midi_output_trigger(snd_rawmidi_substream_t * substream, 
     spin_unlock_irqrestore(&chip->reg_lock, flags);
 }
 
-#ifdef TARGET_OS2
-static snd_rawmidi_ops_t snd_cs4281_midi_output =
+static struct snd_rawmidi_ops snd_cs4281_midi_output =
 {
-    /*	open:		*/	snd_cs4281_midi_output_open,
-    /*	close:          */	snd_cs4281_midi_output_close,
-    /*	trigger:        */	snd_cs4281_midi_output_trigger,
+    .open =		snd_cs4281_midi_output_open,
+    .close =	snd_cs4281_midi_output_close,
+    .trigger =	snd_cs4281_midi_output_trigger,
 };
 
-static snd_rawmidi_ops_t snd_cs4281_midi_input =
+static struct snd_rawmidi_ops snd_cs4281_midi_input =
 {
-    /*	open:           */	snd_cs4281_midi_input_open,
-    /*	close:          */	snd_cs4281_midi_input_close,
-    /*	trigger:        */	snd_cs4281_midi_input_trigger,
+    .open = 	snd_cs4281_midi_input_open,
+    .close =	snd_cs4281_midi_input_close,
+    .trigger =	snd_cs4281_midi_input_trigger,
 };
-#else
-static snd_rawmidi_ops_t snd_cs4281_midi_output =
-{
-open:           snd_cs4281_midi_output_open,
-    close:          snd_cs4281_midi_output_close,
-    trigger:        snd_cs4281_midi_output_trigger,
-};
-
-static snd_rawmidi_ops_t snd_cs4281_midi_input =
-{
-open:           snd_cs4281_midi_input_open,
-    close:          snd_cs4281_midi_input_close,
-    trigger:        snd_cs4281_midi_input_trigger,
-};
-
-#endif
 
 static int __devinit snd_cs4281_midi(cs4281_t * chip, int device, snd_rawmidi_t **rrawmidi)
 {
@@ -1905,9 +1873,6 @@ static irqreturn_t snd_cs4281_interrupt(int irq, void *dev_id, struct pt_regs *r
     cs4281_t *chip = dev_id;
     unsigned int status, dma, val;
     cs4281_dma_t *cdma;
-#ifdef TARGET_OS2
-    int fOurIrq = FALSE;
-#endif
 
     if (chip == NULL)
         return IRQ_NONE;
@@ -1918,9 +1883,6 @@ static irqreturn_t snd_cs4281_interrupt(int irq, void *dev_id, struct pt_regs *r
     }
 
     if (status & (BA0_HISR_DMA(0)|BA0_HISR_DMA(1)|BA0_HISR_DMA(2)|BA0_HISR_DMA(3))) {
-#ifdef TARGET_OS2
-        fOurIrq = TRUE;
-#endif
         for (dma = 0; dma < 4; dma++)
             if (status & BA0_HISR_DMA(dma)) {
                 cdma = &chip->dma[dma];
@@ -1950,10 +1912,6 @@ static irqreturn_t snd_cs4281_interrupt(int irq, void *dev_id, struct pt_regs *r
     if ((status & BA0_HISR_MIDI) && chip->rmidi) {
         unsigned char c;
 
-#ifdef TARGET_OS2
-        fOurIrq = TRUE;
-#endif
-
         spin_lock(&chip->reg_lock);
         while ((snd_cs4281_peekBA0(chip, BA0_MIDSR) & BA0_MIDSR_RBE) == 0) {
             c = snd_cs4281_peekBA0(chip, BA0_MIDRP);
@@ -1978,12 +1936,6 @@ static irqreturn_t snd_cs4281_interrupt(int irq, void *dev_id, struct pt_regs *r
 
     /* EOI to the PCI part... reenables interrupts */
     snd_cs4281_pokeBA0(chip, BA0_HICR, BA0_HICR_EOI);
-
-#ifdef TARGET_OS2
-    if (fOurIrq) {
-        eoi_irq(irq);
-    }
-#endif
     return IRQ_HANDLED;
 
 }

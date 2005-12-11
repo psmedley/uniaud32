@@ -30,9 +30,9 @@ MODULE_LICENSE("GPL");
  */
 int snd_emu10k1_synth_new_device(snd_seq_device_t *dev)
 {
-	snd_emux_t *emu;
-	emu10k1_t *hw;
-	snd_emu10k1_synth_arg_t *arg;
+	struct snd_emux *emu;
+	struct snd_emu10k1 *hw;
+	struct snd_emu10k1_synth_arg *arg;
 	unsigned long flags;
 
 	arg = SNDRV_SEQ_DEVICE_ARGPTR(dev);
@@ -78,8 +78,8 @@ int snd_emu10k1_synth_new_device(snd_seq_device_t *dev)
 
 int snd_emu10k1_synth_delete_device(snd_seq_device_t *dev)
 {
-	snd_emux_t *emu;
-	emu10k1_t *hw;
+	struct snd_emux *emu;
+	struct snd_emu10k1 *hw;
 	unsigned long flags;
 
 	if (dev->driver_data == NULL)
@@ -109,7 +109,7 @@ static int __init alsa_emu10k1_synth_init(void)
 		snd_emu10k1_synth_new_device,
 		snd_emu10k1_synth_delete_device,
 	};
-	return snd_seq_device_register_driver(SNDRV_SEQ_DEV_ID_EMU10K1_SYNTH, &ops, sizeof(snd_emu10k1_synth_arg_t));
+	return snd_seq_device_register_driver(SNDRV_SEQ_DEV_ID_EMU10K1_SYNTH, &ops, sizeof(struct snd_emu10k1_synth_arg));
 }
 
 static void __exit alsa_emu10k1_synth_exit(void)

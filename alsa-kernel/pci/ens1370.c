@@ -1630,12 +1630,10 @@ static int snd_ensoniq_1371_mixer(ensoniq_t * ensoniq)
     ac97_template_t ac97;
     int err, idx;
 
-    static ac97_bus_ops_t ops = {
-        0,
-        snd_es1371_codec_write,
-        snd_es1371_codec_read,
-        snd_es1371_codec_wait,
-        0
+    static struct snd_ac97_bus_ops ops = {
+        .write = snd_es1371_codec_write,
+        .read = snd_es1371_codec_read,
+        .wait = snd_es1371_codec_wait,
     };
 #ifdef DEBUG
     dprintf(("snd_ensoniq_1371_mixer"));

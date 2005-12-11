@@ -1,6 +1,6 @@
 /*
  *  ALSA sequencer Memory Manager
- *  Copyright (c) 1998 by Frank van de Pol <fvdpol@home.nl>
+ *  Copyright (c) 1998 by Frank van de Pol <fvdpol@coil.demon.nl>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -15,37 +15,30 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 #ifndef __SND_SEQ_MEMORYMGR_H
 #define __SND_SEQ_MEMORYMGR_H
 
 #include <sound/seq_kernel.h>
-
-typedef struct pool pool_t;
+#include <linux/poll.h>
 
 /* container for sequencer event (internal use) */
-typedef struct snd_seq_event_cell_t {
-	snd_seq_event_t event;
-	pool_t *pool;				/* used pool */
-	struct snd_seq_event_cell_t *next;	/* next cell */
-} snd_seq_event_cell_t;
-
-/* chunk of sequencer events (internal use) */
-typedef struct snd_seq_event_chunk_t {
-	int cells;				/* cells in chunk */
-	struct snd_seq_event_chunk_t *next;	/* next chunk */
-} snd_seq_event_chunk_t;
+struct snd_seq_event_cell {
+	struct snd_seq_event event;
+	struct snd_seq_pool *pool;				/* used pool */
+	struct snd_seq_event_cell *next;	/* next cell */
+};
 
 /* design note: the pool is a contigious block of memory, if we dynamicly
    want to add additional cells to the pool be better store this in another
    pool as we need to know the base address of the pool when releasing
    memory. */
 
-struct pool {
-	snd_seq_event_chunk_t *ptr;	/* pointer to first event chunk */
-	snd_seq_event_cell_t *free;	/* pointer to the head of the free list */
+struct snd_seq_pool {
+	struct snd_seq_event_cell *ptr;	/* pointer to first event chunk */
+	struct snd_seq_event_cell *free;	/* pointer to the head of the free list */
 
 	int total_elements;	/* pool size actually allocated */
 	atomic_t counter;	/* cells free */
@@ -68,37 +61,43 @@ struct pool {
 	spinlock_t lock;
 };
 
-extern void snd_seq_cell_free(snd_seq_event_cell_t* cell);
-int snd_seq_cell_alloc(pool_t *pool, snd_seq_event_cell_t **cellp, int nonblock, struct file *file);
+void snd_seq_cell_free(struct snd_seq_event_cell *cell);
 
-int snd_seq_event_dup(pool_t *pool, snd_seq_event_t *event, snd_seq_event_cell_t **cellp, int nonblock, struct file *file);
+int snd_seq_event_dup(struct snd_seq_pool *pool, struct snd_seq_event *event,
+		      struct snd_seq_event_cell **cellp, int nonblock, struct file *file);
 
 /* return number of unused (free) cells */
-extern int snd_seq_unused_cells(pool_t *pool);
+static inline int snd_seq_unused_cells(struct snd_seq_pool *pool)
+{
+	return pool ? pool->total_elements - atomic_read(&pool->counter) : 0;
+}
 
 /* return total number of allocated cells */
-extern int snd_seq_total_cells(pool_t *pool);
+static inline int snd_seq_total_cells(struct snd_seq_pool *pool)
+{
+	return pool ? pool->total_elements : 0;
+}
 
 /* init pool - allocate events */
-extern int snd_seq_pool_init(pool_t *pool);
+int snd_seq_pool_init(struct snd_seq_pool *pool);
 
 /* done pool - free events */
-extern int snd_seq_pool_done(pool_t *pool);
+int snd_seq_pool_done(struct snd_seq_pool *pool);
 
 /* create pool */
-extern pool_t *snd_seq_pool_new(int poolsize);
+struct snd_seq_pool *snd_seq_pool_new(int poolsize);
 
 /* remove pool */
-extern int snd_seq_pool_delete(pool_t **pool);
+int snd_seq_pool_delete(struct snd_seq_pool **pool);
 
 /* init memory */
-extern int snd_sequencer_memory_init(void);
+int snd_sequencer_memory_init(void);
             
 /* release event memory */
-extern void snd_sequencer_memory_done(void);
+void snd_sequencer_memory_done(void);
 
 /* polling */
-extern int snd_seq_pool_poll_wait(pool_t *pool, struct file *file, poll_table *wait);
+int snd_seq_pool_poll_wait(struct snd_seq_pool *pool, struct file *file, poll_table *wait);
 
 
 #endif

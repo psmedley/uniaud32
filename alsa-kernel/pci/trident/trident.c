@@ -82,7 +82,7 @@ static int __devinit snd_trident_probe(struct pci_dev *pci,
 {
 	static int dev;
 	snd_card_t *card;
-	trident_t *trident;
+	struct snd_trident *trident;
 	const char *str;
 	int err, pcm_dev = 0;
 

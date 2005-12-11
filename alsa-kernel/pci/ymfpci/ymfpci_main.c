@@ -1882,13 +1882,13 @@ static int snd_ymfpci_timer_precise_resolution(snd_timer_t *timer,
     return 0;
 }
 
-static struct _snd_timer_hardware snd_ymfpci_timer_hw = {
-    .flags =              SNDRV_TIMER_HW_AUTO,
-    .resolution = 20833, /* 1/fs = 20.8333...us */
-    .ticks = 0x8000,
-    .start =              snd_ymfpci_timer_start,
-    .stop =               snd_ymfpci_timer_stop,
-    .precise_resolution = snd_ymfpci_timer_precise_resolution,
+static struct snd_timer_hardware snd_ymfpci_timer_hw = {
+	.flags = SNDRV_TIMER_HW_AUTO,
+	.resolution = 20833, /* 1/fs = 20.8333...us */
+	.ticks = 0x8000,
+	.start = snd_ymfpci_timer_start,
+	.stop = snd_ymfpci_timer_stop,
+	.precise_resolution = snd_ymfpci_timer_precise_resolution,
 };
 
 int __devinit snd_ymfpci_timer(ymfpci_t *chip, int device)

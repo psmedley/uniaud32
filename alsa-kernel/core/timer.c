@@ -295,7 +295,8 @@ int snd_timer_open(snd_timer_instance_t **ti,
     return 0;
 }
 
-static int _snd_timer_stop(snd_timer_instance_t * timeri, int keep_flag, enum sndrv_timer_event event);
+static int _snd_timer_stop(struct snd_timer_instance *timeri,
+			   int keep_flag, int event);
 
 /*
  * close a timer instance
@@ -374,7 +375,7 @@ unsigned long snd_timer_resolution(snd_timer_instance_t * timeri)
     return 0;
 }
 
-static void snd_timer_notify1(snd_timer_instance_t *ti, enum sndrv_timer_event event)
+static void snd_timer_notify1(struct snd_timer_instance *ti, int event)
 {
     snd_timer_t *timer;
     unsigned long flags;
@@ -465,7 +466,8 @@ int snd_timer_start(snd_timer_instance_t * timeri, unsigned int ticks)
     return result;
 }
 
-static int _snd_timer_stop(snd_timer_instance_t * timeri, int keep_flag, enum sndrv_timer_event event)
+static int _snd_timer_stop(struct snd_timer_instance * timeri,
+			   int keep_flag, int event)
 {
     snd_timer_t *timer;
     unsigned long flags;
@@ -879,7 +881,7 @@ static int snd_timer_dev_unregister(snd_device_t *device)
     return snd_timer_unregister(timer);
 }
 
-void snd_timer_notify(snd_timer_t *timer, enum sndrv_timer_event event, struct timespec *tstamp)
+void snd_timer_notify(struct snd_timer *timer, int event, struct timespec *tstamp)
 {
     unsigned long flags;
     unsigned long resolution = 0;
@@ -1005,27 +1007,14 @@ static int snd_timer_s_stop(snd_timer_t * timer)
     return 0;
 }
 
-#ifdef TARGET_OS2
-static struct _snd_timer_hardware snd_timer_system =
+static struct snd_timer_hardware snd_timer_system =
 {
-    SNDRV_TIMER_HW_FIRST | SNDRV_TIMER_HW_TASKLET,
-    1000000000L / HZ,
-    0,0,
-    10000000L,
-    0,0,0,
-    snd_timer_s_start,
-    snd_timer_s_stop,0,0
+	.flags =	SNDRV_TIMER_HW_FIRST | SNDRV_TIMER_HW_TASKLET,
+	.resolution =	1000000000L / HZ,
+	.ticks =	10000000L,
+	.start =	snd_timer_s_start,
+	.stop =		snd_timer_s_stop
 };
-#else
-static struct _snd_timer_hardware snd_timer_system =
-{
-flags:		SNDRV_TIMER_HW_FIRST,
-    resolution:	1000000000L / HZ,
-    ticks:		10000000L,
-    start:		snd_timer_s_start,
-    stop:		snd_timer_s_stop
-};
-#endif
 
 static void snd_timer_free_system(snd_timer_t *timer)
 {
@@ -1150,10 +1139,10 @@ static void snd_timer_user_append_to_tqueue(snd_timer_user_t *tu, snd_timer_trea
     }
 }
 
-static void snd_timer_user_ccallback(snd_timer_instance_t *timeri,
-                                     enum sndrv_timer_event event,
-                                     struct timespec *tstamp,
-                                     unsigned long resolution)
+static void snd_timer_user_ccallback(struct snd_timer_instance *timeri,
+				     int event,
+				     struct timespec *tstamp,
+				     unsigned long resolution)
 {
     snd_timer_user_t *tu = timeri->callback_data;
     snd_timer_tread_t r1;
@@ -1181,7 +1170,7 @@ static void snd_timer_user_tinterrupt(snd_timer_instance_t *timeri,
     struct timespec tstamp;
     int prev, append = 0;
 
-    snd_timestamp_zero(&tstamp);
+    memset(&tstamp, 0, sizeof(tstamp));
     spin_lock(&tu->qlock);
     if ((tu->filter & ((1 << SNDRV_TIMER_EVENT_RESOLUTION)|(1 << SNDRV_TIMER_EVENT_TICK))) == 0) {
         spin_unlock(&tu->qlock);
@@ -1837,33 +1826,26 @@ static unsigned int snd_timer_user_poll(struct file *file, poll_table * wait)
     return mask;
 }
 
-
 static struct file_operations snd_timer_f_ops =
 {
-#ifdef LINUX_2_3
-    THIS_MODULE,
+#ifndef TARGET_OS2
+    .owner =	THIS_MODULE,
 #endif
-    0,
-    snd_timer_user_read,
-    0,0,
-    snd_timer_user_poll,
-    snd_timer_user_ioctl,
-    0,
-    snd_timer_user_open,
-    0,
-    snd_timer_user_release,
-    0,
-    snd_timer_user_fasync,
-    0,0,0
+    .read =		snd_timer_user_read,
+    .open =		snd_timer_user_open,
+    .release =	snd_timer_user_release,
+    .poll =		snd_timer_user_poll,
+    .ioctl =	snd_timer_user_ioctl,
+#ifndef TARGET_OS2
+    .compat_ioctl =	snd_timer_user_ioctl_compat,
+#endif
+    .fasync = 	snd_timer_user_fasync,
 };
 
-static snd_minor_t snd_timer_reg =
+static struct snd_minor snd_timer_reg =
 {
-    {0,0},
-    0,0,
-    "timer",
-    0,
-    &snd_timer_f_ops
+    .comment =	"timer",
+    .f_ops =	&snd_timer_f_ops,
 };
 
 /*
