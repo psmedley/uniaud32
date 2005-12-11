@@ -37,10 +37,10 @@
  *
  * Returns zero if successful, or a negative error code on failure.
  */
-int snd_device_new(snd_card_t *card, snd_device_type_t type,
-		   void *device_data, snd_device_ops_t *ops)
+int snd_device_new(struct snd_card *card, snd_device_type_t type,
+		   void *device_data, struct snd_device_ops *ops)
 {
-	snd_device_t *dev;
+	struct snd_device *dev;
 
         snd_assert(card != NULL && device_data != NULL && ops != NULL, return -ENXIO);
         dev = kcalloc(1, sizeof(*dev), GFP_KERNEL);
@@ -67,10 +67,10 @@ int snd_device_new(snd_card_t *card, snd_device_type_t type,
  * Returns zero if successful, or a negative error code on failure or if the
  * device not found.
  */
-int snd_device_free(snd_card_t *card, void *device_data)
+int snd_device_free(struct snd_card *card, void *device_data)
 {
 	struct list_head *list;
-	snd_device_t *dev;
+	struct snd_device *dev;
 	
 	snd_assert(card != NULL, return -ENXIO);
 	snd_assert(device_data != NULL, return -ENXIO);
@@ -110,10 +110,10 @@ int snd_device_free(snd_card_t *card, void *device_data)
  * Returns zero if successful, or a negative error code on failure or if the
  * device not found.
  */
-int snd_device_disconnect(snd_card_t *card, void *device_data)
+int snd_device_disconnect(struct snd_card *card, void *device_data)
 {
 	struct list_head *list;
-	snd_device_t *dev;
+	struct snd_device *dev;
 	
 	snd_assert(card != NULL, return -ENXIO);
 	snd_assert(device_data != NULL, return -ENXIO);
@@ -145,10 +145,10 @@ int snd_device_disconnect(snd_card_t *card, void *device_data)
  * Returns zero if successful, or a negative error code on failure or if the
  * device not found.
  */
-int snd_device_register(snd_card_t *card, void *device_data)
+int snd_device_register(struct snd_card *card, void *device_data)
 {
 	struct list_head *list;
-	snd_device_t *dev;
+	struct snd_device *dev;
 	int err;
 	
 	snd_assert(card != NULL && device_data != NULL, return -ENXIO);
@@ -172,10 +172,10 @@ int snd_device_register(snd_card_t *card, void *device_data)
  * register all the devices on the card.
  * called from init.c
  */
-int snd_device_register_all(snd_card_t *card)
+int snd_device_register_all(struct snd_card *card)
 {
 	struct list_head *list;
-	snd_device_t *dev;
+	struct snd_device *dev;
 	int err;
 
         printk("snd_device_register_all %x\n", card);
@@ -198,9 +198,9 @@ int snd_device_register_all(snd_card_t *card)
  * disconnect all the devices on the card.
  * called from init.c
  */
-int snd_device_disconnect_all(snd_card_t *card)
+int snd_device_disconnect_all(struct snd_card *card)
 {
-	snd_device_t *dev;
+	struct snd_device *dev;
 	struct list_head *list;
 	int err = 0;
 
@@ -217,9 +217,9 @@ int snd_device_disconnect_all(snd_card_t *card)
  * release all the devices on the card.
  * called from init.c
  */
-int snd_device_free_all(snd_card_t *card, snd_device_cmd_t cmd)
+int snd_device_free_all(struct snd_card *card, snd_device_cmd_t cmd)
 {
-	snd_device_t *dev;
+	struct snd_device *dev;
 	struct list_head *list;
 	int err;
 	unsigned int range_low, range_high;

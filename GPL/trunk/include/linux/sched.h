@@ -44,7 +44,7 @@ extern void wake_up_process(struct task_struct * tsk);
 void schedule(void);
 
 extern int request_irq(unsigned int,
-		       void (*handler)(int, void *, struct pt_regs *),
+		       int (near *handler)(int, void *, struct pt_regs *),
 		       unsigned long, const char *, void *);
 extern void free_irq(unsigned int, void *);
 extern void eoi_irq(unsigned int);

@@ -193,4 +193,20 @@ static inline void module_put(struct module *module)
 #endif
 #endif
 
+struct snd_minor {
+	struct list_head list;		/* list of all minors per card */
+	int number;			/* minor number */
+	int device;			/* device number */
+	const char *comment;		/* for /proc/asound/devices */
+	struct file_operations *f_ops;	/* file operations */
+	char name[1];			/* device name (keep at the end of
+								structure) */
+};
+
+/* misc.c */
+struct resource;
+void release_and_free_resource(struct resource *res);
+
+#include "typedefs.h"
+
 #endif //__ALSA_CONFIG_H__

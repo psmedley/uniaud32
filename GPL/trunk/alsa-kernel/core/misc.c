@@ -660,3 +660,11 @@ int queue_delayed_work(struct workqueue_struct *wq, struct work_struct *work, un
 	return 0;
 }
 
+void release_and_free_resource(struct resource *res)
+{
+        if (res) {
+                release_resource(res);
+                kfree(res);
+        }
+}
+

@@ -2128,11 +2128,8 @@ static int __devinit snd_ali_create(snd_card_t * card,
     int i, err;
     unsigned short cmdw = 0;
     struct pci_dev *pci_dev = NULL;
-    static snd_device_ops_t ops = {
-        (snd_dev_free_t *)snd_ali_dev_free,
-        NULL,
-        NULL,
-        NULL
+    static struct snd_device_ops ops = {
+        .dev_free = snd_ali_dev_free,
     };
 
     *r_ali = NULL;

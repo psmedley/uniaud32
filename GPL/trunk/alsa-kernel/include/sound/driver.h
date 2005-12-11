@@ -66,10 +66,10 @@
 #include <linux/config.h>
 #include <linux/version.h>
 
-#define IRQ_NONE        /*void*/
-#define IRQ_HANDLED     /*void*/
-#define IRQ_RETVAL(x)   /*void*/
-typedef void irqreturn_t;
+#define IRQ_NONE      (0)  /*void*/
+#define IRQ_HANDLED   (1)  /*void*/
+#define IRQ_RETVAL(x) ((x) != 0)  /*void*/
+typedef int irqreturn_t;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 2, 3)
 #error "This driver requires Linux 2.2.3 and higher."
@@ -191,6 +191,16 @@ void *snd_pci_hack_alloc_consistent(struct pci_dev *hwdev, size_t size,
 #include <sound/asound.h>
 #include <sound/asoundef.h>
 
+/* wrapper for getnstimeofday()
+ * it's needed for recent 2.6 kernels, too, due to lack of EXPORT_SYMBOL
+ */
+#define getnstimeofday(x) do { \
+	struct timeval __x; \
+	do_gettimeofday(&__x); \
+	(x)->tv_sec = __x.tv_sec;	\
+	(x)->tv_nsec = __x.tv_usec * 1000; \
+} while (0)
+
 struct work_struct {
         unsigned long pending;
         struct list_head entry;
@@ -217,58 +227,19 @@ int snd_compat_schedule_work(struct work_struct *work);
 
 /* Name change */
 typedef struct timeval snd_timestamp_t;
-typedef struct sndrv_interval snd_interval_t;
 #ifndef TARGET_OS2
 typedef enum sndrv_card_type snd_card_type;
 #endif
-typedef struct sndrv_aes_iec958 snd_aes_iec958_t;
-//typedef enum sndrv_hwdep_iface snd_hwdep_iface_t;
-typedef struct sndrv_hwdep_info snd_hwdep_info_t;
-//typedef enum sndrv_pcm_class snd_pcm_class_t;
-//typedef enum sndrv_pcm_subclass snd_pcm_subclass_t;
-//typedef enum sndrv_pcm_stream snd_pcm_stream_t;
-//typedef enum sndrv_pcm_access snd_pcm_access_t;
-//typedef enum sndrv_pcm_format snd_pcm_format_t;
-//typedef enum sndrv_pcm_subformat snd_pcm_subformat_t;
-//typedef enum sndrv_pcm_state snd_pcm_state_t;
 typedef union sndrv_pcm_sync_id snd_pcm_sync_id_t;
-typedef struct sndrv_pcm_info snd_pcm_info_t;
-//typedef enum sndrv_pcm_hw_param snd_pcm_hw_param_t;
-typedef struct sndrv_pcm_hw_params snd_pcm_hw_params_t;
 #ifndef TARGET_OS2
 typedef enum sndrv_pcm_start snd_pcm_start_t;
 typedef enum sndrv_pcm_xrun snd_pcm_xrun_t;
 #endif
-//typedef enum sndrv_pcm_tstamp snd_pcm_tstamp_t;
-typedef struct sndrv_pcm_sw_params snd_pcm_sw_params_t;
-typedef struct sndrv_pcm_channel_info snd_pcm_channel_info_t;
-typedef struct sndrv_pcm_status snd_pcm_status_t;
-typedef struct sndrv_pcm_mmap_status snd_pcm_mmap_status_t;
-typedef struct sndrv_pcm_mmap_control snd_pcm_mmap_control_t;
-typedef struct sndrv_xferi snd_xferi_t;
-typedef struct sndrv_xfern snd_xfern_t;
-//typedef enum sndrv_rawmidi_stream snd_rawmidi_stream_t;
-typedef struct sndrv_rawmidi_info snd_rawmidi_info_t;
-typedef struct sndrv_rawmidi_params snd_rawmidi_params_t;
-typedef struct sndrv_rawmidi_status snd_rawmidi_status_t;
-//typedef enum sndrv_timer_class snd_timer_class_t;
-//typedef enum sndrv_timer_slave_class snd_timer_slave_class_t;
 #ifdef TARGET_OS2
 typedef struct snd_pcm_volume snd_pcm_volume_t;
 #else
 typedef enum sndrv_timer_global snd_timer_global_t;
 #endif
-typedef struct sndrv_timer_id snd_timer_id_t;
-typedef struct sndrv_timer_select snd_timer_select_t;
-typedef struct sndrv_timer_info snd_timer_info_t;
-typedef struct sndrv_timer_params snd_timer_params_t;
-typedef struct sndrv_timer_status snd_timer_status_t;
-typedef struct sndrv_timer_read snd_timer_read_t;
-typedef struct sndrv_timer_tread snd_timer_tread_t;
-typedef struct sndrv_timer_ginfo snd_timer_ginfo_t;
-typedef struct sndrv_timer_gparams snd_timer_gparams_t;
-typedef struct sndrv_timer_gstatus snd_timer_gstatus_t;
-typedef struct sndrv_xferv snd_xferv_t;
 
 #ifdef CONFIG_SND_DEBUG_MEMORY
 void *snd_wrapper_kmalloc(size_t, int);
@@ -377,21 +348,11 @@ struct snd_device {
 	struct snd_device_ops *ops;		/* operations */
 };
 
-#define snd_device(n) list_entry(n, snd_device_t, list)
+#define snd_device(n) list_entry(n, struct snd_device, list)
 
 /* various typedefs */
 
 typedef struct snd_info_entry snd_info_entry_t;
-typedef struct _snd_pcm snd_pcm_t;
-typedef struct _snd_pcm_str snd_pcm_str_t;
-typedef struct _snd_pcm_substream snd_pcm_substream_t;
-typedef struct _snd_mixer snd_kmixer_t;
-typedef struct _snd_rawmidi snd_rawmidi_t;
-typedef struct _snd_ctl_file snd_ctl_file_t;
-typedef struct _snd_kcontrol snd_kcontrol_t;
-typedef struct _snd_timer snd_timer_t;
-typedef struct _snd_timer_instance snd_timer_instance_t;
-typedef struct _snd_hwdep snd_hwdep_t;
 #ifdef CONFIG_SND_OSSEMUL
 typedef struct _snd_oss_mixer snd_mixer_oss_t;
 #endif
@@ -517,8 +478,6 @@ struct _snd_minor {
         struct file_operations *f_ops;	/* file operations */
         char name[1];
 };
-
-typedef struct _snd_minor snd_minor_t;
 
 /* sound.c */
 

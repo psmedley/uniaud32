@@ -65,13 +65,13 @@
 #define page_to_addr(trident,page)	__tlb_to_addr(trident, (page) << 1)
 
 /* fill TLB entries -- we need to fill two entries */
-static inline void set_tlb_bus(trident_t *trident, int page, unsigned long ptr, dma_addr_t addr)
+static inline void set_tlb_bus(struct snd_trident *trident, int page, unsigned long ptr, dma_addr_t addr)
 {
 	page <<= 1;
 	__set_tlb_bus(trident, page, ptr, addr);
 	__set_tlb_bus(trident, page+1, ptr + SNDRV_TRIDENT_PAGE_SIZE, addr + SNDRV_TRIDENT_PAGE_SIZE);
 }
-static inline void set_silent_tlb(trident_t *trident, int page)
+static inline void set_silent_tlb(struct snd_trident *trident, int page)
 {
     page <<= 1;
     __set_tlb_bus(trident, page, (unsigned long)trident->tlb.silent_page.area, trident->tlb.silent_page.addr);
@@ -96,7 +96,7 @@ static inline void set_silent_tlb(trident_t *trident, int page)
 #define page_to_addr(trident,page)	__tlb_to_addr(trident, (page) * UNIT_PAGES)
 
 /* fill TLB entries -- UNIT_PAGES entries must be filled */
-static inline void set_tlb_bus(trident_t *trident, int page, unsigned long ptr, dma_addr_t addr)
+static inline void set_tlb_bus(struct snd_trident *trident, int page, unsigned long ptr, dma_addr_t addr)
 {
 	int i;
 	page *= UNIT_PAGES;
@@ -106,7 +106,7 @@ static inline void set_tlb_bus(trident_t *trident, int page, unsigned long ptr, 
 		addr += SNDRV_TRIDENT_PAGE_SIZE;
 	}
 }
-static inline void set_silent_tlb(trident_t *trident, int page)
+static inline void set_silent_tlb(struct snd_trident *trident, int page)
 {
 	int i;
 	page *= UNIT_PAGES;
@@ -118,7 +118,7 @@ static inline void set_silent_tlb(trident_t *trident, int page)
 #endif /* PAGE_SIZE */
 
 /* calculate buffer pointer from offset address */
-inline static void *offset_ptr(trident_t *trident, int offset)
+inline static void *offset_ptr(struct snd_trident *trident, int offset)
 {
 	char *ptr;
 	ptr = page_to_ptr(trident, get_aligned_page(offset));
@@ -127,8 +127,8 @@ inline static void *offset_ptr(trident_t *trident, int offset)
 }
 
 /* first and last (aligned) pages of memory block */
-#define firstpg(blk)	(((snd_trident_memblk_arg_t*)snd_util_memblk_argptr(blk))->first_page)
-#define lastpg(blk)	(((snd_trident_memblk_arg_t*)snd_util_memblk_argptr(blk))->last_page)
+#define firstpg(blk)	(((struct snd_trident_memblk_arg*)snd_util_memblk_argptr(blk))->first_page)
+#define lastpg(blk)	(((struct snd_trident_memblk_arg*)snd_util_memblk_argptr(blk))->last_page)
 
 /*
  * search empty pages which may contain given size
@@ -184,7 +184,7 @@ static int is_valid_page(unsigned long ptr)
  * page allocation for DMA (Scatter-Gather version)
  */
 static snd_util_memblk_t *
-snd_trident_alloc_sg_pages(trident_t *trident, snd_pcm_substream_t *substream)
+snd_trident_alloc_sg_pages(struct snd_trident *trident, snd_pcm_substream_t *substream)
 {
 	snd_util_memhdr_t *hdr;
 	snd_util_memblk_t *blk;
@@ -231,7 +231,7 @@ snd_trident_alloc_sg_pages(trident_t *trident, snd_pcm_substream_t *substream)
  * page allocation for DMA (contiguous version)
  */
 static snd_util_memblk_t *
-snd_trident_alloc_cont_pages(trident_t *trident, snd_pcm_substream_t *substream)
+snd_trident_alloc_cont_pages(struct snd_trident *trident, snd_pcm_substream_t *substream)
 {
 	snd_util_memhdr_t *hdr;
 	snd_util_memblk_t *blk;
@@ -271,7 +271,7 @@ snd_trident_alloc_cont_pages(trident_t *trident, snd_pcm_substream_t *substream)
  * page allocation for DMA
  */
 snd_util_memblk_t *
-snd_trident_alloc_pages(trident_t *trident, snd_pcm_substream_t *substream)
+snd_trident_alloc_pages(struct snd_trident *trident, snd_pcm_substream_t *substream)
 {
 	snd_assert(trident != NULL, return NULL);
         snd_assert(substream != NULL, return NULL);
@@ -285,7 +285,7 @@ snd_trident_alloc_pages(trident_t *trident, snd_pcm_substream_t *substream)
 /*
  * release DMA buffer from page table
  */
-int snd_trident_free_pages(trident_t *trident, snd_util_memblk_t *blk)
+int snd_trident_free_pages(struct snd_trident *trident, snd_util_memblk_t *blk)
 {
 	snd_util_memhdr_t *hdr;
 	int page;
@@ -313,14 +313,14 @@ int snd_trident_free_pages(trident_t *trident, snd_util_memblk_t *blk)
 
 /*
  */
-static int synth_alloc_pages(trident_t *hw, snd_util_memblk_t *blk);
-static int synth_free_pages(trident_t *hw, snd_util_memblk_t *blk);
+static int synth_alloc_pages(struct snd_trident *hw, snd_util_memblk_t *blk);
+static int synth_free_pages(struct snd_trident *hw, snd_util_memblk_t *blk);
 
 /*
  * allocate a synth sample area
  */
 snd_util_memblk_t *
-snd_trident_synth_alloc(trident_t *hw, unsigned int size)
+snd_trident_synth_alloc(struct snd_trident *hw, unsigned int size)
 {
 	snd_util_memblk_t *blk;
 	snd_util_memhdr_t *hdr = hw->tlb.memhdr; 
@@ -345,7 +345,7 @@ snd_trident_synth_alloc(trident_t *hw, unsigned int size)
  * free a synth sample area
  */
 int
-snd_trident_synth_free(trident_t *hw, snd_util_memblk_t *blk)
+snd_trident_synth_free(struct snd_trident *hw, snd_util_memblk_t *blk)
 {
 	snd_util_memhdr_t *hdr = hw->tlb.memhdr; 
 
@@ -360,7 +360,7 @@ snd_trident_synth_free(trident_t *hw, snd_util_memblk_t *blk)
 /*
  * reset TLB entry and free kernel page
  */
-static void clear_tlb(trident_t *trident, int page)
+static void clear_tlb(struct snd_trident *trident, int page)
 {
 	void *ptr = page_to_ptr(trident, page);
 	dma_addr_t addr = page_to_addr(trident, page);
@@ -402,7 +402,7 @@ static void get_single_page_range(snd_util_memhdr_t *hdr, snd_util_memblk_t *blk
 /*
  * allocate kernel pages and assign them to TLB
  */
-static int synth_alloc_pages(trident_t *hw, snd_util_memblk_t *blk)
+static int synth_alloc_pages(struct snd_trident *hw, snd_util_memblk_t *blk)
 {
 	int page, first_page, last_page;
 	struct snd_dma_buffer dmab;
@@ -438,7 +438,7 @@ __fail:
 /*
  * free pages
  */
-static int synth_free_pages(trident_t *trident, snd_util_memblk_t *blk)
+static int synth_free_pages(struct snd_trident *trident, snd_util_memblk_t *blk)
 {
 	int page, first_page, last_page;
 
@@ -452,7 +452,7 @@ static int synth_free_pages(trident_t *trident, snd_util_memblk_t *blk)
 /*
  * bzero(blk + offset, size)
  */
-int snd_trident_synth_bzero(trident_t *trident, snd_util_memblk_t *blk, int offset, int size)
+int snd_trident_synth_bzero(struct snd_trident *trident, snd_util_memblk_t *blk, int offset, int size)
 {
 	int page, nextofs, end_offset, temp, temp1;
 
@@ -475,7 +475,7 @@ int snd_trident_synth_bzero(trident_t *trident, snd_util_memblk_t *blk, int offs
 /*
  * copy_from_user(blk + offset, data, size)
  */
-int snd_trident_synth_copy_from_user(trident_t *trident, snd_util_memblk_t *blk, int offset, const char *data, int size)
+int snd_trident_synth_copy_from_user(struct snd_trident *trident, snd_util_memblk_t *blk, int offset, const char *data, int size)
 {
 	int page, nextofs, end_offset, temp, temp1;
 

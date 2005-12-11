@@ -42,9 +42,9 @@ static inline snd_ctl_elem_id_t *snd_ctl_build_ioff(snd_ctl_elem_id_t *dst_id,
     return dst_id;
 }
 
-static void snd_emu10k1_pcm_interrupt(emu10k1_t *emu, emu10k1_voice_t *voice)
+static void snd_emu10k1_pcm_interrupt(struct snd_emu10k1 *emu, struct snd_emu10k1_voice *voice)
 {
-    emu10k1_pcm_t *epcm;
+    struct snd_emu10k1_pcm *epcm;
 
     if ((epcm = voice->epcm) == NULL)
         return;
@@ -59,7 +59,7 @@ static void snd_emu10k1_pcm_interrupt(emu10k1_t *emu, emu10k1_voice_t *voice)
     snd_pcm_period_elapsed(epcm->substream);
 }
 
-static void snd_emu10k1_pcm_ac97adc_interrupt(emu10k1_t *emu, unsigned int status)
+static void snd_emu10k1_pcm_ac97adc_interrupt(struct snd_emu10k1 *emu, unsigned int status)
 {
 #if 0
     if (status & IPR_ADCBUFHALFFULL) {
@@ -70,7 +70,7 @@ static void snd_emu10k1_pcm_ac97adc_interrupt(emu10k1_t *emu, unsigned int statu
     snd_pcm_period_elapsed(emu->pcm_capture_substream);
 }
 
-static void snd_emu10k1_pcm_ac97mic_interrupt(emu10k1_t *emu, unsigned int status)
+static void snd_emu10k1_pcm_ac97mic_interrupt(struct snd_emu10k1 *emu, unsigned int status)
 {
 #if 0
     if (status & IPR_MICBUFHALFFULL) {
@@ -81,7 +81,7 @@ static void snd_emu10k1_pcm_ac97mic_interrupt(emu10k1_t *emu, unsigned int statu
     snd_pcm_period_elapsed(emu->pcm_capture_mic_substream);
 }
 
-static void snd_emu10k1_pcm_efx_interrupt(emu10k1_t *emu, unsigned int status)
+static void snd_emu10k1_pcm_efx_interrupt(struct snd_emu10k1 *emu, unsigned int status)
 {
 #if 0
     if (status & IPR_EFXBUFHALFFULL) {
@@ -94,9 +94,9 @@ static void snd_emu10k1_pcm_efx_interrupt(emu10k1_t *emu, unsigned int status)
 
 static snd_pcm_uframes_t snd_emu10k1_efx_playback_pointer(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     unsigned int ptr;
 
     if (!epcm->running)
@@ -109,7 +109,7 @@ static snd_pcm_uframes_t snd_emu10k1_efx_playback_pointer(snd_pcm_substream_t * 
     return ptr;
 }
 
-static int snd_emu10k1_pcm_channel_alloc(emu10k1_pcm_t * epcm, int voices)
+static int snd_emu10k1_pcm_channel_alloc(struct snd_emu10k1_pcm * epcm, int voices)
 {
     int err, i;
 
@@ -276,12 +276,12 @@ static int inline emu10k1_ccis(int stereo, int w_16)
     }
 }
 
-static void snd_emu10k1_pcm_init_voice(emu10k1_t *emu,
+static void snd_emu10k1_pcm_init_voice(struct snd_emu10k1 *emu,
                                        int master, int extra,
-                                       emu10k1_voice_t *evoice,
+                                       struct snd_emu10k1_voice *evoice,
                                        unsigned int start_addr,
                                        unsigned int end_addr,
-                                       emu10k1_pcm_mixer_t *mix)
+                                       struct snd_emu10k1_pcm_mixer *mix)
 {
     snd_pcm_substream_t *substream = evoice->epcm->substream;
     snd_pcm_runtime_t *runtime = substream->runtime;
@@ -400,9 +400,9 @@ static void snd_emu10k1_pcm_init_voice(emu10k1_t *emu,
 static int snd_emu10k1_playback_hw_params(snd_pcm_substream_t * substream,
                                           snd_pcm_hw_params_t * hw_params)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     int err;
 
     if ((err = snd_emu10k1_pcm_channel_alloc(epcm, params_channels(hw_params))) < 0)
@@ -414,20 +414,20 @@ static int snd_emu10k1_playback_hw_params(snd_pcm_substream_t * substream,
         if (epcm->memblk != NULL)
             snd_emu10k1_free_pages(emu, epcm->memblk);
         memblk = snd_emu10k1_alloc_pages(emu, substream);
-        if ((epcm->memblk = memblk) == NULL || ((emu10k1_memblk_t *)memblk)->mapped_page < 0) {
+        if ((epcm->memblk = memblk) == NULL || ((struct snd_emu10k1_memblk *)memblk)->mapped_page < 0) {
             epcm->start_addr = 0;
             return -ENOMEM;
         }
-        epcm->start_addr = ((emu10k1_memblk_t *)memblk)->mapped_page << PAGE_SHIFT;
+        epcm->start_addr = ((struct snd_emu10k1_memblk *)memblk)->mapped_page << PAGE_SHIFT;
     }
     return 0;
 }
 
 static int snd_emu10k1_playback_hw_free(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm;
+    struct snd_emu10k1_pcm *epcm;
 
     if (runtime->private_data == NULL)
         return 0;
@@ -455,9 +455,9 @@ static int snd_emu10k1_playback_hw_free(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_efx_playback_hw_free(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm;
+    struct snd_emu10k1_pcm *epcm;
     int i;
 
     if (runtime->private_data == NULL)
@@ -484,9 +484,9 @@ static int snd_emu10k1_efx_playback_hw_free(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_playback_prepare(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     unsigned int start_addr, end_addr;
 
     start_addr = epcm->start_addr;
@@ -512,9 +512,9 @@ static int snd_emu10k1_playback_prepare(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_efx_playback_prepare(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     unsigned int start_addr, end_addr;
     unsigned int channel_size;
     int i;
@@ -578,9 +578,9 @@ static int snd_emu10k1_capture_hw_free(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_capture_prepare(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     int idx;
 
     /* zeroing the buffer size will stop capture */
@@ -623,7 +623,7 @@ static int snd_emu10k1_capture_prepare(snd_pcm_substream_t * substream)
     return 0;
 }
 
-static void snd_emu10k1_playback_invalidate_cache(emu10k1_t *emu, int extra, emu10k1_voice_t *evoice)
+static void snd_emu10k1_playback_invalidate_cache(struct snd_emu10k1 *emu, int extra, struct snd_emu10k1_voice *evoice)
 {
     snd_pcm_runtime_t *runtime;
     unsigned int voice, stereo, i, ccis, cra = 64, cs, sample;
@@ -658,9 +658,9 @@ static void snd_emu10k1_playback_invalidate_cache(emu10k1_t *emu, int extra, emu
     }
 }
 
-static void snd_emu10k1_playback_prepare_voice(emu10k1_t *emu, emu10k1_voice_t *evoice,
+static void snd_emu10k1_playback_prepare_voice(struct snd_emu10k1 *emu, struct snd_emu10k1_voice *evoice,
                                                int master, int extra,
-                                               emu10k1_pcm_mixer_t *mix)
+                                               struct snd_emu10k1_pcm_mixer *mix)
 {
     snd_pcm_substream_t *substream;
     snd_pcm_runtime_t *runtime;
@@ -682,7 +682,7 @@ static void snd_emu10k1_playback_prepare_voice(emu10k1_t *emu, emu10k1_voice_t *
     snd_emu10k1_voice_clear_loop_stop(emu, voice);
 }
 
-static void snd_emu10k1_playback_trigger_voice(emu10k1_t *emu, emu10k1_voice_t *evoice, int master, int extra)
+static void snd_emu10k1_playback_trigger_voice(struct snd_emu10k1 *emu, struct snd_emu10k1_voice *evoice, int master, int extra)
 {
     snd_pcm_substream_t *substream;
     snd_pcm_runtime_t *runtime;
@@ -704,7 +704,7 @@ static void snd_emu10k1_playback_trigger_voice(emu10k1_t *emu, emu10k1_voice_t *
         snd_emu10k1_voice_intr_enable(emu, voice);
 }
 
-static void snd_emu10k1_playback_stop_voice(emu10k1_t *emu, emu10k1_voice_t *evoice)
+static void snd_emu10k1_playback_stop_voice(struct snd_emu10k1 *emu, struct snd_emu10k1_voice *evoice)
 {
     unsigned int voice;
 
@@ -723,10 +723,10 @@ static void snd_emu10k1_playback_stop_voice(emu10k1_t *emu, emu10k1_voice_t *evo
 static int snd_emu10k1_playback_trigger(snd_pcm_substream_t * substream,
                                         int cmd)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
-    emu10k1_pcm_mixer_t *mix;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm_mixer *mix;
     int result = 0;
 
     spin_lock(&emu->reg_lock);
@@ -764,9 +764,9 @@ static int snd_emu10k1_playback_trigger(snd_pcm_substream_t * substream,
 static int snd_emu10k1_capture_trigger(snd_pcm_substream_t * substream,
                                        int cmd)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     int result = 0;
 
     // printk("trigger - emu10k1 = %p, cmd = %i, pointer = %i\n", emu, cmd, substream->ops->pointer(substream));
@@ -823,9 +823,9 @@ static int snd_emu10k1_capture_trigger(snd_pcm_substream_t * substream,
 
 static snd_pcm_uframes_t snd_emu10k1_playback_pointer(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     unsigned int ptr;
 
     if (!epcm->running)
@@ -851,9 +851,9 @@ static snd_pcm_uframes_t snd_emu10k1_playback_pointer(snd_pcm_substream_t * subs
 static int snd_emu10k1_efx_playback_trigger(snd_pcm_substream_t * substream,
                                             int cmd)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     int i;
     int result = 0;
 
@@ -898,9 +898,9 @@ static int snd_emu10k1_efx_playback_trigger(snd_pcm_substream_t * substream,
 
 static snd_pcm_uframes_t snd_emu10k1_capture_pointer(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     unsigned int ptr;
 
     if (!epcm->running)
@@ -923,9 +923,9 @@ int snd_emu10k1_playback_ioctl(snd_pcm_substream_t *substream, unsigned int cmd,
     switch(cmd) {
     case SNDRV_PCM_IOCTL1_SETVOLUME:
         {
-            emu10k1_pcm_mixer_t *mix;
+            struct snd_emu10k1_pcm_mixer *mix;
             snd_pcm_volume_t    *volume = (snd_pcm_volume_t *)arg;
-            emu10k1_t           *emu    = snd_pcm_substream_chip(substream);
+            struct snd_emu10k1           *emu    = snd_pcm_substream_chip(substream);
             snd_ctl_elem_value_t *ucontrol;
             snd_ctl_elem_info_t  *uinfo;
             void                 *iwishihadmorestack;
@@ -958,9 +958,9 @@ int snd_emu10k1_playback_ioctl(snd_pcm_substream_t *substream, unsigned int cmd,
         }
     case SNDRV_PCM_IOCTL1_GETVOLUME:
         {
-            emu10k1_pcm_mixer_t *mix;
+            struct snd_emu10k1_pcm_mixer *mix;
             snd_pcm_volume_t    *volume = (snd_pcm_volume_t *)arg;
-            emu10k1_t           *emu    = snd_pcm_substream_chip(substream);
+            struct snd_emu10k1           *emu    = snd_pcm_substream_chip(substream);
             int                  range;
             snd_ctl_elem_value_t *ucontrol;
             snd_ctl_elem_info_t  *uinfo;
@@ -1052,7 +1052,7 @@ static snd_pcm_hardware_t snd_emu10k1_capture =
  *
  */
 
-static void snd_emu10k1_pcm_mixer_notify1(emu10k1_t *emu, snd_kcontrol_t *kctl, int idx, int activate)
+static void snd_emu10k1_pcm_mixer_notify1(struct snd_emu10k1 *emu, snd_kcontrol_t *kctl, int idx, int activate)
 {
     snd_ctl_elem_id_t id;
 
@@ -1067,14 +1067,14 @@ static void snd_emu10k1_pcm_mixer_notify1(emu10k1_t *emu, snd_kcontrol_t *kctl, 
                    snd_ctl_build_ioff(&id, kctl, idx));
 }
 
-static void snd_emu10k1_pcm_mixer_notify(emu10k1_t *emu, int idx, int activate)
+static void snd_emu10k1_pcm_mixer_notify(struct snd_emu10k1 *emu, int idx, int activate)
 {
     snd_emu10k1_pcm_mixer_notify1(emu, emu->ctl_send_routing, idx, activate);
     snd_emu10k1_pcm_mixer_notify1(emu, emu->ctl_send_volume, idx, activate);
     snd_emu10k1_pcm_mixer_notify1(emu, emu->ctl_attn, idx, activate);
 }
 
-static void snd_emu10k1_pcm_efx_mixer_notify(emu10k1_t *emu, int idx, int activate)
+static void snd_emu10k1_pcm_efx_mixer_notify(struct snd_emu10k1 *emu, int idx, int activate)
 {
     snd_emu10k1_pcm_mixer_notify1(emu, emu->ctl_efx_send_routing, idx, activate);
     snd_emu10k1_pcm_mixer_notify1(emu, emu->ctl_efx_send_volume, idx, activate);
@@ -1083,15 +1083,15 @@ static void snd_emu10k1_pcm_efx_mixer_notify(emu10k1_t *emu, int idx, int activa
 
 static void snd_emu10k1_pcm_free_substream(snd_pcm_runtime_t *runtime)
 {
-    emu10k1_pcm_t *epcm = runtime->private_data;
+    struct snd_emu10k1_pcm *epcm = runtime->private_data;
     if (epcm)
         kfree(epcm);
 }
 
 static int snd_emu10k1_efx_playback_close(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    emu10k1_pcm_mixer_t *mix;
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_pcm_mixer *mix;
     int i;
 
     for (i=0; i < NUM_EFX_PLAYBACK; i++) {
@@ -1104,13 +1104,13 @@ static int snd_emu10k1_efx_playback_close(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_efx_playback_open(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    emu10k1_pcm_t *epcm;
-    emu10k1_pcm_mixer_t *mix;
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_pcm *epcm;
+    struct snd_emu10k1_pcm_mixer *mix;
     snd_pcm_runtime_t *runtime = substream->runtime;
     int i;
 
-    epcm = kzalloc(sizeof(*epcm), GFP_KERNEL);
+    epcm = (struct snd_emu10k1_pcm *)kzalloc(sizeof(*epcm), GFP_KERNEL);
     if (epcm == NULL)
         return -ENOMEM;
     epcm->emu = emu;
@@ -1137,13 +1137,13 @@ static int snd_emu10k1_efx_playback_open(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_playback_open(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    emu10k1_pcm_t *epcm;
-    emu10k1_pcm_mixer_t *mix;
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_pcm *epcm;
+    struct snd_emu10k1_pcm_mixer *mix;
     snd_pcm_runtime_t *runtime = substream->runtime;
     int i, err;
 
-    epcm = kzalloc(sizeof(*epcm), GFP_KERNEL);
+    epcm = (struct snd_emu10k1_pcm *)kzalloc(sizeof(*epcm), GFP_KERNEL);
     if (epcm == NULL)
         return -ENOMEM;
     epcm->emu = emu;
@@ -1174,8 +1174,8 @@ static int snd_emu10k1_playback_open(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_playback_close(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    emu10k1_pcm_mixer_t *mix = &emu->pcm_mixer[substream->number];
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_pcm_mixer *mix = &emu->pcm_mixer[substream->number];
 
     mix->epcm = NULL;
     snd_emu10k1_pcm_mixer_notify(emu, substream->number, 0);
@@ -1184,11 +1184,11 @@ static int snd_emu10k1_playback_close(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_capture_open(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    emu10k1_pcm_t *epcm;
+    struct snd_emu10k1_pcm *epcm;
 
-    epcm = kzalloc(sizeof(*epcm), GFP_KERNEL);
+    epcm = (struct snd_emu10k1_pcm *)kzalloc(sizeof(*epcm), GFP_KERNEL);
     if (epcm == NULL)
         return -ENOMEM;
     epcm->emu = emu;
@@ -1211,7 +1211,7 @@ static int snd_emu10k1_capture_open(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_capture_close(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
 
     emu->capture_interrupt = NULL;
     emu->pcm_capture_substream = NULL;
@@ -1220,11 +1220,11 @@ static int snd_emu10k1_capture_close(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_capture_mic_open(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    emu10k1_pcm_t *epcm;
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_pcm *epcm;
     snd_pcm_runtime_t *runtime = substream->runtime;
 
-    epcm = kzalloc(sizeof(*epcm), GFP_KERNEL);
+    epcm = (struct snd_emu10k1_pcm *)kzalloc(sizeof(*epcm), GFP_KERNEL);
     if (epcm == NULL)
         return -ENOMEM;
     epcm->emu = emu;
@@ -1249,7 +1249,7 @@ static int snd_emu10k1_capture_mic_open(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_capture_mic_close(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
 
     emu->capture_interrupt = NULL;
     emu->pcm_capture_mic_substream = NULL;
@@ -1258,13 +1258,13 @@ static int snd_emu10k1_capture_mic_close(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_capture_efx_open(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    emu10k1_pcm_t *epcm;
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_pcm *epcm;
     snd_pcm_runtime_t *runtime = substream->runtime;
     int nefx = emu->audigy ? 64 : 32;
     int idx;
 
-    epcm = kzalloc(sizeof(*epcm), GFP_KERNEL);
+    epcm = (struct snd_emu10k1_pcm *)kzalloc(sizeof(*epcm), GFP_KERNEL);
     if (epcm == NULL)
         return -ENOMEM;
     epcm->emu = emu;
@@ -1299,7 +1299,7 @@ static int snd_emu10k1_capture_efx_open(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_capture_efx_close(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
 
     emu->capture_interrupt = NULL;
     emu->pcm_capture_efx_substream = NULL;
@@ -1346,12 +1346,12 @@ static snd_pcm_ops_t snd_emu10k1_efx_playback_ops = {
 
 static void snd_emu10k1_pcm_free(snd_pcm_t *pcm)
 {
-    emu10k1_t *emu = pcm->private_data;
+    struct snd_emu10k1 *emu = pcm->private_data;
     emu->pcm = NULL;
     snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
-int __devinit snd_emu10k1_pcm(emu10k1_t * emu, int device, snd_pcm_t ** rpcm)
+int __devinit snd_emu10k1_pcm(struct snd_emu10k1 * emu, int device, snd_pcm_t ** rpcm)
 {
     snd_pcm_t *pcm;
     snd_pcm_substream_t *substream;
@@ -1387,7 +1387,7 @@ int __devinit snd_emu10k1_pcm(emu10k1_t * emu, int device, snd_pcm_t ** rpcm)
     return 0;
 }
 
-int __devinit snd_emu10k1_pcm_multi(emu10k1_t * emu, int device, snd_pcm_t ** rpcm)
+int __devinit snd_emu10k1_pcm_multi(struct snd_emu10k1 * emu, int device, snd_pcm_t ** rpcm)
 {
     snd_pcm_t *pcm;
     snd_pcm_substream_t *substream;
@@ -1432,12 +1432,12 @@ static snd_pcm_ops_t snd_emu10k1_capture_mic_ops = {
 
 static void snd_emu10k1_pcm_mic_free(snd_pcm_t *pcm)
 {
-    emu10k1_t *emu = pcm->private_data;
+    struct snd_emu10k1 *emu = pcm->private_data;
     emu->pcm_mic = NULL;
     snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
-int __devinit snd_emu10k1_pcm_mic(emu10k1_t * emu, int device, snd_pcm_t ** rpcm)
+int __devinit snd_emu10k1_pcm_mic(struct snd_emu10k1 * emu, int device, snd_pcm_t ** rpcm)
 {
     snd_pcm_t *pcm;
     int err;
@@ -1467,7 +1467,7 @@ int __devinit snd_emu10k1_pcm_mic(emu10k1_t * emu, int device, snd_pcm_t ** rpcm
 
 static int snd_emu10k1_pcm_efx_voices_mask_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
-    emu10k1_t *emu = snd_kcontrol_chip(kcontrol);
+    struct snd_emu10k1 *emu = snd_kcontrol_chip(kcontrol);
     int nefx = emu->audigy ? 64 : 32;
     uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
     uinfo->count = nefx;
@@ -1478,7 +1478,7 @@ static int snd_emu10k1_pcm_efx_voices_mask_info(snd_kcontrol_t *kcontrol, snd_ct
 
 static int snd_emu10k1_pcm_efx_voices_mask_get(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
 {
-    emu10k1_t *emu = snd_kcontrol_chip(kcontrol);
+    struct snd_emu10k1 *emu = snd_kcontrol_chip(kcontrol);
     int nefx = emu->audigy ? 64 : 32;
     int idx;
 
@@ -1491,7 +1491,7 @@ static int snd_emu10k1_pcm_efx_voices_mask_get(snd_kcontrol_t * kcontrol, snd_ct
 
 static int snd_emu10k1_pcm_efx_voices_mask_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
 {
-    emu10k1_t *emu = snd_kcontrol_chip(kcontrol);
+    struct snd_emu10k1 *emu = snd_kcontrol_chip(kcontrol);
     unsigned int nval[2], bits;
     int nefx = emu->audigy ? 64 : 32;
     int nefxb = emu->audigy ? 7 : 6;
@@ -1542,7 +1542,7 @@ static snd_pcm_ops_t snd_emu10k1_capture_efx_ops = {
 #define INITIAL_TRAM_SHIFT     14
 #define INITIAL_TRAM_POS(size) ((((size) / 2) - INITIAL_TRAM_SHIFT) - 1)
 
-static void snd_emu10k1_fx8010_playback_irq(emu10k1_t *emu, void *private_data)
+static void snd_emu10k1_fx8010_playback_irq(struct snd_emu10k1 *emu, void *private_data)
 {
     snd_pcm_substream_t *substream = private_data;
     snd_pcm_period_elapsed(substream);
@@ -1570,10 +1570,10 @@ static void snd_emu10k1_fx8010_playback_tram_poke1(unsigned short *dst_left,
 
 
 static void fx8010_pb_trans_copy(snd_pcm_substream_t *substream,
-                                 snd_pcm_indirect_t *rec, size_t bytes)
+                                 struct snd_pcm_indirect *rec, size_t bytes)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    snd_emu10k1_fx8010_pcm_t *pcm = &emu->fx8010.pcm[substream->number];
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_fx8010_pcm *pcm = &emu->fx8010.pcm[substream->number];
     unsigned int tram_size = pcm->buffer_size;
     unsigned short *src = (unsigned short *)(substream->runtime->dma_area + rec->sw_data);
     unsigned int frames = bytes >> 2, count;
@@ -1600,8 +1600,8 @@ static void fx8010_pb_trans_copy(snd_pcm_substream_t *substream,
 
 static int snd_emu10k1_fx8010_playback_transfer(snd_pcm_substream_t *substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    snd_emu10k1_fx8010_pcm_t *pcm = &emu->fx8010.pcm[substream->number];
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_fx8010_pcm *pcm = &emu->fx8010.pcm[substream->number];
 
     snd_pcm_indirect_playback_transfer(substream, &pcm->pcm_rec, fx8010_pb_trans_copy);
     return 0;
@@ -1615,8 +1615,8 @@ static int snd_emu10k1_fx8010_playback_hw_params(snd_pcm_substream_t * substream
 
 static int snd_emu10k1_fx8010_playback_hw_free(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    snd_emu10k1_fx8010_pcm_t *pcm = &emu->fx8010.pcm[substream->number];
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_fx8010_pcm *pcm = &emu->fx8010.pcm[substream->number];
     unsigned int i;
 
     for (i = 0; i < pcm->channels; i++)
@@ -1627,9 +1627,9 @@ static int snd_emu10k1_fx8010_playback_hw_free(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_fx8010_playback_prepare(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_emu10k1_fx8010_pcm_t *pcm = &emu->fx8010.pcm[substream->number];
+    struct snd_emu10k1_fx8010_pcm *pcm = &emu->fx8010.pcm[substream->number];
     unsigned int i;
 
     // printk("prepare: etram_pages = 0x%p, dma_area = 0x%x, buffer_size = 0x%x (0x%x)\n", emu->fx8010.etram_pages, runtime->dma_area, runtime->buffer_size, runtime->buffer_size << 2);
@@ -1651,8 +1651,8 @@ static int snd_emu10k1_fx8010_playback_prepare(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_fx8010_playback_trigger(snd_pcm_substream_t * substream, int cmd)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    snd_emu10k1_fx8010_pcm_t *pcm = &emu->fx8010.pcm[substream->number];
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_fx8010_pcm *pcm = &emu->fx8010.pcm[substream->number];
     int result = 0;
 
     spin_lock(&emu->reg_lock);
@@ -1696,8 +1696,8 @@ __err:
 
 static snd_pcm_uframes_t snd_emu10k1_fx8010_playback_pointer(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    snd_emu10k1_fx8010_pcm_t *pcm = &emu->fx8010.pcm[substream->number];
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_fx8010_pcm *pcm = &emu->fx8010.pcm[substream->number];
     size_t ptr; /* byte pointer */
 
     if (!snd_emu10k1_ptr_read(emu, emu->gpr_base + pcm->gpr_trigger, 0))
@@ -1706,29 +1706,30 @@ static snd_pcm_uframes_t snd_emu10k1_fx8010_playback_pointer(snd_pcm_substream_t
     return snd_pcm_indirect_playback_pointer(substream, &pcm->pcm_rec, ptr);
 }
 
-static snd_pcm_hardware_t snd_emu10k1_fx8010_playback =
+static struct snd_pcm_hardware snd_emu10k1_fx8010_playback =
 {
-    /*  .info =     */            (SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                                   /*                             /* SNDRV_PCM_INFO_MMAP_VALID | */ SNDRV_PCM_INFO_PAUSE),
-                                   /*                             .formats =  */            SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-                                   /*                           .rates =      */          SNDRV_PCM_RATE_48000,
-                                   /*                           .rate_min =   */          48000,
-                                   /*                           .rate_max =   */          48000,
-                                   /*                           .channels_min = */        1,
-                                   /*                           .channels_max = */        1,
-                                   /*                           .buffer_bytes_max = */    (128*1024),
-                                   /*                           .period_bytes_min = */    1024,
-                                   /*                           .period_bytes_max = */    (128*1024),
-                                   /*                           .periods_min =      */    1,
-                                   /*                           .periods_max =      */    1024,
-                                   /*                           .fifo_size =        */    0,
+    .info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+                                 SNDRV_PCM_INFO_RESUME |
+                                 /* SNDRV_PCM_INFO_MMAP_VALID | */ SNDRV_PCM_INFO_PAUSE),
+                                 .formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+                                 .rates =		SNDRV_PCM_RATE_48000,
+                                 .rate_min =		48000,
+                                 .rate_max =		48000,
+                                 .channels_min =		1,
+                                 .channels_max =		1,
+                                 .buffer_bytes_max =	(128*1024),
+                                 .period_bytes_min =	1024,
+                                 .period_bytes_max =	(128*1024),
+                                 .periods_min =		1,
+                                 .periods_max =		1024,
+                                 .fifo_size =		0,
 };
 
 static int snd_emu10k1_fx8010_playback_open(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_emu10k1_fx8010_pcm_t *pcm = &emu->fx8010.pcm[substream->number];
+    struct snd_emu10k1_fx8010_pcm *pcm = &emu->fx8010.pcm[substream->number];
 
     runtime->hw = snd_emu10k1_fx8010_playback;
     runtime->hw.channels_min = runtime->hw.channels_max = pcm->channels;
@@ -1745,8 +1746,8 @@ static int snd_emu10k1_fx8010_playback_open(snd_pcm_substream_t * substream)
 
 static int snd_emu10k1_fx8010_playback_close(snd_pcm_substream_t * substream)
 {
-    emu10k1_t *emu = snd_pcm_substream_chip(substream);
-    snd_emu10k1_fx8010_pcm_t *pcm = &emu->fx8010.pcm[substream->number];
+    struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
+    struct snd_emu10k1_fx8010_pcm *pcm = &emu->fx8010.pcm[substream->number];
 
     spin_lock_irq(&emu->reg_lock);
     pcm->opened = 0;
@@ -1754,27 +1755,26 @@ static int snd_emu10k1_fx8010_playback_close(snd_pcm_substream_t * substream)
     return 0;
 }
 
-static snd_pcm_ops_t snd_emu10k1_fx8010_playback_ops = {
-    /*.open =              */   snd_emu10k1_fx8010_playback_open,
-    /*.close =             */   snd_emu10k1_fx8010_playback_close,
-    /*.ioctl =             */   snd_pcm_lib_ioctl,
-    /*.hw_params =         */   snd_emu10k1_fx8010_playback_hw_params,
-    /*.hw_free =           */   snd_emu10k1_fx8010_playback_hw_free,
-    /*.prepare =           */   snd_emu10k1_fx8010_playback_prepare,
-    /*.trigger =           */   snd_emu10k1_fx8010_playback_trigger,
-    /*.pointer =           */   snd_emu10k1_fx8010_playback_pointer,
-    NULL, NULL, NULL,
-    /*.ack =               */   snd_emu10k1_fx8010_playback_transfer,
+static struct snd_pcm_ops snd_emu10k1_fx8010_playback_ops = {
+	.open =			snd_emu10k1_fx8010_playback_open,
+	.close =		snd_emu10k1_fx8010_playback_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =		snd_emu10k1_fx8010_playback_hw_params,
+	.hw_free =		snd_emu10k1_fx8010_playback_hw_free,
+	.prepare =		snd_emu10k1_fx8010_playback_prepare,
+	.trigger =		snd_emu10k1_fx8010_playback_trigger,
+	.pointer =		snd_emu10k1_fx8010_playback_pointer,
+	.ack =			snd_emu10k1_fx8010_playback_transfer,
 };
 
 static void snd_emu10k1_pcm_efx_free(snd_pcm_t *pcm)
 {
-    emu10k1_t *emu = pcm->private_data;
+    struct snd_emu10k1 *emu = pcm->private_data;
     emu->pcm_efx = NULL;
     snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
-int __devinit snd_emu10k1_pcm_efx(emu10k1_t * emu, int device, snd_pcm_t ** rpcm)
+int __devinit snd_emu10k1_pcm_efx(struct snd_emu10k1 * emu, int device, snd_pcm_t ** rpcm)
 {
     snd_pcm_t *pcm;
     snd_kcontrol_t *kctl;

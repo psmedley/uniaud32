@@ -144,8 +144,8 @@ static void xrun(snd_pcm_substream_t *substream)
 #endif
 }
 
-static inline snd_pcm_uframes_t snd_pcm_update_hw_ptr_pos(snd_pcm_substream_t *substream,
-                                                          snd_pcm_runtime_t *runtime)
+static inline snd_pcm_uframes_t snd_pcm_update_hw_ptr_pos(struct snd_pcm_substream *substream,
+                                                          struct snd_pcm_runtime *runtime)
 {
     snd_pcm_uframes_t pos;
 
@@ -153,13 +153,12 @@ static inline snd_pcm_uframes_t snd_pcm_update_hw_ptr_pos(snd_pcm_substream_t *s
     if (pos == SNDRV_PCM_POS_XRUN)
         return pos; /* XRUN */
     if (runtime->tstamp_mode & SNDRV_PCM_TSTAMP_MMAP)
-        snd_timestamp_now((snd_timestamp_t*)&runtime->status->tstamp, runtime->tstamp_timespec);
+        getnstimeofday((struct timespec *)&runtime->status->tstamp);
 #ifdef CONFIG_SND_DEBUG
     if (pos >= runtime->buffer_size) {
         snd_printk(KERN_ERR  "BUG: stream = %i, pos = 0x%lx, buffer size = 0x%lx, period size = 0x%lx\n", substream->stream, pos, runtime->buffer_size, runtime->period_size);
-    } else
+    }
 #endif
-        snd_runtime_check(pos < runtime->buffer_size, return 0);
     pos -= pos % runtime->min_align;
     return pos;
 }
@@ -1110,7 +1109,7 @@ int snd_pcm_hw_constraint_step(snd_pcm_runtime_t *runtime,
 
 static int snd_pcm_hw_rule_pow2(snd_pcm_hw_params_t *params, snd_pcm_hw_rule_t *rule)
 {
-    static int pow2_sizes[] = {
+    static unsigned int pow2_sizes[] = {
         1<<0, 1<<1, 1<<2, 1<<3, 1<<4, 1<<5, 1<<6, 1<<7,
         1<<8, 1<<9, 1<<10, 1<<11, 1<<12, 1<<13, 1<<14, 1<<15,
         1<<16, 1<<17, 1<<18, 1<<19, 1<<20, 1<<21, 1<<22, 1<<23,
@@ -1850,84 +1849,6 @@ int snd_pcm_lib_ioctl(snd_pcm_substream_t *substream,
     return -ENXIO;
 }
 
-/*
- *  Conditions
- */
-
-/**
- * snd_pcm_playback_ready - check whether the playback buffer is available
- * @substream: the pcm substream instance
- *
- * Checks whether enough free space is available on the playback buffer.
- *
- * Returns non-zero if available, or zero if not.
- */
-int snd_pcm_playback_ready(snd_pcm_substream_t *substream)
-{
-    snd_pcm_runtime_t *runtime = substream->runtime;
-    return snd_pcm_playback_avail(runtime) >= runtime->control->avail_min;
-}
-
-/**
- * snd_pcm_capture_ready - check whether the capture buffer is available
- * @substream: the pcm substream instance
- *
- * Checks whether enough capture data is available on the capture buffer.
- *
- * Returns non-zero if available, or zero if not.
- */
-int snd_pcm_capture_ready(snd_pcm_substream_t *substream)
-{
-    snd_pcm_runtime_t *runtime = substream->runtime;
-    return snd_pcm_capture_avail(runtime) >= runtime->control->avail_min;
-}
-
-/**
- * snd_pcm_playback_data - check whether any data exists on the playback buffer
- * @substream: the pcm substream instance
- *
- * Checks whether any data exists on the playback buffer. If stop_threshold
- * is bigger or equal to boundary, then this function returns always non-zero.
- *
- * Returns non-zero if exists, or zero if not.
- */
-int snd_pcm_playback_data(snd_pcm_substream_t *substream)
-{
-    snd_pcm_runtime_t *runtime = substream->runtime;
-
-    if (runtime->stop_threshold >= runtime->boundary)
-        return 1;
-    return snd_pcm_playback_avail(runtime) < runtime->buffer_size;
-}
-
-/**
- * snd_pcm_playback_empty - check whether the playback buffer is empty
- * @substream: the pcm substream instance
- *
- * Checks whether the playback buffer is empty.
- *
- * Returns non-zero if empty, or zero if not.
- */
-int snd_pcm_playback_empty(snd_pcm_substream_t *substream)
-{
-    snd_pcm_runtime_t *runtime = substream->runtime;
-    return snd_pcm_playback_avail(runtime) >= runtime->buffer_size;
-}
-
-/**
- * snd_pcm_capture_empty - check whether the capture buffer is empty
- * @substream: the pcm substream instance
- *
- * Checks whether the capture buffer is empty.
- *
- * Returns non-zero if empty, or zero if not.
- */
-int snd_pcm_capture_empty(snd_pcm_substream_t *substream)
-{
-    snd_pcm_runtime_t *runtime = substream->runtime;
-    return snd_pcm_capture_avail(runtime) == 0;
-}
-
 static void snd_pcm_system_tick_set(snd_pcm_substream_t *substream,
                                     unsigned long ticks)
 {
@@ -2071,7 +1992,7 @@ void snd_pcm_period_elapsed(snd_pcm_substream_t *substream)
         snd_pcm_stream_unlock_irqrestore(substream, flags);
         if (runtime->transfer_ack_end)
             runtime->transfer_ack_end(substream);
-        kill_fasync(&runtime->fasync, SIGIO, POLL_IN);
+        kill_fasync(runtime->fasync, SIGIO, POLL_IN);
 }
 
 static int snd_pcm_lib_write_transfer(snd_pcm_substream_t *substream,

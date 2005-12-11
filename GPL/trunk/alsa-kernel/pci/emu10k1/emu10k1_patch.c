@@ -36,14 +36,14 @@
  * allocate a sample block and copy data from userspace
  */
 int
-snd_emu10k1_sample_new(snd_emux_t *rec, snd_sf_sample_t *sp,
+snd_emu10k1_sample_new(struct snd_emux *rec, struct snd_sf_sample *sp,
 		       snd_util_memhdr_t *hdr, const void *data, long count)
 {
 	int offset;
 	int truesize, size, loopsize, blocksize;
 	int loopend, sampleend;
 	unsigned int start_addr;
-	emu10k1_t *emu;
+	struct snd_emu10k1 *emu;
 
         emu = rec->hw;
 	snd_assert(sp != NULL, return -EINVAL);
@@ -209,10 +209,10 @@ snd_emu10k1_sample_new(snd_emux_t *rec, snd_sf_sample_t *sp,
  * free a sample block
  */
 int
-snd_emu10k1_sample_free(snd_emux_t *rec, snd_sf_sample_t *sp,
+snd_emu10k1_sample_free(struct snd_emux *rec, struct snd_sf_sample *sp,
 			snd_util_memhdr_t *hdr)
 {
-	emu10k1_t *emu;
+	struct snd_emu10k1 *emu;
 
         emu = rec->hw;
 	snd_assert(sp != NULL, return -EINVAL);

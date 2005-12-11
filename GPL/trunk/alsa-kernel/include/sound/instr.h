@@ -41,7 +41,7 @@ extern "C" {
 /* instrument get/put */
 
 /** container for sequencer instrument header */
-typedef struct sndrv_seq_instr_header snd_instr_header_t;
+typedef struct snd_seq_instr_header snd_instr_header_t;
 
 size_t snd_instr_header_sizeof(void);
 #define snd_instr_header_alloca(ptr) \

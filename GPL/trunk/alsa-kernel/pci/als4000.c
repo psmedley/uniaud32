@@ -117,7 +117,7 @@ static inline void snd_als4000_gcr_write_addr(unsigned long port, u32 reg, u32 v
     outl(val, port+0x08);
 }
 
-static inline void snd_als4000_gcr_write(sb_t *sb, u32 reg, u32 val)
+static inline void snd_als4000_gcr_write(struct snd_sb *sb, u32 reg, u32 val)
 {
     snd_als4000_gcr_write_addr(sb->alt_port, reg, val);
 }
@@ -128,12 +128,12 @@ static inline u32 snd_als4000_gcr_read_addr(unsigned long port, u32 reg)
     return inl(port+0x08);
 }
 
-static inline u32 snd_als4000_gcr_read(sb_t *sb, u32 reg)
+static inline u32 snd_als4000_gcr_read(struct snd_sb *sb, u32 reg)
 {
     return snd_als4000_gcr_read_addr(sb->alt_port, reg);
 }
 
-static void snd_als4000_set_rate(sb_t *chip, unsigned int rate)
+static void snd_als4000_set_rate(struct snd_sb *chip, unsigned int rate)
 {
     if (!(chip->mode & SB_RATE_LOCK)) {
         snd_sbdsp_command(chip, SB_DSP_SAMPLE_RATE_OUT);
@@ -142,13 +142,13 @@ static void snd_als4000_set_rate(sb_t *chip, unsigned int rate)
     }
 }
 
-static void snd_als4000_set_capture_dma(sb_t *chip, dma_addr_t addr, unsigned size)
+static void snd_als4000_set_capture_dma(struct snd_sb *chip, dma_addr_t addr, unsigned size)
 {
     snd_als4000_gcr_write(chip, 0xa2, addr);
     snd_als4000_gcr_write(chip, 0xa3, (size-1));
 }
 
-static void snd_als4000_set_playback_dma(sb_t *chip, dma_addr_t addr, unsigned size)
+static void snd_als4000_set_playback_dma(struct snd_sb *chip, dma_addr_t addr, unsigned size)
 {
     snd_als4000_gcr_write(chip, 0x91, addr);
     snd_als4000_gcr_write(chip, 0x92, (size-1)|0x180000);
@@ -225,7 +225,7 @@ static int snd_als4000_hw_free(snd_pcm_substream_t * substream)
 static int snd_als4000_capture_prepare(snd_pcm_substream_t * substream)
 {
     unsigned long flags;
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
     unsigned long size;
     unsigned count;
@@ -253,7 +253,7 @@ static int snd_als4000_capture_prepare(snd_pcm_substream_t * substream)
 static int snd_als4000_playback_prepare(snd_pcm_substream_t *substream)
 {
     unsigned long flags;
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
     unsigned long size;
     unsigned count;
@@ -291,7 +291,7 @@ static int snd_als4000_playback_prepare(snd_pcm_substream_t *substream)
 
 static int snd_als4000_capture_trigger(snd_pcm_substream_t * substream, int cmd)
 {
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
     int result = 0;
 
     spin_lock(&chip->mixer_lock);
@@ -310,7 +310,7 @@ static int snd_als4000_capture_trigger(snd_pcm_substream_t * substream, int cmd)
 
 static int snd_als4000_playback_trigger(snd_pcm_substream_t * substream, int cmd)
 {
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
     int result = 0;
 
     spin_lock(&chip->reg_lock);
@@ -329,7 +329,7 @@ static int snd_als4000_playback_trigger(snd_pcm_substream_t * substream, int cmd
 
 static snd_pcm_uframes_t snd_als4000_capture_pointer(snd_pcm_substream_t * substream)
 {
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
     unsigned int result;
 
     spin_lock(&chip->reg_lock);
@@ -340,7 +340,7 @@ static snd_pcm_uframes_t snd_als4000_capture_pointer(snd_pcm_substream_t * subst
 
 static snd_pcm_uframes_t snd_als4000_playback_pointer(snd_pcm_substream_t * substream)
 {
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
     unsigned result;
 
     spin_lock(&chip->reg_lock);
@@ -351,7 +351,7 @@ static snd_pcm_uframes_t snd_als4000_playback_pointer(snd_pcm_substream_t * subs
 
 static irqreturn_t snd_als4000_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
-    sb_t *chip = dev_id;
+    struct snd_sb *chip = dev_id;
     unsigned gcr_status;
     unsigned sb_status;
 #ifdef TARGET_OS2
@@ -479,7 +479,7 @@ info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 
 static int snd_als4000_playback_open(snd_pcm_substream_t * substream)
 {
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
 
     chip->playback_substream = substream;
@@ -489,7 +489,7 @@ static int snd_als4000_playback_open(snd_pcm_substream_t * substream)
 
 static int snd_als4000_playback_close(snd_pcm_substream_t * substream)
 {
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
 
     chip->playback_substream = NULL;
     snd_pcm_lib_free_pages(substream);
@@ -498,7 +498,7 @@ static int snd_als4000_playback_close(snd_pcm_substream_t * substream)
 
 static int snd_als4000_capture_open(snd_pcm_substream_t * substream)
 {
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
 
     chip->capture_substream = substream;
@@ -508,7 +508,7 @@ static int snd_als4000_capture_open(snd_pcm_substream_t * substream)
 
 static int snd_als4000_capture_close(snd_pcm_substream_t * substream)
 {
-    sb_t *chip = snd_pcm_substream_chip(substream);
+    struct snd_sb *chip = snd_pcm_substream_chip(substream);
 
     chip->capture_substream = NULL;
     snd_pcm_lib_free_pages(substream);
@@ -565,12 +565,12 @@ open:		snd_als4000_capture_open,
 
 static void snd_als4000_pcm_free(snd_pcm_t *pcm)
 {
-    sb_t *chip = pcm->private_data;
+    struct snd_sb *chip = pcm->private_data;
     chip->pcm = NULL;
     snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
-static int __devinit snd_als4000_pcm(sb_t *chip, int device)
+static int __devinit snd_als4000_pcm(struct snd_sb *chip, int device)
 {
     snd_pcm_t *pcm;
     int err;
@@ -614,7 +614,7 @@ static void __devinit snd_als4000_set_addr(unsigned long gcr,
     snd_als4000_gcr_write_addr(gcr, 0xa9, confB);
 }
 
-static void __devinit snd_als4000_configure(sb_t *chip)
+static void __devinit snd_als4000_configure(struct snd_sb *chip)
 {
     unsigned tmp;
     int i;
@@ -663,7 +663,7 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
     snd_card_t *card;
     snd_card_als4000_t *acard;
     unsigned long gcr;
-    sb_t *chip;
+    struct snd_sb *chip;
     opl3_t *opl3;
     unsigned short word;
     int err;

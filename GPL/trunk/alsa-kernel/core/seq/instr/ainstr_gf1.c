@@ -14,16 +14,22 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
  
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/ainstr_gf1.h>
 #include <sound/initval.h>
+#include <asm/uaccess.h>
 
-char *snd_seq_gf1_id = SNDRV_SEQ_INSTR_ID_GUS_PATCH;
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_DESCRIPTION("Advanced Linux Sound Architecture GF1 (GUS) Patch support.");
+MODULE_LICENSE("GPL");
 
 static unsigned int snd_seq_gf1_size(unsigned int size, unsigned int format)
 {
@@ -36,25 +42,26 @@ static unsigned int snd_seq_gf1_size(unsigned int size, unsigned int format)
 	return format;
 }
 
-static int snd_seq_gf1_copy_wave_from_stream(snd_gf1_ops_t *ops,
-					     gf1_instrument_t *ip,
-					     char **data,
+static int snd_seq_gf1_copy_wave_from_stream(struct snd_gf1_ops *ops,
+					     struct gf1_instrument *ip,
+					     char __user **data,
 					     long *len,
 					     int atomic)
 {
-	gf1_wave_t *wp, *prev;
-	gf1_xwave_t xp;
-	int err, gfp_mask;
+	struct gf1_wave *wp, *prev;
+	struct gf1_xwave xp;
+	int err;
+	gfp_t gfp_mask;
 	unsigned int real_size;
 	
 	gfp_mask = atomic ? GFP_ATOMIC : GFP_KERNEL;
-	if (*len < sizeof(xp))
+	if (*len < (long)sizeof(xp))
 		return -EINVAL;
 	if (copy_from_user(&xp, *data, sizeof(xp)))
 		return -EFAULT;
 	*data += sizeof(xp);
 	*len -= sizeof(xp);
-	wp = (gf1_wave_t *)snd_kcalloc(sizeof(*wp), gfp_mask);
+	wp = kzalloc(sizeof(*wp), gfp_mask);
 	if (wp == NULL)
 		return -ENOMEM;
 	wp->share_id[0] = le32_to_cpu(xp.share_id[0]);
@@ -85,7 +92,7 @@ static int snd_seq_gf1_copy_wave_from_stream(snd_gf1_ops_t *ops,
 	wp->scale_frequency = le16_to_cpu(xp.scale_frequency);
 	wp->scale_factor = le16_to_cpu(xp.scale_factor);
 	real_size = snd_seq_gf1_size(wp->size, wp->format);
-	if (real_size > *len) {
+	if ((long)real_size > *len) {
 		kfree(wp);
 		return -ENOMEM;
 	}
@@ -109,8 +116,8 @@ static int snd_seq_gf1_copy_wave_from_stream(snd_gf1_ops_t *ops,
 	return 0;
 }
 
-static void snd_seq_gf1_wave_free(snd_gf1_ops_t *ops,
-				  gf1_wave_t *wave,
+static void snd_seq_gf1_wave_free(struct snd_gf1_ops *ops,
+				  struct gf1_wave *wave,
 				  int atomic)
 {
 	if (ops->remove_sample)
@@ -118,11 +125,11 @@ static void snd_seq_gf1_wave_free(snd_gf1_ops_t *ops,
 	kfree(wave);
 }
 
-static void snd_seq_gf1_instr_free(snd_gf1_ops_t *ops,
-				   gf1_instrument_t *ip,
+static void snd_seq_gf1_instr_free(struct snd_gf1_ops *ops,
+				   struct gf1_instrument *ip,
 				   int atomic)
 {
-	gf1_wave_t *wave;
+	struct gf1_wave *wave;
 	
 	while ((wave = ip->wave) != NULL) {
 		ip->wave = wave->next;
@@ -130,19 +137,21 @@ static void snd_seq_gf1_instr_free(snd_gf1_ops_t *ops,
 	}
 }
 
-static int snd_seq_gf1_put(void *private_data, snd_seq_kinstr_t *instr,
-			   char *instr_data, long len, int atomic, int cmd)
+static int snd_seq_gf1_put(void *private_data, struct snd_seq_kinstr *instr,
+			   char __user *instr_data, long len, int atomic,
+			   int cmd)
 {
-	snd_gf1_ops_t *ops = (snd_gf1_ops_t *)private_data;
-	gf1_instrument_t *ip;
-	gf1_xinstrument_t ix;
-	int err, gfp_mask;
+	struct snd_gf1_ops *ops = private_data;
+	struct gf1_instrument *ip;
+	struct gf1_xinstrument ix;
+	int err;
+	gfp_t gfp_mask;
 
 	if (cmd != SNDRV_SEQ_INSTR_PUT_CMD_CREATE)
 		return -EINVAL;
 	gfp_mask = atomic ? GFP_ATOMIC : GFP_KERNEL;
 	/* copy instrument data */
-	if (len < sizeof(ix))
+	if (len < (long)sizeof(ix))
 		return -EINVAL;
 	if (copy_from_user(&ix, instr_data, sizeof(ix)))
 		return -EFAULT;
@@ -150,7 +159,7 @@ static int snd_seq_gf1_put(void *private_data, snd_seq_kinstr_t *instr,
 		return -EINVAL;
 	instr_data += sizeof(ix);
 	len -= sizeof(ix);
-	ip = (gf1_instrument_t *)KINSTR_DATA(instr);
+	ip = (struct gf1_instrument *)KINSTR_DATA(instr);
 	ip->exclusion = le16_to_cpu(ix.exclusion);
 	ip->exclusion_group = le16_to_cpu(ix.exclusion_group);
 	ip->effect1 = ix.effect1;
@@ -158,7 +167,7 @@ static int snd_seq_gf1_put(void *private_data, snd_seq_kinstr_t *instr,
 	ip->effect2 = ix.effect2;
 	ip->effect2_depth = ix.effect2_depth;
 	/* copy layers */
-	while (len > sizeof(__u32)) {
+	while (len > (long)sizeof(__u32)) {
 		__u32 stype;
 
 		if (copy_from_user(&stype, instr_data, sizeof(stype)))
@@ -180,19 +189,19 @@ static int snd_seq_gf1_put(void *private_data, snd_seq_kinstr_t *instr,
 	return 0;
 }
 
-static int snd_seq_gf1_copy_wave_to_stream(snd_gf1_ops_t *ops,
-					   gf1_instrument_t *ip,
-					   char **data,
+static int snd_seq_gf1_copy_wave_to_stream(struct snd_gf1_ops *ops,
+					   struct gf1_instrument *ip,
+					   char __user **data,
 					   long *len,
 					   int atomic)
 {
-	gf1_wave_t *wp;
-	gf1_xwave_t xp;
+	struct gf1_wave *wp;
+	struct gf1_xwave xp;
 	int err;
 	unsigned int real_size;
 	
 	for (wp = ip->wave; wp; wp = wp->next) {
-		if (*len < sizeof(xp))
+		if (*len < (long)sizeof(xp))
 			return -ENOMEM;
 		memset(&xp, 0, sizeof(xp));
 		xp.stype = GF1_STRU_WAVE;
@@ -228,7 +237,7 @@ static int snd_seq_gf1_copy_wave_to_stream(snd_gf1_ops_t *ops,
 		*data += sizeof(xp);
 		*len -= sizeof(xp);
 		real_size = snd_seq_gf1_size(wp->size, wp->format);
-		if (*len < real_size)
+		if (*len < (long)real_size)
 			return -ENOMEM;
 		if (ops->get_sample) {
 			err = ops->get_sample(ops->private_data, wp,
@@ -242,19 +251,20 @@ static int snd_seq_gf1_copy_wave_to_stream(snd_gf1_ops_t *ops,
 	return 0;
 }
 
-static int snd_seq_gf1_get(void *private_data, snd_seq_kinstr_t *instr,
-			   char *instr_data, long len, int atomic, int cmd)
+static int snd_seq_gf1_get(void *private_data, struct snd_seq_kinstr *instr,
+			   char __user *instr_data, long len, int atomic,
+			   int cmd)
 {
-	snd_gf1_ops_t *ops = (snd_gf1_ops_t *)private_data;
-	gf1_instrument_t *ip;
-	gf1_xinstrument_t ix;
+	struct snd_gf1_ops *ops = private_data;
+	struct gf1_instrument *ip;
+	struct gf1_xinstrument ix;
 	
 	if (cmd != SNDRV_SEQ_INSTR_GET_CMD_FULL)
 		return -EINVAL;
-	if (len < sizeof(ix))
+	if (len < (long)sizeof(ix))
 		return -ENOMEM;
 	memset(&ix, 0, sizeof(ix));
-	ip = (gf1_instrument_t *)KINSTR_DATA(instr);
+	ip = (struct gf1_instrument *)KINSTR_DATA(instr);
 	ix.stype = GF1_STRU_INSTR;
 	ix.exclusion = cpu_to_le16(ip->exclusion);
 	ix.exclusion_group = cpu_to_le16(ip->exclusion_group);
@@ -273,18 +283,18 @@ static int snd_seq_gf1_get(void *private_data, snd_seq_kinstr_t *instr,
 					       atomic);
 }
 
-static int snd_seq_gf1_get_size(void *private_data, snd_seq_kinstr_t *instr,
+static int snd_seq_gf1_get_size(void *private_data, struct snd_seq_kinstr *instr,
 				long *size)
 {
 	long result;
-	gf1_instrument_t *ip;
-	gf1_wave_t *wp;
+	struct gf1_instrument *ip;
+	struct gf1_wave *wp;
 
 	*size = 0;
-	ip = (gf1_instrument_t *)KINSTR_DATA(instr);
-	result = sizeof(gf1_xinstrument_t);
+	ip = (struct gf1_instrument *)KINSTR_DATA(instr);
+	result = sizeof(struct gf1_xinstrument);
 	for (wp = ip->wave; wp; wp = wp->next) {
-		result += sizeof(gf1_xwave_t);
+		result += sizeof(struct gf1_xwave);
 		result += wp->size;
 	}
 	*size = result;
@@ -292,36 +302,36 @@ static int snd_seq_gf1_get_size(void *private_data, snd_seq_kinstr_t *instr,
 }
 
 static int snd_seq_gf1_remove(void *private_data,
-			      snd_seq_kinstr_t *instr,
+			      struct snd_seq_kinstr *instr,
                               int atomic)
 {
-	snd_gf1_ops_t *ops = (snd_gf1_ops_t *)private_data;
-	gf1_instrument_t *ip;
+	struct snd_gf1_ops *ops = private_data;
+	struct gf1_instrument *ip;
 
-	ip = (gf1_instrument_t *)KINSTR_DATA(instr);
+	ip = (struct gf1_instrument *)KINSTR_DATA(instr);
 	snd_seq_gf1_instr_free(ops, ip, atomic);
 	return 0;
 }
 
 static void snd_seq_gf1_notify(void *private_data,
-			       snd_seq_kinstr_t *instr,
+			       struct snd_seq_kinstr *instr,
 			       int what)
 {
-	snd_gf1_ops_t *ops = (snd_gf1_ops_t *)private_data;
+	struct snd_gf1_ops *ops = private_data;
 
 	if (ops->notify)
 		ops->notify(ops->private_data, instr, what);
 }
 
-int snd_seq_gf1_init(snd_gf1_ops_t *ops,
+int snd_seq_gf1_init(struct snd_gf1_ops *ops,
 		     void *private_data,
-		     snd_seq_kinstr_ops_t *next)
+		     struct snd_seq_kinstr_ops *next)
 {
 	memset(ops, 0, sizeof(*ops));
 	ops->private_data = private_data;
 	ops->kops.private_data = ops;
-	ops->kops.add_len = sizeof(gf1_instrument_t);
-	ops->kops.instr_type = snd_seq_gf1_id;
+	ops->kops.add_len = sizeof(struct gf1_instrument);
+	ops->kops.instr_type = SNDRV_SEQ_INSTR_ID_GUS_PATCH;
 	ops->kops.put = snd_seq_gf1_put;
 	ops->kops.get = snd_seq_gf1_get;
 	ops->kops.get_size = snd_seq_gf1_get_size;
@@ -347,10 +357,4 @@ static void __exit alsa_ainstr_gf1_exit(void)
 module_init(alsa_ainstr_gf1_init)
 module_exit(alsa_ainstr_gf1_exit)
 
-MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
-MODULE_DESCRIPTION("Advanced Linux Sound Architecture GF1 (GUS) Patch support.");
-MODULE_CLASSES("{sound}");
-MODULE_SUPPORTED_DEVICE("sound");
-
-EXPORT_SYMBOL(snd_seq_gf1_id);
 EXPORT_SYMBOL(snd_seq_gf1_init);

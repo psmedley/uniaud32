@@ -24,10 +24,13 @@
 #ifndef __IRQOS2_H__
 #define __IRQOS2_H__
 
-#define MAX_SHAREDIRQS          16
-#define MAX_IRQS		16
+//#define MAX_SHAREDIRQS          16
+//#define MAX_IRQS		16
+#define MAX_SHAREDIRQS          256 // ACPI
+#define MAX_IRQS                256 // ACPI
 
-typedef void (NEAR * IRQHANDLER)(int, void *, void *);
+//typedef void (NEAR * IRQHANDLER)(int, void *, void *);
+typedef int (NEAR * IRQHANDLER)(int, void *, void *);
 
 typedef struct {
   IRQHANDLER handler;

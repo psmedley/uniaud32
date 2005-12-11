@@ -177,7 +177,7 @@ show_op (fm_instrument_t * fm_instr) {
 /*
  * Send patch to destination port
  */
-static int load_patch (midihandle *pHandle, fm_instrument_t * fm_instr, int bank, int prg, char *name) 
+static int load_patch (midihandle *pHandle, struct fm_instrument * fm_instr, int bank, int prg, char *name)
 {
     snd_seq_instr_header_t *put;
     snd_seq_instr_t id;
@@ -230,7 +230,7 @@ static void load_sb (midihandle *pHandle, char *pFile, int filesize, int bank)
     int prg;
 
     sbi_inst_t sbi_instr;
-    fm_instrument_t fm_instr;
+    struct fm_instrument fm_instr;
     int fm_instr_type;
 
     len = (file_type == SBI_FILE_TYPE_4OP) ? DATA_LEN_4OP : DATA_LEN_2OP;
@@ -310,13 +310,13 @@ int snd_instr_fm_convert_to_stream(snd_instr_fm_t *fm,
 				   size_t *__size)
 {
 	snd_instr_header_t *put;
-	fm_instrument_t *instr;
+	struct fm_instrument *instr;
 	fm_xinstrument_t *xinstr;
 	int idx;
 
 	if (fm == NULL || __data == NULL)
 		return -EINVAL;
-	instr = (fm_instrument_t *)fm;
+	instr = (struct fm_instrument *)fm;
 	*__data = NULL;
 	*__size = 0;
 	if (snd_instr_header_malloc(&put, sizeof(fm_xinstrument_t)) < 0)
@@ -414,7 +414,7 @@ void snd_instr_header_set_format(snd_instr_header_t *info, const char *format)
 void snd_instr_header_set_id(snd_instr_header_t *info, const snd_seq_instr_t *id)
 {
 	assert(info && id);
-	info->id.instr = *(struct sndrv_seq_instr *)id;
+	info->id.instr = *(struct snd_seq_instr *)id;
 }
 
 /**

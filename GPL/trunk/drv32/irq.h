@@ -24,7 +24,8 @@
 #ifndef __IRQ_H__
 #define __IRQ_H__
 
-#define NUM_IRQLEVELS		16
+//#define NUM_IRQLEVELS		16
+#define NUM_IRQLEVELS           256 //ACPI
 
 extern "C" FARPTR16 ISR03;
 extern "C" FARPTR16 ISR04;

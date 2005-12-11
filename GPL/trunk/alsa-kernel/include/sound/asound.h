@@ -56,6 +56,22 @@ struct iovec {
 #define __bitwise
 #endif
 
+#ifdef TARGET_OS2
+#define SNDRV_PCM_VOL_FRONT_LEFT        0
+#define SNDRV_PCM_VOL_FRONT_RIGHT       1
+#define SNDRV_PCM_VOL_REAR_LEFT         2
+#define SNDRV_PCM_VOL_REAR_RIGHT        3
+#define SNDRV_PCM_VOL_CENTER            4
+#define SNDRV_PCM_VOL_LFE               5
+
+#define SNDRV_PCM_VOL_MAX               100
+
+struct snd_pcm_volume {
+        int nrchannels;
+        int volume[6];
+};
+#endif
+
 /*
  *  protocol version
  */
@@ -313,7 +329,10 @@ struct snd_pcm_info {
 typedef int __bitwise snd_pcm_hw_param_t;
 #define	SNDRV_PCM_HW_PARAM_ACCESS	((__force snd_pcm_hw_param_t) 0) /* Access type */
 #define	SNDRV_PCM_HW_PARAM_FORMAT	((__force snd_pcm_hw_param_t) 1) /* Format */
-#define	SNDRV_PCM_HW_PARAM_SUBFORMAT	((__force snd_pcm_hw_param_t) 2) /* Subformat */
+#ifdef TARGET_OS2
+#define	SNDRV_PCM_HW_PARAM_RATE_MASK    ((__force snd_pcm_hw_param_t) 2) /* Format */
+#endif
+#define	SNDRV_PCM_HW_PARAM_SUBFORMAT	((__force snd_pcm_hw_param_t) 3) /* Subformat */
 #define	SNDRV_PCM_HW_PARAM_FIRST_MASK	SNDRV_PCM_HW_PARAM_ACCESS
 #define	SNDRV_PCM_HW_PARAM_LAST_MASK	SNDRV_PCM_HW_PARAM_SUBFORMAT
 
@@ -855,7 +874,12 @@ enum {
 	SNDRV_CTL_IOCTL_RAWMIDI_INFO = _IOWR('U', 0x41, struct snd_rawmidi_info),
 	SNDRV_CTL_IOCTL_RAWMIDI_PREFER_SUBDEVICE = _IOW('U', 0x42, int),
 	SNDRV_CTL_IOCTL_POWER = _IOWR('U', 0xd0, int),
-	SNDRV_CTL_IOCTL_POWER_STATE = _IOR('U', 0xd1, int),
+        SNDRV_CTL_IOCTL_POWER_STATE = _IOR('U', 0xd1, int),
+#ifdef TARGET_OS2
+        SNDRV_PCM_IOCTL_SETVOLUME = _IOW('A', 0x62, struct snd_pcm_volume),
+        SNDRV_PCM_IOCTL_GETVOLUME = _IOR('A', 0x63, struct snd_pcm_volume),
+#endif
+
 };
 
 /*
@@ -914,5 +938,15 @@ enum {
 	SNDRV_IOCTL_READV = _IOW('K', 0x00, struct snd_xferv),
 	SNDRV_IOCTL_WRITEV = _IOW('K', 0x01, struct snd_xferv),
 };
+
+#define msleep(msecs) \
+        do { \
+                set_current_state(TASK_UNINTERRUPTIBLE); \
+                schedule_timeout(((msecs) * HZ + 999) / 1000);  \
+        } while (0)
+
+#define schedule_timeout_interruptible(x) \
+ {set_current_state(TASK_INTERRUPTIBLE); schedule_timeout(x);}
+#define schedule_timeout_uninterruptible(x) {set_current_state(TASK_UNINTERRUPTIBLE); schedule_timeout(x);}
 
 #endif /* __SOUND_ASOUND_H */

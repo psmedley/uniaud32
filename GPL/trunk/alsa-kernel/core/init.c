@@ -30,9 +30,9 @@ struct snd_shutdown_f_ops {
 
 int snd_cards_count = 0;
 #ifdef TARGET_OS2
-snd_card_t *snd_cards[SNDRV_CARDS] = {0};
+struct snd_card *snd_cards[SNDRV_CARDS] = {0};
 #else
-snd_card_t *snd_cards[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS-1)] = NULL};
+struct snd_card *snd_cards[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS-1)] = NULL};
 #endif
 unsigned int snd_cards_lock = 0;	/* locked for registering/using */
 rwlock_t snd_card_rwlock = RW_LOCK_UNLOCKED;
@@ -40,10 +40,10 @@ rwlock_t snd_card_rwlock = RW_LOCK_UNLOCKED;
 static unsigned int pci_saved_config[SNDRV_CARDS][16];
 
 #if defined(CONFIG_SND_MIXER_OSS) || defined(CONFIG_SND_MIXER_OSS_MODULE)
-int (*snd_mixer_oss_notify_callback)(snd_card_t *card, int free_flag);
+int (*snd_mixer_oss_notify_callback)(struct snd_card *card, int free_flag);
 #endif
 
-static void snd_card_id_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)
+static void snd_card_id_read(snd_info_entry_t *entry, struct snd_info_buffer * buffer)
 {
 	snd_iprintf(buffer, "%s\n", entry->card->id);
 }
@@ -59,13 +59,13 @@ static void snd_card_free_thread(void * __card);
  *
  *  Creates and initializes a soundcard structure.
  *
- *  Returns kmallocated snd_card_t structure. Creates the ALSA control interface
+ *  Returns kmallocated struct snd_card structure. Creates the ALSA control interface
  *  (which is blocked until snd_card_register function is called).
  */
-snd_card_t *snd_card_new(int idx, const char *xid,
+struct snd_card *snd_card_new(int idx, const char *xid,
 			 struct module *module, int extra_size)
 {
-	snd_card_t *card;
+	struct snd_card *card;
 	int err;
 
 	if (extra_size < 0)
@@ -131,7 +131,7 @@ snd_card_t *snd_card_new(int idx, const char *xid,
 		goto __error_ctl;
 	}
 	if (extra_size > 0)
-		card->private_data = (char *)card + sizeof(snd_card_t);
+		card->private_data = (char *)card + sizeof(struct snd_card);
 	return card;
 
       __error_ctl:
@@ -157,7 +157,7 @@ static unsigned int snd_disconnect_poll(struct file * file, poll_table * wait)
  *  Note: The current implementation replaces all active file->f_op with special
  *        dummy file operations (they do nothing except release).
  */
-int snd_card_disconnect(snd_card_t * card)
+int snd_card_disconnect(struct snd_card * card)
 {
 	struct snd_monitor_file *mfile;
 	struct file *file;
@@ -245,7 +245,7 @@ int snd_card_disconnect(snd_card_t * card)
  *  Returns zero. Frees all associated devices and frees the control
  *  interface associated to given soundcard.
  */
-int snd_card_free(snd_card_t * card)
+int snd_card_free(struct snd_card * card)
 {
 	struct snd_shutdown_f_ops *s_f_ops;
 
@@ -313,7 +313,7 @@ int snd_card_free(snd_card_t * card)
 
 static void snd_card_free_thread(void * __card)
 {
-	snd_card_t *card = __card;
+	struct snd_card *card = __card;
 	struct module * module = card->module;
 
 	if (!try_module_get(module)) {
@@ -340,7 +340,7 @@ static void snd_card_free_thread(void * __card)
  *
  *  Returns - zero otherwise a negative error code if the start of thread failed.
  */
-int snd_card_free_in_thread(snd_card_t * card)
+int snd_card_free_in_thread(struct snd_card * card)
 {
 	if (card->files == NULL) {
 		snd_card_free(card);
@@ -358,7 +358,7 @@ int snd_card_free_in_thread(snd_card_t * card)
 	return -EFAULT;
 }
 
-static void choose_default_id(snd_card_t * card)
+static void choose_default_id(struct snd_card * card)
 {
 	int i, len, idx_flag = 0, loops = 8;
 	char *id, *spos;
@@ -430,7 +430,7 @@ static void choose_default_id(snd_card_t * card)
  *
  *  Returns zero otherwise a negative error code if the registrain failed.
  */
-int snd_card_register(snd_card_t * card)
+int snd_card_register(struct snd_card * card)
 {
 	int err;
 	snd_info_entry_t *entry;
@@ -481,10 +481,10 @@ int snd_card_register(snd_card_t * card)
 
 static snd_info_entry_t *snd_card_info_entry = NULL;
 
-static void snd_card_info_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)
+static void snd_card_info_read(snd_info_entry_t *entry, struct snd_info_buffer * buffer)
 {
 	int idx, count;
-	snd_card_t *card;
+	struct snd_card *card;
 
 	for (idx = count = 0; idx < SNDRV_CARDS; idx++) {
 		read_lock(&snd_card_rwlock);
@@ -509,7 +509,7 @@ static void snd_card_info_read(snd_info_entry_t *entry, snd_info_buffer_t * buff
 void snd_card_info_read_oss(snd_info_buffer_t * buffer)
 {
 	int idx, count;
-	snd_card_t *card;
+	struct snd_card *card;
 
 	for (idx = count = 0; idx < SNDRV_CARDS; idx++) {
 		read_lock(&snd_card_rwlock);
@@ -528,10 +528,10 @@ void snd_card_info_read_oss(snd_info_buffer_t * buffer)
 
 #ifdef MODULE
 static snd_info_entry_t *snd_card_module_info_entry;
-static void snd_card_module_info_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)
+static void snd_card_module_info_read(snd_info_entry_t *entry, struct snd_info_buffer * buffer)
 {
 	int idx;
-	snd_card_t *card;
+	struct snd_card *card;
 
 	for (idx = 0; idx < SNDRV_CARDS; idx++) {
 		read_lock(&snd_card_rwlock);
@@ -594,7 +594,7 @@ int __exit snd_card_info_done(void)
  *  Returns zero otherwise a negative error code.
  */
 
-int snd_component_add(snd_card_t *card, const char *component)
+int snd_component_add(struct snd_card *card, const char *component)
 {
 	char *ptr;
 	int len = strlen(component);
@@ -624,7 +624,7 @@ int snd_component_add(snd_card_t *card, const char *component)
  *
  *  Returns zero or a negative error code.
  */
-int snd_card_file_add(snd_card_t *card, struct file *file)
+int snd_card_file_add(struct snd_card *card, struct file *file)
 {
 	struct snd_monitor_file *mfile;
 
@@ -658,7 +658,7 @@ int snd_card_file_add(snd_card_t *card, struct file *file)
  *
  *  Returns zero or a negative error code.
  */
-int snd_card_file_remove(snd_card_t *card, struct file *file)
+int snd_card_file_remove(struct snd_card *card, struct file *file)
 {
 	struct snd_monitor_file *mfile, *pfile = NULL;
 
@@ -698,7 +698,7 @@ int snd_card_file_remove(snd_card_t *card, struct file *file)
  *
  *  Note: the power lock must be active before call.
  */
-int snd_power_wait(snd_card_t *card, unsigned int power_state, struct file *file)
+int snd_power_wait(struct snd_card *card, unsigned int power_state, struct file *file)
 {
 	wait_queue_t wait;
 	int result = 0;
@@ -741,9 +741,9 @@ int snd_power_wait(snd_card_t *card, unsigned int power_state, struct file *file
  * These callbacks are called from ALSA's common PCI suspend/resume
  * handler and from the control API.
  */
-int snd_card_set_pm_callback(snd_card_t *card,
-                             int (*suspend)(snd_card_t *, unsigned int),
-                             int (*resume)(snd_card_t *, unsigned int),
+int snd_card_set_pm_callback(struct snd_card *card,
+                             int (*suspend)(struct snd_card *, unsigned int),
+                             int (*resume)(struct snd_card *, unsigned int),
                              void *private_data)
 {
     card->pm_suspend = suspend;
@@ -755,7 +755,7 @@ int snd_card_set_pm_callback(snd_card_t *card,
 #ifdef CONFIG_ISA
 static int snd_isa_pm_callback(struct pm_dev *dev, pm_request_t rqst, void *data)
 {
-    snd_card_t *card = dev->data;
+    struct snd_card *card = dev->data;
 
     switch (rqst) {
     case PM_SUSPEND:
@@ -781,9 +781,9 @@ static int snd_isa_pm_callback(struct pm_dev *dev, pm_request_t rqst, void *data
  * the given ISA card.  These callbacks are called from the ALSA's
  * common PM handler and from the control API.
  */
-int snd_card_set_isa_pm_callback(snd_card_t *card,
-                                 int (*suspend)(snd_card_t *, unsigned int),
-                                 int (*resume)(snd_card_t *, unsigned int),
+int snd_card_set_isa_pm_callback(struct snd_card *card,
+                                 int (*suspend)(struct snd_card *, unsigned int),
+                                 int (*resume)(struct snd_card *, unsigned int),
                                  void *private_data)
 {
     card->pm_dev = pm_register(PM_ISA_DEV, 0, snd_isa_pm_callback);
@@ -798,28 +798,28 @@ int snd_card_set_isa_pm_callback(snd_card_t *card,
 int snd_card_pci_suspend(struct pci_dev *dev, u32 state)
 {
     int err;
-    snd_card_t *card = pci_get_drvdata(dev);
+    struct snd_card *card = pci_get_drvdata(dev);
     if (! card || ! card->pm_suspend)
         return 0;
     if (card->power_state == SNDRV_CTL_POWER_D3hot)
         return 0;
     /* FIXME: correct state value? */
     err = card->pm_suspend(card, 0);
-    pci_save_state(dev, &pci_saved_config[card->number][0]);
+    pci_save_state(dev);
     snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
     return err;
 }
 
 int snd_card_pci_resume(struct pci_dev *dev)
 {
-    snd_card_t *card = pci_get_drvdata(dev);
+    struct snd_card *card = pci_get_drvdata(dev);
     if (! card || ! card->pm_resume)
         return 0;
     printk("pci resume from %i state\n", card->power_state);
     if (card->power_state == SNDRV_CTL_POWER_D0)
         return 0;
     /* restore the PCI config space */
-    pci_restore_state(dev, &pci_saved_config[card->number][0]);
+    pci_restore_state(dev);
     /* FIXME: correct state value? */
     card->pm_resume(card, 0);
     snd_power_change_state(card, SNDRV_CTL_POWER_D0);

@@ -104,32 +104,15 @@ static int snd_pcm_timer_stop(snd_timer_t * timer)
     return 0;
 }
 
-#ifdef TARGET_OS2
-static struct _snd_timer_hardware snd_pcm_timer =
+static struct snd_timer_hardware snd_pcm_timer =
 {
-    SNDRV_TIMER_HW_AUTO | SNDRV_TIMER_HW_SLAVE,
-    0,
-    1,
-    0,
-    0,
-    0,
-    0,
-    snd_pcm_timer_resolution,
-    snd_pcm_timer_start,
-    snd_pcm_timer_stop,
-    0,0
+	.flags =	SNDRV_TIMER_HW_AUTO | SNDRV_TIMER_HW_SLAVE,
+	.resolution =	0,
+	.ticks =	1,
+	.c_resolution =	snd_pcm_timer_resolution,
+	.start =	snd_pcm_timer_start,
+	.stop =		snd_pcm_timer_stop,
 };
-#else
-static struct _snd_timer_hardware snd_pcm_timer =
-{
-flags:		SNDRV_TIMER_HW_AUTO | SNDRV_TIMER_HW_SLAVE,
-    resolution:	0,
-    ticks:		1,
-    c_resolution:	snd_pcm_timer_resolution,
-    start:		snd_pcm_timer_start,
-    stop:		snd_pcm_timer_stop,
-};
-#endif
 
 /*
  *  Init functions

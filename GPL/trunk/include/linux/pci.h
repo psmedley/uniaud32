@@ -643,8 +643,8 @@ int pci_request_regions(struct pci_dev *pdev, char *res_name);
 
 void pci_disable_device(struct pci_dev *dev);
 
-int pci_save_state(struct pci_dev *dev);
-int pci_restore_state(struct pci_dev *dev);
+void pci_save_state(struct pci_dev *dev);
+void pci_restore_state(struct pci_dev *dev);
 
 unsigned long pci_get_dma_mask(struct pci_dev *);
 void pci_set_dma_mask(struct pci_dev *, unsigned long mask);
@@ -658,6 +658,9 @@ void pci_set_driver_data (struct pci_dev *dev, void *driver_data);
 #define PCI_DEVICE(vend,dev) \
         .vendor = (vend), .device = (dev), \
         .subvendor = PCI_ANY_ID, .subdevice = PCI_ANY_ID
+
+#define pci_get_device  pci_find_device
+#define pci_dev_put(x)
 
 #pragma pack() //!!! by vladest
 

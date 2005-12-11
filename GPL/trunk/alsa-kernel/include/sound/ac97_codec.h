@@ -398,11 +398,6 @@ enum {
  *
  */
 
-typedef struct _snd_ac97_bus ac97_bus_t;
-typedef struct _snd_ac97_bus_ops ac97_bus_ops_t;
-typedef struct _snd_ac97_template ac97_template_t;
-typedef struct _snd_ac97 ac97_t;
-
 enum ac97_pcm_cfg {
     AC97_PCM_CFG_FRONT = 2,
     AC97_PCM_CFG_REAR = 10,		/* alias surround */
@@ -447,7 +442,7 @@ struct snd_ac97_build_ops {
     void (*update_jacks) (ac97_t *ac97);    /* for jack-sharing */
 };
 
-struct _snd_ac97_bus_ops {
+struct snd_ac97_bus_ops {
     void (*reset) (ac97_t *ac97);
     void (*write) (ac97_t *ac97, unsigned short reg, unsigned short val);
     unsigned short (*read) (ac97_t *ac97, unsigned short reg);
@@ -455,7 +450,7 @@ struct _snd_ac97_bus_ops {
     void (*init) (ac97_t *ac97);
 };
 
-struct _snd_ac97_bus {
+struct snd_ac97_bus {
     /* -- lowlevel (hardware) driver specific -- */
     ac97_bus_ops_t *ops;
     void *private_data;
@@ -476,7 +471,7 @@ struct _snd_ac97_bus {
     snd_info_entry_t *proc;
 };
 
-struct _snd_ac97_template {
+struct snd_ac97_template {
     void *private_data;
     void (*private_free) (ac97_t *ac97);
     struct pci_dev *pci;    /* assigned PCI device - used for quirks */
@@ -487,7 +482,7 @@ struct _snd_ac97_template {
     bitmap_member(reg_accessed,0x80); /* bit flags */
 };
 
-struct _snd_ac97 {
+struct snd_ac97 {
     /* -- lowlevel (hardware) driver specific -- */
     struct snd_ac97_build_ops * build_ops;
     void *private_data;

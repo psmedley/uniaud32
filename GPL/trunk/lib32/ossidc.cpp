@@ -99,10 +99,11 @@ void pcm_info(void);
 void FillCaps(ULONG deviceid);
 };
 //******************************************************************************
-OSSRET OSS32_Initialize()
+OSSRET OSS32_Initialize(void)
 {
-    fStrategyInit = TRUE;
     int i;
+
+    fStrategyInit = TRUE;
 
     if(DevSetTimer(TimerHandler16) != 0) {
         dprintf(("DevSetTimer failed!!"));

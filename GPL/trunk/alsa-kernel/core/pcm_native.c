@@ -32,11 +32,11 @@
  */
 //#define DEBUG_PK
 //#define static
-struct sndrv_pcm_hw_params_old {
+struct snd_pcm_hw_params_old {
     unsigned int flags;
     unsigned int masks[SNDRV_PCM_HW_PARAM_SUBFORMAT -
                        SNDRV_PCM_HW_PARAM_ACCESS + 1];
-    struct sndrv_interval intervals[SNDRV_PCM_HW_PARAM_TICK_TIME -
+    struct snd_interval intervals[SNDRV_PCM_HW_PARAM_TICK_TIME -
                                     SNDRV_PCM_HW_PARAM_SAMPLE_BITS + 1];
     unsigned int rmask;
     unsigned int cmask;
@@ -44,15 +44,15 @@ struct sndrv_pcm_hw_params_old {
     unsigned int msbits;
     unsigned int rate_num;
     unsigned int rate_den;
-    sndrv_pcm_uframes_t fifo_size;
+    snd_pcm_uframes_t fifo_size;
     unsigned char reserved[64];
 };
 
-#define SNDRV_PCM_IOCTL_HW_REFINE_OLD _IOWR('A', 0x10, struct sndrv_pcm_hw_params_old)
-#define SNDRV_PCM_IOCTL_HW_PARAMS_OLD _IOWR('A', 0x11, struct sndrv_pcm_hw_params_old)
+#define SNDRV_PCM_IOCTL_HW_REFINE_OLD _IOWR('A', 0x10, struct snd_pcm_hw_params_old)
+#define SNDRV_PCM_IOCTL_HW_PARAMS_OLD _IOWR('A', 0x11, struct snd_pcm_hw_params_old)
 
-static int snd_pcm_hw_refine_old_user(snd_pcm_substream_t * substream, struct sndrv_pcm_hw_params_old * _oparams);
-static int snd_pcm_hw_params_old_user(snd_pcm_substream_t * substream, struct sndrv_pcm_hw_params_old * _oparams);
+static int snd_pcm_hw_refine_old_user(snd_pcm_substream_t * substream, struct snd_pcm_hw_params_old * _oparams);
+static int snd_pcm_hw_params_old_user(snd_pcm_substream_t * substream, struct snd_pcm_hw_params_old * _oparams);
 
 /*
  *
@@ -581,10 +581,10 @@ static int snd_pcm_sw_params_user(snd_pcm_substream_t * substream, snd_pcm_sw_pa
     return err;
 }
 
-int snd_pcm_status(snd_pcm_substream_t *substream,
-                   snd_pcm_status_t *status)
+int snd_pcm_status(struct snd_pcm_substream *substream,
+                   struct snd_pcm_status *status)
 {
-    snd_pcm_runtime_t *runtime = substream->runtime;
+    struct snd_pcm_runtime *runtime = substream->runtime;
 
     snd_pcm_stream_lock_irq(substream);
     status->state = runtime->status->state;
@@ -597,9 +597,9 @@ int snd_pcm_status(snd_pcm_substream_t *substream,
         if (runtime->tstamp_mode & SNDRV_PCM_TSTAMP_MMAP)
             status->tstamp = runtime->status->tstamp;
         else
-            snd_timestamp_now(&status->tstamp, runtime->tstamp_timespec);
+            getnstimeofday(&status->tstamp);
     } else
-        snd_timestamp_now(&status->tstamp, runtime->tstamp_timespec);
+        getnstimeofday(&status->tstamp);
     status->appl_ptr = runtime->control->appl_ptr;
     status->hw_ptr = runtime->status->hw_ptr;
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -667,19 +667,21 @@ static int snd_pcm_channel_info(snd_pcm_substream_t * substream, snd_pcm_channel
         return -EFAULT;
     return 0;
 }
-static void snd_pcm_trigger_tstamp(snd_pcm_substream_t *substream)
+
+static void snd_pcm_trigger_tstamp(struct snd_pcm_substream *substream)
 {
-    snd_pcm_runtime_t *runtime = substream->runtime;
-    if (runtime->trigger_master == NULL)
-        return;
-    if (runtime->trigger_master == substream) {
-        snd_timestamp_now(&runtime->trigger_tstamp, runtime->tstamp_timespec);
-    } else {
-        snd_pcm_trigger_tstamp(runtime->trigger_master);
-        runtime->trigger_tstamp = runtime->trigger_master->runtime->trigger_tstamp;
-    }
-    runtime->trigger_master = NULL;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	if (runtime->trigger_master == NULL)
+		return;
+	if (runtime->trigger_master == substream) {
+		getnstimeofday(&runtime->trigger_tstamp);
+	} else {
+		snd_pcm_trigger_tstamp(runtime->trigger_master);
+		runtime->trigger_tstamp = runtime->trigger_master->runtime->trigger_tstamp;
+	}
+	runtime->trigger_master = NULL;
 }
+
 struct action_ops {
     int (*pre_action)(snd_pcm_substream_t *substream, int state);
     int (*do_action)(snd_pcm_substream_t *substream, int state);
@@ -2036,7 +2038,7 @@ static int snd_pcm_open_file(struct file *file,
     snd_assert(rpcm_file != NULL, return -EINVAL);
     *rpcm_file = NULL;
 
-    pcm_file = kzalloc(sizeof(*pcm_file), GFP_KERNEL);
+    pcm_file = (snd_pcm_file_t *)kzalloc(sizeof(*pcm_file), GFP_KERNEL);
     if (pcm_file == NULL) {
         return -ENOMEM;
     }
@@ -2429,18 +2431,18 @@ static int snd_pcm_delay(snd_pcm_substream_t *substream, snd_pcm_sframes_t *res)
     return err;
 }
 
-static int snd_pcm_sync_ptr(snd_pcm_substream_t *substream, struct sndrv_pcm_sync_ptr *_sync_ptr)
+static int snd_pcm_sync_ptr(snd_pcm_substream_t *substream, struct snd_pcm_sync_ptr *_sync_ptr)
 {
     snd_pcm_runtime_t *runtime = substream->runtime;
-    struct sndrv_pcm_sync_ptr sync_ptr;
-    volatile struct sndrv_pcm_mmap_status *status;
-    volatile struct sndrv_pcm_mmap_control *control;
+    struct snd_pcm_sync_ptr sync_ptr;
+    volatile struct snd_pcm_mmap_status *status;
+    volatile struct snd_pcm_mmap_control *control;
     int err;
 
     memset(&sync_ptr, 0, sizeof(sync_ptr));
     if (get_user(sync_ptr.flags, (unsigned int *) &(_sync_ptr->flags)))
         return -EFAULT;
-    if (copy_from_user(&sync_ptr.c.control, &(_sync_ptr->c.control), sizeof(struct sndrv_pcm_mmap_control)))
+    if (copy_from_user(&sync_ptr.c.control, &(_sync_ptr->c.control), sizeof(struct snd_pcm_mmap_control)))
         return -EFAULT;
     status = runtime->status;
     control = runtime->control;
@@ -2486,14 +2488,8 @@ static int snd_pcm_common_ioctl1(snd_pcm_substream_t *substream,
         return put_user(SNDRV_PCM_VERSION, (int *)arg) ? -EFAULT : 0;
     case SNDRV_PCM_IOCTL_INFO:
         return snd_pcm_info_user(substream, (snd_pcm_info_t *) arg);
-    case SNDRV_PCM_IOCTL_TSTAMP:
-        {
-            int xarg;
-            if (get_user(xarg, (int *) arg))
-                return -EFAULT;
-            substream->runtime->tstamp_timespec = xarg ? 1 : 0;
-            return 0;
-        }
+    case SNDRV_PCM_IOCTL_TSTAMP: /* just for compatibility */
+        return 0;
     case SNDRV_PCM_IOCTL_HW_REFINE:
         return snd_pcm_hw_refine_user(substream, (snd_pcm_hw_params_t *) arg);
     case SNDRV_PCM_IOCTL_HW_PARAMS:
@@ -2525,11 +2521,11 @@ static int snd_pcm_common_ioctl1(snd_pcm_substream_t *substream,
     case SNDRV_PCM_IOCTL_DELAY:
         return snd_pcm_delay(substream, (snd_pcm_sframes_t *) arg);
     case SNDRV_PCM_IOCTL_SYNC_PTR:
-        return snd_pcm_sync_ptr(substream, (struct sndrv_pcm_sync_ptr *) arg);
+        return snd_pcm_sync_ptr(substream, (struct snd_pcm_sync_ptr *) arg);
     case SNDRV_PCM_IOCTL_HW_REFINE_OLD:
-        return snd_pcm_hw_refine_old_user(substream, (struct sndrv_pcm_hw_params_old *) arg);
+        return snd_pcm_hw_refine_old_user(substream, (struct snd_pcm_hw_params_old *) arg);
     case SNDRV_PCM_IOCTL_HW_PARAMS_OLD:
-        return snd_pcm_hw_params_old_user(substream, (struct sndrv_pcm_hw_params_old *) arg);
+        return snd_pcm_hw_params_old_user(substream, (struct snd_pcm_hw_params_old *) arg);
     case SNDRV_PCM_IOCTL_DRAIN:
         return snd_pcm_drain(substream);
     case SNDRV_PCM_IOCTL_DROP:
@@ -3203,7 +3199,7 @@ static int snd_pcm_fasync(int fd, struct file * file, int on)
 #define __OLD_TO_NEW_MASK(x) ((x&7)|((x&0x07fffff8)<<5))
 #define __NEW_TO_OLD_MASK(x) ((x&7)|((x&0xffffff00)>>5))
 
-static void snd_pcm_hw_convert_from_old_params(snd_pcm_hw_params_t *params, struct sndrv_pcm_hw_params_old *oparams)
+static void snd_pcm_hw_convert_from_old_params(snd_pcm_hw_params_t *params, struct snd_pcm_hw_params_old *oparams)
 {
     unsigned int i;
 
@@ -3221,7 +3217,7 @@ static void snd_pcm_hw_convert_from_old_params(snd_pcm_hw_params_t *params, stru
     params->fifo_size = oparams->fifo_size;
 }
 
-static void snd_pcm_hw_convert_to_old_params(struct sndrv_pcm_hw_params_old *oparams, snd_pcm_hw_params_t *params)
+static void snd_pcm_hw_convert_to_old_params(struct snd_pcm_hw_params_old *oparams, snd_pcm_hw_params_t *params)
 {
     unsigned int i;
 
@@ -3239,10 +3235,10 @@ static void snd_pcm_hw_convert_to_old_params(struct sndrv_pcm_hw_params_old *opa
     oparams->fifo_size = params->fifo_size;
 }
 
-static int snd_pcm_hw_refine_old_user(snd_pcm_substream_t * substream, struct sndrv_pcm_hw_params_old * _oparams)
+static int snd_pcm_hw_refine_old_user(snd_pcm_substream_t * substream, struct snd_pcm_hw_params_old * _oparams)
 {
     snd_pcm_hw_params_t params;
-    struct sndrv_pcm_hw_params_old oparams;
+    struct snd_pcm_hw_params_old oparams;
     int err;
     if (copy_from_user(&oparams, _oparams, sizeof(oparams)))
         return -EFAULT;
@@ -3254,10 +3250,10 @@ static int snd_pcm_hw_refine_old_user(snd_pcm_substream_t * substream, struct sn
     return err;
 }
 
-static int snd_pcm_hw_params_old_user(snd_pcm_substream_t * substream, struct sndrv_pcm_hw_params_old * _oparams)
+static int snd_pcm_hw_params_old_user(snd_pcm_substream_t * substream, struct snd_pcm_hw_params_old * _oparams)
 {
     snd_pcm_hw_params_t params;
-    struct sndrv_pcm_hw_params_old oparams;
+    struct snd_pcm_hw_params_old oparams;
     int err;
     if (copy_from_user(&oparams, _oparams, sizeof(oparams)))
         return -EFAULT;
@@ -3275,49 +3271,56 @@ static int snd_pcm_hw_params_old_user(snd_pcm_substream_t * substream, struct sn
 
 static struct file_operations snd_pcm_f_ops_playback = {
 #ifdef LINUX_2_3
-    THIS_MODULE,
+    .owner =	THIS_MODULE,
 #endif
-    0,0,
-    snd_pcm_write,
-    0,
-    snd_pcm_playback_poll,
-    snd_pcm_playback_ioctl,
-    0,
-    snd_pcm_open,
-    0,
-    snd_pcm_release,
-    0,0,0,0,0
+    .write =	snd_pcm_write,
+#ifdef LINUX_2_3
+    .writev =	snd_pcm_writev,
+#endif
+    .open =	snd_pcm_open,
+    .release =	snd_pcm_release,
+    .poll =	snd_pcm_playback_poll,
+    .ioctl =	snd_pcm_playback_ioctl,
+#ifdef LINUX_2_3
+    .compat_ioctl = snd_pcm_ioctl_compat,
+    .mmap =		snd_pcm_mmap,
+#endif
+#ifndef TARGET_OS2
+    .fasync =	snd_pcm_fasync,
+#endif
 };
 
 static struct file_operations snd_pcm_f_ops_capture = {
 #ifdef LINUX_2_3
-    THIS_MODULE,
+    .owner =	THIS_MODULE,
 #endif
-    0,
-    snd_pcm_read,
-    0,0,
-    snd_pcm_capture_poll,
-    snd_pcm_capture_ioctl,
-    0,
-    snd_pcm_open,
-    0,
-    snd_pcm_release,
-    0,0,0,0,0
+    .read =		snd_pcm_read,
+#ifdef LINUX_2_3
+    .readv =	snd_pcm_readv,
+#endif
+    .open =		snd_pcm_open,
+    .release =	snd_pcm_release,
+    .poll =		snd_pcm_capture_poll,
+    .ioctl =	snd_pcm_capture_ioctl,
+#ifdef LINUX_2_3
+    .ioctl = snd_pcm_ioctl_compat,
+    .mmap =		snd_pcm_mmap,
+#endif
+#ifndef TARGET_OS2
+    .fasync =	snd_pcm_fasync,
+#endif
 };
 
-snd_minor_t snd_pcm_reg[2] =
+struct snd_minor snd_pcm_reg[2] =
 {
     {
-        {0,0},0,0,
-        "digital audio playback",
-        0,
-        &snd_pcm_f_ops_playback,
+        .comment =	"digital audio playback",
+        .f_ops =	&snd_pcm_f_ops_playback,
     },
     {
-        {0,0},0,0,
-        "digital audio capture",
-        0,
-        &snd_pcm_f_ops_capture,
+        .comment =	"digital audio capture",
+        .f_ops =	&snd_pcm_f_ops_capture,
     }
 };
+
 

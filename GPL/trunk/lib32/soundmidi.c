@@ -47,9 +47,9 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
 {
     midihandle                      *pHandle;
     int                              ret, i;
-    struct sndrv_seq_port_subscribe  subs;
-    struct sndrv_seq_client_info     clientinfo;
-    struct sndrv_seq_port_info       portinfo;
+    struct snd_seq_port_subscribe  subs;
+    struct snd_seq_client_info     clientinfo;
+    struct snd_seq_port_info       portinfo;
 
     *pStreamId = 0;
 
@@ -202,7 +202,7 @@ OSSRET OSS32_MidiClose(OSSSTREAMID streamid)
     pHandle->file.f_flags = O_NONBLOCK;
     //unsubscribe
     if(pHandle->state & MIDISTATE_SUBSCRIBED) {
-        struct sndrv_seq_port_subscribe  subs;
+        struct snd_seq_port_subscribe  subs;
 
         memset(&subs, 0, sizeof(subs));
         subs.dest.client   = pHandle->destclient;
@@ -218,7 +218,7 @@ OSSRET OSS32_MidiClose(OSSSTREAMID streamid)
     
     //delete port
     if(pHandle->state & MIDISTATE_SUBSCRIBED) {
-        struct sndrv_seq_port_info       portinfo;
+        struct snd_seq_port_info       portinfo;
         
         memset(&portinfo, 0, sizeof(portinfo));
         strcpy(portinfo.name, "Unamed port");
@@ -286,7 +286,7 @@ OSSRET OSS32_MidiCommand(OSSSTREAMID streamid, ULONG Cmd, BYTE channel, BYTE par
     midihandle  *pHandle = (midihandle *)streamid;
     int          ret;
     LONG         transferred;
-    struct sndrv_seq_event fmevent;
+    struct snd_seq_event fmevent;
 
     if(pHandle == NULL || pHandle->magic != MAGIC_MIDI_ALSA32) {
         DebugInt3();

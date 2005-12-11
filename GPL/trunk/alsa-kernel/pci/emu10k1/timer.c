@@ -1,10 +1,10 @@
 /*
  *  Copyright (c) by Lee Revell <rlrevell@joe-job.com>
- *  
+ *
  *  Routines for control of EMU10K1 chips
  *
  *  Copied from similar code by Clemens Ladisch in the ymfpci driver
- * 
+ *
  *  BUGS:
  *    --
  *
@@ -34,7 +34,7 @@
 
 static int snd_emu10k1_timer_start(snd_timer_t *timer)
 {
-	emu10k1_t *emu;
+	struct snd_emu10k1 *emu;
 	unsigned long flags;
 	unsigned int delay;
 
@@ -51,7 +51,7 @@ static int snd_emu10k1_timer_start(snd_timer_t *timer)
 
 static int snd_emu10k1_timer_stop(snd_timer_t *timer)
 {
-	emu10k1_t *emu;
+	struct snd_emu10k1 *emu;
 	unsigned long flags;
 
 	emu = snd_timer_chip(timer);
@@ -69,19 +69,16 @@ static int snd_emu10k1_timer_precise_resolution(snd_timer_t *timer,
 	return 0;
 }
 
-static struct _snd_timer_hardware snd_emu10k1_timer_hw = {
-	/*.flags = */SNDRV_TIMER_HW_AUTO,
-        /*.resolution = */20833, /* 1 sample @ 48KHZ = 20.833...us */
-        0, 0,
-        /*.ticks = */1024,
-        NULL, NULL, NULL,
-	/*.start = */snd_emu10k1_timer_start,
-        /*.stop = */snd_emu10k1_timer_stop,
-        NULL,
-	/*.precise_resolution = */snd_emu10k1_timer_precise_resolution
+static struct snd_timer_hardware snd_emu10k1_timer_hw = {
+    .flags = SNDRV_TIMER_HW_AUTO,
+    .resolution = 20833, /* 1 sample @ 48KHZ = 20.833...us */
+    .ticks = 1024,
+    .start = snd_emu10k1_timer_start,
+    .stop = snd_emu10k1_timer_stop,
+    .precise_resolution = snd_emu10k1_timer_precise_resolution,
 };
 
-int __devinit snd_emu10k1_timer(emu10k1_t *emu, int device)
+int __devinit snd_emu10k1_timer(struct snd_emu10k1 *emu, int device)
 {
 	snd_timer_t *timer = NULL;
 	snd_timer_id_t tid;

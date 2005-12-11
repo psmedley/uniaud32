@@ -50,7 +50,7 @@ static FARPTR16 *pISR[NUM_IRQLEVELS] = {
    &ISR12,
    &ISR13,
    &ISR14,
-   &ISR15
+   &ISR15,
 };
 
 static PFNIRQ pfnAlsaIRQHandler = NULL;

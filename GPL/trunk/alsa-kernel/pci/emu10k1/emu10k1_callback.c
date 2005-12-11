@@ -36,18 +36,18 @@ typedef struct best_voice {
 /*
  * prototypes
  */
-static void lookup_voices(snd_emux_t *emu, emu10k1_t *hw, best_voice_t *best, int active_only);
-static snd_emux_voice_t *get_voice(snd_emux_t *emu, snd_emux_port_t *port);
-static int start_voice(snd_emux_voice_t *vp);
-static void trigger_voice(snd_emux_voice_t *vp);
-static void release_voice(snd_emux_voice_t *vp);
-static void update_voice(snd_emux_voice_t *vp, int update);
-static void terminate_voice(snd_emux_voice_t *vp);
-static void free_voice(snd_emux_voice_t *vp);
+static void lookup_voices(struct snd_emux *emu, struct snd_emu10k1 *hw, best_voice_t *best, int active_only);
+static struct snd_emux_voice *get_voice(struct snd_emux *emu, struct snd_emux_port *port);
+static int start_voice(struct snd_emux_voice *vp);
+static void trigger_voice(struct snd_emux_voice *vp);
+static void release_voice(struct snd_emux_voice *vp);
+static void update_voice(struct snd_emux_voice *vp, int update);
+static void terminate_voice(struct snd_emux_voice *vp);
+static void free_voice(struct snd_emux_voice *vp);
 
-static void set_fmmod(emu10k1_t *hw, snd_emux_voice_t *vp);
-static void set_fm2frq2(emu10k1_t *hw, snd_emux_voice_t *vp);
-static void set_filterQ(emu10k1_t *hw, snd_emux_voice_t *vp);
+static void set_fmmod(struct snd_emu10k1 *hw, struct snd_emux_voice *vp);
+static void set_fm2frq2(struct snd_emu10k1 *hw, struct snd_emux_voice *vp);
+static void set_filterQ(struct snd_emu10k1 *hw, struct snd_emux_voice *vp);
 
 /*
  * Ensure a value is between two points
@@ -60,35 +60,20 @@ static void set_filterQ(emu10k1_t *hw, snd_emux_voice_t *vp);
 /*
  * set up operators
  */
-#ifdef TARGET_OS2
-static snd_emux_operators_t emu10k1_ops = {
-	THIS_MODULE,
-	get_voice,
-	start_voice,
-	trigger_voice,
-	release_voice,
-	update_voice,
-	terminate_voice,
-	free_voice, 0,
-	snd_emu10k1_sample_new,
-	snd_emu10k1_sample_free,0,0,0
+static struct snd_emux_operators emu10k1_ops = {
+	.owner =	THIS_MODULE,
+	.get_voice =	get_voice,
+	.prepare =	start_voice,
+	.trigger =	trigger_voice,
+	.release =	release_voice,
+	.update =	update_voice,
+	.terminate =	terminate_voice,
+	.free_voice =	free_voice,
+	.sample_new =	snd_emu10k1_sample_new,
+	.sample_free =	snd_emu10k1_sample_free,
 };
-#else
-static snd_emux_operators_t emu10k1_ops = {
-	owner:		THIS_MODULE,
-	get_voice:	get_voice,
-	prepare:	start_voice,
-	trigger:	trigger_voice,
-	release:	release_voice,
-	update:		update_voice,
-	terminate:	terminate_voice,
-	free_voice:	free_voice,
-	sample_new:	snd_emu10k1_sample_new,
-	sample_free:	snd_emu10k1_sample_free,
-};
-#endif
-void
-snd_emu10k1_ops_setup(snd_emux_t *emu)
+
+void snd_emu10k1_ops_setup(struct snd_emux *emu)
 {
 	emu->ops = emu10k1_ops;
 }
@@ -100,10 +85,10 @@ snd_emu10k1_ops_setup(snd_emux_t *emu)
  * terminate most inactive voice and give it as a pcm voice.
  */
 int
-snd_emu10k1_synth_get_voice(emu10k1_t *hw)
+snd_emu10k1_synth_get_voice(struct snd_emu10k1 *hw)
 {
-	snd_emux_t *emu;
-	snd_emux_voice_t *vp;
+	struct snd_emux *emu;
+	struct snd_emux_voice *vp;
 	best_voice_t best[V_END];
 	unsigned long flags;
 	int i;
@@ -138,10 +123,10 @@ snd_emu10k1_synth_get_voice(emu10k1_t *hw)
  * turn off the voice (not terminated)
  */
 static void
-release_voice(snd_emux_voice_t *vp)
+release_voice(struct snd_emux_voice *vp)
 {
 	int dcysusv;
-	emu10k1_t *hw;
+	struct snd_emu10k1 *hw;
 
         hw = vp->hw;
 	dcysusv = 0x8000 | (unsigned char)vp->reg.parm.modrelease;
@@ -155,16 +140,16 @@ release_voice(snd_emux_voice_t *vp)
  * terminate the voice
  */
 static void
-terminate_voice(snd_emux_voice_t *vp)
+terminate_voice(struct snd_emux_voice *vp)
 {
-	emu10k1_t *hw;
+	struct snd_emu10k1 *hw;
 	
         snd_assert(vp, return);
         hw = vp->hw;
 	snd_emu10k1_ptr_write(hw, DCYSUSV, vp->ch, 0x807f | DCYSUSV_CHANNELENABLE_MASK);
 	if (vp->block) {
-		emu10k1_memblk_t *emem;
-		emem = (emu10k1_memblk_t *)vp->block;
+		struct snd_emu10k1_memblk *emem;
+		emem = (struct snd_emu10k1_memblk *)vp->block;
 		if (emem->map_locked > 0)
 			emem->map_locked--;
 	}
@@ -174,9 +159,9 @@ terminate_voice(snd_emux_voice_t *vp)
  * release the voice to system
  */
 static void
-free_voice(snd_emux_voice_t *vp)
+free_voice(struct snd_emux_voice *vp)
 {
-	emu10k1_t *hw;
+	struct snd_emu10k1 *hw;
 
         hw = vp->hw;
 	if (vp->ch >= 0) {
@@ -196,9 +181,9 @@ free_voice(snd_emux_voice_t *vp)
  * update registers
  */
 static void
-update_voice(snd_emux_voice_t *vp, int update)
+update_voice(struct snd_emux_voice *vp, int update)
 {
-	emu10k1_t *hw;
+	struct snd_emu10k1 *hw;
 
         hw = vp->hw;
 	if (update & SNDRV_EMUX_UPDATE_VOLUME)
@@ -225,9 +210,9 @@ update_voice(snd_emux_voice_t *vp, int update)
  */
 /* spinlock held! */
 static void
-lookup_voices(snd_emux_t *emu, emu10k1_t *hw, best_voice_t *best, int active_only)
+lookup_voices(struct snd_emux *emu, struct snd_emu10k1 *hw, best_voice_t *best, int active_only)
 {
-	snd_emux_voice_t *vp;
+	struct snd_emux_voice *vp;
 	best_voice_t *bp;
 	int  i;
 
@@ -289,11 +274,11 @@ lookup_voices(snd_emux_t *emu, emu10k1_t *hw, best_voice_t *best, int active_onl
  *
  * emu->voice_lock is already held.
  */
-static snd_emux_voice_t *
-get_voice(snd_emux_t *emu, snd_emux_port_t *port)
+static struct snd_emux_voice *
+get_voice(struct snd_emux *emu, struct snd_emux_port *port)
 {
-	emu10k1_t *hw;
-	snd_emux_voice_t *vp;
+	struct snd_emu10k1 *hw;
+	struct snd_emux_voice *vp;
 	best_voice_t best[V_END];
 	int i;
 
@@ -305,7 +290,7 @@ get_voice(snd_emux_t *emu, snd_emux_port_t *port)
 			vp = &emu->voices[best[i].voice];
 			if (vp->ch < 0) {
 				/* allocate a voice */
-                            emu10k1_voice_t *hwvoice;
+                            struct snd_emu10k1_voice *hwvoice;
                             if (snd_emu10k1_voice_alloc(hw, EMU10K1_SYNTH, 1, &hwvoice) < 0 || hwvoice == NULL)
 					continue;
 				vp->ch = hwvoice->number;
@@ -323,21 +308,21 @@ get_voice(snd_emux_t *emu, snd_emux_port_t *port)
  * prepare envelopes and LFOs
  */
 static int
-start_voice(snd_emux_voice_t *vp)
+start_voice(struct snd_emux_voice *vp)
 {
 	unsigned int temp;
 	int ch;
 	unsigned int addr, mapped_offset;
 	snd_midi_channel_t *chan;
-	emu10k1_t *hw;
-        emu10k1_memblk_t *emem;
+	struct snd_emu10k1 *hw;
+        struct snd_emu10k1_memblk *emem;
 
         hw = vp->hw;
 	ch = vp->ch;
 	snd_assert(ch >= 0, return -EINVAL);
 	chan = vp->chan;
 
-	emem = (emu10k1_memblk_t *)vp->block;
+	emem = (struct snd_emu10k1_memblk *)vp->block;
 	if (emem == NULL)
 		return -EINVAL;
 	emem->map_locked++;
@@ -479,15 +464,15 @@ start_voice(snd_emux_voice_t *vp)
  * Start envelope
  */
 static void
-trigger_voice(snd_emux_voice_t *vp)
+trigger_voice(struct snd_emux_voice *vp)
 {
 	unsigned int temp, ptarget;
-	emu10k1_t *hw;
-	emu10k1_memblk_t *emem;
+	struct snd_emu10k1 *hw;
+	struct snd_emu10k1_memblk *emem;
 
         hw = vp->hw;
 
-	emem = (emu10k1_memblk_t *)vp->block;
+	emem = (struct snd_emu10k1_memblk *)vp->block;
 	if (! emem || emem->mapped_page < 0)
 		return; /* not mapped */
 
@@ -511,7 +496,7 @@ trigger_voice(snd_emux_voice_t *vp)
 
 /* set lfo1 modulation height and cutoff */
 static void
-set_fmmod(emu10k1_t *hw, snd_emux_voice_t *vp)
+set_fmmod(struct snd_emu10k1 *hw, struct snd_emux_voice *vp)
 {
 	unsigned short fmmod;
 	short pitch;
@@ -529,7 +514,7 @@ set_fmmod(emu10k1_t *hw, snd_emux_voice_t *vp)
 
 /* set lfo2 pitch & frequency */
 static void
-set_fm2frq2(emu10k1_t *hw, snd_emux_voice_t *vp)
+set_fm2frq2(struct snd_emu10k1 *hw, struct snd_emux_voice *vp)
 {
 	unsigned short fm2frq2;
 	short pitch;
@@ -547,7 +532,7 @@ set_fm2frq2(emu10k1_t *hw, snd_emux_voice_t *vp)
 
 /* set filterQ */
 static void
-set_filterQ(emu10k1_t *hw, snd_emux_voice_t *vp)
+set_filterQ(struct snd_emu10k1 *hw, struct snd_emux_voice *vp)
 {
 	unsigned int val;
 	val = snd_emu10k1_ptr_read(hw, CCCA, vp->ch) & ~CCCA_RESONANCE;
