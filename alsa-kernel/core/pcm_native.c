@@ -30,6 +30,7 @@
 /*
  *  Compatibility
  */
+//#define RULES_DEBUG
 //#define DEBUG_PK
 //#define static
 struct snd_pcm_hw_params_old {
@@ -124,10 +125,10 @@ int snd_pcm_info_user(snd_pcm_substream_t * substream, snd_pcm_info_t * _info)
 #endif
 char *snd_pcm_hw_param_names[] = {
     HW_PARAM(ACCESS),
+    HW_PARAM(FORMAT),
 #ifdef TARGET_OS2
     HW_PARAM(RATE_MASK),
 #endif
-    HW_PARAM(FORMAT),
     HW_PARAM(SUBFORMAT),
     HW_PARAM(SAMPLE_BITS),
     HW_PARAM(FRAME_BITS),

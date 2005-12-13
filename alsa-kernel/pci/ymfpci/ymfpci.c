@@ -190,7 +190,9 @@ static int __devinit snd_card_ymfpci_probe(struct pci_dev *pci,
 		return err;
 	}
 	chip->fm_res = fm_res;
-	chip->mpu_res = mpu_res;
+        chip->mpu_res = mpu_res;
+        card->private_data = chip;
+
 	strcpy(card->driver, str);
 	sprintf(card->shortname, "Yamaha DS-XG (%s)", str);
 	sprintf(card->longname, "%s at 0x%lx, irq %i",
@@ -269,12 +271,16 @@ static void __devexit snd_card_ymfpci_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-	0,0,0,"Yamaha DS-XG PCI",
-	snd_ymfpci_ids,
-	snd_card_ymfpci_probe,
-        snd_card_ymfpci_remove,
-        SND_PCI_PM_CALLBACKS
+    .name = "Yamaha DS-1 PCI",
+    .id_table = snd_ymfpci_ids,
+    .probe = snd_card_ymfpci_probe,
+    .remove = snd_card_ymfpci_remove,
+#ifdef CONFIG_PM
+    .suspend = snd_ymfpci_suspend,
+    .resume = snd_ymfpci_resume,
+#endif
 };
+
 
 static int __init alsa_card_ymfpci_init(void)
 {
