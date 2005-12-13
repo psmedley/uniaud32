@@ -388,9 +388,9 @@ enum { ICHD_PCMIN, ICHD_PCMOUT, ICHD_MIC, ICHD_MIC2, ICHD_PCM2IN, ICHD_SPBAR, IC
 enum { NVD_PCMIN, NVD_PCMOUT, NVD_MIC, NVD_SPBAR, NVD_LAST = NVD_SPBAR };
 enum { ALID_PCMIN, ALID_PCMOUT, ALID_MIC, ALID_AC97SPDIFOUT, ALID_SPDIFIN, ALID_SPDIFOUT, ALID_LAST = ALID_SPDIFOUT };
 
-#define get_ichdev(substream) (ichdev_t *)(substream->runtime->private_data)
+#define get_ichdev(substream) (struct ichdev *)(substream->runtime->private_data)
 
-typedef struct {
+typedef struct ichdev {
     unsigned int ichd;			/* ich device number */
     unsigned long reg_offset;		/* offset to bmaddr */
     u32 *bdbar;				/* CPU address (32bit) */
@@ -417,12 +417,9 @@ typedef struct {
     int pcm_open_flag;
     unsigned int page_attr_changed: 1;
     unsigned int suspended: 1;
-} ichdev_t;
+};
 
-typedef struct _snd_intel8x0 intel8x0_t;
-#define chip_t intel8x0_t
-
-struct _snd_intel8x0 {
+struct intel8x0 {
     unsigned int device_type;
 
     int irq;
@@ -439,7 +436,7 @@ struct _snd_intel8x0 {
 
     int pcm_devs;
     snd_pcm_t *pcm[6];
-    ichdev_t ichd[6];
+    struct ichdev ichd[6];
 
     int multi4: 1,
     multi6: 1,
@@ -503,7 +500,7 @@ MODULE_DEVICE_TABLE(pci, snd_intel8x0_ids);
  *  Lowlevel I/O - busmaster
  */
 
-static u8 igetbyte(intel8x0_t *chip, u32 offset)
+static u8 igetbyte(struct intel8x0 *chip, u32 offset)
 {
     if (chip->bm_mmio)
         return readb(chip->remap_bmaddr + offset);
@@ -511,7 +508,7 @@ static u8 igetbyte(intel8x0_t *chip, u32 offset)
         return inb(chip->bmaddr + offset);
 }
 
-static u16 igetword(intel8x0_t *chip, u32 offset)
+static u16 igetword(struct intel8x0 *chip, u32 offset)
 {
     if (chip->bm_mmio)
         return readw(chip->remap_bmaddr + offset);
@@ -519,7 +516,7 @@ static u16 igetword(intel8x0_t *chip, u32 offset)
         return inw(chip->bmaddr + offset);
 }
 
-static u32 igetdword(intel8x0_t *chip, u32 offset)
+static u32 igetdword(struct intel8x0 *chip, u32 offset)
 {
     if (chip->bm_mmio)
         return readl(chip->remap_bmaddr + offset);
@@ -527,7 +524,7 @@ static u32 igetdword(intel8x0_t *chip, u32 offset)
         return inl(chip->bmaddr + offset);
 }
 
-static void iputbyte(intel8x0_t *chip, u32 offset, u8 val)
+static void iputbyte(struct intel8x0 *chip, u32 offset, u8 val)
 {
     if (chip->bm_mmio)
         writeb(val, chip->remap_bmaddr + offset);
@@ -535,7 +532,7 @@ static void iputbyte(intel8x0_t *chip, u32 offset, u8 val)
         outb(val, chip->bmaddr + offset);
 }
 
-static void iputword(intel8x0_t *chip, u32 offset, u16 val)
+static void iputword(struct intel8x0 *chip, u32 offset, u16 val)
 {
     if (chip->bm_mmio)
         writew(val, chip->remap_bmaddr + offset);
@@ -543,7 +540,7 @@ static void iputword(intel8x0_t *chip, u32 offset, u16 val)
         outw(val, chip->bmaddr + offset);
 }
 
-static void iputdword(intel8x0_t *chip, u32 offset, u32 val)
+static void iputdword(struct intel8x0 *chip, u32 offset, u32 val)
 {
     if (chip->bm_mmio)
         writel(val, chip->remap_bmaddr + offset);
@@ -555,7 +552,7 @@ static void iputdword(intel8x0_t *chip, u32 offset, u32 val)
  *  Lowlevel I/O - AC'97 registers
  */
 
-static u16 iagetword(intel8x0_t *chip, u32 offset)
+static u16 iagetword(struct intel8x0 *chip, u32 offset)
 {
     if (chip->mmio)
         return readw(chip->remap_addr + offset);
@@ -563,7 +560,7 @@ static u16 iagetword(intel8x0_t *chip, u32 offset)
         return inw(chip->addr + offset);
 }
 
-static void iaputword(intel8x0_t *chip, u32 offset, u16 val)
+static void iaputword(struct intel8x0 *chip, u32 offset, u16 val)
 {
     if (chip->mmio)
         writew(val, chip->remap_addr + offset);
@@ -580,7 +577,7 @@ static void iaputword(intel8x0_t *chip, u32 offset, u16 val)
  */
 
 /* return the GLOB_STA bit for the corresponding codec */
-static unsigned int get_ich_codec_bit(intel8x0_t *chip, unsigned int codec)
+static unsigned int get_ich_codec_bit(struct intel8x0 *chip, unsigned int codec)
 {
     static unsigned int codec_bit[3] = {
         ICH_PCR, ICH_SCR, ICH_TCR
@@ -592,7 +589,7 @@ static unsigned int get_ich_codec_bit(intel8x0_t *chip, unsigned int codec)
     return codec_bit[codec];
 }
 
-static int snd_intel8x0_codec_semaphore(intel8x0_t *chip, unsigned int codec)
+static int snd_intel8x0_codec_semaphore(struct intel8x0 *chip, unsigned int codec)
 {
     int time;
 
@@ -632,7 +629,7 @@ static void snd_intel8x0_codec_write(ac97_t *ac97,
                                      unsigned short reg,
                                      unsigned short val)
 {
-    intel8x0_t *chip = ac97->private_data;
+    struct intel8x0 *chip = ac97->private_data;
 
     if (snd_intel8x0_codec_semaphore(chip, ac97->num) < 0) {
         if (! chip->in_ac97_init)
@@ -644,7 +641,7 @@ static void snd_intel8x0_codec_write(ac97_t *ac97,
 static unsigned short snd_intel8x0_codec_read(ac97_t *ac97,
                                               unsigned short reg)
 {
-    intel8x0_t *chip = ac97->private_data;
+    struct intel8x0 *chip = ac97->private_data;
     unsigned short res;
     unsigned int tmp;
 
@@ -665,7 +662,7 @@ static unsigned short snd_intel8x0_codec_read(ac97_t *ac97,
     return res;
 }
 
-static void snd_intel8x0_codec_read_test(intel8x0_t *chip, unsigned int codec)
+static void snd_intel8x0_codec_read_test(struct intel8x0 *chip, unsigned int codec)
 {
     unsigned int tmp;
 
@@ -681,7 +678,7 @@ static void snd_intel8x0_codec_read_test(intel8x0_t *chip, unsigned int codec)
 /*
  * access to AC97 for Ali5455
  */
-static int snd_intel8x0_ali_codec_ready(intel8x0_t *chip, int mask)
+static int snd_intel8x0_ali_codec_ready(struct intel8x0 *chip, int mask)
 {
     int count = 0;
     for (count = 0; count < 0x7f; count++) {
@@ -694,7 +691,7 @@ static int snd_intel8x0_ali_codec_ready(intel8x0_t *chip, int mask)
     return -EBUSY;
 }
 
-static int snd_intel8x0_ali_codec_semaphore(intel8x0_t *chip)
+static int snd_intel8x0_ali_codec_semaphore(struct intel8x0 *chip)
 {
     int time = 100;
     if (chip->buggy_semaphore)
@@ -708,7 +705,7 @@ static int snd_intel8x0_ali_codec_semaphore(intel8x0_t *chip)
 
 static unsigned short snd_intel8x0_ali_codec_read(ac97_t *ac97, unsigned short reg)
 {
-    intel8x0_t *chip = ac97->private_data;
+    struct intel8x0 *chip = ac97->private_data;
     unsigned short data = 0xffff;
 
     if (snd_intel8x0_ali_codec_semaphore(chip))
@@ -726,7 +723,7 @@ __err:
 
 static void snd_intel8x0_ali_codec_write(ac97_t *ac97, unsigned short reg, unsigned short val)
 {
-    intel8x0_t *chip = ac97->private_data;
+    struct intel8x0 *chip = ac97->private_data;
 
     if (snd_intel8x0_ali_codec_semaphore(chip))
         return;
@@ -741,7 +738,7 @@ static void snd_intel8x0_ali_codec_write(ac97_t *ac97, unsigned short reg, unsig
 /*
  * DMA I/O
  */
-static void snd_intel8x0_setup_periods(intel8x0_t *chip, ichdev_t *ichdev)
+static void snd_intel8x0_setup_periods(struct intel8x0 *chip, struct ichdev *ichdev)
 {
     int idx;
     u32 *bdbar = ichdev->bdbar;
@@ -788,7 +785,7 @@ static void snd_intel8x0_setup_periods(intel8x0_t *chip, ichdev_t *ichdev)
  *  Interrupt handler
  */
 
-static inline void snd_intel8x0_update(intel8x0_t *chip, ichdev_t *ichdev)
+static inline void snd_intel8x0_update(struct intel8x0 *chip, struct ichdev *ichdev)
 {
     unsigned long port = ichdev->reg_offset;
     int status, civ, i, step;
@@ -838,12 +835,9 @@ static inline void snd_intel8x0_update(intel8x0_t *chip, ichdev_t *ichdev)
 
 static irqreturn_t snd_intel8x0_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
-    intel8x0_t *chip = dev_id;
-    ichdev_t *ichdev;
+    struct intel8x0 *chip = dev_id;
+    struct ichdev *ichdev;
     unsigned int status;
-#ifdef TARGET_OS2
-    int fOurIrq = FALSE;
-#endif
     unsigned int i;
 
     status = igetdword(chip, chip->int_sta_reg);
@@ -867,9 +861,6 @@ static irqreturn_t snd_intel8x0_interrupt(int irq, void *dev_id, struct pt_regs 
         }
         return IRQ_RETVAL(status);
     }
-#ifdef TARGET_OS2
-    fOurIrq = TRUE;
-#endif
 
     for (i = 0; i < chip->bdbars_count; i++) {
         ichdev = &chip->ichd[i];
@@ -880,12 +871,6 @@ static irqreturn_t snd_intel8x0_interrupt(int irq, void *dev_id, struct pt_regs 
     /* ack them */
     iputdword(chip, chip->int_sta_reg, status & chip->int_sta_mask);
 
-#ifdef TARGET_OS2
-    if (fOurIrq) {
-        eoi_irq(irq);
-    }
-#endif //TARGET_OS2
-
     return IRQ_HANDLED;
 }
 
@@ -895,8 +880,8 @@ static irqreturn_t snd_intel8x0_interrupt(int irq, void *dev_id, struct pt_regs 
 
 static int snd_intel8x0_pcm_trigger(snd_pcm_substream_t *substream, int cmd)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
-    ichdev_t *ichdev = get_ichdev(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
+    struct ichdev *ichdev = get_ichdev(substream);
     unsigned char val = 0;
     unsigned long port = ichdev->reg_offset;
 
@@ -934,8 +919,8 @@ static int snd_intel8x0_pcm_trigger(snd_pcm_substream_t *substream, int cmd)
 
 static int snd_intel8x0_ali_trigger(snd_pcm_substream_t *substream, int cmd)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
-    ichdev_t *ichdev = get_ichdev(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
+    struct ichdev *ichdev = get_ichdev(substream);
     unsigned long port = ichdev->reg_offset;
     static int fiforeg[] = { ICHREG(ALI_FIFOCR1), ICHREG(ALI_FIFOCR2), ICHREG(ALI_FIFOCR3) };
     unsigned int val, fifo;
@@ -985,8 +970,8 @@ static int snd_intel8x0_ali_trigger(snd_pcm_substream_t *substream, int cmd)
 static int snd_intel8x0_hw_params(snd_pcm_substream_t * substream,
                                   snd_pcm_hw_params_t * hw_params)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
-    ichdev_t *ichdev = get_ichdev(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
+    struct ichdev *ichdev = get_ichdev(substream);
     int dbl = params_rate(hw_params) > 48000;
     int err;
 
@@ -1011,7 +996,7 @@ static int snd_intel8x0_hw_params(snd_pcm_substream_t * substream,
 
 static int snd_intel8x0_hw_free(snd_pcm_substream_t * substream)
 {
-    ichdev_t *ichdev = get_ichdev(substream);
+    struct ichdev *ichdev = get_ichdev(substream);
 
     if (ichdev->pcm_open_flag) {
         snd_ac97_pcm_close(ichdev->pcm);
@@ -1020,7 +1005,7 @@ static int snd_intel8x0_hw_free(snd_pcm_substream_t * substream)
     return snd_pcm_lib_free_pages(substream);
 }
 
-static void snd_intel8x0_setup_pcm_out(intel8x0_t *chip,
+static void snd_intel8x0_setup_pcm_out(struct intel8x0 *chip,
                                        snd_pcm_runtime_t *runtime)
 {
     unsigned int cnt;
@@ -1076,9 +1061,9 @@ static void snd_intel8x0_setup_pcm_out(intel8x0_t *chip,
 
 static int snd_intel8x0_pcm_prepare(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
-    ichdev_t *ichdev = get_ichdev(substream);
+    struct ichdev *ichdev = get_ichdev(substream);
 
     ichdev->physbuf = runtime->dma_addr;
     ichdev->size = snd_pcm_lib_buffer_bytes(substream);
@@ -1095,8 +1080,8 @@ static int snd_intel8x0_pcm_prepare(snd_pcm_substream_t * substream)
 
 static snd_pcm_uframes_t snd_intel8x0_pcm_pointer(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
-    ichdev_t *ichdev = get_ichdev(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
+    struct ichdev *ichdev = get_ichdev(substream);
     size_t ptr1, ptr;
     int civ, timeout = 100;
     unsigned int position;
@@ -1164,9 +1149,9 @@ static snd_pcm_hw_constraint_list_t hw_constraints_channels6 = {
 	.mask = 0,
 };
 
-static int snd_intel8x0_pcm_open(snd_pcm_substream_t * substream, ichdev_t *ichdev)
+static int snd_intel8x0_pcm_open(snd_pcm_substream_t * substream, struct ichdev *ichdev)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
     int err;
 
@@ -1189,7 +1174,7 @@ static int snd_intel8x0_pcm_open(snd_pcm_substream_t * substream, ichdev_t *ichd
 
 static int snd_intel8x0_playback_open(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
     int err;
 
@@ -1213,7 +1198,7 @@ static int snd_intel8x0_playback_open(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_playback_close(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     chip->ichd[ICHD_PCMOUT].substream = NULL;
     return 0;
@@ -1221,14 +1206,14 @@ static int snd_intel8x0_playback_close(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_capture_open(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     return snd_intel8x0_pcm_open(substream, &chip->ichd[ICHD_PCMIN]);
 }
 
 static int snd_intel8x0_capture_close(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     chip->ichd[ICHD_PCMIN].substream = NULL;
     return 0;
@@ -1236,14 +1221,14 @@ static int snd_intel8x0_capture_close(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_mic_open(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     return snd_intel8x0_pcm_open(substream, &chip->ichd[ICHD_MIC]);
 }
 
 static int snd_intel8x0_mic_close(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     chip->ichd[ICHD_MIC].substream = NULL;
     return 0;
@@ -1251,14 +1236,14 @@ static int snd_intel8x0_mic_close(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_mic2_open(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     return snd_intel8x0_pcm_open(substream, &chip->ichd[ICHD_MIC2]);
 }
 
 static int snd_intel8x0_mic2_close(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     chip->ichd[ICHD_MIC2].substream = NULL;
     return 0;
@@ -1266,14 +1251,14 @@ static int snd_intel8x0_mic2_close(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_capture2_open(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     return snd_intel8x0_pcm_open(substream, &chip->ichd[ICHD_PCM2IN]);
 }
 
 static int snd_intel8x0_capture2_close(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     chip->ichd[ICHD_PCM2IN].substream = NULL;
     return 0;
@@ -1281,7 +1266,7 @@ static int snd_intel8x0_capture2_close(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_spdif_open(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     int idx = chip->device_type == DEVICE_NFORCE ? NVD_SPBAR : ICHD_SPBAR;
 
     return snd_intel8x0_pcm_open(substream, &chip->ichd[idx]);
@@ -1289,7 +1274,7 @@ static int snd_intel8x0_spdif_open(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_spdif_close(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     int idx = chip->device_type == DEVICE_NFORCE ? NVD_SPBAR : ICHD_SPBAR;
 
     chip->ichd[idx].substream = NULL;
@@ -1298,7 +1283,7 @@ static int snd_intel8x0_spdif_close(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_ali_ac97spdifout_open(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     unsigned int val;
 
     spin_lock_irq(&chip->reg_lock);
@@ -1313,7 +1298,7 @@ static int snd_intel8x0_ali_ac97spdifout_open(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_ali_ac97spdifout_close(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     unsigned int val;
 
     chip->ichd[ALID_AC97SPDIFOUT].substream = NULL;
@@ -1328,14 +1313,14 @@ static int snd_intel8x0_ali_ac97spdifout_close(snd_pcm_substream_t * substream)
 
 static int snd_intel8x0_ali_spdifin_open(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     return snd_intel8x0_pcm_open(substream, &chip->ichd[ALID_SPDIFIN]);
 }
 
 static int snd_intel8x0_ali_spdifin_close(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     chip->ichd[ALID_SPDIFIN].substream = NULL;
     return 0;
@@ -1344,14 +1329,14 @@ static int snd_intel8x0_ali_spdifin_close(snd_pcm_substream_t * substream)
 #if 0 // NYI
 static int snd_intel8x0_ali_spdifout_open(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     return snd_intel8x0_pcm_open(substream, &chip->ichd[ALID_SPDIFOUT]);
 }
 
 static int snd_intel8x0_ali_spdifout_close(snd_pcm_substream_t * substream)
 {
-    intel8x0_t *chip = snd_pcm_substream_chip(substream);
+    struct intel8x0 *chip = snd_pcm_substream_chip(substream);
 
     chip->ichd[ALID_SPDIFOUT].substream = NULL;
     return 0;
@@ -1502,7 +1487,7 @@ struct ich_pcm_table {
     int ac97_idx;
 };
 
-static int __devinit snd_intel8x0_pcm1(intel8x0_t *chip, int device, struct ich_pcm_table *rec)
+static int __devinit snd_intel8x0_pcm1(struct intel8x0 *chip, int device, struct ich_pcm_table *rec)
 {
 	snd_pcm_t *pcm;
 	int err;
@@ -1630,7 +1615,7 @@ static struct ich_pcm_table ali_pcms[] __devinitdata = {
 };
 
 
-static int __devinit snd_intel8x0_pcm(intel8x0_t *chip)
+static int __devinit snd_intel8x0_pcm(struct intel8x0 *chip)
 {
     int i, tblsize, device, err;
     struct ich_pcm_table *tbl, *rec;
@@ -1680,13 +1665,13 @@ static int __devinit snd_intel8x0_pcm(intel8x0_t *chip)
 
 static void snd_intel8x0_mixer_free_ac97_bus(ac97_bus_t *bus)
 {
-    intel8x0_t *chip = bus->private_data;
+    struct intel8x0 *chip = bus->private_data;
     chip->ac97_bus = NULL;
 }
 
 static void snd_intel8x0_mixer_free_ac97(ac97_t *ac97)
 {
-    intel8x0_t *chip = ac97->private_data;
+    struct intel8x0 *chip = ac97->private_data;
     chip->ac97[ac97->num] = NULL;
 }
 
@@ -1890,7 +1875,31 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
-		.subvendor = 0x103c,
+            .subvendor = 0x103c,
+            .subdevice = 0x0938,
+            .name = "HP nc4200",
+            .type = AC97_TUNE_HP_MUTE_LED
+        },
+        {
+            .subvendor = 0x103c,
+            .subdevice = 0x099c,
+            .name = "HP nc6120",
+            .type = AC97_TUNE_HP_MUTE_LED
+        },
+        {
+            .subvendor = 0x103c,
+            .subdevice = 0x0944,
+            .name = "HP nc6220",
+            .type = AC97_TUNE_HP_MUTE_LED
+        },
+        {
+            .subvendor = 0x103c,
+            .subdevice = 0x0934,
+            .name = "HP nc8220",
+            .type = AC97_TUNE_HP_MUTE_LED
+        },
+        {
+            .subvendor = 0x103c,
 		.subdevice = 0x12f1,
 		.name = "HP xw8200",	/* AD1981B*/
 		.type = AC97_TUNE_HP_ONLY
@@ -1942,6 +1951,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
             .subdevice = 0x12ec,
             .name = "Fujitsu-Siemens 4010",
             .type = AC97_TUNE_HP_ONLY
+        },
+        {
+            .subvendor = 0x10cf,
+            .subdevice = 0x12f2,
+            .name = "Fujitsu-Siemens Celsius H320",
+            .type = AC97_TUNE_SWAP_HP
         },
         {
 		.subvendor = 0x10f1,
@@ -2037,7 +2052,7 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	{0} /* terminator */
 };
 
-static int __devinit snd_intel8x0_mixer(intel8x0_t *chip, int ac97_clock, char *quirk_override)
+static int __devinit snd_intel8x0_mixer(struct intel8x0 *chip, int ac97_clock, char *quirk_override)
 {
     ac97_bus_t *pbus;
     ac97_template_t ac97;
@@ -2224,7 +2239,7 @@ static int __devinit snd_intel8x0_mixer(intel8x0_t *chip, int ac97_clock, char *
  *
  */
 
-static void do_ali_reset(intel8x0_t *chip)
+static void do_ali_reset(struct intel8x0 *chip)
 {
     iputdword(chip, ICHREG(ALI_SCR), ICH_ALI_SC_RESET);
     iputdword(chip, ICHREG(ALI_FIFOCR1), 0x83838383);
@@ -2241,7 +2256,7 @@ static void do_ali_reset(intel8x0_t *chip)
     schedule_timeout(1);\
     } while (0)
 
-static int snd_intel8x0_ich_chip_init(intel8x0_t *chip, int probing)
+static int snd_intel8x0_ich_chip_init(struct intel8x0 *chip, int probing)
 {
     unsigned long end_time;
     unsigned int cnt, status, nstatus,i;
@@ -2370,7 +2385,7 @@ __ok:
     return 0;
 }
 
-static int snd_intel8x0_ali_chip_init(intel8x0_t *chip, int probing)
+static int snd_intel8x0_ali_chip_init(struct intel8x0 *chip, int probing)
 {
     u32 reg;
     int i = 0;
@@ -2405,7 +2420,7 @@ static int snd_intel8x0_ali_chip_init(intel8x0_t *chip, int probing)
         return 0;
 }
 
-static int snd_intel8x0_chip_init(intel8x0_t *chip, int probing)
+static int snd_intel8x0_chip_init(struct intel8x0 *chip, int probing)
 {
     unsigned int i;
     int err;
@@ -2431,7 +2446,7 @@ static int snd_intel8x0_chip_init(intel8x0_t *chip, int probing)
     return 0;
 }
 
-static int snd_intel8x0_free(intel8x0_t *chip)
+static int snd_intel8x0_free(struct intel8x0 *chip)
 {
     unsigned int i;
 
@@ -2470,41 +2485,42 @@ __hw_end:
 /*
  * power management
  */
-static int intel8x0_suspend(snd_card_t *card, unsigned int state)
+static int intel8x0_suspend(struct pci_dev *pci, pm_message_t state)
 {
-    intel8x0_t *chip = card->pm_private_data;
-#ifdef TARGET_OS2
+    struct snd_card *card = pci_get_drvdata(pci);
+    struct intel8x0 *chip = card->private_data;
     int i;
-#endif
 
-#ifdef TARGET_OS2
-    for (i = 0; i < 3; i++)
-        if (chip->ac97[i])
-            snd_ac97_suspend(chip->ac97[i]);
-#endif
+    snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
+
     for (i = 0; i < chip->pcm_devs; i++)
         snd_pcm_suspend_all(chip->pcm[i]);
+
     for (i = 0; i < 3; i++)
-        if (chip->ac97[i])
-            snd_ac97_suspend(chip->ac97[i]);
+        snd_ac97_suspend(chip->ac97[i]);
     if (chip->device_type == DEVICE_INTEL_ICH4 ||
         chip->device_type == DEVICE_INTEL_ICH5)
         chip->sdm_saved = igetbyte(chip, ICHREG(SDM));
 
     if (chip->irq >= 0)
         free_irq(chip->irq, (void *)chip);
-    pci_disable_device(chip->pci);
+    pci_disable_device(pci);
+    pci_save_state(pci);
     return 0;
 }
 
-static int intel8x0_resume(snd_card_t *card, unsigned int state)
+static int intel8x0_resume(struct pci_dev *pci)
 {
-    intel8x0_t *chip = card->pm_private_data;
+    struct snd_card *card = pci_get_drvdata(pci);
+    struct intel8x0 *chip = card->private_data;
     int i;
 
-    pci_enable_device(chip->pci);
-    pci_set_master(chip->pci);
-    request_irq(chip->irq, snd_intel8x0_interrupt, SA_INTERRUPT|SA_SHIRQ, card->shortname, (void *)chip);
+    pci_restore_state(pci);
+    pci_enable_device(pci);
+    pci_set_master(pci);
+    request_irq(pci->irq, snd_intel8x0_interrupt, SA_INTERRUPT|SA_SHIRQ,
+                card->shortname, (void *)chip);
+    chip->irq = pci->irq;
     synchronize_irq(chip->irq);
     snd_intel8x0_chip_init(chip, 1);
     /* re-initialize mixer stuff */
@@ -2519,11 +2535,10 @@ static int intel8x0_resume(snd_card_t *card, unsigned int state)
     }
 
     for (i = 0; i < 3; i++)
-        if (chip->ac97[i])
-            snd_ac97_resume(chip->ac97[i]);
+        snd_ac97_resume(chip->ac97[i]);
     /* resume status */
     for (i = 0; i < chip->bdbars_count; i++) {
-        ichdev_t *ichdev = &chip->ichd[i];
+        struct ichdev *ichdev = &chip->ichd[i];
         unsigned long port = ichdev->reg_offset;
         if (! ichdev->substream || ! ichdev->suspended)
             continue;
@@ -2534,6 +2549,7 @@ static int intel8x0_resume(snd_card_t *card, unsigned int state)
         iputbyte(chip, port + ICH_REG_OFF_CIV, ichdev->civ);
         iputbyte(chip, port + ichdev->roff_sr, ICH_FIFOE | ICH_BCIS | ICH_LVBCI);
     }
+    snd_power_change_state(card, SNDRV_CTL_POWER_D0);
     return 0;
 }
 
@@ -2541,10 +2557,10 @@ static int intel8x0_resume(snd_card_t *card, unsigned int state)
 
 #define INTEL8X0_TESTBUF_SIZE	32768	/* enough large for one shot */
 
-static void __devinit intel8x0_measure_ac97_clock(intel8x0_t *chip)
+static void __devinit intel8x0_measure_ac97_clock(struct intel8x0 *chip)
 {
     snd_pcm_substream_t *subs;
-    ichdev_t *ichdev;
+    struct ichdev *ichdev;
     unsigned long port;
     unsigned long pos, t;
     struct timeval start_time, stop_time;
@@ -2620,10 +2636,11 @@ static void __devinit intel8x0_measure_ac97_clock(intel8x0_t *chip)
     printk(KERN_INFO "intel8x0: clocking to %d\n", chip->ac97_bus->clock);
 }
 
+#ifdef CONFIG_PROC_FS
 static void snd_intel8x0_proc_read(snd_info_entry_t * entry,
                                    snd_info_buffer_t * buffer)
 {
-    intel8x0_t *chip = entry->private_data;
+    struct intel8x0 *chip = entry->private_data;
     unsigned int tmp;
 
     snd_iprintf(buffer, "Intel8x0\n\n");
@@ -2648,18 +2665,20 @@ static void snd_intel8x0_proc_read(snd_info_entry_t * entry,
                     chip->ac97_sdin[2]);
 }
 
-static void __devinit snd_intel8x0_proc_init(intel8x0_t * chip)
+static void __devinit snd_intel8x0_proc_init(struct intel8x0 * chip)
 {
     snd_info_entry_t *entry;
 
     if (! snd_card_proc_new(chip->card, "intel8x0", &entry))
         snd_info_set_text_ops(entry, chip, 1024, snd_intel8x0_proc_read);
 }
-
+#else
+#define snd_intel8x0_proc_init(x)
+#endif
 
 static int snd_intel8x0_dev_free(snd_device_t *device)
 {
-    intel8x0_t *chip = device->device_data;
+    struct intel8x0 *chip = device->device_data;
     return snd_intel8x0_free(chip);
 }
 
@@ -2672,16 +2691,16 @@ struct ich_reg_info {
 static int __devinit snd_intel8x0_create(snd_card_t * card,
                                          struct pci_dev *pci,
                                          unsigned long device_type,
-                                         intel8x0_t ** r_intel8x0)
+                                         struct intel8x0 ** r_intel8x0)
 {
-    intel8x0_t *chip;
+    struct intel8x0 *chip;
     int err;
     unsigned int i,pci_dword;
     unsigned int int_sta_masks;
     unsigned short pci_word;
     unsigned char pci_byte;
 
-    ichdev_t *ichdev;
+    struct ichdev *ichdev;
 #ifdef TARGET_OS2
     static snd_device_ops_t ops = {
         snd_intel8x0_dev_free,0,0,0
@@ -2912,8 +2931,6 @@ port_inited:
         return err;
     }
 
-    snd_card_set_pm_callback(card, intel8x0_suspend, intel8x0_resume, chip);
-
     if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops)) < 0) {
         snd_intel8x0_free(chip);
         return err;
@@ -2957,7 +2974,7 @@ static int __devinit snd_intel8x0_probe(struct pci_dev *pci,
 {
     static int dev;
     snd_card_t *card;
-    intel8x0_t *chip;
+    struct intel8x0 *chip;
     int err;
     struct shortname_table *name;
 
@@ -3009,6 +3026,9 @@ static int __devinit snd_intel8x0_probe(struct pci_dev *pci,
         printk(KERN_ERR "ICH: create error. err = %x\n",err);
         return err;
     }
+
+    card->private_data = chip;
+
     if ((err = snd_intel8x0_mixer(chip, ac97_clock[dev], ac97_quirk[dev])) < 0){
         snd_card_free(card);
         //            printk(KERN_ERR "ICH: mixer error. err = %x\n",err);
@@ -3058,8 +3078,11 @@ static struct pci_driver driver = {
 	.name = "Intel ICH",
 	.id_table = snd_intel8x0_ids,
 	.probe = snd_intel8x0_probe,
-	.remove = snd_intel8x0_remove,
-	SND_PCI_PM_CALLBACKS
+        .remove = snd_intel8x0_remove,
+#ifdef CONFIG_PM
+        .suspend = intel8x0_suspend,
+        .resume = intel8x0_resume,
+#endif
 };
 
 #if defined(SUPPORT_JOYSTICK) || defined(SUPPORT_MIDI)

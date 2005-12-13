@@ -727,15 +727,9 @@ static irqreturn_t snd_ymfpci_interrupt(int irq, void *dev_id, struct pt_regs *r
     ymfpci_t *chip = dev_id;
     u32 status, nvoice, mode;
     ymfpci_voice_t *voice;
-#ifdef TARGET_OS2
-    int fOurIrq = FALSE;
-#endif
 
     status = snd_ymfpci_readl(chip, YDSXGR_STATUS);
     if (status & 0x80000000) {
-#ifdef TARGET_OS2
-        fOurIrq = TRUE;
-#endif
         chip->active_bank = snd_ymfpci_readl(chip, YDSXGR_CTRLSELECT) & 1;
         spin_lock(&chip->voice_lock);
         for (nvoice = 0; nvoice < YDSXG_PLAYBACK_VOICES; nvoice++) {
@@ -774,11 +768,6 @@ static irqreturn_t snd_ymfpci_interrupt(int irq, void *dev_id, struct pt_regs *r
     snd_ymfpci_writew(chip, YDSXGR_INTFLAG, status);
     if (chip->rawmidi)
         snd_mpu401_uart_interrupt(irq, chip->rawmidi->private_data, regs);
-#ifdef TARGET_OS2
-    if (fOurIrq) {
-        eoi_irq(irq);
-    }
-#endif //TARGET_OS2
     return IRQ_HANDLED;
 }
 
@@ -2225,11 +2214,13 @@ static int saved_regs_index[] = {
 };
 #define YDSXGR_NUM_SAVED_REGS	ARRAY_SIZE(saved_regs_index)
 
-static int snd_ymfpci_suspend(snd_card_t *card, unsigned int state)
+int snd_ymfpci_suspend(struct pci_dev *pci, pm_message_t state)
 {
-    ymfpci_t *chip = card->pm_private_data;
+    struct snd_card *card = pci_get_drvdata(pci);
+    struct snd_ymfpci *chip = card->private_data;
     unsigned int i;
 
+    snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
     snd_pcm_suspend_all(chip->pcm);
     snd_pcm_suspend_all(chip->pcm2);
     snd_pcm_suspend_all(chip->pcm_spdif);
@@ -2240,17 +2231,21 @@ static int snd_ymfpci_suspend(snd_card_t *card, unsigned int state)
     chip->saved_ydsxgr_mode = snd_ymfpci_readl(chip, YDSXGR_MODE);
     snd_ymfpci_writel(chip, YDSXGR_NATIVEDACOUTVOL, 0);
     snd_ymfpci_disable_dsp(chip);
+    pci_disable_device(pci);
+    pci_save_state(pci);
     return 0;
 }
 
-static int snd_ymfpci_resume(snd_card_t *card, unsigned int state)
+int snd_ymfpci_resume(struct pci_dev *pci)
 {
-    ymfpci_t *chip = card->pm_private_data;
+    struct snd_card *card = pci_get_drvdata(pci);
+    struct snd_ymfpci *chip = card->private_data;
     unsigned int i;
 
-    pci_enable_device(chip->pci);
-    pci_set_master(chip->pci);
-    snd_ymfpci_aclink_reset(chip->pci);
+    pci_restore_state(pci);
+    pci_enable_device(pci);
+    pci_set_master(pci);
+    snd_ymfpci_aclink_reset(pci);
     snd_ymfpci_codec_ready(chip, 0);
     snd_ymfpci_download_image(chip);
     udelay(100);
@@ -2267,8 +2262,10 @@ static int snd_ymfpci_resume(snd_card_t *card, unsigned int state)
         chip->active_bank = snd_ymfpci_readl(chip, YDSXGR_CTRLSELECT);
         spin_unlock_irq(&chip->reg_lock);
     }
+    snd_power_change_state(card, SNDRV_CTL_POWER_D0);
     return 0;
 }
+
 #endif /* CONFIG_PM */
 
 int __devinit snd_ymfpci_create(snd_card_t * card,
@@ -2353,15 +2350,14 @@ int __devinit snd_ymfpci_create(snd_card_t * card,
         snd_ymfpci_free(chip);
         return -ENOMEM;
     }
-    snd_card_set_pm_callback(card, snd_ymfpci_suspend, snd_ymfpci_resume, chip);
 #endif
-
-    snd_ymfpci_proc_init(card, chip);
 
     if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops)) < 0) {
         snd_ymfpci_free(chip);
         return err;
     }
+
+    snd_ymfpci_proc_init(card, chip);
 
     snd_card_set_dev(card, &pci->dev);
 
