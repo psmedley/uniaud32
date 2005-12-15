@@ -200,7 +200,7 @@
  *
  */
 
-typedef struct _snd_ymfpci_playback_bank {
+typedef struct snd_ymfpci_playback_bank {
 	u32 format;
 	u32 loop_default;
 	u32 base;			/* 32-bit address */
@@ -233,23 +233,23 @@ typedef struct _snd_ymfpci_playback_bank {
 	u32 lpfD2;
 } snd_ymfpci_playback_bank_t;
 
-typedef struct _snd_ymfpci_capture_bank {
+typedef struct snd_ymfpci_capture_bank {
 	u32 base;			/* 32-bit address */
 	u32 loop_end;			/* 32-bit offset */
 	u32 start;			/* 32-bit offset */
 	u32 num_of_loops;		/* counter */
 } snd_ymfpci_capture_bank_t;
 
-typedef struct _snd_ymfpci_effect_bank {
+typedef struct snd_ymfpci_effect_bank {
 	u32 base;			/* 32-bit address */
 	u32 loop_end;			/* 32-bit offset */
 	u32 start;			/* 32-bit offset */
 	u32 temp;
 } snd_ymfpci_effect_bank_t;
 
-typedef struct _snd_ymfpci_voice ymfpci_voice_t;
-typedef struct _snd_ymfpci_pcm ymfpci_pcm_t;
-typedef struct _snd_ymfpci ymfpci_t;
+typedef struct snd_ymfpci_voice ymfpci_voice_t;
+typedef struct snd_ymfpci_pcm ymfpci_pcm_t;
+typedef struct snd_ymfpci ymfpci_t;
 
 typedef enum {
 	YMFPCI_PCM,
@@ -257,7 +257,7 @@ typedef enum {
 	YMFPCI_MIDI
 } ymfpci_voice_type_t;
 
-struct _snd_ymfpci_voice {
+struct snd_ymfpci_voice {
 	ymfpci_t *chip;
 	int number;
 	int use: 1,
@@ -281,7 +281,7 @@ typedef enum {
 	EFFECT_EFF3
 } snd_ymfpci_pcm_type_t;
 
-struct _snd_ymfpci_pcm {
+struct snd_ymfpci_pcm {
 	ymfpci_t *chip;
 	snd_ymfpci_pcm_type_t type;
 	snd_pcm_substream_t *substream;
@@ -298,7 +298,7 @@ struct _snd_ymfpci_pcm {
 	u32 shift;
 };
 
-struct _snd_ymfpci {
+struct snd_ymfpci {
 	int irq;
 
 	unsigned int device_id;	/* PCI device ID */
@@ -388,6 +388,9 @@ int snd_ymfpci_create(snd_card_t * card,
 		      struct pci_dev *pci,
 		      unsigned short old_legacy_ctrl,
 		      ymfpci_t ** rcodec);
+
+int snd_ymfpci_suspend(struct pci_dev *pci, pm_message_t state);
+int snd_ymfpci_resume(struct pci_dev *pci);
 
 int snd_ymfpci_pcm(ymfpci_t *chip, int device, snd_pcm_t **rpcm);
 int snd_ymfpci_pcm2(ymfpci_t *chip, int device, snd_pcm_t **rpcm);

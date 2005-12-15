@@ -23,17 +23,8 @@
 #ifndef __SOUND_ASOUND_H
 #define __SOUND_ASOUND_H
 
-#if defined(LINUX) || defined(__LINUX__) || defined(__linux__)
-#include <linux/ioctl.h>
-#include <endian.h>
-#if __BYTE_ORDER == __LITTLE_ENDIAN
 #define SNDRV_LITTLE_ENDIAN
-#elif __BYTE_ORDER == __BIG_ENDIAN
-#define SNDRV_BIG_ENDIAN
-#else
-#error "Unsupported endian..."
-#endif
-#endif
+
 #ifndef __KERNEL__
 #include <sys/time.h>
 #include <sys/types.h>
@@ -328,10 +319,10 @@ struct snd_pcm_info {
 
 typedef int __bitwise snd_pcm_hw_param_t;
 #define	SNDRV_PCM_HW_PARAM_ACCESS	((__force snd_pcm_hw_param_t) 0) /* Access type */
-#define	SNDRV_PCM_HW_PARAM_FORMAT	((__force snd_pcm_hw_param_t) 1) /* Format */
 #ifdef TARGET_OS2
-#define	SNDRV_PCM_HW_PARAM_RATE_MASK    ((__force snd_pcm_hw_param_t) 2) /* Format */
+#define	SNDRV_PCM_HW_PARAM_RATE_MASK    ((__force snd_pcm_hw_param_t) 1) /* Format */
 #endif
+#define	SNDRV_PCM_HW_PARAM_FORMAT	((__force snd_pcm_hw_param_t) 2) /* Format */
 #define	SNDRV_PCM_HW_PARAM_SUBFORMAT	((__force snd_pcm_hw_param_t) 3) /* Subformat */
 #define	SNDRV_PCM_HW_PARAM_FIRST_MASK	SNDRV_PCM_HW_PARAM_ACCESS
 #define	SNDRV_PCM_HW_PARAM_LAST_MASK	SNDRV_PCM_HW_PARAM_SUBFORMAT
