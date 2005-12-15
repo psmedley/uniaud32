@@ -1,0 +1,21 @@
+1. Run Configure.cmd
+2. Enter path to watcom and ddk base
+3. within created makefile.inc check for:
+ALSA_SRC
+ALSA_LIB_
+ALSA_BIN_
+defines and create corresponding directories
+4. add following state if not added by configure
+################################################################################
+# Include the right watcom makefile
+################################################################################
+!ifdef 32BIT
+!include E:\DEV\USS\test\GPL\include\watcom32.mk
+!include E:\DEV\USS\test\GPL\include\watcom32.mak
+!else
+!include E:\DEV\USS\ua2\OCO\include\watcom16.mk
+!include E:\DEV\USS\ua2\OCO\include\watcom16.mak
+!endif
+
+DDK_BASE       = e:\ddk\base
+WATCOM         = e:\owatcom
