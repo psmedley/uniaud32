@@ -31,7 +31,7 @@ char *strstr1 (const char *string1, const char *string2)
   return NULL;
 }
 #endif
-#ifndef HAVE_STRLCPY
+#if 0
 size_t strlcpy(char *dst, const char *src, size_t size)
 {
         if(size) {
@@ -42,5 +42,4 @@ size_t strlcpy(char *dst, const char *src, size_t size)
         }
         return strlen(src);
 }
-
 #endif
