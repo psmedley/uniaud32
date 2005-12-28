@@ -100,8 +100,13 @@ $(OBJDIR)\$(TARGET).lrf: $(MAKEFILE)
     @%write $^@ $(%WATCOM)\lib386\os2\clib3r.lib
 !endif
 
-$(OBJDIR)\$(TARGET).sys: $(OBJDIR)\$(TARGET).lrf $(LNKFILE) $(FILES) $(LIBS)
-     $(LINK) @$(OBJDIR)\$(TARGET).lrf
+$(OBJDIR)\$(TARGET).def: $(MAKEFILE)
+    @%write $^@ LIBRARY UNIAUD32
+    @%write $^@ DESCRIPTION "@$#Netlabs:1.13$#@Universal audio driver for OS/2 (c) Netlabs 2005"
+    @%write $^@ PROTMODE
+
+$(OBJDIR)\$(TARGET).sys: $(OBJDIR)\$(TARGET).lrf $(LNKFILE) $(FILES) $(LIBS) $(OBJDIR)\$(TARGET).def
+     $(LINK) @$(OBJDIR)\$(TARGET).lrf $(OBJDIR)\$(TARGET).DEF
      copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)
 !if "$(KEE)" == "1"
 #     copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)\$(TARGET)kee.sys
