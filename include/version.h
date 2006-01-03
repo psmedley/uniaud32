@@ -25,14 +25,23 @@
 #ifndef __UNIAUDVERSION_H__
 #define __UNIAUDVERSION_H__
 
+
+#define	BUILDER_NAME            "Netlabs"
+#define	PRODUCT_NAME            "OS/2 Universal Audio Driver"
+#define	VENDOR_NAME             "Netlabs"
+#define	PRODUCT_VERSION		"1.1.4"         // version
+#define	PRODUCT_TIMESTAMP	20051231L       // YYYYMMDD
+
+
 #define ALSA_VERSION            "1.1.3"
 #define RM_DRIVER_NAME          "UNIAUD32.SYS"
 #define RM_DRIVER_DESCRIPTION   "OS/2 Universal Audio Driver"
 #define RM_ADAPTER_NAME         "OS/2 Universal Audio"
 #define RM_DRIVER_VENDORNAME    "InnoTek Systemberatung GmbH"
-#define RM_DRIVER_BUILDYEAR     2005
-#define RM_DRIVER_BUILDMONTH    01
-#define RM_DRIVER_BUILDDAY      06
-#define UNIAUD_VERSION          113
+#define RM_DRIVER_BUILDYEAR     (PRODUCT_TIMESTAMP / 10000)
+#define RM_DRIVER_BUILDMONTH    ((PRODUCT_TIMESTAMP / 100) % 100)
+#define RM_DRIVER_BUILDDAY      (PRODUCT_TIMESTAMP % 100)
+#define UNIAUD_VERSION          114
+
 
 #endif //__UNIAUDVERSION_H__

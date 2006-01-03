@@ -21,9 +21,10 @@
  * USA.
  *
  */
+#define INCL_NOPMAPI
+#define INCL_DOSINFOSEG
+#include <os2.h>
 
-
-#include "rm.hpp"                      // Will include os2.h, etc.
 #include <devhelp.h>
 #include <devinfo.h>
 

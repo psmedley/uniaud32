@@ -9,5 +9,7 @@ int   strcmp (const char *string1, const char *string2);
 
 int   strncmp (const char *string1, const char *string2, size_t count);
 
+size_t strlcpy(char *dst, const char *src, size_t size);
+
 #endif
 

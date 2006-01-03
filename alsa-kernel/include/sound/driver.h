@@ -535,6 +535,8 @@ char *snd_kmalloc_strdup(const char *string, int flags);
 int copy_to_user_fromio(void __user *dst, const volatile void __iomem *src, size_t count);
 int copy_from_user_toio(volatile void __iomem *dst, const void __user *src, size_t count);
 
+void *kzalloc(size_t size, unsigned int flags);
+
 /* init.c */
 
 extern int snd_cards_count;

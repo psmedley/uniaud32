@@ -34,86 +34,69 @@
 #include "irq.h"
 
 // List of handlers here.
-static FARPTR16 *pISR[NUM_IRQLEVELS] = {
-   NULL,
-   NULL,
-   NULL,
+static FARPTR16 *pISR[MAX_IRQ_SLOTS] = {
+   &ISR00,
+   &ISR01,
+   &ISR02,
    &ISR03,
    &ISR04,
    &ISR05,
-   NULL,
-   &ISR07,
-   NULL,
-   &ISR09,
-   &ISR10,
-   &ISR11,
-   &ISR12,
-   &ISR13,
-   &ISR14,
-   &ISR15,
+   &ISR06,
+   &ISR07
 };
 
-static PFNIRQ pfnAlsaIRQHandler = NULL;
-
 //******************************************************************************
 //******************************************************************************
-BOOL RMSetIrq(ULONG ulIrq, BOOL fShared, PFNIRQ pfnIrqHandler)
+BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
 {
     USHORT rc = 1;
 
-    if(pISR[ulIrq] == NULL) {
+    if( ulSlotNo >= MAX_IRQ_SLOTS ) {
         DebugInt3();
         return FALSE;
     }
-    if(fShared) 
+
+    if(fShared)
     {
-        rc = DevIRQSet((WORD16) *pISR[ ulIrq ],
+	rc = DevIRQSet((WORD16) *pISR[ulSlotNo],
                        (WORD16)ulIrq,
                        1 );   // first try shared shared
     }
+
     if (rc != 0) {                    // If error ...
-        rc = DevIRQSet((WORD16) *pISR[ ulIrq ],
+	rc = DevIRQSet((WORD16) *pISR[ulSlotNo],
                        (WORD16)ulIrq,
                        0);   // failed, so try exclusive instead
     }
+
     if (rc != 0) {                    // If error ...
-        dprintf(("ERROR: RMSetIrq %d %d %x FAILED!!", ulIrq, fShared, pfnIrqHandler));
+        dprintf(("ERROR: RMSetIrq %d %d %x FAILED!!", ulIrq, fShared, ulSlotNo));
         DebugInt3();
         return FALSE;
     }
-    //Always called with the same handler
-    if(pfnAlsaIRQHandler && (pfnAlsaIRQHandler != pfnIrqHandler)) {
-        DebugInt3();
-        return FALSE;
-    }
-    pfnAlsaIRQHandler = pfnIrqHandler;
+
     return TRUE;
 }
 //******************************************************************************
 //******************************************************************************
-BOOL RMFreeIrq(ULONG ulIrq)
+BOOL ALSA_FreeIrq(ULONG ulIrq)
 {
     return (DevIRQClear((WORD16)ulIrq) == 0);
 }
 //******************************************************************************
 //******************************************************************************
-ULONG ALSA_Interrupt(ULONG irqnr);
+ULONG ALSA_Interrupt(ULONG ulSlotNo);
 #pragma aux ALSA_Interrupt "ALSA_Interrupt" parm [ebx]
-ULONG ALSA_Interrupt(ULONG irqnr)
+ULONG ALSA_Interrupt(ULONG ulSlotNo)
 {
-   if(pfnAlsaIRQHandler == NULL) {
-       DebugInt3();
-       return FALSE;
-   }
-#ifdef DEBUG
-   dprintf2(("irq %d",irqnr));
-#endif
-   if(pfnAlsaIRQHandler(irqnr)) {
-       cli();
-       // We've cleared all service requests.  Send EOI and clear
-       // the carry flag (tells OS/2 kernel that Int was handled).
-       DevEOI( (WORD16)irqnr );
-       return TRUE;
+    ULONG	ulIrqNo;
+
+    if( process_interrupt(ulSlotNo, &ulIrqNo) ) {
+        cli();
+        // We've cleared all service requests.  Send EOI and clear
+        // the carry flag (tells OS/2 kernel that Int was handled).
+        DevEOI( (WORD16)ulIrqNo );
+        return TRUE;
    }
    // Indicate Interrupt not serviced by setting carry flag before
    // returning to OS/2 kernel.  OS/2 will then shut down the interrupt!

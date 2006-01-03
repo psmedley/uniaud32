@@ -1,16 +1,14 @@
-# $Id: version.mak,v 1.1.1.1 2003/07/02 13:56:58 eleph Exp $ 
-
 #
-
 #       VERSION.MAK
 #
 #       Current build level for File Versioning
 #
-#       This file should reside in the same place as COMMON.MAK
+#       Generated file, do NOT edit !
 #
 
-_VENDOR = "OS/2 Universal Audio Driver"
-_VERSION = 1.13.001
-
-FILEVER = @^#$(_VENDOR):$(_VERSION)^#@
-
+BLDLVL_VENDOR = NETLABS
+BLDLVL_PRODUCT = OS/2 Universal Audio Driver
+BLDLVL_REVISION = 1.1
+BLDLVL_FILEVER = 4
+BLDLVL_DATETIME = 04.01.2006 00:19:06
+BLDLVL_MACHINE = VLAD
