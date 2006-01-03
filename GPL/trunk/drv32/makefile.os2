@@ -35,6 +35,7 @@ AINCLUDES = -I:$(DDK_BASE)\INC
 
 TARGET   = uniaud32
 LNKFILE   = $(OBJDIR)\$(TARGET).lrf
+DEFFILE   = $(OBJDIR)\$(TARGET).def
 MAKEFILE  = makefile.os2
 
 !if "$(IBM_BUILD)" == "1"
@@ -59,7 +60,7 @@ FILE2    = strategy.obj read.obj
 FILE3    = init.obj parse.obj
 FILE4    = devhlp.obj
 FILE5    = idc.obj dispatch.obj
-FILE6    = rm.obj irq.obj util.obj
+FILE6    = rmhelp.obj irq.obj util.obj
 FILE7    = impdos.lib
 !if "$(KEE)" == "1"
 FILE8    = impkee.lib
@@ -79,34 +80,41 @@ WMAPNAME = $(OBJDIR)\$(TARGET).wmap
 all: $(OBJDIR)\$(TARGET).sys $(OBJDIR)\$(TARGET).sym
 
 !ifdef USE_WLINK
-$(OBJDIR)\$(TARGET).lrf: $(MAKEFILE)
+$(LNKFILE): $(MAKEFILE)
     @%write $^@ option quiet
     @%write $^@ option verbose
     @%write $^@ option caseexact
     @%write $^@ option cache
     @%write $^@ option alignment=16
     @%write $^@ option map=$(WMAPNAME)
-    @%write $^@ option description '@$#$(_VENDOR):$(_VERSION)$#@'
+!if "$(KEE)" == "1"
+    @%write $^@ option description '@$#$(BLDLVL_VENDOR):$(BLDLVL_REVISION)$#@$#$#1$#$# $(BLDLVL_DATETIME)      $(BLDLVL_MACHINE)::::$(BLDLVL_FILEVER)::@@$(BLDLVL_PRODUCT) (KEE)'
+!else
+    @%write $^@ option description '@$#$(BLDLVL_VENDOR):$(BLDLVL_REVISION)$#@$#$#1$#$# $(BLDLVL_DATETIME)      $(BLDLVL_MACHINE)::::$(BLDLVL_FILEVER)::@@$(BLDLVL_PRODUCT) (W4)'
+!endif
     @%write $^@ name $(OBJDIR)\$(TARGET).sys
     @for %f in ($(FILES)) do @%append $^@ file $(OBJDIR)\%f
     @for %f in ($(LIBS)) do @%append $^@ library %f
     @%write $^@ library $(%WATCOM)\lib386\os2\clib3r.lib
 !else
-$(OBJDIR)\$(TARGET).lrf: $(MAKEFILE)
+$(LNKFILE): $(MAKEFILE)
     @%write $^@ /OUT:$(OBJDIR)\$(TARGET).sys
     @%write $^@ /MAP:$(OBJDIR)\$(TARGET).map
     @for %f in ($(FILES)) do @%append $^@ $(OBJDIR)\%f
     @for %f in ($(LIBS)) do @%append $^@ %f
     @%write $^@ $(%WATCOM)\lib386\os2\clib3r.lib
+    @%write $^@ $(DEFFILE)
 !endif
 
-$(OBJDIR)\$(TARGET).def: $(MAKEFILE)
-    @%write $^@ LIBRARY UNIAUD32
-    @%write $^@ DESCRIPTION "@$#Netlabs:1.13$#@Universal audio driver for OS/2 (c) Netlabs 2005"
-    @%write $^@ PROTMODE
+$(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
+!if "$(KEE)" == "1"
+     @%write $(DEFFILE) description '@$#$(BLDLVL_VENDOR):$(BLDLVL_REVISION)$#@$#$#1$#$# $(BLDLVL_DATETIME)      $(BLDLVL_MACHINE)::::$(BLDLVL_FILEVER)::@@$(BLDLVL_PRODUCT) (KEE)'
+!else
+     @%write $(DEFFILE) description '@$#$(BLDLVL_VENDOR):$(BLDLVL_REVISION)$#@$#$#1$#$# $(BLDLVL_DATETIME)      $(BLDLVL_MACHINE)::::$(BLDLVL_FILEVER)::@@$(BLDLVL_PRODUCT) (W4)'
+!endif
 
-$(OBJDIR)\$(TARGET).sys: $(OBJDIR)\$(TARGET).lrf $(LNKFILE) $(FILES) $(LIBS) $(OBJDIR)\$(TARGET).def
-     $(LINK) @$(OBJDIR)\$(TARGET).lrf $(OBJDIR)\$(TARGET).DEF
+     $(LINK) @$(LNKFILE)
+
      copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)
 !if "$(KEE)" == "1"
 #     copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)\$(TARGET)kee.sys
@@ -129,5 +137,5 @@ $(OBJDIR)\$(TARGET).sym: $(LIBS)
 clean: .SYMBOLIC
      -@rm *.err 2>nul
      @cd $(OBJDIR)
-     -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+     -rm *.obj *.lnk *.lrf *.def *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
      @cd ..\..

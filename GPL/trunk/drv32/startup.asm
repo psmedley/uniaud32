@@ -903,6 +903,33 @@ _RMHandleToResourceHandleList16  proc far
 _RMHandleToResourceHandleList16 endp
 
                 ALIGN 2
+ISR00_16 proc far
+                push    ebx
+                mov     ebx, 0
+                call    far ptr FLAT:Interrupt32
+                pop     ebx
+                retf
+ISR00_16 endp
+
+                ALIGN 2
+ISR01_16 proc far
+                push    ebx
+                mov     ebx, 1
+                call    far ptr FLAT:Interrupt32
+                pop     ebx
+                retf
+ISR01_16 endp
+
+                ALIGN 2
+ISR02_16 proc far
+                push    ebx
+                mov     ebx, 2
+                call    far ptr FLAT:Interrupt32
+                pop     ebx
+                retf
+ISR02_16 endp
+
+                ALIGN 2
 ISR03_16 proc far
                 push    ebx
                 mov     ebx, 3
@@ -930,6 +957,15 @@ ISR05_16 proc far
 ISR05_16 endp
 
                 ALIGN 2
+ISR06_16 proc far
+                push    ebx
+                mov     ebx, 6
+                call    far ptr FLAT:Interrupt32
+                pop     ebx
+                retf
+ISR06_16 endp
+
+                ALIGN 2
 ISR07_16 proc far
                 push    ebx
                 mov     ebx, 7
@@ -937,69 +973,6 @@ ISR07_16 proc far
                 pop     ebx
                 retf
 ISR07_16 endp
-
-                ALIGN 2
-ISR09_16 proc far
-                push    ebx
-                mov     ebx, 9
-                call    far ptr FLAT:Interrupt32
-                pop     ebx
-                retf
-ISR09_16 endp
-
-                ALIGN 2
-ISR10_16 proc far
-                push    ebx
-                mov     ebx, 10
-                call    far ptr FLAT:Interrupt32
-                pop     ebx
-                retf
-ISR10_16 endp
-
-                ALIGN 2
-ISR11_16 proc far
-                push    ebx
-                mov     ebx, 11
-                call    far ptr FLAT:Interrupt32
-                pop     ebx
-                retf
-ISR11_16 endp
-
-                ALIGN 2
-ISR12_16 proc far
-                push    ebx
-                mov     ebx, 12
-                call    far ptr FLAT:Interrupt32
-                pop     ebx
-                retf
-ISR12_16 endp
-
-                ALIGN 2
-ISR13_16 proc far
-                push    ebx
-                mov     ebx, 13
-                call    far ptr FLAT:Interrupt32
-                pop     ebx
-                retf
-ISR13_16 endp
-
-                ALIGN 2
-ISR14_16 proc far
-                push    ebx
-                mov     ebx, 14
-                call    far ptr FLAT:Interrupt32
-                pop     ebx
-                retf
-ISR14_16 endp
-
-                ALIGN 2
-ISR15_16 proc far
-                push    ebx
-                mov     ebx, 15
-                call    far ptr FLAT:Interrupt32
-                pop     ebx
-                retf
-ISR15_16 endp
 
 ;end of 16 bits code segment
 __OffFinalCS16 label byte
@@ -1540,17 +1513,14 @@ DATA32 	segment
     public  RMDevIDToHandleList1632
     public  RMHandleToResourceHandleList1632
     public  _TimerHandler16
+    public  _ISR00
+    public  _ISR01
+    public  _ISR02
     public  _ISR03
     public  _ISR04
     public  _ISR05
+    public  _ISR06
     public  _ISR07
-    public  _ISR09
-    public  _ISR10
-    public  _ISR11
-    public  _ISR12
-    public  _ISR13
-    public  _ISR14
-    public  _ISR15
 
 IFDEF FLATSTACK
     extrn   intSwitchStack : dword
@@ -1627,28 +1597,22 @@ ENDIF
                      	 dw OFFSET CODE16:uniaud_stub_timer
 
 ;16:16 addresses of interrupt dispatchers
+    _ISR00               dw OFFSET CODE16:ISR00_16
+			 dw SEG CODE16:ISR00_16
+    _ISR01               dw OFFSET CODE16:ISR01_16
+			 dw SEG CODE16:ISR01_16
+    _ISR02               dw OFFSET CODE16:ISR02_16
+			 dw SEG CODE16:ISR02_16
     _ISR03               dw OFFSET CODE16:ISR03_16
                          dw SEG CODE16:ISR03_16
     _ISR04               dw OFFSET CODE16:ISR04_16
                          dw SEG CODE16:ISR04_16
     _ISR05               dw OFFSET CODE16:ISR05_16
                          dw SEG CODE16:ISR05_16
+    _ISR06               dw OFFSET CODE16:ISR06_16
+			 dw SEG CODE16:ISR06_16
     _ISR07               dw OFFSET CODE16:ISR07_16
                          dw SEG CODE16:ISR07_16
-    _ISR09               dw OFFSET CODE16:ISR09_16
-                         dw SEG CODE16:ISR09_16
-    _ISR10               dw OFFSET CODE16:ISR10_16
-                         dw SEG CODE16:ISR10_16
-    _ISR11               dw OFFSET CODE16:ISR11_16
-                         dw SEG CODE16:ISR11_16
-    _ISR12               dw OFFSET CODE16:ISR12_16
-                         dw SEG CODE16:ISR12_16
-    _ISR13               dw OFFSET CODE16:ISR13_16
-                         dw SEG CODE16:ISR13_16
-    _ISR14               dw OFFSET CODE16:ISR14_16
-                         dw SEG CODE16:ISR14_16
-    _ISR15               dw OFFSET CODE16:ISR15_16
-                         dw SEG CODE16:ISR15_16
 DATA32 ends
 
 end

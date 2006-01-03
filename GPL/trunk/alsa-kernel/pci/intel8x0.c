@@ -3163,7 +3163,8 @@ static struct pci_device_id snd_intel8x0_joystick_ids[] = {
     { 0x8086, 0x248c, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* ICH3 */
     // { 0x8086, 0x7195, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* 440MX */
     // { 0x1039, 0x7012, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* SI7012 */
-    { 0x10de, 0x01b2, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* NFORCE */
+    //Rudi: this is not a joystick !!!!
+    //  { 0x10de, 0x01b2, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* NFORCE */
     //	{ 0x10de, 0x006b, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* NFORCE2 */
     { 0x10de, 0x00db, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* NFORCE3 */
     { 0, }

@@ -24,13 +24,11 @@
 #ifndef __IRQOS2_H__
 #define __IRQOS2_H__
 
-//#define MAX_SHAREDIRQS          16
-//#define MAX_IRQS		16
-#define MAX_SHAREDIRQS          256 // ACPI
-#define MAX_IRQS                256 // ACPI
+#define MAX_SHAREDIRQS		8
+#define MAX_IRQ_SLOTS		8
 
-//typedef void (NEAR * IRQHANDLER)(int, void *, void *);
-typedef int (NEAR * IRQHANDLER)(int, void *, void *);
+
+typedef int (NEAR * IRQHANDLER)(int, void *, struct pt_regs *);
 
 typedef struct {
   IRQHANDLER handler;
@@ -39,20 +37,26 @@ typedef struct {
   void *x2;
 } IRQHANDLER_INFO;
 
-typedef BOOL (*PFNIRQ)(int irq);
+typedef struct
+{
+  unsigned              irqNo;
+  unsigned              fEOI;
+  unsigned              flHandlers;
+  IRQHANDLER_INFO       irqHandlers[MAX_SHAREDIRQS];
+} IRQ_SLOT;
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-BOOL RMSetIrq(ULONG ulIrq, BOOL fShared, PFNIRQ pfnIrqHandler);
-BOOL RMFreeIrq(ULONG ulIrq);
+BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared);
+BOOL ALSA_FreeIrq(ULONG ulIrq);
 
-BOOL oss_process_interrupt(int irq);
+BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq);
 
 ULONG os2gettimemsec();
 ULONG os2gettimesec();
-
 
 #ifdef __cplusplus
 }

@@ -43,16 +43,17 @@
 #endif
 #include "parse.h"
 
-char copyright[]="@#Netlabs:1.13#@.Universal audio driver for OS/2 (c) Netlabs 2005\0x0\0x0\0xb";
-
 const char ERR_ERROR[]   = "ERROR: ";
 const char ERR_LOCK[]    = "Unable to lock 32 bit data & code segments, exiting...\r\r\n";
 const char ERR_INIT[]    = "Initialization failed\r\r\n";
 const char ERR_NAMES[]    = "Query names failed\r\r\n";
 const char szALSA[]      = "\r\n\r\nOS/2 Universal Audio Core Driver v"ALSA_VERSION"\r\n";
+
 const char szCopyRight1[]= "Copyright 2000-2002 InnoTek Systemberatung GmbH\r\n";
 const char szCopyRight2[]= "Copyright 2000-2002 The ALSA Project\r\n\r\n";
+const char szCopyRight3[]= "Copyright 2005 Netlabs http://www.netlabs.org\r\n";
 //const char szCopyRight3[]= "Maintained by http://os2.kiev.ua/en/uniaud.php\r\n\r\n";
+
 const char szCodeStartEnd[] = "Code 0x%0x - 0x%0x\r\n\r\n";
 const char szMixerFound[]= "Detected Mixer: ";
 const char szEOL[]       = "\r\n";
@@ -217,11 +218,11 @@ WORD32 DiscardableInit(RPInit __far* rp)
     if(fVerbose) {
         WriteString(szALSA, sizeof(szALSA)-1);
         WriteString(szCopyRight1, sizeof(szCopyRight1)-1);
+        WriteString(szCopyRight3, sizeof(szCopyRight3)-1);
         WriteString(szCopyRight2, sizeof(szCopyRight2)-1);
     }
 
-    //    if(fDebug) {
-    if(1) {
+    if(fDebug) {
     	sprintf(debugmsg, szCodeStartEnd, OffsetBeginCS32, OffsetFinalCS32);
     	WriteString(debugmsg, strlen(debugmsg));
     }
