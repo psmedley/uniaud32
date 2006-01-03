@@ -1,4 +1,5 @@
-NOTE! Use OpenWatcom 1.4rc1 or later
+NOTE! Use OpenWatcom 1.4rc1 or later. Also you need IBM's ILINK for driver 
+      linking. Possible, you can try wlink, but I never did that.
 
 1. Run Configure.cmd
 
