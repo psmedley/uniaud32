@@ -2497,7 +2497,8 @@ static int intel8x0_suspend(struct pci_dev *pci, pm_message_t state)
         snd_pcm_suspend_all(chip->pcm[i]);
 
     for (i = 0; i < 3; i++)
-        snd_ac97_suspend(chip->ac97[i]);
+        if (chip->ac97[i])	//Rudi: check, if codec present !!!
+            snd_ac97_suspend(chip->ac97[i]);
     if (chip->device_type == DEVICE_INTEL_ICH4 ||
         chip->device_type == DEVICE_INTEL_ICH5)
         chip->sdm_saved = igetbyte(chip, ICHREG(SDM));
@@ -2535,7 +2536,8 @@ static int intel8x0_resume(struct pci_dev *pci)
     }
 
     for (i = 0; i < 3; i++)
-        snd_ac97_resume(chip->ac97[i]);
+        if (chip->ac97[i])		//Rudi: check, if codec present !!!
+            snd_ac97_resume(chip->ac97[i]);
     /* resume status */
     for (i = 0; i < chip->bdbars_count; i++) {
         struct ichdev *ichdev = &chip->ichd[i];
