@@ -2609,6 +2609,7 @@ static int m3_suspend(snd_card_t *card, unsigned int state)
     if (chip->suspend_mem == NULL)
         return 0;
 
+    snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
     snd_pcm_suspend_all(chip->pcm);
     snd_ac97_suspend(chip->ac97);
 
@@ -2628,6 +2629,8 @@ static int m3_suspend(snd_card_t *card, unsigned int state)
     /* power down apci registers */
     snd_m3_outw(chip, 0xffff, 0x54);
     snd_m3_outw(chip, 0xffff, 0x56);
+    pci_disable_device(chip->pci);
+    pci_save_state(chip->pci);
     return 0;
 }
 
@@ -2639,6 +2642,8 @@ static int m3_resume(snd_card_t *card, unsigned int state)
     if (chip->suspend_mem == NULL)
         return 0;
 
+    pci_restore_state(chip->pci);
+    pci_enable_device(chip->pci);
     pci_set_master(chip->pci);
 
     /* first lets just bring everything back. .*/
@@ -2669,6 +2674,7 @@ static int m3_resume(snd_card_t *card, unsigned int state)
     snd_m3_enable_ints(chip);
     snd_m3_amp_enable(chip, 1);
 
+    snd_power_change_state(card, SNDRV_CTL_POWER_D0);
     return 0;
 }
 #endif /* CONFIG_PM */
@@ -2821,8 +2827,6 @@ snd_m3_create(snd_card_t *card, struct pci_dev *pci,
     chip->suspend_mem = vmalloc(sizeof(u16) * (REV_B_CODE_MEMORY_LENGTH + REV_B_DATA_MEMORY_LENGTH));
     if (chip->suspend_mem == NULL)
         snd_printk("can't allocate apm buffer\n");
-    else
-        snd_card_set_pm_callback(card, m3_suspend, m3_resume, chip);
 #endif
 
     if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops)) < 0) {
@@ -2932,11 +2936,14 @@ static void __devexit snd_m3_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-    0,0,0, "Maestro3",
-    snd_m3_ids,
-    snd_m3_probe,
-    snd_m3_remove,
-    SND_PCI_PM_CALLBACKS
+	.name = "Maestro3",
+	.id_table = snd_m3_ids,
+	.probe = snd_m3_probe,
+	.remove = __devexit_p(snd_m3_remove),
+#ifdef CONFIG_PM
+	.suspend = m3_suspend,
+	.resume = m3_resume,
+#endif
 };
 
 static int __init alsa_card_m3_init(void)

@@ -791,6 +791,8 @@ static struct pci_device_id snd_bt87x_ids[] = {
     BT_DEVICE(878, 0x0070, 0x13eb, 32000), /* Hauppauge WinTV series */
     BT_DEVICE(879, 0x0070, 0x13eb, 32000), /* Hauppauge WinTV series */
     BT_DEVICE(878, 0x0070, 0xff01, 44100), /* Viewcast Osprey 200 */
+    /* AVerMedia Studio No. 103, 203, ...? */
+    BT_DEVICE(878, 0x1461, 0x0003, 48000),
     {0}
 };
 MODULE_DEVICE_TABLE(pci, snd_bt87x_ids);
@@ -816,7 +818,7 @@ static int __devinit snd_bt87x_detect_card(struct pci_dev *pci)
     const struct pci_device_id *supported;
 
     supported = pci_match_device(snd_bt87x_ids, pci);
-    if (supported)
+    if (supported && supported->driver_data > 0)
         return supported->driver_data;
 
     for (i = 0; i < ARRAY_SIZE(blacklist); ++i)
