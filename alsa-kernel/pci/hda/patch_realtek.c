@@ -2719,7 +2719,7 @@ static int alc260_add_playback_controls(struct alc_spec *spec, hda_nid_t nid,
 	sprintf(name, "%s Playback Volume", pfx);
 	if ((err = add_control(spec, ALC_CTL_WIDGET_VOL, name, vol_val)) < 0)
 		return err;
-	snprintf(name, sizeof(name), "%s Playback Switch", pfx);
+	sprintf(name, "%s Playback Switch", pfx);
 	if ((err = add_control(spec, ALC_CTL_WIDGET_MUTE, name, sw_val)) < 0)
 		return err;
 	return 1;
