@@ -736,4 +736,12 @@ void *snd_compat_kcalloc(size_t n, size_t size, int gfp_flags);
 
 typedef u32 /*__bitwise*/ pm_message_t;
 
+#ifndef __devexit_p
+#define __devexit_p(x) x
+#endif
+
+typedef unsigned gfp_t;
+
+char *kstrdup(const char *s, gfp_t gfp_flags);
+
 #endif				/* __DRIVER_H */
