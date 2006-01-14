@@ -531,6 +531,10 @@ char *snd_hidden_kstrdup(const char *s, int flags);
 #define vfree(obj) snd_hidden_vfree(obj)
 #define kstrdup(s, flags)  snd_hidden_kstrdup(s, flags)
 #endif
+
+char *snd_hidden_kstrdup(const char *s, int flags);
+#define kstrdup(s, flags)  snd_hidden_kstrdup(s, flags)
+
 char *snd_kmalloc_strdup(const char *string, int flags);
 int copy_to_user_fromio(void __user *dst, const volatile void __iomem *src, size_t count);
 int copy_from_user_toio(volatile void __iomem *dst, const void __user *src, size_t count);
@@ -740,8 +744,8 @@ typedef u32 /*__bitwise*/ pm_message_t;
 #define __devexit_p(x) x
 #endif
 
-typedef unsigned gfp_t;
+#define printk_ratelimit()      1
 
-char *kstrdup(const char *s, gfp_t gfp_flags);
+typedef unsigned gfp_t;
 
 #endif				/* __DRIVER_H */

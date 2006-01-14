@@ -12,11 +12,11 @@ WAT2MAP=$(ALSA_TOOLS)\wat2map.cmd
 .SUFFIXES: .lst .obj .lib .cpp .cpp16 .c .c16 .asm .def
 
 !if "$(DEBUG)" == "1"
-CFLAGS  = -dDEBUG -bt=os2v2 -e60 -hc -d2 -5r -omlinear -s -w4 -ze -zdp -zl -zq -nt=CODE32 -zff -zgf -zev
+CFLAGS  = -dDEBUG -bt=os2v2 -e60 -hc -d2 -5r -omlinear -s -w4 -ze -zdp -zl -zq -nt=CODE32 -zff -zgf
 CPPFLAGS= -xd 
 ASFLAGS = -Mb -Li -Sv:M510
 !else
-CFLAGS  = -bt=os2v2 -e60 -5r -omlinear -s -w4 -ze -zdp -zl -zq -nt=CODE32 -zff -zgf -zev
+CFLAGS  = -bt=os2v2 -e60 -5r -omlinear -s -w4 -ze -zdp -zl -zq -nt=CODE32 -zff -zgf
 CPPFLAGS= -xd 
 ASFLAGS = -Mb -Li -Sv:M510
 !endif
@@ -37,7 +37,7 @@ CFLAGS  +=  -mf -DFLATSTACK
 ASFLAGS += -D:FLATSTACK
 !endif
 
-CC          = WCC386 $(CFLAGS) $(CDEFINES) -i$(CINCLUDES)
+CC          = WCC386 $(CFLAGS) -zev $(CDEFINES) -i$(CINCLUDES)
 CPP         = WPP386 $(CFLAGS) $(CPPFLAGS) $(CDEFINES) -i$(CINCLUDES)
 CPP16       = WPP386 $(CFLAGS16) $(CPPFLAGS) $(CDEFINES) -i$(CINCLUDES)
 ASM         = alp $(ASFLAGS) $(AINCLUDES)

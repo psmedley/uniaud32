@@ -185,20 +185,6 @@ void snd_hidden_vfree(void *obj)
     snd_wrapper_vfree(obj);
 }
 
-char *snd_hidden_kstrdup(const char *s, int flags)
-{
-    int len;
-    char *buf;
-
-    if (!s) return NULL;
-
-    len = strlen(s) + 1;
-    buf = _snd_kmalloc(len, flags);
-    if (buf)
-        memcpy(buf, s, len);
-    return buf;
-}
-
 static void snd_memory_info_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)
 {
     long pages = snd_alloc_pages >> (PAGE_SHIFT-12);
@@ -318,6 +304,20 @@ int copy_from_user_toio(volatile void __iomem *dst, const void __user *src, size
     }
     return 0;
 #endif
+}
+
+char *snd_hidden_kstrdup(const char *s, int flags)
+{
+    int len;
+    char *buf;
+
+    if (!s) return NULL;
+
+    len = strlen(s) + 1;
+    buf = _snd_kmalloc(len, flags);
+    if (buf)
+        memcpy(buf, s, len);
+    return buf;
 }
 
 void *kzalloc(size_t size, unsigned int flags)

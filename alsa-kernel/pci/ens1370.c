@@ -1133,8 +1133,8 @@ static int snd_ensoniq_playback1_open(struct snd_pcm_substream *substream)
 	snd_pcm_hw_constraint_list(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
 				   &snd_es1370_hw_constraints_rates);
 #else
-	snd_pcm_hw_constraint_ratdens(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
-				      &snd_es1371_hw_constraints_dac_clock);
+//	snd_pcm_hw_constraint_ratdens(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
+//				      &snd_es1371_hw_constraints_dac_clock);
 #endif
 	return 0;
 }
@@ -1156,8 +1156,8 @@ static int snd_ensoniq_playback2_open(struct snd_pcm_substream *substream)
 	snd_pcm_hw_constraint_ratnums(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
 				      &snd_es1370_hw_constraints_clock);
 #else
-	snd_pcm_hw_constraint_ratdens(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
-				      &snd_es1371_hw_constraints_dac_clock);
+//	snd_pcm_hw_constraint_ratdens(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
+//				      &snd_es1371_hw_constraints_dac_clock);
 #endif
 	return 0;
 }
