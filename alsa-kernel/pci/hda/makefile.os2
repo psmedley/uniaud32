@@ -14,7 +14,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #===================================================================
 FILE1    = hda_intel.obj hda_codec.obj hda_generic.obj patch_realtek.obj 
 FILE2    = patch_cmedia.obj hda_proc.obj patch_analog.obj patch_sigmatel.obj
-FILE3    = 
+FILE3    = patch_si3054.obj
 FILE4    = 
 FILE5    = 
 FILE6    = 
