@@ -26,20 +26,20 @@
 #include <linux/pci.h>
 #include <sound/core.h>
 #include "hda_codec.h"
+#include "hda_local.h"
 
 static const char *get_wid_type_name(unsigned int wid_value)
 {
 	static char *names[16] = {
-		/*[AC_WID_AUD_OUT] = */"Audio Output",
-		/*[AC_WID_AUD_IN] = */"Audio Input",
-		/*[AC_WID_AUD_MIX] = */"Audio Mixer",
-		/*[AC_WID_AUD_SEL] = */"Audio Selector",
-		/*[AC_WID_PIN] = */"Pin Complex",
-		/*[AC_WID_POWER] = */"Power Widget",
-		/*[AC_WID_VOL_KNB] = */"Volume Knob Widget",
-                /*[AC_WID_BEEP] = */"Beep Generator Widget",
-                0,0,0,0,0,0,0,
-		/*[AC_WID_VENDOR] = */"Vendor Defined Widget",
+		[AC_WID_AUD_OUT] = "Audio Output",
+		[AC_WID_AUD_IN] = "Audio Input",
+		[AC_WID_AUD_MIX] = "Audio Mixer",
+		[AC_WID_AUD_SEL] = "Audio Selector",
+		[AC_WID_PIN] = "Pin Complex",
+		[AC_WID_POWER] = "Power Widget",
+		[AC_WID_VOL_KNB] = "Volume Knob Widget",
+		[AC_WID_BEEP] = "Beep Generator Widget",
+		[AC_WID_VENDOR] = "Vendor Defined Widget",
 	};
 	wid_value &= 0xf;
 	if (names[wid_value])
@@ -48,7 +48,7 @@ static const char *get_wid_type_name(unsigned int wid_value)
 		return "UNKOWN Widget";
 }
 
-static void print_amp_caps(snd_info_buffer_t *buffer,
+static void print_amp_caps(struct snd_info_buffer *buffer,
 			   struct hda_codec *codec, hda_nid_t nid, int dir)
 {
 	unsigned int caps;
@@ -67,26 +67,32 @@ static void print_amp_caps(snd_info_buffer_t *buffer,
 		    (caps & AC_AMPCAP_MUTE) >> AC_AMPCAP_MUTE_SHIFT);
 }
 
-static void print_amp_vals(snd_info_buffer_t *buffer,
+static void print_amp_vals(struct snd_info_buffer *buffer,
 			   struct hda_codec *codec, hda_nid_t nid,
-			   int dir, int stereo)
+			   int dir, int stereo, int indices)
 {
 	unsigned int val;
-	if (stereo) {
+	int i;
+
+	if (dir == HDA_OUTPUT)
+		dir = AC_AMP_GET_OUTPUT;
+	else
+		dir = AC_AMP_GET_INPUT;
+	for (i = 0; i < indices; i++) {
+		snd_iprintf(buffer, " [");
+		if (stereo) {
+			val = snd_hda_codec_read(codec, nid, 0, AC_VERB_GET_AMP_GAIN_MUTE,
+						 AC_AMP_GET_LEFT | dir | i);
+			snd_iprintf(buffer, "0x%02x ", val);
+		}
 		val = snd_hda_codec_read(codec, nid, 0, AC_VERB_GET_AMP_GAIN_MUTE,
-					  AC_AMP_GET_LEFT |
-					 (dir == HDA_OUTPUT ? AC_AMP_GET_OUTPUT :
-					  AC_AMP_GET_INPUT));
-		snd_iprintf(buffer, "0x%02x ", val);
+					 AC_AMP_GET_RIGHT | dir | i);
+		snd_iprintf(buffer, "0x%02x]", val);
 	}
-	val = snd_hda_codec_read(codec, nid, 0, AC_VERB_GET_AMP_GAIN_MUTE,
-				 AC_AMP_GET_RIGHT |
-				 (dir == HDA_OUTPUT ? AC_AMP_GET_OUTPUT :
-				  AC_AMP_GET_INPUT));
-	snd_iprintf(buffer, "0x%02x\n", val);
+	snd_iprintf(buffer, "\n");
 }
 
-static void print_pcm_caps(snd_info_buffer_t *buffer,
+static void print_pcm_caps(struct snd_info_buffer *buffer,
 			   struct hda_codec *codec, hda_nid_t nid)
 {
 	unsigned int pcm = snd_hda_param_read(codec, nid, AC_PAR_PCM);
@@ -155,10 +161,10 @@ static const char *get_jack_color(u32 cfg)
 		return "UNKNOWN";
 }
 
-static void print_pin_caps(snd_info_buffer_t *buffer,
+static void print_pin_caps(struct snd_info_buffer *buffer,
 			   struct hda_codec *codec, hda_nid_t nid)
 {
-    static char *jack_conns[4] = { "Jack", "N/A", "Fixed", "Both" };
+	static char *jack_conns[4] = { "Jack", "N/A", "Fixed", "Both" };
 	static char *jack_types[16] = {
 		"Line Out", "Speaker", "HP Out", "CD",
 		"SPDIF Out", "Digital Out", "Modem Line", "Modem Hand",
@@ -177,9 +183,9 @@ static void print_pin_caps(snd_info_buffer_t *buffer,
 	if (caps & AC_PINCAP_HP_DRV)
 		snd_iprintf(buffer, " HP");
 	snd_iprintf(buffer, "\n");
-        caps = snd_hda_codec_read(codec, nid, 0, AC_VERB_GET_CONFIG_DEFAULT, 0);
-        snd_iprintf(buffer, "  Pin Default 0x%08x: [%s] %s at %s %s\n", caps,
-                    jack_conns[(caps & AC_DEFCFG_PORT_CONN) >> AC_DEFCFG_PORT_CONN_SHIFT],
+	caps = snd_hda_codec_read(codec, nid, 0, AC_VERB_GET_CONFIG_DEFAULT, 0);
+	snd_iprintf(buffer, "  Pin Default 0x%08x: [%s] %s at %s %s\n", caps,
+		    jack_conns[(caps & AC_DEFCFG_PORT_CONN) >> AC_DEFCFG_PORT_CONN_SHIFT],
 		    jack_types[(caps & AC_DEFCFG_DEVICE) >> AC_DEFCFG_DEVICE_SHIFT],
 		    jack_locations[(caps >> (AC_DEFCFG_LOCATION_SHIFT + 4)) & 3],
 		    get_jack_location(caps));
@@ -189,7 +195,7 @@ static void print_pin_caps(snd_info_buffer_t *buffer,
 }
 
 
-static void print_codec_info(snd_info_entry_t *entry, snd_info_buffer_t *buffer)
+static void print_codec_info(struct snd_info_entry *entry, struct snd_info_buffer *buffer)
 {
 	struct hda_codec *codec = entry->private_data;
 	char buf[32];
@@ -202,6 +208,8 @@ static void print_codec_info(snd_info_entry_t *entry, snd_info_buffer_t *buffer)
 	snd_iprintf(buffer, "Vendor Id: 0x%x\n", codec->vendor_id);
 	snd_iprintf(buffer, "Subsystem Id: 0x%x\n", codec->subsystem_id);
 	snd_iprintf(buffer, "Revision Id: 0x%x\n", codec->revision_id);
+	if (! codec->afg)
+		return;
 	snd_iprintf(buffer, "Default PCM: ");
 	print_pcm_caps(buffer, codec, codec->afg);
 	snd_iprintf(buffer, "Default Amp-In caps: ");
@@ -218,6 +226,9 @@ static void print_codec_info(snd_info_entry_t *entry, snd_info_buffer_t *buffer)
 		unsigned int wid_caps = snd_hda_param_read(codec, nid,
 							   AC_PAR_AUDIO_WIDGET_CAP);
 		unsigned int wid_type = (wid_caps & AC_WCAP_TYPE) >> AC_WCAP_TYPE_SHIFT;
+		int conn_len = 0; 
+		hda_nid_t conn[HDA_MAX_CONNECTIONS];
+
 		snd_iprintf(buffer, "Node 0x%02x [%s] wcaps 0x%x:", nid,
 			    get_wid_type_name(wid_type), wid_caps);
 		if (wid_caps & AC_WCAP_STEREO)
@@ -232,19 +243,23 @@ static void print_codec_info(snd_info_entry_t *entry, snd_info_buffer_t *buffer)
 			snd_iprintf(buffer, " Amp-Out");
 		snd_iprintf(buffer, "\n");
 
+		if (wid_caps & AC_WCAP_CONN_LIST)
+			conn_len = snd_hda_get_connections(codec, nid, conn,
+							   HDA_MAX_CONNECTIONS);
+
 		if (wid_caps & AC_WCAP_IN_AMP) {
 			snd_iprintf(buffer, "  Amp-In caps: ");
 			print_amp_caps(buffer, codec, nid, HDA_INPUT);
 			snd_iprintf(buffer, "  Amp-In vals: ");
 			print_amp_vals(buffer, codec, nid, HDA_INPUT,
-				       wid_caps & AC_WCAP_STEREO);
+				       wid_caps & AC_WCAP_STEREO, conn_len);
 		}
 		if (wid_caps & AC_WCAP_OUT_AMP) {
 			snd_iprintf(buffer, "  Amp-Out caps: ");
 			print_amp_caps(buffer, codec, nid, HDA_OUTPUT);
 			snd_iprintf(buffer, "  Amp-Out vals: ");
 			print_amp_vals(buffer, codec, nid, HDA_OUTPUT,
-				       wid_caps & AC_WCAP_STEREO);
+				       wid_caps & AC_WCAP_STEREO, 1);
 		}
 
 		if (wid_type == AC_WID_PIN) {
@@ -267,21 +282,23 @@ static void print_codec_info(snd_info_entry_t *entry, snd_info_buffer_t *buffer)
 			print_pcm_caps(buffer, codec, nid);
 		}
 
+		if (wid_caps & AC_WCAP_POWER)
+			snd_iprintf(buffer, "  Power: 0x%x\n",
+				    snd_hda_codec_read(codec, nid, 0,
+						       AC_VERB_GET_POWER_STATE, 0));
+
 		if (wid_caps & AC_WCAP_CONN_LIST) {
-                    hda_nid_t conn[HDA_MAX_CONNECTIONS];
-                    int c, conn_len, curr = -1;
-			conn_len = snd_hda_get_connections(codec, nid, conn,
-                                                           HDA_MAX_CONNECTIONS);
-                        if (conn_len > 1 && wid_type != AC_WID_AUD_MIX)
-                            curr = snd_hda_codec_read(codec, nid, 0,
-                                                      AC_VERB_GET_CONNECT_SEL, 0);
+			int c, curr = -1;
+			if (conn_len > 1 && wid_type != AC_WID_AUD_MIX)
+				curr = snd_hda_codec_read(codec, nid, 0,
+					AC_VERB_GET_CONNECT_SEL, 0);
 			snd_iprintf(buffer, "  Connection: %d\n", conn_len);
-                        snd_iprintf(buffer, "    ");
-                        for (c = 0; c < conn_len; c++) {
-                            snd_iprintf(buffer, " 0x%02x", conn[c]);
-                            if (c == curr)
-                                snd_iprintf(buffer, "*");
-                        }
+			snd_iprintf(buffer, "    ");
+			for (c = 0; c < conn_len; c++) {
+				snd_iprintf(buffer, " 0x%02x", conn[c]);
+				if (c == curr)
+					snd_iprintf(buffer, "*");
+			}
 			snd_iprintf(buffer, "\n");
 		}
 	}
@@ -292,8 +309,8 @@ static void print_codec_info(snd_info_entry_t *entry, snd_info_buffer_t *buffer)
  */
 int snd_hda_codec_proc_new(struct hda_codec *codec)
 {
-    char name[32] = {0};
-	snd_info_entry_t *entry;
+	char name[32];
+	struct snd_info_entry *entry;
 	int err;
 
 	sprintf(name, "codec#%d", codec->addr);
