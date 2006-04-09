@@ -93,8 +93,14 @@ void mdelay(unsigned long msecs)
 //******************************************************************************
 void do_gettimeofday(struct timeval *tv)
 {
+#if 0
     tv->tv_sec  = 0; //os2gettimesec();
     tv->tv_usec = os2gettimemsec() * 1000;
+#else /* r.ihle patch */
+    unsigned u = os2gettimemsec();
+    tv->tv_sec  = u / 1000;
+    tv->tv_usec = (u % 1000) * 1000;
+#endif
 }
 //******************************************************************************
 //******************************************************************************

@@ -49,11 +49,13 @@ struct sigmatel_spec {
 	int board_config;
 	unsigned int surr_switch: 1;
 	unsigned int line_switch: 1;
-	unsigned int mic_switch: 1;
+        unsigned int mic_switch: 1;
+        unsigned int alt_switch: 1;
+        unsigned int hp_detect: 1;
 
 	/* playback */
-	struct hda_multi_out multiout;
-	hda_nid_t dac_nids[4];
+        struct hda_multi_out multiout;
+        hda_nid_t dac_nids[5];
 
 	/* capture */
 	hda_nid_t *adc_nids;
@@ -72,8 +74,8 @@ struct sigmatel_spec {
 	struct snd_kcontrol_new *mixer;
 
 	/* capture source */
-	struct hda_input_mux *input_mux;
-	unsigned int cur_mux[2];
+        struct hda_input_mux *input_mux;
+        unsigned int cur_mux[3];
 
 	/* i/o switches */
 	unsigned int io_switch[2];
@@ -107,6 +109,14 @@ static hda_nid_t stac922x_mux_nids[2] = {
         0x12, 0x13,
 };
 
+static hda_nid_t stac927x_adc_nids[3] = {
+    0x07, 0x08, 0x09
+};
+
+static hda_nid_t stac927x_mux_nids[3] = {
+    0x15, 0x16, 0x17
+};
+
 static hda_nid_t stac9200_pin_nids[8] = {
 	0x08, 0x09, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12,
 };
@@ -114,6 +124,12 @@ static hda_nid_t stac9200_pin_nids[8] = {
 static hda_nid_t stac922x_pin_nids[10] = {
 	0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
 	0x0f, 0x10, 0x11, 0x15, 0x1b,
+};
+
+static hda_nid_t stac927x_pin_nids[14] = {
+    0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+    0x0f, 0x10, 0x11, 0x12, 0x13,
+    0x14, 0x21, 0x22, 0x23,
 };
 
 static int stac92xx_mux_enum_info(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_info *uinfo)
@@ -150,9 +166,15 @@ static struct hda_verb stac9200_core_init[] = {
 };
 
 static struct hda_verb stac922x_core_init[] = {
-	/* set master volume and direct control */	
+	/* set master volume and direct control */
 	{ 0x16, AC_VERB_SET_VOLUME_KNOB_CONTROL, 0xff},
 	{0}
+};
+
+static struct hda_verb stac927x_core_init[] = {
+    /* set master volume and direct control */
+    { 0x24, AC_VERB_SET_VOLUME_KNOB_CONTROL, 0xff},
+    {0}
 };
 
 static struct snd_kcontrol_new stac9200_mixer[] = {
@@ -188,6 +210,21 @@ static struct snd_kcontrol_new stac922x_mixer[] = {
 	{0} /* end */
 };
 
+static snd_kcontrol_new_t stac927x_mixer[] = {
+    {
+        .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+        .name = "Input Source",
+        .count = 1,
+        .info = stac92xx_mux_enum_info,
+        .get = stac92xx_mux_enum_get,
+        .put = stac92xx_mux_enum_put,
+    },
+    HDA_CODEC_VOLUME("InMux Capture Volume", 0x15, 0x0, HDA_OUTPUT),
+    HDA_CODEC_VOLUME("InVol Capture Volume", 0x18, 0x0, HDA_INPUT),
+    HDA_CODEC_MUTE("ADCMux Capture Switch", 0x1b, 0x0, HDA_OUTPUT),
+    {0} /* end */
+};
+
 static int stac92xx_build_controls(struct hda_codec *codec)
 {
 	struct sigmatel_spec *spec = codec->spec;
@@ -214,7 +251,7 @@ static int stac92xx_build_controls(struct hda_codec *codec)
 		if (err < 0)
 			return err;
 	}
-	return 0;	
+	return 0;
 }
 
 static unsigned int ref9200_pin_configs[8] = {
@@ -241,15 +278,15 @@ static unsigned int ref922x_pin_configs[10] = {
 };
 
 static unsigned int d945gtp3_pin_configs[10] = {
-	0x0221401f, 0x01a19022, 0x01813021, 0x01114010,
-	0x40000100, 0x40000100, 0x40000100, 0x40000100,
-	0x02a19120, 0x40000100,
+    0x0221401f, 0x01a19022, 0x01813021, 0x01014010,
+    0x40000100, 0x40000100, 0x40000100, 0x40000100,
+    0x02a19120, 0x40000100,
 };
 
 static unsigned int d945gtp5_pin_configs[10] = {
-	0x0221401f, 0x01111012, 0x01813024, 0x01114010,
-	0x01a19021, 0x01116011, 0x01452130, 0x40000100,
-	0x02a19320, 0x40000100,
+    0x0221401f, 0x01011012, 0x01813024, 0x01014010,
+    0x01a19021, 0x01016011, 0x01452130, 0x40000100,
+    0x02a19320, 0x40000100,
 };
 
 static unsigned int *stac922x_brd_tbl[] = {
@@ -266,7 +303,13 @@ static struct hda_board_config stac922x_cfg_tbl[] = {
 	{ .pci_subvendor = PCI_VENDOR_ID_INTEL,
 	  .pci_subdevice = 0x0101,
 	  .config = STAC_D945GTP3 },	/* Intel D945GTP - 3 Stack */
-	{ .pci_subvendor = PCI_VENDOR_ID_INTEL,
+          { .pci_subvendor = PCI_VENDOR_ID_INTEL,
+          .pci_subdevice = 0x0202,
+          .config = STAC_D945GTP3 },    /* Intel D945GNT - 3 Stack, 9221 A1 */
+          { .pci_subvendor = PCI_VENDOR_ID_INTEL,
+          .pci_subdevice = 0x0b0b,
+          .config = STAC_D945GTP3 },    /* Intel D945PSN - 3 Stack, 9221 A1 */
+          { .pci_subvendor = PCI_VENDOR_ID_INTEL,
 	  .pci_subdevice = 0x0404,
 	  .config = STAC_D945GTP5 },	/* Intel D945GTP - 5 Stack */
 	{ .pci_subvendor = PCI_VENDOR_ID_INTEL,
@@ -274,8 +317,30 @@ static struct hda_board_config stac922x_cfg_tbl[] = {
 	  .config = STAC_D945GTP5 },	/* Intel D945GNT - 5 Stack */
 	{ .pci_subvendor = PCI_VENDOR_ID_INTEL,
 	  .pci_subdevice = 0x0013,
-	  .config = STAC_D945GTP5 },	/* Intel D955XBK - 5 Stack */
+          .config = STAC_D945GTP5 },	/* Intel D955XBK - 5 Stack */
+        { .pci_subvendor = PCI_VENDOR_ID_INTEL,
+          .pci_subdevice = 0x0417,
+          .config = STAC_D945GTP5 },    /* Intel D975XBK - 5 Stack */
 	{0} /* terminator */
+};
+
+static unsigned int ref927x_pin_configs[14] = {
+    0x01813122, 0x01a19021, 0x01014010, 0x01016011,
+    0x01012012, 0x01011014, 0x40000100, 0x40000100,
+    0x40000100, 0x40000100, 0x40000100, 0x01441030,
+    0x01c41030, 0x40000100,
+};
+
+static unsigned int *stac927x_brd_tbl[] = {
+    ref927x_pin_configs,
+};
+
+static struct hda_board_config stac927x_cfg_tbl[] = {
+    { .modelname = "ref",
+    .pci_subvendor = PCI_VENDOR_ID_INTEL,
+    .pci_subdevice = 0x2668,      /* DFI LanParty */
+    .config = STAC_REF },         /* SigmaTel reference board */
+    {0} /* terminator */
 };
 
 static void stac92xx_set_config_regs(struct hda_codec *codec)
@@ -299,7 +364,7 @@ static void stac92xx_set_config_regs(struct hda_codec *codec)
 				    spec->pin_configs[i] >> 24);
 		pin_cfg = snd_hda_codec_read(codec, spec->pin_nids[i], 0,
 					     AC_VERB_GET_CONFIG_DEFAULT,
-					     0x00);	
+					     0x00);
 		snd_printdd(KERN_INFO "hda_codec: pin nid %2.2x pin config %8.8x\n", spec->pin_nids[i], pin_cfg);
 	}
 }
@@ -409,11 +474,23 @@ static struct hda_pcm_stream stac92xx_pcm_analog_playback = {
 	},
 };
 
+static struct hda_pcm_stream stac92xx_pcm_analog_alt_playback = {
+    .substreams = 1,
+    .channels_min = 2,
+    .channels_max = 2,
+    .nid = 0x06, /* NID to query formats and rates */
+    .ops = {
+        .open = stac92xx_playback_pcm_open,
+        .prepare = stac92xx_playback_pcm_prepare,
+        .cleanup = stac92xx_playback_pcm_cleanup
+    },
+};
+
 static struct hda_pcm_stream stac92xx_pcm_analog_capture = {
 	.substreams = 2,
 	.channels_min = 2,
-	.channels_max = 2,
-	.nid = 0x06, /* NID to query formats and rates */
+        .channels_max = 2,
+        /* NID is set in stac92xx_build_pcms */
 	.ops = {
 		.prepare = stac92xx_capture_pcm_prepare,
 		.cleanup = stac92xx_capture_pcm_cleanup
@@ -431,7 +508,14 @@ static int stac92xx_build_pcms(struct hda_codec *codec)
 	info->name = "STAC92xx Analog";
 	info->stream[SNDRV_PCM_STREAM_PLAYBACK] = stac92xx_pcm_analog_playback;
 	info->stream[SNDRV_PCM_STREAM_CAPTURE] = stac92xx_pcm_analog_capture;
+        info->stream[SNDRV_PCM_STREAM_CAPTURE].nid = spec->adc_nids[0];
 
+        if (spec->alt_switch) {
+            codec->num_pcms++;
+            info++;
+            info->name = "STAC92xx Analog Alt";
+            info->stream[SNDRV_PCM_STREAM_PLAYBACK] = stac92xx_pcm_analog_alt_playback;
+        }
 	if (spec->multiout.dig_out_nid || spec->dig_in_nid) {
 		codec->num_pcms++;
 		info++;
@@ -447,6 +531,22 @@ static int stac92xx_build_pcms(struct hda_codec *codec)
 	}
 
 	return 0;
+}
+
+static unsigned int stac92xx_get_vref(struct hda_codec *codec, hda_nid_t nid)
+{
+    unsigned int pincap = snd_hda_param_read(codec, nid,
+                                             AC_PAR_PIN_CAP);
+    pincap = (pincap & AC_PINCAP_VREF) >> AC_PINCAP_VREF_SHIFT;
+    if (pincap & AC_PINCAP_VREF_100)
+        return AC_PINCTL_VREF_100;
+    if (pincap & AC_PINCAP_VREF_80)
+        return AC_PINCTL_VREF_80;
+    if (pincap & AC_PINCAP_VREF_50)
+        return AC_PINCTL_VREF_50;
+    if (pincap & AC_PINCAP_VREF_GRD)
+        return AC_PINCTL_VREF_GRD;
+    return 0;
 }
 
 static void stac92xx_auto_set_pinctl(struct hda_codec *codec, hda_nid_t nid, int pin_type)
@@ -485,9 +585,13 @@ static int stac92xx_io_switch_put(struct snd_kcontrol *kcontrol, struct snd_ctl_
 	spec->io_switch[io_idx] = val;
 
 	if (val)
-		stac92xx_auto_set_pinctl(codec, nid, AC_PINCTL_OUT_EN);
-	else
-		stac92xx_auto_set_pinctl(codec, nid, AC_PINCTL_IN_EN);
+            stac92xx_auto_set_pinctl(codec, nid, AC_PINCTL_OUT_EN);
+        else {
+            unsigned int pinctl = AC_PINCTL_IN_EN;
+            if (io_idx) /* set VREF for mic */
+                pinctl |= stac92xx_get_vref(codec, nid);
+            stac92xx_auto_set_pinctl(codec, nid, pinctl);
+        }
 
         return 1;
 }
@@ -589,6 +693,16 @@ static int stac92xx_add_dyn_out_pins(struct hda_codec *codec, struct auto_pin_cf
 	return 0;
 }
 
+/*
+ * XXX The line_out pin widget connection list may not be set to the
+ * desired DAC nid. This is the case on 927x where ports A and B can
+ * be routed to several DACs.
+ *
+ * This requires an analysis of the line-out/hp pin configuration
+ * to provide a best fit for pin/DAC configurations that are routable.
+ * For now, 927x DAC4 is not supported and 927x DAC1 output to ports
+ * A and B is not supported.
+ */
 /* fill in the dac_nids table from the parsed pin configuration */
 static int stac92xx_auto_fill_dac_nids(struct hda_codec *codec, const struct auto_pin_cfg *cfg)
 {
@@ -603,7 +717,7 @@ static int stac92xx_auto_fill_dac_nids(struct hda_codec *codec, const struct aut
 					AC_VERB_GET_CONNECT_LIST, 0) & 0xff;
 	}
 
-	spec->multiout.num_dacs = cfg->line_outs;
+        spec->multiout.num_dacs = cfg->line_outs;
 
 	return 0;
 }
@@ -671,12 +785,14 @@ static int stac92xx_auto_create_hp_ctls(struct hda_codec *codec, struct auto_pin
 	if (! pin)
 		return 0;
 
-	wid_caps = get_wcaps(codec, pin);
-	if (wid_caps & AC_WCAP_UNSOL_CAP)
+        wid_caps = get_wcaps(codec, pin);
+        if (wid_caps & AC_WCAP_UNSOL_CAP) {
 		/* Enable unsolicited responses on the HP widget */
 		snd_hda_codec_write(codec, pin, 0,
 				AC_VERB_SET_UNSOLICITED_ENABLE,
-				STAC_UNSOL_ENABLE);
+                                    STAC_UNSOL_ENABLE);
+                spec->hp_detect = 1;
+        }
 
 	nid = snd_hda_codec_read(codec, pin, 0, AC_VERB_GET_CONNECT_LIST, 0) & 0xff;
 	for (i = 0; i < cfg->line_outs; i++) {
@@ -710,9 +826,6 @@ static int stac92xx_auto_create_analog_input_ctls(struct hda_codec *codec, const
 	for (i = 0; i < AUTO_PIN_LAST; i++) {
 		int index = -1;
 		if (cfg->input_pins[i]) {
-			/* Enable active pin widget as an input */
-			stac92xx_auto_set_pinctl(codec, cfg->input_pins[i], AC_PINCTL_IN_EN);
-
 			imux->items[imux->num_items].label = auto_pin_cfg_labels[i];
 
 			for (j=0; j<spec->num_muxes; j++) {
@@ -754,19 +867,19 @@ static void stac92xx_auto_init_hp_out(struct hda_codec *codec)
 		stac92xx_auto_set_pinctl(codec, pin, AC_PINCTL_OUT_EN | AC_PINCTL_HP_EN);
 }
 
-static int stac922x_parse_auto_config(struct hda_codec *codec)
+static int stac92xx_parse_auto_config(struct hda_codec *codec, hda_nid_t dig_out, hda_nid_t dig_in)
 {
 	struct sigmatel_spec *spec = codec->spec;
 	int err;
 
 	if ((err = snd_hda_parse_pin_def_config(codec, &spec->autocfg, NULL)) < 0)
-		return err;
+            return err;
+        if (! spec->autocfg.line_outs)
+            return 0; /* can't find valid pin config */
 	if ((err = stac92xx_add_dyn_out_pins(codec, &spec->autocfg)) < 0)
 		return err;
 	if ((err = stac92xx_auto_fill_dac_nids(codec, &spec->autocfg)) < 0)
 		return err;
-	if (! spec->autocfg.line_outs && ! spec->autocfg.hp_pin)
-		return 0; /* can't find valid pin config */
 
 	if ((err = stac92xx_auto_create_multi_out_ctls(spec, &spec->autocfg)) < 0 ||
 	    (err = stac92xx_auto_create_hp_ctls(codec, &spec->autocfg)) < 0 ||
@@ -777,14 +890,10 @@ static int stac922x_parse_auto_config(struct hda_codec *codec)
 	if (spec->multiout.max_channels > 2)
 		spec->surr_switch = 1;
 
-	if (spec->autocfg.dig_out_pin) {
-		spec->multiout.dig_out_nid = 0x08;
-		stac92xx_auto_set_pinctl(codec, spec->autocfg.dig_out_pin, AC_PINCTL_OUT_EN);
-	}
-	if (spec->autocfg.dig_in_pin) {
-		spec->dig_in_nid = 0x09;
-		stac92xx_auto_set_pinctl(codec, spec->autocfg.dig_in_pin, AC_PINCTL_IN_EN);
-	}
+        if (spec->autocfg.dig_out_pin)
+            spec->multiout.dig_out_nid = dig_out;
+        if (spec->autocfg.dig_in_pin)
+            spec->dig_in_nid = dig_in;
 
 	if (spec->kctl_alloc)
 		spec->mixers[spec->num_mixers++] = spec->kctl_alloc;
@@ -792,6 +901,29 @@ static int stac922x_parse_auto_config(struct hda_codec *codec)
 	spec->input_mux = &spec->private_imux;
 
 	return 1;
+}
+
+/* add playback controls for HP output */
+static int stac9200_auto_create_hp_ctls(struct hda_codec *codec,
+                                        struct auto_pin_cfg *cfg)
+{
+    struct sigmatel_spec *spec = codec->spec;
+    hda_nid_t pin = cfg->hp_pin;
+    unsigned int wid_caps;
+
+    if (! pin)
+        return 0;
+
+    wid_caps = get_wcaps(codec, pin);
+    if (wid_caps & AC_WCAP_UNSOL_CAP) {
+        /* Enable unsolicited responses on the HP widget */
+        snd_hda_codec_write(codec, pin, 0,
+                            AC_VERB_SET_UNSOLICITED_ENABLE,
+                            STAC_UNSOL_ENABLE);
+        spec->hp_detect = 1;
+    }
+
+    return 0;
 }
 
 static int stac9200_parse_auto_config(struct hda_codec *codec)
@@ -805,14 +937,13 @@ static int stac9200_parse_auto_config(struct hda_codec *codec)
 	if ((err = stac92xx_auto_create_analog_input_ctls(codec, &spec->autocfg)) < 0)
 		return err;
 
-	if (spec->autocfg.dig_out_pin) {
-		spec->multiout.dig_out_nid = 0x05;
-		stac92xx_auto_set_pinctl(codec, spec->autocfg.dig_out_pin, AC_PINCTL_OUT_EN);
-	}
-	if (spec->autocfg.dig_in_pin) {
-		spec->dig_in_nid = 0x04;
-		stac92xx_auto_set_pinctl(codec, spec->autocfg.dig_in_pin, AC_PINCTL_IN_EN);
-	}
+        if ((err = stac9200_auto_create_hp_ctls(codec, &spec->autocfg)) < 0)
+            return err;
+
+        if (spec->autocfg.dig_out_pin)
+            spec->multiout.dig_out_nid = 0x05;
+        if (spec->autocfg.dig_in_pin)
+            spec->dig_in_nid = 0x04;
 
 	if (spec->kctl_alloc)
 		spec->mixers[spec->num_mixers++] = spec->kctl_alloc;
@@ -824,14 +955,37 @@ static int stac9200_parse_auto_config(struct hda_codec *codec)
 
 static int stac92xx_init(struct hda_codec *codec)
 {
-	struct sigmatel_spec *spec = codec->spec;
+    struct sigmatel_spec *spec = codec->spec;
+    struct auto_pin_cfg *cfg = &spec->autocfg;
+    int i;
 
-	snd_hda_sequence_write(codec, spec->init);
+    snd_hda_sequence_write(codec, spec->init);
 
-	stac92xx_auto_init_multi_out(codec);
-	stac92xx_auto_init_hp_out(codec);
+    /* set up pins */
+    if (spec->hp_detect) {
+        /* fake event to set up pins */
+        codec->patch_ops.unsol_event(codec, STAC_HP_EVENT << 26);
+    } else {
+        stac92xx_auto_init_multi_out(codec);
+        stac92xx_auto_init_hp_out(codec);
+    }
+    for (i = 0; i < AUTO_PIN_LAST; i++) {
+        hda_nid_t nid = cfg->input_pins[i];
+        if (nid) {
+            unsigned int pinctl = AC_PINCTL_IN_EN;
+            if (i == AUTO_PIN_MIC || i == AUTO_PIN_FRONT_MIC)
+                pinctl |= stac92xx_get_vref(codec, nid);
+            stac92xx_auto_set_pinctl(codec, nid, pinctl);
+        }
+    }
+    if (cfg->dig_out_pin)
+        stac92xx_auto_set_pinctl(codec, cfg->dig_out_pin,
+                                 AC_PINCTL_OUT_EN);
+    if (cfg->dig_in_pin)
+        stac92xx_auto_set_pinctl(codec, cfg->dig_in_pin,
+                                 AC_PINCTL_IN_EN);
 
-	return 0;
+    return 0;
 }
 
 static void stac92xx_free(struct hda_codec *codec)
@@ -896,7 +1050,7 @@ static void stac92xx_unsol_event(struct hda_codec *codec, unsigned int res)
 						AC_PINCTL_OUT_EN);
 		stac92xx_reset_pinctl(codec, cfg->hp_pin, AC_PINCTL_OUT_EN);
 	}
-} 
+}
 
 #ifdef CONFIG_PM
 static int stac92xx_resume(struct hda_codec *codec)
@@ -997,8 +1151,48 @@ static int patch_stac922x(struct hda_codec *codec)
 
 	spec->multiout.dac_nids = spec->dac_nids;
 
-	err = stac922x_parse_auto_config(codec);
-	if (err < 0) {
+        err = stac92xx_parse_auto_config(codec, 0x08, 0x09);
+        if (err < 0) {
+            stac92xx_free(codec);
+            return err;
+        }
+
+        codec->patch_ops = stac92xx_patch_ops;
+
+        return 0;
+}
+
+static int patch_stac927x(struct hda_codec *codec)
+{
+    struct sigmatel_spec *spec;
+    int err;
+
+    spec  = kzalloc(sizeof(*spec), GFP_KERNEL);
+    if (spec == NULL)
+        return -ENOMEM;
+
+    codec->spec = spec;
+    spec->board_config = snd_hda_check_board_config(codec, stac927x_cfg_tbl);
+    if (spec->board_config < 0)
+        snd_printdd(KERN_INFO "hda_codec: Unknown model for STAC927x, using BIOS defaults\n");
+    else {
+        spec->num_pins = 14;
+        spec->pin_nids = stac927x_pin_nids;
+        spec->pin_configs = stac927x_brd_tbl[spec->board_config];
+        stac92xx_set_config_regs(codec);
+    }
+
+    spec->adc_nids = stac927x_adc_nids;
+    spec->mux_nids = stac927x_mux_nids;
+    spec->num_muxes = 3;
+
+    spec->init = stac927x_core_init;
+    spec->mixer = stac927x_mixer;
+
+    spec->multiout.dac_nids = spec->dac_nids;
+
+  	         err = stac92xx_parse_auto_config(codec, 0x1e, 0x20);
+        if (err < 0) {
 		stac92xx_free(codec);
 		return err;
 	}
@@ -1009,6 +1203,166 @@ static int patch_stac922x(struct hda_codec *codec)
 }
 
 /*
+ * STAC 7661(?) hack
+ */
+
+/* static config for Sony VAIO FE550G */
+static hda_nid_t vaio_dacs[] = { 0x2 };
+#define VAIO_HP_DAC     0x5
+static hda_nid_t vaio_adcs[] = { 0x8 /*,0x6*/ };
+static hda_nid_t vaio_mux_nids[] = { 0x15 };
+
+static struct hda_input_mux vaio_mux = {
+    .num_items = 2,
+    .items = {
+        /* { "HP", 0x0 },
+         { "Unknown", 0x1 }, */
+        { "Mic", 0x2 },
+        { "PCM", 0x3 },
+    }
+};
+
+static struct hda_verb vaio_init[] = {
+    {0x0a, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_HP }, /* HP <- 0x2 */
+    {0x0f, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT }, /* Speaker <- 0x5 */
+    {0x0d, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_VREF80 }, /* Mic? (<- 0x2) */
+    {0x0e, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_IN }, /* CD */
+    {0x14, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_VREF80 }, /* Mic? */
+    {0x15, AC_VERB_SET_CONNECT_SEL, 0x2}, /* mic-sel: 0a,0d,14,02 */
+    {0x02, AC_VERB_SET_AMP_GAIN_MUTE, AMP_OUT_MUTE}, /* HP */
+    {0x05, AC_VERB_SET_AMP_GAIN_MUTE, AMP_OUT_MUTE}, /* Speaker */
+    {0x09, AC_VERB_SET_AMP_GAIN_MUTE, AMP_IN_MUTE(0)}, /* capture sw/vol -> 0x8 */
+    {0x07, AC_VERB_SET_AMP_GAIN_MUTE, AMP_IN_UNMUTE(0)}, /* CD-in -> 0x6 */
+    {0x15, AC_VERB_SET_AMP_GAIN_MUTE, AMP_OUT_UNMUTE}, /* Mic-in -> 0x9 */
+    {0}
+};
+
+/* bind volumes of both NID 0x02 and 0x05 */
+static int vaio_master_vol_put(struct snd_kcontrol *kcontrol,
+                               struct snd_ctl_elem_value *ucontrol)
+{
+    struct hda_codec *codec = snd_kcontrol_chip(kcontrol);
+    long *valp = ucontrol->value.integer.value;
+    int change;
+
+    change = snd_hda_codec_amp_update(codec, 0x02, 0, HDA_OUTPUT, 0,
+                                      0x7f, valp[0] & 0x7f);
+    change |= snd_hda_codec_amp_update(codec, 0x02, 1, HDA_OUTPUT, 0,
+                                       0x7f, valp[1] & 0x7f);
+    snd_hda_codec_amp_update(codec, 0x05, 0, HDA_OUTPUT, 0,
+                             0x7f, valp[0] & 0x7f);
+    snd_hda_codec_amp_update(codec, 0x05, 1, HDA_OUTPUT, 0,
+                             0x7f, valp[1] & 0x7f);
+    return change;
+}
+
+/* bind volumes of both NID 0x02 and 0x05 */
+static int vaio_master_sw_put(struct snd_kcontrol *kcontrol,
+                              struct snd_ctl_elem_value *ucontrol)
+{
+    struct hda_codec *codec = snd_kcontrol_chip(kcontrol);
+    long *valp = ucontrol->value.integer.value;
+    int change;
+
+    change = snd_hda_codec_amp_update(codec, 0x02, 0, HDA_OUTPUT, 0,
+                                      0x80, valp[0] & 0x80);
+    change |= snd_hda_codec_amp_update(codec, 0x02, 1, HDA_OUTPUT, 0,
+                                       0x80, valp[1] & 0x80);
+    snd_hda_codec_amp_update(codec, 0x05, 0, HDA_OUTPUT, 0,
+                             0x80, valp[0] & 0x80);
+    snd_hda_codec_amp_update(codec, 0x05, 1, HDA_OUTPUT, 0,
+                             0x80, valp[1] & 0x80);
+    return change;
+}
+
+static struct snd_kcontrol_new vaio_mixer[] = {
+    {
+        .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+        .name = "Master Playback Volume",
+        .info = snd_hda_mixer_amp_volume_info,
+        .get = snd_hda_mixer_amp_volume_get,
+        .put = vaio_master_vol_put,
+        .private_value = HDA_COMPOSE_AMP_VAL(0x02, 3, 0, HDA_OUTPUT),
+    },
+    {
+        .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+        .name = "Master Playback Switch",
+        .info = snd_hda_mixer_amp_switch_info,
+        .get = snd_hda_mixer_amp_switch_get,
+        .put = vaio_master_sw_put,
+        .private_value = HDA_COMPOSE_AMP_VAL(0x02, 3, 0, HDA_OUTPUT),
+    },
+    /* HDA_CODEC_VOLUME("CD Capture Volume", 0x07, 0, HDA_INPUT), */
+    HDA_CODEC_VOLUME("Capture Volume", 0x09, 0, HDA_INPUT),
+    HDA_CODEC_MUTE("Capture Switch", 0x09, 0, HDA_INPUT),
+    {
+        .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+        .name = "Capture Source",
+        .count = 1,
+        .info = stac92xx_mux_enum_info,
+        .get = stac92xx_mux_enum_get,
+        .put = stac92xx_mux_enum_put,
+    },
+    {0}
+};
+
+static struct hda_codec_ops stac7661_patch_ops = {
+    .build_controls = stac92xx_build_controls,
+    .build_pcms = stac92xx_build_pcms,
+    .init = stac92xx_init,
+    .free = stac92xx_free,
+#ifdef CONFIG_PM
+    .resume = stac92xx_resume,
+#endif
+};
+
+enum { STAC7661_VAIO };
+
+static struct hda_board_config stac7661_cfg_tbl[] = {
+    { .modelname = "vaio", .config = STAC7661_VAIO },
+    { .pci_subvendor = 0x104d, .pci_subdevice = 0x81e6,
+    .config = STAC7661_VAIO },
+    { .pci_subvendor = 0x104d, .pci_subdevice = 0x81ef,
+    .config = STAC7661_VAIO },
+    {0}
+};
+
+static int patch_stac7661(struct hda_codec *codec)
+{
+    struct sigmatel_spec *spec;
+    int board_config;
+
+    board_config = snd_hda_check_board_config(codec, stac7661_cfg_tbl);
+    if (board_config < 0)
+        /* unknown config, let generic-parser do its job... */
+        return snd_hda_parse_generic_codec(codec);
+
+    spec  = kzalloc(sizeof(*spec), GFP_KERNEL);
+    if (spec == NULL)
+        return -ENOMEM;
+
+    codec->spec = spec;
+    switch (board_config) {
+    case STAC7661_VAIO:
+        spec->mixer = vaio_mixer;
+        spec->init = vaio_init;
+        spec->multiout.max_channels = 2;
+        spec->multiout.num_dacs = ARRAY_SIZE(vaio_dacs);
+        spec->multiout.dac_nids = vaio_dacs;
+        spec->multiout.hp_nid = VAIO_HP_DAC;
+        spec->num_adcs = ARRAY_SIZE(vaio_adcs);
+        spec->adc_nids = vaio_adcs;
+        spec->input_mux = &vaio_mux;
+        spec->mux_nids = vaio_mux_nids;
+        break;
+    }
+
+    codec->patch_ops = stac7661_patch_ops;
+    return 0;
+}
+
+
+  	 /*
  * patch entries
  */
 struct hda_codec_preset snd_hda_preset_sigmatel[] = {
@@ -1018,6 +1372,17 @@ struct hda_codec_preset snd_hda_preset_sigmatel[] = {
  	{ .id = 0x83847880, .name = "STAC9220 A2", .patch = patch_stac922x },
  	{ .id = 0x83847681, .name = "STAC9220D/9223D A2", .patch = patch_stac922x },
  	{ .id = 0x83847682, .name = "STAC9221 A2", .patch = patch_stac922x },
- 	{ .id = 0x83847683, .name = "STAC9221D A2", .patch = patch_stac922x },
+        { .id = 0x83847683, .name = "STAC9221D A2", .patch = patch_stac922x },
+        { .id = 0x83847620, .name = "STAC9274", .patch = patch_stac927x },
+        { .id = 0x83847621, .name = "STAC9274D", .patch = patch_stac927x },
+        { .id = 0x83847622, .name = "STAC9273X", .patch = patch_stac927x },
+        { .id = 0x83847623, .name = "STAC9273D", .patch = patch_stac927x },
+        { .id = 0x83847624, .name = "STAC9272X", .patch = patch_stac927x },
+        { .id = 0x83847625, .name = "STAC9272D", .patch = patch_stac927x },
+        { .id = 0x83847626, .name = "STAC9271X", .patch = patch_stac927x },
+        { .id = 0x83847627, .name = "STAC9271D", .patch = patch_stac927x },
+        { .id = 0x83847628, .name = "STAC9274X5NH", .patch = patch_stac927x },
+        { .id = 0x83847629, .name = "STAC9274D5NH", .patch = patch_stac927x },
+        { .id = 0x83847661, .name = "STAC7661", .patch = patch_stac7661 },
 	{0} /* terminator */
 };

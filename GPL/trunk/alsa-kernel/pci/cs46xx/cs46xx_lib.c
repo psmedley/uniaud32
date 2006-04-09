@@ -53,6 +53,8 @@
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 //#include <linux/gameport.h>
+#include <linux/mutex.h>
+
 
 #include <sound/core.h>
 #include <sound/control.h>
@@ -315,13 +317,13 @@ int snd_cs46xx_download(struct snd_cs46xx *chip,
 	offset = offset & 0xffff;
 
 	snd_assert(!(offset & 3) && !(len & 3), return -EINVAL);
-	dst = (char*)chip->region.idx[bank+1].remap_addr + offset;
+	dst = chip->region.idx[bank+1].remap_addr + offset;
 	len /= sizeof(u32);
 
 	/* writel already converts 32-bit value to right endianess */
 	while (len-- > 0) {
 		writel(*src++, dst);
-		(char*)dst += sizeof(u32);
+		dst += sizeof(u32);
 	}
 	return 0;
 }
@@ -909,22 +911,22 @@ static int snd_cs46xx_playback_hw_params(struct snd_pcm_substream *substream,
 #ifdef CONFIG_SND_CS46XX_NEW_DSP
 	snd_assert (sample_rate != 0, return -ENXIO);
 
-	down (&chip->spos_mutex);
+	mutex_lock(&chip->spos_mutex);
 
 	if (_cs46xx_adjust_sample_rate (chip,cpcm,sample_rate)) {
-		up (&chip->spos_mutex);
+		mutex_unlock(&chip->spos_mutex);
 		return -ENXIO;
 	}
 
-	snd_assert (cpcm->pcm_channel != NULL);
+	snd_assert (cpcm->pcm_channel != NULL, return -ENXIO);
 	if (!cpcm->pcm_channel) {
-		up (&chip->spos_mutex);
+		mutex_unlock(&chip->spos_mutex);
 		return -ENXIO;
 	}
 
 
 	if (cs46xx_dsp_pcm_channel_set_period (chip,cpcm->pcm_channel,period_size)) {
-		 up (&chip->spos_mutex);
+		 mutex_unlock(&chip->spos_mutex);
 		 return -EINVAL;
 	 }
 
@@ -951,7 +953,7 @@ static int snd_cs46xx_playback_hw_params(struct snd_pcm_substream *substream,
 		} else if (cpcm->pcm_channel_id == DSP_IEC958_CHANNEL) {
 			substream->ops = &snd_cs46xx_playback_iec958_ops;
 		} else {
-			snd_assert(0);
+			snd_assert(0, return -ENXIO);
 		}
 #else
 		substream->ops = &snd_cs46xx_playback_ops;
@@ -965,7 +967,7 @@ static int snd_cs46xx_playback_hw_params(struct snd_pcm_substream *substream,
 		}
 		if ((err = snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params))) < 0) {
 #ifdef CONFIG_SND_CS46XX_NEW_DSP
-			up (&chip->spos_mutex);
+			mutex_unlock(&chip->spos_mutex);
 #endif
 			return err;
 		}
@@ -980,7 +982,7 @@ static int snd_cs46xx_playback_hw_params(struct snd_pcm_substream *substream,
 		} else if (cpcm->pcm_channel_id == DSP_IEC958_CHANNEL) {
 			substream->ops = &snd_cs46xx_playback_indirect_iec958_ops;
 		} else {
-			snd_assert(0);
+			snd_assert(0, return -ENXIO);
 		}
 #else
 		substream->ops = &snd_cs46xx_playback_indirect_ops;
@@ -989,7 +991,7 @@ static int snd_cs46xx_playback_hw_params(struct snd_pcm_substream *substream,
 	}
 
 #ifdef CONFIG_SND_CS46XX_NEW_DSP
-	up (&chip->spos_mutex);
+	mutex_unlock(&chip->spos_mutex);
 #endif
 
 	return 0;
@@ -1304,7 +1306,7 @@ static int _cs46xx_playback_open_channel (struct snd_pcm_substream *substream,in
 	struct snd_cs46xx_pcm * cpcm;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	cpcm = (struct snd_cs46xx_pcm * )kzalloc(sizeof(*cpcm), GFP_KERNEL);
+	cpcm = kzalloc(sizeof(*cpcm), GFP_KERNEL);
 	if (cpcm == NULL)
 		return -ENOMEM;
 	if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, snd_dma_pci_data(chip->pci),
@@ -1319,7 +1321,7 @@ static int _cs46xx_playback_open_channel (struct snd_pcm_substream *substream,in
 
 	cpcm->substream = substream;
 #ifdef CONFIG_SND_CS46XX_NEW_DSP
-	down (&chip->spos_mutex);
+	mutex_lock(&chip->spos_mutex);
 	cpcm->pcm_channel = NULL; 
 	cpcm->pcm_channel_id = pcm_channel_id;
 
@@ -1328,7 +1330,7 @@ static int _cs46xx_playback_open_channel (struct snd_pcm_substream *substream,in
 				   SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 
 				   &hw_constraints_period_sizes);
 
-	up (&chip->spos_mutex);
+	mutex_unlock(&chip->spos_mutex);
 #else
 	chip->playback_pcm = cpcm; /* HACK */
 #endif
@@ -1367,9 +1369,9 @@ static int snd_cs46xx_playback_open_iec958(struct snd_pcm_substream *substream)
 
 	snd_printdd("open raw iec958 channel\n");
 
-	down (&chip->spos_mutex);
+	mutex_lock(&chip->spos_mutex);
 	cs46xx_iec958_pre_open (chip);
-	up (&chip->spos_mutex);
+	mutex_unlock(&chip->spos_mutex);
 
 	return _cs46xx_playback_open_channel(substream,DSP_IEC958_CHANNEL);
 }
@@ -1385,9 +1387,9 @@ static int snd_cs46xx_playback_close_iec958(struct snd_pcm_substream *substream)
 
 	err = snd_cs46xx_playback_close(substream);
 
-	down (&chip->spos_mutex);
+	mutex_lock(&chip->spos_mutex);
 	cs46xx_iec958_post_close (chip);
-	up (&chip->spos_mutex);
+	mutex_unlock(&chip->spos_mutex);
 
 	return err;
 }
@@ -1428,12 +1430,12 @@ static int snd_cs46xx_playback_close(struct snd_pcm_substream *substream)
 	if (!cpcm) return -ENXIO;
 
 #ifdef CONFIG_SND_CS46XX_NEW_DSP
-	down (&chip->spos_mutex);
+	mutex_lock(&chip->spos_mutex);
 	if (cpcm->pcm_channel) {
 		cs46xx_dsp_destroy_pcm_channel(chip,cpcm->pcm_channel);
 		cpcm->pcm_channel = NULL;
 	}
-	up (&chip->spos_mutex);
+	mutex_unlock(&chip->spos_mutex);
 #else
 	chip->playback_pcm = NULL;
 #endif
@@ -1848,7 +1850,7 @@ static int snd_cs46xx_iec958_put(struct snd_kcontrol *kcontrol,
 
 	switch (kcontrol->private_value) {
 	case CS46XX_MIXER_SPDIF_OUTPUT_ELEMENT:
-		down (&chip->spos_mutex);
+		mutex_lock(&chip->spos_mutex);
 		change = (chip->dsp_spos_instance->spdif_status_out & DSP_SPDIF_STATUS_OUTPUT_ENABLED);
 		if (ucontrol->value.integer.value[0] && !change) 
 			cs46xx_dsp_enable_spdif_out(chip);
@@ -1856,7 +1858,7 @@ static int snd_cs46xx_iec958_put(struct snd_kcontrol *kcontrol,
 			cs46xx_dsp_disable_spdif_out(chip);
 
 		res = (change != (chip->dsp_spos_instance->spdif_status_out & DSP_SPDIF_STATUS_OUTPUT_ENABLED));
-		up (&chip->spos_mutex);
+		mutex_unlock(&chip->spos_mutex);
 		break;
 	case CS46XX_MIXER_SPDIF_INPUT_ELEMENT:
 		change = chip->dsp_spos_instance->spdif_status_in;
@@ -1997,12 +1999,12 @@ static int snd_cs46xx_spdif_default_get(struct snd_kcontrol *kcontrol,
 	struct snd_cs46xx *chip = snd_kcontrol_chip(kcontrol);
 	struct dsp_spos_instance * ins = chip->dsp_spos_instance;
 
-	down (&chip->spos_mutex);
+	mutex_lock(&chip->spos_mutex);
 	ucontrol->value.iec958.status[0] = _wrap_all_bits((ins->spdif_csuv_default >> 24) & 0xff);
 	ucontrol->value.iec958.status[1] = _wrap_all_bits((ins->spdif_csuv_default >> 16) & 0xff);
 	ucontrol->value.iec958.status[2] = 0;
 	ucontrol->value.iec958.status[3] = _wrap_all_bits((ins->spdif_csuv_default) & 0xff);
-	up (&chip->spos_mutex);
+	mutex_unlock(&chip->spos_mutex);
 
 	return 0;
 }
@@ -2015,7 +2017,7 @@ static int snd_cs46xx_spdif_default_put(struct snd_kcontrol *kcontrol,
 	unsigned int val;
 	int change;
 
-	down (&chip->spos_mutex);
+	mutex_lock(&chip->spos_mutex);
 	val = ((unsigned int)_wrap_all_bits(ucontrol->value.iec958.status[0]) << 24) |
 		((unsigned int)_wrap_all_bits(ucontrol->value.iec958.status[2]) << 16) |
 		((unsigned int)_wrap_all_bits(ucontrol->value.iec958.status[3]))  |
@@ -2029,7 +2031,7 @@ static int snd_cs46xx_spdif_default_put(struct snd_kcontrol *kcontrol,
 	if ( !(ins->spdif_status_out & DSP_SPDIF_STATUS_PLAYBACK_OPEN) )
 		cs46xx_poke_via_dsp (chip,SP_SPDOUT_CSUV,val);
 
-	up (&chip->spos_mutex);
+	mutex_unlock(&chip->spos_mutex);
 
 	return change;
 }
@@ -2050,12 +2052,12 @@ static int snd_cs46xx_spdif_stream_get(struct snd_kcontrol *kcontrol,
 	struct snd_cs46xx *chip = snd_kcontrol_chip(kcontrol);
 	struct dsp_spos_instance * ins = chip->dsp_spos_instance;
 
-	down (&chip->spos_mutex);
+	mutex_lock(&chip->spos_mutex);
 	ucontrol->value.iec958.status[0] = _wrap_all_bits((ins->spdif_csuv_stream >> 24) & 0xff);
 	ucontrol->value.iec958.status[1] = _wrap_all_bits((ins->spdif_csuv_stream >> 16) & 0xff);
 	ucontrol->value.iec958.status[2] = 0;
 	ucontrol->value.iec958.status[3] = _wrap_all_bits((ins->spdif_csuv_stream) & 0xff);
-	up (&chip->spos_mutex);
+	mutex_unlock(&chip->spos_mutex);
 
 	return 0;
 }
@@ -2068,7 +2070,7 @@ static int snd_cs46xx_spdif_stream_put(struct snd_kcontrol *kcontrol,
 	unsigned int val;
 	int change;
 
-	down (&chip->spos_mutex);
+	mutex_lock(&chip->spos_mutex);
 	val = ((unsigned int)_wrap_all_bits(ucontrol->value.iec958.status[0]) << 24) |
 		((unsigned int)_wrap_all_bits(ucontrol->value.iec958.status[1]) << 16) |
 		((unsigned int)_wrap_all_bits(ucontrol->value.iec958.status[3])) |
@@ -2082,7 +2084,7 @@ static int snd_cs46xx_spdif_stream_put(struct snd_kcontrol *kcontrol,
 	if ( ins->spdif_status_out & DSP_SPDIF_STATUS_PLAYBACK_OPEN )
 		cs46xx_poke_via_dsp (chip,SP_SPDOUT_CSUV,val);
 
-	up (&chip->spos_mutex);
+	mutex_unlock(&chip->spos_mutex);
 
 	return change;
 }
@@ -2342,7 +2344,7 @@ static void snd_cs46xx_codec_reset (struct snd_ac97 * ac97)
 		snd_printdd("cs46xx: CODOEC2 mode %04x\n",0x3);
 		snd_cs46xx_ac97_write(ac97,AC97_CSR_ACMODE,0x3);
 	} else {
-		snd_assert(0); /* should never happen ... */
+		snd_assert(0, return); /* should never happen ... */
 	}
 
 	udelay(50);
@@ -2747,6 +2749,7 @@ int __devinit snd_cs46xx_gameport(struct snd_cs46xx *chip) { return -ENOSYS; }
 static inline void snd_cs46xx_remove_gameport(struct snd_cs46xx *chip) { }
 #endif /* CONFIG_GAMEPORT */
 
+#ifdef CONFIG_PROC_FS
 /*
  *  proc interface
  */
@@ -2762,7 +2765,7 @@ static long snd_cs46xx_io_read(struct snd_info_entry *entry, void *file_private_
 	if (pos + (size_t)size > region->size)
 		size = region->size - pos;
 	if (size > 0) {
-		if (copy_to_user_fromio(buf, (char*)region->remap_addr + pos, size))
+		if (copy_to_user_fromio(buf, region->remap_addr + pos, size))
 			return -EFAULT;
 	}
 	return size;
@@ -2800,6 +2803,10 @@ static int snd_cs46xx_proc_done(struct snd_cs46xx *chip)
 #endif
 	return 0;
 }
+#else /* !CONFIG_PROC_FS */
+#define snd_cs46xx_proc_init(card, chip)
+#define snd_cs46xx_proc_done(chip)
+#endif
 
 /*
  * stop the h/w
@@ -3036,7 +3043,9 @@ static int snd_cs46xx_chip_init(struct snd_cs46xx *chip)
 		 */
 		if (snd_cs46xx_peekBA0(chip, BA0_ACSTS) & ACSTS_CRDY)
 			goto ok1;
-		msleep(10);
+                //msleep(10);
+                set_current_state(TASK_UNINTERRUPTIBLE);
+                schedule_timeout((HZ+99)/100);
 	}
 
 
@@ -3085,7 +3094,9 @@ static int snd_cs46xx_chip_init(struct snd_cs46xx *chip)
 		 */
 		if ((snd_cs46xx_peekBA0(chip, BA0_ACISV) & (ACISV_ISV3 | ACISV_ISV4)) == (ACISV_ISV3 | ACISV_ISV4))
 			goto ok2;
-		msleep(10);
+                //msleep(10);
+                set_current_state(TASK_UNINTERRUPTIBLE);
+                schedule_timeout((HZ+99)/100);
 	}
 
 #ifndef CONFIG_SND_CS46XX_NEW_DSP
@@ -3660,7 +3671,6 @@ int snd_cs46xx_suspend(struct pci_dev *pci, pm_message_t state)
 	struct snd_cs46xx *chip = card->private_data;
 	int amp_saved;
 
-	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
 	snd_pcm_suspend_all(chip->pcm);
 	// chip->ac97_powerdown = snd_cs46xx_codec_read(chip, AC97_POWER_CONTROL);
 	// chip->ac97_general_purpose = snd_cs46xx_codec_read(chip, BA0_AC97_GENERAL_PURPOSE);
@@ -3677,6 +3687,7 @@ int snd_cs46xx_suspend(struct pci_dev *pci, pm_message_t state)
 	chip->amplifier = amp_saved; /* restore the status */
 	pci_disable_device(pci);
 	pci_save_state(pci);
+	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
 	return 0;
 }
 
@@ -3714,7 +3725,8 @@ int snd_cs46xx_resume(struct pci_dev *pci)
 	else
 		chip->active_ctrl(chip, -1); /* disable CLKRUN */
 	chip->amplifier = amp_saved;
-	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
+        snd_power_change_state(card, SNDRV_CTL_POWER_D0);
+        printk("CS46XX: resume\n");
 	return 0;
 }
 #endif /* CONFIG_PM */
@@ -3743,14 +3755,14 @@ int __devinit snd_cs46xx_create(struct snd_card *card,
 	if ((err = pci_enable_device(pci)) < 0)
 		return err;
 
-	chip = (struct snd_cs46xx *)kzalloc(sizeof(*chip), GFP_KERNEL);
+	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	if (chip == NULL) {
 		pci_disable_device(pci);
 		return -ENOMEM;
 	}
 	spin_lock_init(&chip->reg_lock);
 #ifdef CONFIG_SND_CS46XX_NEW_DSP
-	init_MUTEX(&chip->spos_mutex);
+	mutex_init(&chip->spos_mutex);
 #endif
 	chip->card = card;
 	chip->pci = pci;

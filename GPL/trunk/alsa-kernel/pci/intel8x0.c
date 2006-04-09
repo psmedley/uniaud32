@@ -493,6 +493,7 @@ static struct pci_device_id snd_intel8x0_ids[] = {
     { 0x10de, 0x008a, PCI_ANY_ID, PCI_ANY_ID, 0, 0, DEVICE_NFORCE },        /* CK8 */
     { 0x10de, 0x00da, PCI_ANY_ID, PCI_ANY_ID, 0, 0, DEVICE_NFORCE },	/* NFORCE3 */
     { 0x10de, 0x00ea, PCI_ANY_ID, PCI_ANY_ID, 0, 0, DEVICE_NFORCE },        /* CK8S */
+    { 0x10de, 0x026b, PCI_ANY_ID, PCI_ANY_ID, 0, 0, DEVICE_NFORCE },        /* MCP51 */
     { 0x1022, 0x746d, PCI_ANY_ID, PCI_ANY_ID, 0, 0, DEVICE_INTEL },	/* AMD8111 */
     { 0x1022, 0x7445, PCI_ANY_ID, PCI_ANY_ID, 0, 0, DEVICE_INTEL },	/* AMD768 */
     { 0x10b9, 0x5455, PCI_ANY_ID, PCI_ANY_ID, 0, 0, DEVICE_ALI },   /* Ali5455 */
@@ -833,6 +834,9 @@ static irqreturn_t snd_intel8x0_interrupt(int irq, void *dev_id, struct pt_regs 
     struct ichdev *ichdev;
     unsigned int status;
     unsigned int i;
+#ifdef TARGET_OS2
+    int fOurIrq = FALSE;
+#endif
 
     status = igetdword(chip, chip->int_sta_reg);
     if (status == 0xffffffff)       /* we are not yet resumed */
@@ -853,8 +857,11 @@ static irqreturn_t snd_intel8x0_interrupt(int irq, void *dev_id, struct pt_regs 
                 status ^= igetdword(chip, chip->int_sta_reg);
 #endif
         }
-        return IRQ_RETVAL(status);
+        return IRQ_NONE/*RETVAL(status)*/;
     }
+#ifdef TARGET_OS2
+    fOurIrq = TRUE;
+#endif
 
     for (i = 0; i < chip->bdbars_count; i++) {
         ichdev = &chip->ichd[i];
@@ -864,6 +871,11 @@ static irqreturn_t snd_intel8x0_interrupt(int irq, void *dev_id, struct pt_regs 
 
     /* ack them */
     iputdword(chip, chip->int_sta_reg, status & chip->int_sta_mask);
+#ifdef TARGET_OS2
+    if (fOurIrq) {
+        //eoi_irq(irq);
+    }
+#endif //TARGET_OS2
 
     return IRQ_HANDLED;
 }
@@ -1160,8 +1172,10 @@ static int snd_intel8x0_pcm_open(snd_pcm_substream_t * substream, struct ichdev 
         runtime->hw.buffer_bytes_max = 64*1024;
         runtime->hw.period_bytes_max = 64*1024;
     }
+#if 1 /* vladest */
     if ((err = snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS)) < 0)
         return err;
+#endif
     runtime->private_data = ichdev;
     return 0;
 }
@@ -1174,7 +1188,10 @@ static int snd_intel8x0_playback_open(snd_pcm_substream_t * substream)
 
     err = snd_intel8x0_pcm_open(substream, &chip->ichd[ICHD_PCMOUT]);
     if (err < 0)
+    {
+        printk("snd_intel8x0_pcm_open open error: %i\n", err);
         return err;
+    }
     if (chip->multi6) {
         runtime->hw.channels_max = 6;
         snd_pcm_hw_constraint_list(runtime, 0, SNDRV_PCM_HW_PARAM_CHANNELS, &hw_constraints_channels6);
@@ -1987,7 +2004,13 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subdevice = 0x0088,
 		.name = "Fujitsu-Siemens D1522",	/* AD1981 */
 		.type = AC97_TUNE_HP_ONLY
-	},
+        },
+        {
+            .subvendor = 0x8086,
+            .subdevice = 0x0104,
+            .name = "Intel D845GEBV2",              /* AD1981B */
+            .type = AC97_TUNE_HP_ONLY
+        },
 	{
 		.subvendor = 0x8086,
 		.subdevice = 0x2000,
@@ -2309,15 +2332,14 @@ __ok:
          * as long as we do not disable the ac97 link.
          */
         end_time = jiffies + HZ;
-        i = 0;
         do {
-            status = igetdword(chip, ICHREG(GLOB_STA)) & chip->codec_isr_bits;;
+            status = igetdword(chip, ICHREG(GLOB_STA)) &
+                chip->codec_isr_bits;
             if (status)
                 break;
             mdelay(1);
             //do_delay(chip);
-            i++;
-        } while (i<100);/*(time_after_eq(end_time, jiffies));*/
+        } while (time_after_eq(end_time, jiffies));
 
         if (! status) {
             /* no codec is found */
@@ -2409,7 +2431,7 @@ static int snd_intel8x0_ali_chip_init(struct intel8x0 *chip, int probing)
 
 static int snd_intel8x0_chip_init(struct intel8x0 *chip, int probing)
 {
-    unsigned int i;
+    unsigned int i, timeout;
     int err;
 
     if (chip->device_type != DEVICE_ALI) {
@@ -2427,6 +2449,15 @@ static int snd_intel8x0_chip_init(struct intel8x0 *chip, int probing)
     /* reset channels */
     for (i = 0; i < chip->bdbars_count; i++)
         iputbyte(chip, ICH_REG_OFF_CR + chip->ichd[i].reg_offset, ICH_RESETREGS);
+    for (i = 0; i < chip->bdbars_count; i++) {
+        timeout = 100000;
+        while (--timeout != 0) {
+            if ((igetbyte(chip, ICH_REG_OFF_CR + chip->ichd[i].reg_offset) & ICH_RESETREGS) == 0)
+                break;
+        }
+        if (timeout == 0)
+            printk(KERN_ERR "intel8x0: reset of registers failed?\n");
+    }
     /* initialize Buffer Descriptor Lists */
     for (i = 0; i < chip->bdbars_count; i++)
         iputdword(chip, ICH_REG_OFF_BDBAR + chip->ichd[i].reg_offset, chip->ichd[i].bdbar_addr);
@@ -2605,10 +2636,13 @@ static void __devinit intel8x0_measure_ac97_clock(struct intel8x0 *chip)
     }
     iputbyte(chip, port + ICH_REG_OFF_CR, ICH_RESETREGS);
     spin_unlock_irq(&chip->reg_lock);
-
+#if 0
     t = stop_time.tv_sec - start_time.tv_sec;
     t *= 1000000;
     t += stop_time.tv_usec - start_time.tv_usec;
+#else
+    t = 50000; /* patch, suggested by r.ihle */
+#endif
     printk(KERN_INFO "%s: measured %lu usecs\n", __FUNCTION__, t);
     if (t == 0) {
         snd_printk(KERN_ERR "?? calculation error..\n");

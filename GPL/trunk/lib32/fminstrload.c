@@ -124,7 +124,8 @@ OSSRET OSS32_FMMidiLoadInstruments(OSSSTREAMID streamid)
 //******************************************************************************
 //******************************************************************************
 
-#ifdef DEBUG
+#if 0
+//def DEBUG
 /*
  * Show instrument FM operators
  */

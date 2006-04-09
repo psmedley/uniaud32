@@ -148,9 +148,6 @@ static void *snd_malloc_dev_pages(struct device *dev, size_t size, dma_addr_t *d
 		gfp_flags |= __GFP_NOWARN;
 	res = dma_alloc_coherent(dev, PAGE_SIZE << pg, dma, gfp_flags);
 	if (res != NULL) {
-#ifdef NEED_RESERVE_PAGES
-		mark_pages(virt_to_page(res), pg); /* should be dma_to_page() */
-#endif
 		inc_snd_pages(pg);
 	}
 
@@ -167,9 +164,6 @@ static void snd_free_dev_pages(struct device *dev, size_t size, void *ptr,
 		return;
 	pg = get_order(size);
 	dec_snd_pages(pg);
-#ifdef NEED_RESERVE_PAGES
-	unmark_pages(virt_to_page(ptr), pg); /* should be dma_to_page() */
-#endif
 	dma_free_coherent(dev, PAGE_SIZE << pg, ptr, dma);
 }
 
@@ -401,19 +395,6 @@ static inline void dec_snd_pages(int order)
         snd_allocated_pages -= 1 << order;
 }
 
-static void mark_pages(struct page *page, int order)
-{
-    struct page *last_page = page + (1 << order);
-    while (page < last_page)
-        SetPageReserved(page++);
-}
-
-static void unmark_pages(struct page *page, int order)
-{
-    struct page *last_page = page + (1 << order);
-    while (page < last_page)
-        ClearPageReserved(page++);
-}
 
 /**
  * snd_malloc_pages - allocate pages with the given size
@@ -433,7 +414,6 @@ void *snd_malloc_pages(unsigned long size, unsigned int dma_flags)
     snd_assert(dma_flags != 0, return NULL);
     pg = get_order(size);
     if ((res = (void *) __get_free_pages(dma_flags, pg)) != NULL) {
-        mark_pages(virt_to_page(res), pg);
         inc_snd_pages(pg);
     }
     return res;
@@ -455,7 +435,6 @@ void snd_free_pages(void *ptr, unsigned long size)
         return;
     pg = get_order(size);
     dec_snd_pages(pg);
-    unmark_pages(virt_to_page(ptr), pg);
     free_pages((unsigned long) ptr, pg);
 }
 
@@ -531,9 +510,6 @@ void *snd_malloc_pci_pages(struct pci_dev *pci,
 	for (pg = 0; PAGE_SIZE * (1 << pg) < size; pg++);
 	res = pci_alloc_consistent(pci, PAGE_SIZE * (1 << pg), dmaaddr);
         if (res != NULL) {
-#ifdef NEED_RESERVE_PAGES
-            mark_pages(virt_to_page(res), pg); /* should be dma_to_page() */
-#endif
             inc_snd_pages(pg);
 	}
 	return res;
@@ -588,9 +564,6 @@ void snd_free_pci_pages(struct pci_dev *pci, size_t size, void *ptr, dma_addr_t 
 		return;
         for (pg = 0; PAGE_SIZE * (1 << pg) < size; pg++);
         dec_snd_pages(pg);
-#ifdef NEED_RESERVE_PAGES
-        unmark_pages(virt_to_page(ptr), pg); /* should be dma_to_page() */
-#endif
 	pci_free_consistent(pci, PAGE_SIZE * (1 << pg), ptr, dmaaddr);
 }
 
@@ -637,7 +610,6 @@ void *snd_malloc_pci_page(struct pci_dev *pci, dma_addr_t *addrp)
 		addr = 0;
 	if (ptr) {
 		memset(ptr, 0, PAGE_SIZE);
-		mark_pages(ptr, 0);
 	}
 	*addrp = addr;
 	return ptr;

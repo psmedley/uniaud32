@@ -774,7 +774,7 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
         DebugInt3();
         return OSSERR_INVALID_PARAMETER;
     }
-
+tryagain:
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
     //size of two samples (adpcm sample can be as small as 4 bits (mono), so take two)
@@ -949,7 +949,7 @@ __next:
 
     //initialize parameter block & set sample rate, nr of channels and sample format, nr of periods,
     //period size and buffer size
-tryagain:
+//tryagain:
     _snd_pcm_hw_params_any(&params);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS,
                           SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);

@@ -2,7 +2,7 @@ CINCLUDES = ..\..\..\include;..\..\include;$(%WATCOM)\H
 AINCLUDES = $(DDK_BASE)\H
 
 CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_ 
-#-dCONFIG_SND_CS46XX_NEW_DSP
+#-DCONFIG_SND_CS46XX_NEW_DSP
 
 32BIT=1
 !include ..\..\..\..\makefile.inc
@@ -13,9 +13,8 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #   List of source files
 #
 #===================================================================
-FILE1    = cs46xx.obj cs46xx_lib.obj
-##dsp_spos.obj dsp_spos_scb_lib.obj
-FILE2    = 
+FILE1    = cs46xx.obj cs46xx_lib.obj 
+#FILE2    = dsp_spos.obj dsp_spos_scb_lib.obj
 FILE3    = 
 FILE4    = 
 FILE5    = 

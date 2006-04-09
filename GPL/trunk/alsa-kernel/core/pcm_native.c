@@ -1105,7 +1105,9 @@ int snd_pcm_suspend_all(snd_pcm_t *pcm)
 
 static int snd_pcm_pre_resume(snd_pcm_substream_t *substream, int state)
 {
-    snd_pcm_runtime_t *runtime = substream->runtime;
+    snd_pcm_runtime_t *runtime;
+    if (substream) runtime = substream->runtime;
+    if (!runtime) return 0;
     if (!(runtime->info & SNDRV_PCM_INFO_RESUME))
         return -ENOSYS;
     runtime->trigger_master = substream;
@@ -1114,7 +1116,9 @@ static int snd_pcm_pre_resume(snd_pcm_substream_t *substream, int state)
 
 static int snd_pcm_do_resume(snd_pcm_substream_t *substream, int state)
 {
-    snd_pcm_runtime_t *runtime = substream->runtime;
+    snd_pcm_runtime_t *runtime;
+    if (substream) runtime = substream->runtime;
+    if (!runtime) return 0;
     if (runtime->trigger_master != substream)
         return 0;
     /* DMA not running previously? */
@@ -1122,7 +1126,9 @@ static int snd_pcm_do_resume(snd_pcm_substream_t *substream, int state)
         (runtime->status->suspended_state != SNDRV_PCM_STATE_DRAINING ||
          substream->stream != SNDRV_PCM_STREAM_PLAYBACK))
         return 0;
-    return substream->ops->trigger(substream, SNDRV_PCM_TRIGGER_RESUME);
+    if (substream->ops->trigger)
+        return substream->ops->trigger(substream, SNDRV_PCM_TRIGGER_RESUME);
+    else return 0;
 }
 
 static void snd_pcm_undo_resume(snd_pcm_substream_t *substream, int state)
@@ -1134,7 +1140,9 @@ static void snd_pcm_undo_resume(snd_pcm_substream_t *substream, int state)
 
 static void snd_pcm_post_resume(snd_pcm_substream_t *substream, int state)
 {
-    snd_pcm_runtime_t *runtime = substream->runtime;
+    snd_pcm_runtime_t *runtime;
+    if (substream) runtime = substream->runtime;
+    if (!runtime) return;
     snd_pcm_trigger_tstamp(substream);
     if (substream->timer)
         snd_timer_notify(substream->timer, SNDRV_TIMER_EVENT_MRESUME, &runtime->trigger_tstamp);
@@ -1152,13 +1160,17 @@ static struct action_ops snd_pcm_action_resume = {
 
 static int snd_pcm_resume(snd_pcm_substream_t *substream)
 {
-    snd_card_t *card = substream->pcm->card;
+    snd_card_t *card;
     int res;
 
-    snd_power_lock(card);
-    if ((res = snd_power_wait(card, SNDRV_CTL_POWER_D0, substream->ffile)) >= 0)
-        res = snd_pcm_action_lock_irq(&snd_pcm_action_resume, substream, 0);
-    snd_power_unlock(card);
+    if(substream && substream->pcm)
+    {
+        card = substream->pcm->card;
+        snd_power_lock(card);
+        if ((res = snd_power_wait(card, SNDRV_CTL_POWER_D0, substream->ffile)) >= 0)
+            res = snd_pcm_action_lock_irq(&snd_pcm_action_resume, substream, 0);
+        snd_power_unlock(card);
+    }
     return res;
 }
 
@@ -2059,20 +2071,21 @@ static int snd_pcm_open_file(struct file *file,
 
     err = snd_pcm_hw_constraints_init(substream);
     if (err < 0) {
-        snd_printd("snd_pcm_hw_constraints_init failed\n");
+        snd_printd("snd_pcm_hw_constraints_init failed: %i\n", err);
         snd_pcm_release_file(pcm_file);
         return err;
     }
 
     if ((err = substream->ops->open(substream)) < 0) {
         snd_pcm_release_file(pcm_file);
+        snd_printd("supbstream open failed: %i\n", err);
         return err;
     }
     substream->ffile = file;
 
     err = snd_pcm_hw_constraints_complete(substream);
     if (err < 0) {
-        snd_printd("snd_pcm_hw_constraints_complete failed\n");
+        snd_printd("snd_pcm_hw_constraints_complete failed: %i\n", err);
         snd_pcm_release_file(pcm_file);
         return err;
     }
@@ -2531,6 +2544,14 @@ static int snd_pcm_common_ioctl1(snd_pcm_substream_t *substream,
         return snd_pcm_drain(substream);
     case SNDRV_PCM_IOCTL_DROP:
         return snd_pcm_drop(substream);
+    case SNDRV_PCM_IOCTL_PAUSE:
+        {
+            int res;
+            snd_pcm_stream_lock_irq(substream);
+            res = snd_pcm_pause(substream, (int)(unsigned long)arg);
+            snd_pcm_stream_unlock_irq(substream);
+            return res;
+        }
     }
     snd_printd("unknown ioctl = 0x%x\n", cmd);
     return -ENOTTY;
@@ -2609,14 +2630,6 @@ static int snd_pcm_playback_ioctl1(snd_pcm_substream_t *substream,
             result = snd_pcm_playback_forward(substream, frames);
             __put_user(result, _frames);
             return result < 0 ? result : 0;
-        }
-    case SNDRV_PCM_IOCTL_PAUSE:
-        {
-            int res;
-            snd_pcm_stream_lock_irq(substream);
-            res = snd_pcm_pause(substream, (long) arg);
-            snd_pcm_stream_unlock_irq(substream);
-            return res;
         }
     }
     return snd_pcm_common_ioctl1(substream, cmd, arg);

@@ -654,7 +654,6 @@ int snd_task_name(struct task_struct *task, char *name, size_t size);
 	if (!(expr)) {\
 		##retval;\
 	}
-
 #define snd_runtime_check snd_assert
 
 #endif /* CONFIG_SND_DEBUG */
@@ -747,5 +746,9 @@ typedef u32 /*__bitwise*/ pm_message_t;
 #define printk_ratelimit()      1
 
 typedef unsigned gfp_t;
+
+#ifndef cpu_relax
+#define cpu_relax()
+#endif
 
 #endif				/* __DRIVER_H */

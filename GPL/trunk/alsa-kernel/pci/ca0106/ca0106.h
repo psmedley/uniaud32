@@ -5,7 +5,7 @@
  *
  *  FEATURES currently supported:
  *    See ca0106_main.c for features.
- *
+ * 
  *  Changelog:
  *    Support interrupts per period.
  *    Removed noise from Center/LFE channel when in Analog mode.
@@ -153,8 +153,8 @@
 						 * bit 8 0 = SPDIF in and out / 1 = Analog (Mic or Line)-in.
 						 * bit 9 0 = Mute / 1 = Analog out.
 						 * bit 10 0 = Line-in / 1 = Mic-in.
-                                                 * bit 11 0 = ? / 1 = ?
-                                                 * bit 12 0 = 48 Khz / 1 = 96 Khz Analog out on SB Live 24bit.
+						 * bit 11 0 = ? / 1 = ?
+						 * bit 12 0 = 48 Khz / 1 = 96 Khz Analog out on SB Live 24bit.
 						 * bit 13 0 = ? / 1 = ?
 						 * bit 14 0 = Mute / 1 = Analog out
 						 * bit 15 0 = ? / 1 = ?
@@ -172,10 +172,10 @@
 /********************************************************************************************************/
 /* CA0106 pointer-offset register set, accessed through the PTR and DATA registers                     */
 /********************************************************************************************************/
-
+                                                                                                                           
 /* Initally all registers from 0x00 to 0x3f have zero contents. */
 #define PLAYBACK_LIST_ADDR	0x00		/* Base DMA address of a list of pointers to each period/size */
-						/* One list entry: 4 bytes for DMA address,
+						/* One list entry: 4 bytes for DMA address, 
 						 * 4 bytes for period_size << 16.
 						 * One list entry is 8 bytes long.
 						 * One list entry for each period in the buffer.
@@ -217,7 +217,7 @@
 						 * Playback mixer in enable [27:24] (one bit per channel)
 						 * Playback mixer out enable [31:28] (one bit per channel)
 						 */
-/* The Digital out jack is shared with the Center/LFE Analogue output.
+/* The Digital out jack is shared with the Center/LFE Analogue output. 
  * The jack has 4 poles. I will call 1 - Tip, 2 - Next to 1, 3 - Next to 2, 4 - Next to 3
  * For Analogue: 1 -> Center Speaker, 2 -> Sub Woofer, 3 -> Ground, 4 -> Ground
  * For Digital: 1 -> Front SPDIF, 2 -> Rear SPDIF, 3 -> Center/Subwoofer SPDIF, 4 -> Ground.
@@ -230,7 +230,7 @@
  * Summary: For ALSA we use the Rear channel for SPDIF Digital AC3/DTS output
  */
 /* A standard 2 pole mono mini-jack to RCA plug can be used for SPDIF Stereo PCM output from the Front channel.
- * A standard 3 pole stereo mini-jack to 2 RCA plugs can be used for SPDIF AC3/DTS and Stereo PCM output utilising the Rear channel and just one of the RCA plugs.
+ * A standard 3 pole stereo mini-jack to 2 RCA plugs can be used for SPDIF AC3/DTS and Stereo PCM output utilising the Rear channel and just one of the RCA plugs. 
  */
 #define SPCS0			0x41		/* SPDIF output Channel Status 0 register. For Rear. default=0x02108004, non-audio=0x02108006	*/
 #define SPCS1			0x42		/* SPDIF output Channel Status 1 register. For Front */
@@ -330,7 +330,7 @@
 #define CAPTURE_SOURCE_CHANNEL2 0x00f00000      /* 1 - What you hear or . 2 - ?? */
 #define CAPTURE_SOURCE_CHANNEL3 0x000f0000	/* 3 - Mic in, Line in, TAD in, Aux in. */
 #define CAPTURE_SOURCE_RECORD_MAP 0x0000ffff	/* Default 0x00e4 */
-						/* Record Map [7:0] (2 bits per channel) 0=mapped to channel 0, 1=mapped to channel 1, 2=mapped to channel2, 3=mapped to channel3
+						/* Record Map [7:0] (2 bits per channel) 0=mapped to channel 0, 1=mapped to channel 1, 2=mapped to channel2, 3=mapped to channel3 
 						 * Record source select for channel 0 [18:16]
 						 * Record source select for channel 1 [22:20]
 						 * Record source select for channel 2 [26:24]
@@ -399,10 +399,24 @@
 #define PLAYBACK_VOLUME2        0x6a            /* Playback Analog volume per channel. Does not effect AC3 output */
 						/* Similar to register 0x66, except that the destination is the I2S mixer instead of the SPDIF mixer. I.E. Outputs to the Analog outputs instead of SPDIF. */
 #define UNKNOWN6b               0x6b            /* Unknown. Readonly. Default 00400000 00400000 00400000 00400000 */
-#define UART_A_DATA		0x6c            /* Uart, used in setting sample rates, bits per sample etc. */
-#define UART_A_CMD		0x6d            /* Uart, used in setting sample rates, bits per sample etc. */
-#define UART_B_DATA		0x6e            /* Uart, Unknown. */
-#define UART_B_CMD		0x6f            /* Uart, Unknown. */
+#define MIDI_UART_A_DATA		0x6c            /* Midi Uart A Data */
+#define MIDI_UART_A_CMD		0x6d            /* Midi Uart A Command/Status */
+#define MIDI_UART_B_DATA		0x6e            /* Midi Uart B Data (currently unused) */
+#define MIDI_UART_B_CMD		0x6f            /* Midi Uart B Command/Status (currently unused) */
+
+/* unique channel identifier for midi->channel */
+
+#define CA0106_MIDI_CHAN_A		0x1
+#define CA0106_MIDI_CHAN_B		0x2
+
+/* from mpu401 */
+
+#define CA0106_MIDI_INPUT_AVAIL 	0x80
+#define CA0106_MIDI_OUTPUT_READY	0x40
+#define CA0106_MPU401_RESET		0xff
+#define CA0106_MPU401_ENTER_UART	0x3f
+#define CA0106_MPU401_ACK		0xfe
+
 #define SAMPLE_RATE_TRACKER_STATUS 0x70         /* Readonly. Default 00108000 00108000 00500000 00500000 */
 						/* Estimated sample rate [19:0] Relative to 48kHz. 0x8000 =  1.0
 						 * Rate Locked [20]
@@ -417,7 +431,7 @@
 						 * Sample input rate [3:2] (0=48kHz, 1=Not available, 2=96kHz, 3=192Khz)
 						 * SRC input source select [4] 0=Audio from digital mixer, 1=Audio from analog source.
 						 * Record rate [9:8] (0=48kHz, 1=Not available, 2=96kHz, 3=192Khz)
-						 * Record mixer output enable [12:10]
+						 * Record mixer output enable [12:10] 
 						 * I2S input rate master mode [15:14] (0=48kHz, 1=44.1kHz, 2=96kHz, 3=192Khz)
 						 * I2S output rate [17:16] (0=48kHz, 1=44.1kHz, 2=96kHz, 3=192Khz)
 						 * I2S output source select [18] (0=Audio from host, 1=Audio from SRC)
@@ -430,7 +444,7 @@
 						 * Not used [27]
 						 * Record Source 0 input [29:28] (0=SPDIF in, 1=I2S in, 2=AC97 Mic, 3=AC97 PCM)
 						 * Record Source 1 input [31:30] (0=SPDIF in, 1=I2S in, 2=AC97 Mic, 3=AC97 PCM)
-						 */
+						 */ 
 						/* Sample rate output control register Channel=1
 						 * I2S Input 0 volume Right [7:0]
 						 * I2S Input 0 volume Left [15:8]
@@ -452,7 +466,7 @@
 						 * AC97 output enable [5:0]
 						 * I2S output enable [19:16]
 						 * SPDIF output enable [27:24]
-						 */
+						 */ 
 #define UNKNOWN73               0x73            /* Unknown. Readonly. Default 0x0 */
 #define CHIP_VERSION            0x74            /* P17 Chip version. Channel_id 0 only. Default 00000071 */
 #define EXTENDED_INT_MASK       0x75            /* Used by both playback and capture interrupt handler */
@@ -477,56 +491,56 @@
 						/* Causes interrupts based on timer intervals. */
 #define SPI			0x7a		/* SPI: Serial Interface Register */
 #define I2C_A			0x7b		/* I2C Address. 32 bit */
-#define I2C_D0                  0x7c            /* I2C Data Port 0. 32 bit */
-#define I2C_D1                  0x7d            /* I2C Data Port 1. 32 bit */
+#define I2C_D0			0x7c		/* I2C Data Port 0. 32 bit */
+#define I2C_D1			0x7d		/* I2C Data Port 1. 32 bit */
 //I2C values
-#define I2C_A_ADC_ADD_MASK      0x000000fe      //The address is a 7 bit address
-#define I2C_A_ADC_RW_MASK       0x00000001      //bit mask for R/W
-#define I2C_A_ADC_TRANS_MASK    0x00000010      //Bit mask for I2c address DAC value
-#define I2C_A_ADC_ABORT_MASK    0x00000020      //Bit mask for I2C transaction abort flag
-#define I2C_A_ADC_LAST_MASK     0x00000040      //Bit mask for Last word transaction
-#define I2C_A_ADC_BYTE_MASK     0x00000080      //Bit mask for Byte Mode
+#define I2C_A_ADC_ADD_MASK	0x000000fe	//The address is a 7 bit address
+#define I2C_A_ADC_RW_MASK	0x00000001	//bit mask for R/W
+#define I2C_A_ADC_TRANS_MASK	0x00000010  	//Bit mask for I2c address DAC value
+#define I2C_A_ADC_ABORT_MASK	0x00000020	//Bit mask for I2C transaction abort flag
+#define I2C_A_ADC_LAST_MASK	0x00000040	//Bit mask for Last word transaction
+#define I2C_A_ADC_BYTE_MASK	0x00000080	//Bit mask for Byte Mode
 
-#define I2C_A_ADC_ADD           0x00000034      //This is the Device address for ADC
-#define I2C_A_ADC_READ          0x00000001      //To perform a read operation
-#define I2C_A_ADC_START         0x00000100      //Start I2C transaction
-#define I2C_A_ADC_ABORT         0x00000200      //I2C transaction abort
-#define I2C_A_ADC_LAST          0x00000400      //I2C last transaction
-#define I2C_A_ADC_BYTE          0x00000800      //I2C one byte mode
+#define I2C_A_ADC_ADD		0x00000034	//This is the Device address for ADC 
+#define I2C_A_ADC_READ		0x00000001	//To perform a read operation
+#define I2C_A_ADC_START		0x00000100	//Start I2C transaction
+#define I2C_A_ADC_ABORT		0x00000200	//I2C transaction abort
+#define I2C_A_ADC_LAST		0x00000400	//I2C last transaction
+#define I2C_A_ADC_BYTE		0x00000800	//I2C one byte mode
 
-#define I2C_D_ADC_REG_MASK      0xfe000000      //ADC address register
-#define I2C_D_ADC_DAT_MASK      0x01ff0000      //ADC data register
+#define I2C_D_ADC_REG_MASK	0xfe000000  	//ADC address register 
+#define I2C_D_ADC_DAT_MASK	0x01ff0000  	//ADC data register
 
-#define ADC_TIMEOUT             0x00000007      //ADC Timeout Clock Disable
-#define ADC_IFC_CTRL            0x0000000b      //ADC Interface Control
-#define ADC_MASTER              0x0000000c      //ADC Master Mode Control
-#define ADC_POWER               0x0000000d      //ADC PowerDown Control
-#define ADC_ATTEN_ADCL          0x0000000e      //ADC Attenuation ADCL
-#define ADC_ATTEN_ADCR          0x0000000f      //ADC Attenuation ADCR
-#define ADC_ALC_CTRL1           0x00000010      //ADC ALC Control 1
-#define ADC_ALC_CTRL2           0x00000011      //ADC ALC Control 2
-#define ADC_ALC_CTRL3           0x00000012      //ADC ALC Control 3
-#define ADC_NOISE_CTRL          0x00000013      //ADC Noise Gate Control
-#define ADC_LIMIT_CTRL          0x00000014      //ADC Limiter Control
-#define ADC_MUX                 0x00000015      //ADC Mux offset
+#define ADC_TIMEOUT		0x00000007	//ADC Timeout Clock Disable
+#define ADC_IFC_CTRL		0x0000000b	//ADC Interface Control
+#define ADC_MASTER		0x0000000c	//ADC Master Mode Control
+#define ADC_POWER		0x0000000d	//ADC PowerDown Control
+#define ADC_ATTEN_ADCL		0x0000000e	//ADC Attenuation ADCL
+#define ADC_ATTEN_ADCR		0x0000000f	//ADC Attenuation ADCR
+#define ADC_ALC_CTRL1		0x00000010	//ADC ALC Control 1
+#define ADC_ALC_CTRL2		0x00000011	//ADC ALC Control 2
+#define ADC_ALC_CTRL3		0x00000012	//ADC ALC Control 3
+#define ADC_NOISE_CTRL		0x00000013	//ADC Noise Gate Control
+#define ADC_LIMIT_CTRL		0x00000014	//ADC Limiter Control
+#define ADC_MUX			0x00000015  	//ADC Mux offset
 
 #if 0
 /* FIXME: Not tested yet. */
-#define ADC_GAIN_MASK           0x000000ff      //Mask for ADC Gain
-#define ADC_ZERODB              0x000000cf      //Value to set ADC to 0dB
-#define ADC_MUTE_MASK           0x000000c0      //Mask for ADC mute
-#define ADC_MUTE                0x000000c0      //Value to mute ADC
-#define ADC_OSR                 0x00000008      //Mask for ADC oversample rate select
-#define ADC_TIMEOUT_DISABLE     0x00000008      //Value and mask to disable Timeout clock
-#define ADC_HPF_DISABLE         0x00000100      //Value and mask to disable High pass filter
-#define ADC_TRANWIN_MASK        0x00000070      //Mask for Length of Transient Window
+#define ADC_GAIN_MASK		0x000000ff	//Mask for ADC Gain
+#define ADC_ZERODB		0x000000cf	//Value to set ADC to 0dB
+#define ADC_MUTE_MASK		0x000000c0	//Mask for ADC mute
+#define ADC_MUTE		0x000000c0	//Value to mute ADC
+#define ADC_OSR			0x00000008	//Mask for ADC oversample rate select
+#define ADC_TIMEOUT_DISABLE	0x00000008	//Value and mask to disable Timeout clock
+#define ADC_HPF_DISABLE		0x00000100	//Value and mask to disable High pass filter
+#define ADC_TRANWIN_MASK	0x00000070	//Mask for Length of Transient Window
 #endif
 
-#define ADC_MUX_MASK            0x0000000f      //Mask for ADC Mux
-#define ADC_MUX_MIC             0x00000002      //Value to select Mic at ADC Mux
-#define ADC_MUX_LINEIN          0x00000004      //Value to select LineIn at ADC Mux
-#define ADC_MUX_PHONE           0x00000001      //Value to select TAD at ADC Mux (Not used)
-#define ADC_MUX_AUX             0x00000008      //Value to select Aux at ADC Mux
+#define ADC_MUX_MASK		0x0000000f	//Mask for ADC Mux
+#define ADC_MUX_MIC		0x00000002	//Value to select Mic at ADC Mux
+#define ADC_MUX_LINEIN		0x00000004	//Value to select LineIn at ADC Mux
+#define ADC_MUX_PHONE		0x00000001	//Value to select TAD at ADC Mux (Not used)
+#define ADC_MUX_AUX		0x00000008	//Value to select Aux at ADC Mux
 
 #define SET_CHANNEL 0  /* Testing channel outputs 0=Front, 1=Center/LFE, 2=Unknown, 3=Rear */
 #define PCM_FRONT_CHANNEL 0
@@ -538,72 +552,78 @@
 #define CONTROL_CENTER_LFE_CHANNEL 1
 #define CONTROL_UNKNOWN_CHANNEL 2
 
-typedef struct snd_ca0106_channel ca0106_channel_t;
-typedef struct snd_ca0106 ca0106_t;
-typedef struct snd_ca0106_pcm ca0106_pcm_t;
+#include "ca_midi.h"
+
+struct snd_ca0106;
 
 struct snd_ca0106_channel {
-	ca0106_t *emu;
+	struct snd_ca0106 *emu;
 	int number;
 	int use;
-	void (*interrupt)(ca0106_t *emu, ca0106_channel_t *channel);
-	ca0106_pcm_t *epcm;
+	void (*interrupt)(struct snd_ca0106 *emu, struct snd_ca0106_channel *channel);
+	struct snd_ca0106_pcm *epcm;
 };
 
 struct snd_ca0106_pcm {
-	ca0106_t *emu;
-	snd_pcm_substream_t *substream;
+	struct snd_ca0106 *emu;
+	struct snd_pcm_substream *substream;
         int channel_id;
 	unsigned short running;
 };
 
-typedef struct {
-    u32 serial;
-    char * name;
-    int ac97;
-    int gpio_type;
-    int i2c_adc;
-} ca0106_details_t;
+struct snd_ca0106_details {
+        u32 serial;
+        char * name;
+        int ac97;
+	int gpio_type;
+	int i2c_adc;
+	int spi_dac;
+};
 
 // definition of the chip-specific record
 struct snd_ca0106 {
-    snd_card_t *card;
-    ca0106_details_t *details;
-    struct pci_dev *pci;
+	struct snd_card *card;
+	struct snd_ca0106_details *details;
+	struct pci_dev *pci;
 
-    unsigned long port;
-    struct resource *res_port;
-    int irq;
+	unsigned long port;
+	struct resource *res_port;
+	int irq;
 
-    unsigned int revision;		/* chip revision */
-    unsigned int serial;            /* serial number */
-    unsigned short model;		/* subsystem id */
+	unsigned int revision;		/* chip revision */
+	unsigned int serial;            /* serial number */
+	unsigned short model;		/* subsystem id */
 
-    spinlock_t emu_lock;
+	spinlock_t emu_lock;
 
-    ac97_t *ac97;
-    snd_pcm_t *pcm;
+	struct snd_ac97 *ac97;
+	struct snd_pcm *pcm;
 
-    ca0106_channel_t playback_channels[4];
-    ca0106_channel_t capture_channels[4];
-    u32 spdif_bits[4];             /* s/pdif out setup */
-    int spdif_enable;
-    int capture_source;
-    int capture_mic_line_in;
+	struct snd_ca0106_channel playback_channels[4];
+	struct snd_ca0106_channel capture_channels[4];
+	u32 spdif_bits[4];             /* s/pdif out setup */
+	int spdif_enable;
+	int capture_source;
+	int capture_mic_line_in;
 
-    struct snd_dma_buffer buffer;
+	struct snd_dma_buffer buffer;
+
+	struct snd_ca_midi midi;
+	struct snd_ca_midi midi2;
 };
 
-int __devinit snd_ca0106_mixer(ca0106_t *emu);
-int __devinit snd_ca0106_proc_init(ca0106_t * emu);
+int snd_ca0106_mixer(struct snd_ca0106 *emu);
+int snd_ca0106_proc_init(struct snd_ca0106 * emu);
 
-unsigned int snd_ca0106_ptr_read(ca0106_t * emu,
-					  unsigned int reg,
-					  unsigned int chn);
+unsigned int snd_ca0106_ptr_read(struct snd_ca0106 * emu, 
+				 unsigned int reg, 
+				 unsigned int chn);
 
-void snd_ca0106_ptr_write(ca0106_t *emu,
-				   unsigned int reg,
-				   unsigned int chn,
-				   unsigned int data);
+void snd_ca0106_ptr_write(struct snd_ca0106 *emu, 
+			  unsigned int reg, 
+			  unsigned int chn, 
+			  unsigned int data);
 
-int snd_ca0106_i2c_write(ca0106_t *emu, u32 reg, u32 value);
+int snd_ca0106_i2c_write(struct snd_ca0106 *emu, u32 reg, u32 value);
+
+

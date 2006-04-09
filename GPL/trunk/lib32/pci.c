@@ -464,7 +464,7 @@ int pci_register_driver(struct pci_driver *driver)
                     pcidev->current_state = 4;
 
                     // create adapter
-                    RMDone((driver->id_table[i].vendor << 16) | driver->id_table[i].device);
+                    RMDone((driver->id_table[i].device << 16) | driver->id_table[i].vendor);
                     nrCardsDetected++;
                     return 1;
                 }

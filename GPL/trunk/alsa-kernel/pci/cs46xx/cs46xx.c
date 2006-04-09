@@ -48,9 +48,9 @@ MODULE_SUPPORTED_DEVICE("{{Cirrus Logic,Sound Fusion (CS4280)},"
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
-static int external_amp[SNDRV_CARDS] = {0};
-static int thinkpad[SNDRV_CARDS] = {1,0,0,0,0,0,0,0};
-static int mmap_valid[SNDRV_CARDS] = {0};
+static int external_amp[SNDRV_CARDS] = {0,0,0,0,0,0,0,0};
+static int thinkpad[SNDRV_CARDS] = {0,0,0,0,0,0,0,0};
+static int mmap_valid[SNDRV_CARDS] = {1,1,1,1,1,1,1,1};
 
 //module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for the CS46xx soundcard.");
@@ -166,7 +166,7 @@ static struct pci_driver driver = {
 	.name = "Sound Fusion CS46xx",
 	.id_table = snd_cs46xx_ids,
 	.probe = snd_card_cs46xx_probe,
-	.remove = snd_card_cs46xx_remove,
+	.remove = __devexit_p(snd_card_cs46xx_remove),
 #ifdef CONFIG_PM
 	.suspend = snd_cs46xx_suspend,
 	.resume = snd_cs46xx_resume,

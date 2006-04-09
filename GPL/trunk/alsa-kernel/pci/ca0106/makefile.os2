@@ -13,7 +13,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #
 #===================================================================
 FILE1    = ca0106_main.obj ca0106_proc.obj ca0106_mixer.obj
-FILE2    = 
+FILE2    = ca_midi.obj
 FILE3    = 
 FILE4    = 
 FILE5    = 
