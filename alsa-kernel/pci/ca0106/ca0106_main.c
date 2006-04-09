@@ -18,7 +18,7 @@
  *      So, to record from the MIC, set the MIC Playback volume to max,
  *      unmute the MIC and turn up the MASTER Playback volume.
  *      So, to prevent feedback when capturing, minimise the "Capture feedback into Playback" volume.
- *
+ *   
  *    The only playback controls that currently do anything are: -
  *    Analog Front
  *    Analog Rear
@@ -26,12 +26,12 @@
  *    SPDIF Front
  *    SPDIF Rear
  *    SPDIF Center/LFE
- *
+ *   
  *    For capture from Mic in or Line in.
  *    Digital/Analog ( switch must be in Analog mode for CAPTURE. )
- *
+ * 
  *    CAPTURE feedback into PLAYBACK
- *
+ * 
  *  Changelog:
  *    Support interrupts per period.
  *    Removed noise from Center/LFE channel when in Analog mode.
@@ -104,7 +104,7 @@
  *    DAC: CS4382 (114 dB, 24-Bit, 192 kHz, 8-Channel D/A Converter with DSD Support)
  *    SPDIF Out control switches between Mic in and SPDIF out.
  *    No sound out or mic input working yet.
- *
+ * 
  *  GENERAL INFO:
  *    Model: SB0413
  *    P17 Chip: CA0106-DAT
@@ -137,7 +137,8 @@
 #include <linux/interrupt.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
-//#include <linux/moduleparam.h>
+#include <linux/moduleparam.h>
+//#include <linux/dma-mapping.h>
 #include <sound/core.h>
 #include <sound/initval.h>
 #include <sound/pcm.h>
@@ -163,88 +164,111 @@ MODULE_PARM_DESC(enable, "Enable the CA0106 soundcard.");
 
 #include "ca0106.h"
 
-static ca0106_details_t ca0106_chip_details[] = {
-    /* AudigyLS[SB0310] */
-    { /*.serial = */0x10021102,
-    /*.name   = */"AudigyLS [SB0310]",
-    /*.ac97   = */1,0,0 } ,
-    /* Unknown AudigyLS that also says SB0310 on it */
-    { /*.serial = */0x10051102,
-    /*.name   = */"AudigyLS [SB0310b]",
-    /*.ac97   = */1,0,0 } ,
-    /* New Sound Blaster Live! 7.1 24bit. This does not have an AC97. 53SB041000001 */
-    { /*.serial = */0x10061102,
-    /*.name   = */"Live! 7.1 24bit [SB0410]",0,
-    /*.gpio_type = */1,
-    /*.i2c_adc = */1 } ,
-    /* New Dell Sound Blaster Live! 7.1 24bit. This does not have an AC97.  */
-    { /*.serial = */0x10071102,
-    /*.name   = */"Live! 7.1 24bit [SB0413]",0,
-    /*.gpio_type = */1,
-    /*.i2c_adc = */1 } ,
-    /* MSI K8N Diamond Motherboard with onboard SB Live 24bit without AC97 */
-    { /*.serial = */0x10091462,
-    /*.name   = */"MSI K8N Diamond MB [SB0438]",0,
-    /*.gpio_type = */1,
-    /*.i2c_adc = */1 } ,
-    /* Shuttle XPC SD31P which has an onboard Creative Labs Sound Blaster Live! 24-bit EAX
-     * high-definition 7.1 audio processor".
-     * Added using info from andrewvegan in alsa bug #1298
-     */
-    { .serial = 0x30381297,
-    .name   = "Shuttle XPC SD31P [SD31P]",
-    .gpio_type = 1,
-    .i2c_adc = 1 } ,
-    { /*.serial = */0,
-    /*.name   = */"AudigyLS [Unknown]",0,0,0 }
+static struct snd_ca0106_details ca0106_chip_details[] = {
+	 /* AudigyLS[SB0310] */
+	 { .serial = 0x10021102,
+	   .name   = "AudigyLS [SB0310]",
+	   .ac97   = 1 } , 
+	 /* Unknown AudigyLS that also says SB0310 on it */
+	 { .serial = 0x10051102,
+	   .name   = "AudigyLS [SB0310b]",
+	   .ac97   = 1 } ,
+	 /* New Sound Blaster Live! 7.1 24bit. This does not have an AC97. 53SB041000001 */
+	 { .serial = 0x10061102,
+	   .name   = "Live! 7.1 24bit [SB0410]",
+	   .gpio_type = 1,
+	   .i2c_adc = 1 } ,
+	 /* New Dell Sound Blaster Live! 7.1 24bit. This does not have an AC97.  */
+	 { .serial = 0x10071102,
+	   .name   = "Live! 7.1 24bit [SB0413]",
+	   .gpio_type = 1,
+	   .i2c_adc = 1 } ,
+	 /* New Audigy SE. Has a different DAC. */
+	 /* SB0570:
+	  * CTRL:CA0106-DAT
+	  * ADC: WM8768GEDS
+	  * DAC: WM8775EDS
+	  */
+	 { .serial = 0x100a1102,
+	   .name   = "Audigy SE [SB0570]",
+	   .gpio_type = 1,
+	   .i2c_adc = 1,
+	   .spi_dac = 1 } ,
+	 /* MSI K8N Diamond Motherboard with onboard SB Live 24bit without AC97 */
+	 { .serial = 0x10091462,
+	   .name   = "MSI K8N Diamond MB [SB0438]",
+	   .gpio_type = 1,
+	   .i2c_adc = 1 } ,
+	 /* Shuttle XPC SD31P which has an onboard Creative Labs
+	  * Sound Blaster Live! 24-bit EAX
+	  * high-definition 7.1 audio processor".
+	  * Added using info from andrewvegan in alsa bug #1298
+	  */
+	 { .serial = 0x30381297,
+	   .name   = "Shuttle XPC SD31P [SD31P]",
+	   .gpio_type = 1,
+	   .i2c_adc = 1 } ,
+	/* Shuttle XPC SD11G5 which has an onboard Creative Labs
+	 * Sound Blaster Live! 24-bit EAX
+	 * high-definition 7.1 audio processor".
+	 * Fixes ALSA bug#1600
+         */
+	{ .serial = 0x30411297,
+	  .name = "Shuttle XPC SD11G5 [SD11G5]",
+	  .gpio_type = 1,
+	  .i2c_adc = 1 } ,
+	 { .serial = 0,
+	   .name   = "AudigyLS [Unknown]" }
 };
 
 /* hardware definition */
-static snd_pcm_hardware_t snd_ca0106_playback_hw = {
-	/*.info =		*/(SNDRV_PCM_INFO_MMAP |
+static struct snd_pcm_hardware snd_ca0106_playback_hw = {
+	.info =			(SNDRV_PCM_INFO_MMAP | 
 				 SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
 				 SNDRV_PCM_INFO_MMAP_VALID),
-	/*.formats =		*/SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE,
-	/*.rates =		*/SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000,
-	/*.rate_min =		*/48000,
-	/*.rate_max =		*/192000,
-	/*.channels_min =	*/2,  //1,
-	/*.channels_max =	*/2,  //6,
-	/*.buffer_bytes_max =	*/((65536 - 64) * 8),
-	/*.period_bytes_min =	*/64,
-	/*.period_bytes_max =	*/(65536 - 64),
-	/*.periods_min =	*/2,
-	/*.periods_max =	*/8,
-	/*.fifo_size =		*/0,
+	.formats =		SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE,
+	.rates =		(SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |
+				 SNDRV_PCM_RATE_192000),
+	.rate_min =		48000,
+	.rate_max =		192000,
+	.channels_min =		2,  //1,
+	.channels_max =		2,  //6,
+	.buffer_bytes_max =	((65536 - 64) * 8),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(65536 - 64),
+	.periods_min =		2,
+	.periods_max =		8,
+	.fifo_size =		0,
 };
 
-static snd_pcm_hardware_t snd_ca0106_capture_hw = {
-	/*.info =		*/	(SNDRV_PCM_INFO_MMAP |
+static struct snd_pcm_hardware snd_ca0106_capture_hw = {
+	.info =			(SNDRV_PCM_INFO_MMAP | 
 				 SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
 				 SNDRV_PCM_INFO_MMAP_VALID),
-	/*.formats =		*/SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE,
-	/*.rates =		*/SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000,
-	/*.rate_min =		*/44100,
-	/*.rate_max =		*/192000,
-	/*.channels_min =	*/2,
-	/*.channels_max =	*/2,
-	/*.buffer_bytes_max =	*/((65536 - 64) * 8),
-	/*.period_bytes_min =	*/64,
-	/*.period_bytes_max =	*/(65536 - 64),
-	/*.periods_min =	*/2,
-	/*.periods_max =	*/2,
-	/*.fifo_size =		*/0,
+	.formats =		SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE,
+	.rates =		(SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000 |
+				 SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000),
+	.rate_min =		44100,
+	.rate_max =		192000,
+	.channels_min =		2,
+	.channels_max =		2,
+	.buffer_bytes_max =	((65536 - 64) * 8),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(65536 - 64),
+	.periods_min =		2,
+	.periods_max =		2,
+	.fifo_size =		0,
 };
 
-unsigned int snd_ca0106_ptr_read(ca0106_t * emu,
-					  unsigned int reg,
+unsigned int snd_ca0106_ptr_read(struct snd_ca0106 * emu, 
+					  unsigned int reg, 
 					  unsigned int chn)
 {
 	unsigned long flags;
 	unsigned int regptr, val;
-
+  
 	regptr = (reg << 16) | chn;
 
 	spin_lock_irqsave(&emu->emu_lock, flags);
@@ -254,9 +278,9 @@ unsigned int snd_ca0106_ptr_read(ca0106_t * emu,
 	return val;
 }
 
-void snd_ca0106_ptr_write(ca0106_t *emu,
-				   unsigned int reg,
-				   unsigned int chn,
+void snd_ca0106_ptr_write(struct snd_ca0106 *emu, 
+				   unsigned int reg, 
+				   unsigned int chn, 
 				   unsigned int data)
 {
 	unsigned int regptr;
@@ -270,111 +294,148 @@ void snd_ca0106_ptr_write(ca0106_t *emu,
 	spin_unlock_irqrestore(&emu->emu_lock, flags);
 }
 
-int snd_ca0106_i2c_write(ca0106_t *emu,
-                         u32 reg,
-                         u32 value)
+int snd_ca0106_spi_write(struct snd_ca0106 * emu,
+				   unsigned int data)
 {
-    u32 tmp;
-    int timeout=0;
-    int status;
-    int retry;
-    if ((reg > 0x7f) || (value > 0x1ff))
-    {
-        snd_printk("i2c_write: invalid values.\n");
-        return -EINVAL;
-    }
+	unsigned int reset, set;
+	unsigned int reg, tmp;
+	int n, result;
+	reg = SPI;
+	if (data > 0xffff) /* Only 16bit values allowed */
+		return 1;
+	tmp = snd_ca0106_ptr_read(emu, reg, 0);
+	reset = (tmp & ~0x3ffff) | 0x20000; /* Set xxx20000 */
+	set = reset | 0x10000; /* Set xxx1xxxx */
+	snd_ca0106_ptr_write(emu, reg, 0, reset | data);
+	tmp = snd_ca0106_ptr_read(emu, reg, 0); /* write post */
+	snd_ca0106_ptr_write(emu, reg, 0, set | data);
+	result = 1;
+	/* Wait for status bit to return to 0 */
+	for (n = 0; n < 100; n++) {
+		udelay(10);
+		tmp = snd_ca0106_ptr_read(emu, reg, 0);
+		if (!(tmp & 0x10000)) {
+			result = 0;
+			break;
+		}
+	}
+	if (result) /* Timed out */
+		return 1;
+	snd_ca0106_ptr_write(emu, reg, 0, reset | data);
+	tmp = snd_ca0106_ptr_read(emu, reg, 0); /* Write post */
+	return 0;
+}
 
-    tmp = reg << 25 | value << 16;
-    /* Not sure what this I2C channel controls. */
-    /* snd_ca0106_ptr_write(emu, I2C_D0, 0, tmp); */
+int snd_ca0106_i2c_write(struct snd_ca0106 *emu,
+				u32 reg,
+				u32 value)
+{
+	u32 tmp;
+	int timeout = 0;
+	int status;
+	int retry;
+	if ((reg > 0x7f) || (value > 0x1ff)) {
+		snd_printk(KERN_ERR "i2c_write: invalid values.\n");
+		return -EINVAL;
+	}
 
-    /* This controls the I2C connected to the WM8775 ADC Codec */
-    snd_ca0106_ptr_write(emu, I2C_D1, 0, tmp);
+	tmp = reg << 25 | value << 16;
+	/* Not sure what this I2C channel controls. */
+	/* snd_ca0106_ptr_write(emu, I2C_D0, 0, tmp); */
 
-    for(retry=0;retry<10;retry++)
-    {
-        /* Send the data to i2c */
-        tmp = snd_ca0106_ptr_read(emu, I2C_A, 0);
-        tmp = tmp & ~(I2C_A_ADC_READ|I2C_A_ADC_LAST|I2C_A_ADC_START|I2C_A_ADC_ADD_MASK);
-        tmp = tmp | (I2C_A_ADC_LAST|I2C_A_ADC_START|I2C_A_ADC_ADD);
-        snd_ca0106_ptr_write(emu, I2C_A, 0, tmp);
+	/* This controls the I2C connected to the WM8775 ADC Codec */
+	snd_ca0106_ptr_write(emu, I2C_D1, 0, tmp);
 
-        /* Wait till the transaction ends */
-        while(1)
-        {
-            status = snd_ca0106_ptr_read(emu, I2C_A, 0);
-            //snd_printk("I2C:status=0x%x\n", status);
-            timeout++;
-            if((status & I2C_A_ADC_START)==0)
-                break;
+	for (retry = 0; retry < 10; retry++) {
+		/* Send the data to i2c */
+		tmp = snd_ca0106_ptr_read(emu, I2C_A, 0);
+		tmp = tmp & ~(I2C_A_ADC_READ|I2C_A_ADC_LAST|I2C_A_ADC_START|I2C_A_ADC_ADD_MASK);
+		tmp = tmp | (I2C_A_ADC_LAST|I2C_A_ADC_START|I2C_A_ADC_ADD);
+		snd_ca0106_ptr_write(emu, I2C_A, 0, tmp);
 
-            if(timeout>1000)
-                break;
-        }
-        //Read back and see if the transaction is successful
-        if((status & I2C_A_ADC_ABORT)==0)
-            break;
-    }
+		/* Wait till the transaction ends */
+		while (1) {
+			status = snd_ca0106_ptr_read(emu, I2C_A, 0);
+                	//snd_printk("I2C:status=0x%x\n", status);
+			timeout++;
+			if ((status & I2C_A_ADC_START) == 0)
+				break;
 
-    if(retry==10)
-    {
-        snd_printk("Writing to ADC failed!\n");
-        return -EINVAL;
-    }
+			if (timeout > 1000)
+				break;
+		}
+		//Read back and see if the transaction is successful
+		if ((status & I2C_A_ADC_ABORT) == 0)
+			break;
+	}
 
-    return 0;
+	if (retry == 10) {
+		snd_printk(KERN_ERR "Writing to ADC failed!\n");
+		return -EINVAL;
+	}
+    
+    	return 0;
 }
 
 
-static void snd_ca0106_intr_enable(ca0106_t *emu, unsigned int intrenb)
+static void snd_ca0106_intr_enable(struct snd_ca0106 *emu, unsigned int intrenb)
 {
 	unsigned long flags;
 	unsigned int enable;
-
+  
 	spin_lock_irqsave(&emu->emu_lock, flags);
 	enable = inl(emu->port + INTE) | intrenb;
 	outl(enable, emu->port + INTE);
 	spin_unlock_irqrestore(&emu->emu_lock, flags);
 }
 
-static void snd_ca0106_pcm_free_substream(snd_pcm_runtime_t *runtime)
+static void snd_ca0106_intr_disable(struct snd_ca0106 *emu, unsigned int intrenb)
 {
-	ca0106_pcm_t *epcm = runtime->private_data;
+	unsigned long flags;
+	unsigned int enable;
+  
+	spin_lock_irqsave(&emu->emu_lock, flags);
+	enable = inl(emu->port + INTE) & ~intrenb;
+	outl(enable, emu->port + INTE);
+	spin_unlock_irqrestore(&emu->emu_lock, flags);
+}
 
-	if (epcm) {
-		kfree(epcm);
-	}
+
+static void snd_ca0106_pcm_free_substream(struct snd_pcm_runtime *runtime)
+{
+	kfree(runtime->private_data);
 }
 
 /* open_playback callback */
-static int snd_ca0106_pcm_open_playback_channel(snd_pcm_substream_t *substream, int channel_id)
+static int snd_ca0106_pcm_open_playback_channel(struct snd_pcm_substream *substream,
+						int channel_id)
 {
-	ca0106_t *chip = snd_pcm_substream_chip(substream);
-        ca0106_channel_t *channel = &(chip->playback_channels[channel_id]);
-	ca0106_pcm_t *epcm;
-	snd_pcm_runtime_t *runtime = substream->runtime;
+	struct snd_ca0106 *chip = snd_pcm_substream_chip(substream);
+        struct snd_ca0106_channel *channel = &(chip->playback_channels[channel_id]);
+	struct snd_ca0106_pcm *epcm;
+	struct snd_pcm_runtime *runtime = substream->runtime;
 	int err;
 
-	epcm = kcalloc(1, sizeof(*epcm), GFP_KERNEL);
+	epcm = kzalloc(sizeof(*epcm), GFP_KERNEL);
 
 	if (epcm == NULL)
 		return -ENOMEM;
 	epcm->emu = chip;
 	epcm->substream = substream;
         epcm->channel_id=channel_id;
-
+  
 	runtime->private_data = epcm;
 	runtime->private_free = snd_ca0106_pcm_free_substream;
-
+  
 	runtime->hw = snd_ca0106_playback_hw;
 
         channel->emu = chip;
         channel->number = channel_id;
 
-        channel->use=1;
+	channel->use = 1;
         //printk("open:channel_id=%d, chip=%p, channel=%p\n",channel_id, chip, channel);
         //channel->interrupt = snd_ca0106_pcm_channel_interrupt;
-        channel->epcm=epcm;
+	channel->epcm = epcm;
 	if ((err = snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS)) < 0)
                 return err;
 	if ((err = snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 64)) < 0)
@@ -383,66 +444,67 @@ static int snd_ca0106_pcm_open_playback_channel(snd_pcm_substream_t *substream, 
 }
 
 /* close callback */
-static int snd_ca0106_pcm_close_playback(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_close_playback(struct snd_pcm_substream *substream)
 {
-	ca0106_t *chip = snd_pcm_substream_chip(substream);
-	snd_pcm_runtime_t *runtime = substream->runtime;
-        ca0106_pcm_t *epcm = runtime->private_data;
-        chip->playback_channels[epcm->channel_id].use=0;
-/* FIXME: maybe zero others */
+	struct snd_ca0106 *chip = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+        struct snd_ca0106_pcm *epcm = runtime->private_data;
+	chip->playback_channels[epcm->channel_id].use = 0;
+	/* FIXME: maybe zero others */
 	return 0;
 }
 
-static int snd_ca0106_pcm_open_playback_front(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_open_playback_front(struct snd_pcm_substream *substream)
 {
 	return snd_ca0106_pcm_open_playback_channel(substream, PCM_FRONT_CHANNEL);
 }
 
-static int snd_ca0106_pcm_open_playback_center_lfe(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_open_playback_center_lfe(struct snd_pcm_substream *substream)
 {
 	return snd_ca0106_pcm_open_playback_channel(substream, PCM_CENTER_LFE_CHANNEL);
 }
 
-static int snd_ca0106_pcm_open_playback_unknown(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_open_playback_unknown(struct snd_pcm_substream *substream)
 {
 	return snd_ca0106_pcm_open_playback_channel(substream, PCM_UNKNOWN_CHANNEL);
 }
 
-static int snd_ca0106_pcm_open_playback_rear(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_open_playback_rear(struct snd_pcm_substream *substream)
 {
 	return snd_ca0106_pcm_open_playback_channel(substream, PCM_REAR_CHANNEL);
 }
 
 /* open_capture callback */
-static int snd_ca0106_pcm_open_capture_channel(snd_pcm_substream_t *substream, int channel_id)
+static int snd_ca0106_pcm_open_capture_channel(struct snd_pcm_substream *substream,
+					       int channel_id)
 {
-	ca0106_t *chip = snd_pcm_substream_chip(substream);
-        ca0106_channel_t *channel = &(chip->capture_channels[channel_id]);
-	ca0106_pcm_t *epcm;
-	snd_pcm_runtime_t *runtime = substream->runtime;
+	struct snd_ca0106 *chip = snd_pcm_substream_chip(substream);
+        struct snd_ca0106_channel *channel = &(chip->capture_channels[channel_id]);
+	struct snd_ca0106_pcm *epcm;
+	struct snd_pcm_runtime *runtime = substream->runtime;
 	int err;
 
-	epcm = kcalloc(1, sizeof(*epcm), GFP_KERNEL);
+	epcm = kzalloc(sizeof(*epcm), GFP_KERNEL);
 	if (epcm == NULL) {
-                snd_printk("open_capture_channel: failed epcm alloc\n");
+		snd_printk(KERN_ERR "open_capture_channel: failed epcm alloc\n");
 		return -ENOMEM;
         }
 	epcm->emu = chip;
 	epcm->substream = substream;
         epcm->channel_id=channel_id;
-
+  
 	runtime->private_data = epcm;
 	runtime->private_free = snd_ca0106_pcm_free_substream;
-
+  
 	runtime->hw = snd_ca0106_capture_hw;
 
         channel->emu = chip;
         channel->number = channel_id;
 
-        channel->use=1;
+	channel->use = 1;
         //printk("open:channel_id=%d, chip=%p, channel=%p\n",channel_id, chip, channel);
         //channel->interrupt = snd_ca0106_pcm_channel_interrupt;
-        channel->epcm=epcm;
+        channel->epcm = epcm;
 	if ((err = snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS)) < 0)
                 return err;
 	//snd_pcm_hw_constraint_list(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, &hw_constraints_capture_period_sizes);
@@ -452,70 +514,70 @@ static int snd_ca0106_pcm_open_capture_channel(snd_pcm_substream_t *substream, i
 }
 
 /* close callback */
-static int snd_ca0106_pcm_close_capture(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_close_capture(struct snd_pcm_substream *substream)
 {
-	ca0106_t *chip = snd_pcm_substream_chip(substream);
-	snd_pcm_runtime_t *runtime = substream->runtime;
-        ca0106_pcm_t *epcm = runtime->private_data;
-        chip->capture_channels[epcm->channel_id].use=0;
-/* FIXME: maybe zero others */
+	struct snd_ca0106 *chip = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+        struct snd_ca0106_pcm *epcm = runtime->private_data;
+	chip->capture_channels[epcm->channel_id].use = 0;
+	/* FIXME: maybe zero others */
 	return 0;
 }
 
-static int snd_ca0106_pcm_open_0_capture(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_open_0_capture(struct snd_pcm_substream *substream)
 {
 	return snd_ca0106_pcm_open_capture_channel(substream, 0);
 }
 
-static int snd_ca0106_pcm_open_1_capture(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_open_1_capture(struct snd_pcm_substream *substream)
 {
 	return snd_ca0106_pcm_open_capture_channel(substream, 1);
 }
 
-static int snd_ca0106_pcm_open_2_capture(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_open_2_capture(struct snd_pcm_substream *substream)
 {
 	return snd_ca0106_pcm_open_capture_channel(substream, 2);
 }
 
-static int snd_ca0106_pcm_open_3_capture(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_open_3_capture(struct snd_pcm_substream *substream)
 {
 	return snd_ca0106_pcm_open_capture_channel(substream, 3);
 }
 
 /* hw_params callback */
-static int snd_ca0106_pcm_hw_params_playback(snd_pcm_substream_t *substream,
-				      snd_pcm_hw_params_t * hw_params)
+static int snd_ca0106_pcm_hw_params_playback(struct snd_pcm_substream *substream,
+				      struct snd_pcm_hw_params *hw_params)
 {
 	return snd_pcm_lib_malloc_pages(substream,
 					params_buffer_bytes(hw_params));
 }
 
 /* hw_free callback */
-static int snd_ca0106_pcm_hw_free_playback(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_hw_free_playback(struct snd_pcm_substream *substream)
 {
 	return snd_pcm_lib_free_pages(substream);
 }
 
 /* hw_params callback */
-static int snd_ca0106_pcm_hw_params_capture(snd_pcm_substream_t *substream,
-				      snd_pcm_hw_params_t * hw_params)
+static int snd_ca0106_pcm_hw_params_capture(struct snd_pcm_substream *substream,
+				      struct snd_pcm_hw_params *hw_params)
 {
 	return snd_pcm_lib_malloc_pages(substream,
 					params_buffer_bytes(hw_params));
 }
 
 /* hw_free callback */
-static int snd_ca0106_pcm_hw_free_capture(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_hw_free_capture(struct snd_pcm_substream *substream)
 {
 	return snd_pcm_lib_free_pages(substream);
 }
 
 /* prepare playback callback */
-static int snd_ca0106_pcm_prepare_playback(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_prepare_playback(struct snd_pcm_substream *substream)
 {
-	ca0106_t *emu = snd_pcm_substream_chip(substream);
-	snd_pcm_runtime_t *runtime = substream->runtime;
-	ca0106_pcm_t *epcm = runtime->private_data;
+	struct snd_ca0106 *emu = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_ca0106_pcm *epcm = runtime->private_data;
 	int channel = epcm->channel_id;
 	u32 *table_base = (u32 *)(emu->buffer.area+(8*16*channel));
 	u32 period_size_bytes = frames_to_bytes(runtime, runtime->period_size);
@@ -530,7 +592,7 @@ static int snd_ca0106_pcm_prepare_playback(snd_pcm_substream_t *substream)
 	u32 reg71_set = 0;
 	u32 reg71;
 	int i;
-
+	
         //snd_printk("prepare:channel_number=%d, rate=%d, format=0x%x, channels=%d, buffer_size=%ld, period_size=%ld, periods=%u, frames_to_bytes=%d\n",channel, runtime->rate, runtime->format, runtime->channels, runtime->buffer_size, runtime->period_size, runtime->periods, frames_to_bytes(runtime, 1));
         //snd_printk("dma_addr=%x, dma_area=%p, table_base=%p\n",runtime->dma_addr, runtime->dma_area, table_base);
 	//snd_printk("dma_addr=%x, dma_area=%p, dma_bytes(size)=%x\n",emu->buffer.addr, emu->buffer.area, emu->buffer.bytes);
@@ -540,23 +602,23 @@ static int snd_ca0106_pcm_prepare_playback(snd_pcm_substream_t *substream)
 	switch (runtime->rate) {
 	case 44100:
 		reg40_set = 0x10000 << (channel<<1);
-		reg71_set = 0x01010000;
+		reg71_set = 0x01010000; 
 		break;
         case 48000:
 		reg40_set = 0;
-		reg71_set = 0;
+		reg71_set = 0; 
 		break;
 	case 96000:
 		reg40_set = 0x20000 << (channel<<1);
-		reg71_set = 0x02020000;
+		reg71_set = 0x02020000; 
 		break;
 	case 192000:
 		reg40_set = 0x30000 << (channel<<1);
-		reg71_set = 0x03030000;
+		reg71_set = 0x03030000; 
 		break;
 	default:
 		reg40_set = 0;
-		reg71_set = 0;
+		reg71_set = 0; 
 		break;
 	}
 	/* Format is a global setting */
@@ -584,17 +646,17 @@ static int snd_ca0106_pcm_prepare_playback(snd_pcm_substream_t *substream)
 
 	/* FIXME: Check emu->buffer.size before actually writing to it. */
         for(i=0; i < runtime->periods; i++) {
-		table_base[i*2]=runtime->dma_addr+(i*period_size_bytes);
-		table_base[(i*2)+1]=period_size_bytes<<16;
+		table_base[i*2] = runtime->dma_addr + (i * period_size_bytes);
+		table_base[i*2+1] = period_size_bytes << 16;
 	}
-
+ 
 	snd_ca0106_ptr_write(emu, PLAYBACK_LIST_ADDR, channel, emu->buffer.addr+(8*16*channel));
 	snd_ca0106_ptr_write(emu, PLAYBACK_LIST_SIZE, channel, (runtime->periods - 1) << 19);
 	snd_ca0106_ptr_write(emu, PLAYBACK_LIST_PTR, channel, 0);
 	snd_ca0106_ptr_write(emu, PLAYBACK_DMA_ADDR, channel, runtime->dma_addr);
-        snd_ca0106_ptr_write(emu, PLAYBACK_PERIOD_SIZE, channel, frames_to_bytes(runtime, runtime->period_size)<<16); // buffer size in bytes
-        /* FIXME  test what 0 bytes does. */
-        snd_ca0106_ptr_write(emu, PLAYBACK_PERIOD_SIZE, channel, 0); // buffer size in bytes
+	snd_ca0106_ptr_write(emu, PLAYBACK_PERIOD_SIZE, channel, frames_to_bytes(runtime, runtime->period_size)<<16); // buffer size in bytes
+	/* FIXME  test what 0 bytes does. */
+	snd_ca0106_ptr_write(emu, PLAYBACK_PERIOD_SIZE, channel, 0); // buffer size in bytes
 	snd_ca0106_ptr_write(emu, PLAYBACK_POINTER, channel, 0);
 	snd_ca0106_ptr_write(emu, 0x07, channel, 0x0);
 	snd_ca0106_ptr_write(emu, 0x08, channel, 0);
@@ -612,65 +674,65 @@ static int snd_ca0106_pcm_prepare_playback(snd_pcm_substream_t *substream)
 }
 
 /* prepare capture callback */
-static int snd_ca0106_pcm_prepare_capture(snd_pcm_substream_t *substream)
+static int snd_ca0106_pcm_prepare_capture(struct snd_pcm_substream *substream)
 {
-	ca0106_t *emu = snd_pcm_substream_chip(substream);
-	snd_pcm_runtime_t *runtime = substream->runtime;
-	ca0106_pcm_t *epcm = runtime->private_data;
-        int channel = epcm->channel_id;
-        u32 hcfg_mask = HCFG_CAPTURE_S32_LE;
-        u32 hcfg_set = 0x00000000;
-        u32 hcfg;
-        u32 over_sampling=0x2;
-        u32 reg71_mask = 0x0000c000 ; /* Global. Set ADC rate. */
-        u32 reg71_set = 0;
-        u32 reg71;
-
+	struct snd_ca0106 *emu = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_ca0106_pcm *epcm = runtime->private_data;
+	int channel = epcm->channel_id;
+	u32 hcfg_mask = HCFG_CAPTURE_S32_LE;
+	u32 hcfg_set = 0x00000000;
+	u32 hcfg;
+	u32 over_sampling=0x2;
+	u32 reg71_mask = 0x0000c000 ; /* Global. Set ADC rate. */
+	u32 reg71_set = 0;
+	u32 reg71;
+	
         //snd_printk("prepare:channel_number=%d, rate=%d, format=0x%x, channels=%d, buffer_size=%ld, period_size=%ld, periods=%u, frames_to_bytes=%d\n",channel, runtime->rate, runtime->format, runtime->channels, runtime->buffer_size, runtime->period_size, runtime->periods, frames_to_bytes(runtime, 1));
         //snd_printk("dma_addr=%x, dma_area=%p, table_base=%p\n",runtime->dma_addr, runtime->dma_area, table_base);
-        //snd_printk("dma_addr=%x, dma_area=%p, dma_bytes(size)=%x\n",emu->buffer.addr, emu->buffer.area, emu->buffer.bytes);
-        /* reg71 controls ADC rate. */
-        switch (runtime->rate) {
-        case 44100:
-            reg71_set = 0x00004000;
-            break;
+	//snd_printk("dma_addr=%x, dma_area=%p, dma_bytes(size)=%x\n",emu->buffer.addr, emu->buffer.area, emu->buffer.bytes);
+	/* reg71 controls ADC rate. */
+	switch (runtime->rate) {
+	case 44100:
+		reg71_set = 0x00004000;
+		break;
         case 48000:
-            reg71_set = 0;
-            break;
-        case 96000:
-            reg71_set = 0x00008000;
-            over_sampling=0xa;
-            break;
-        case 192000:
-            reg71_set = 0x0000c000;
-            over_sampling=0xa;
-            break;
-        default:
-            reg71_set = 0;
-            break;
-        }
-        /* Format is a global setting */
-        /* FIXME: Only let the first channel accessed set this. */
-        switch (runtime->format) {
-        case SNDRV_PCM_FORMAT_S16_LE:
-            hcfg_set = 0;
-            break;
-        case SNDRV_PCM_FORMAT_S32_LE:
-            hcfg_set = HCFG_CAPTURE_S32_LE;
-            break;
-        default:
-            hcfg_set = 0;
-            break;
-        }
-        hcfg = inl(emu->port + HCFG) ;
-        hcfg = (hcfg & ~hcfg_mask) | hcfg_set;
-        outl(hcfg, emu->port + HCFG);
-        reg71 = snd_ca0106_ptr_read(emu, 0x71, 0);
-        reg71 = (reg71 & ~reg71_mask) | reg71_set;
-        snd_ca0106_ptr_write(emu, 0x71, 0, reg71);
+		reg71_set = 0; 
+		break;
+	case 96000:
+		reg71_set = 0x00008000;
+		over_sampling=0xa;
+		break;
+	case 192000:
+		reg71_set = 0x0000c000; 
+		over_sampling=0xa;
+		break;
+	default:
+		reg71_set = 0; 
+		break;
+	}
+	/* Format is a global setting */
+	/* FIXME: Only let the first channel accessed set this. */
+	switch (runtime->format) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		hcfg_set = 0;
+		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		hcfg_set = HCFG_CAPTURE_S32_LE;
+		break;
+	default:
+		hcfg_set = 0;
+		break;
+	}
+	hcfg = inl(emu->port + HCFG) ;
+	hcfg = (hcfg & ~hcfg_mask) | hcfg_set;
+	outl(hcfg, emu->port + HCFG);
+	reg71 = snd_ca0106_ptr_read(emu, 0x71, 0);
+	reg71 = (reg71 & ~reg71_mask) | reg71_set;
+	snd_ca0106_ptr_write(emu, 0x71, 0, reg71);
         if (emu->details->i2c_adc == 1) { /* The SB0410 and SB0413 use I2C to control ADC. */
-            snd_ca0106_i2c_write(emu, ADC_MASTER, over_sampling); /* Adjust the over sampler to better suit the capture rate. */
-        }
+	        snd_ca0106_i2c_write(emu, ADC_MASTER, over_sampling); /* Adjust the over sampler to better suit the capture rate. */
+	}
 
 
         //printk("prepare:channel_number=%d, rate=%d, format=0x%x, channels=%d, buffer_size=%ld, period_size=%ld, frames_to_bytes=%d\n",channel, runtime->rate, runtime->format, runtime->channels, runtime->buffer_size, runtime->period_size,  frames_to_bytes(runtime, 1));
@@ -683,16 +745,16 @@ static int snd_ca0106_pcm_prepare_capture(snd_pcm_substream_t *substream)
 }
 
 /* trigger_playback callback */
-static int snd_ca0106_pcm_trigger_playback(snd_pcm_substream_t *substream,
+static int snd_ca0106_pcm_trigger_playback(struct snd_pcm_substream *substream,
 				    int cmd)
 {
-	ca0106_t *emu = snd_pcm_substream_chip(substream);
-	snd_pcm_runtime_t *runtime;
-	ca0106_pcm_t *epcm;
+	struct snd_ca0106 *emu = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime;
+	struct snd_ca0106_pcm *epcm;
 	int channel;
 	int result = 0;
 	struct list_head *pos;
-        snd_pcm_substream_t *s;
+        struct snd_pcm_substream *s;
 	u32 basic = 0;
 	u32 extended = 0;
 	int running=0;
@@ -736,12 +798,12 @@ static int snd_ca0106_pcm_trigger_playback(snd_pcm_substream_t *substream,
 }
 
 /* trigger_capture callback */
-static int snd_ca0106_pcm_trigger_capture(snd_pcm_substream_t *substream,
+static int snd_ca0106_pcm_trigger_capture(struct snd_pcm_substream *substream,
 				    int cmd)
 {
-	ca0106_t *emu = snd_pcm_substream_chip(substream);
-	snd_pcm_runtime_t *runtime = substream->runtime;
-	ca0106_pcm_t *epcm = runtime->private_data;
+	struct snd_ca0106 *emu = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_ca0106_pcm *epcm = runtime->private_data;
 	int channel = epcm->channel_id;
 	int result = 0;
 
@@ -765,11 +827,11 @@ static int snd_ca0106_pcm_trigger_capture(snd_pcm_substream_t *substream,
 
 /* pointer_playback callback */
 static snd_pcm_uframes_t
-snd_ca0106_pcm_pointer_playback(snd_pcm_substream_t *substream)
+snd_ca0106_pcm_pointer_playback(struct snd_pcm_substream *substream)
 {
-	ca0106_t *emu = snd_pcm_substream_chip(substream);
-	snd_pcm_runtime_t *runtime = substream->runtime;
-	ca0106_pcm_t *epcm = runtime->private_data;
+	struct snd_ca0106 *emu = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_ca0106_pcm *epcm = runtime->private_data;
 	snd_pcm_uframes_t ptr, ptr1, ptr2,ptr3,ptr4 = 0;
 	int channel = epcm->channel_id;
 
@@ -792,11 +854,11 @@ snd_ca0106_pcm_pointer_playback(snd_pcm_substream_t *substream)
 
 /* pointer_capture callback */
 static snd_pcm_uframes_t
-snd_ca0106_pcm_pointer_capture(snd_pcm_substream_t *substream)
+snd_ca0106_pcm_pointer_capture(struct snd_pcm_substream *substream)
 {
-	ca0106_t *emu = snd_pcm_substream_chip(substream);
-	snd_pcm_runtime_t *runtime = substream->runtime;
-	ca0106_pcm_t *epcm = runtime->private_data;
+	struct snd_ca0106 *emu = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_ca0106_pcm *epcm = runtime->private_data;
 	snd_pcm_uframes_t ptr, ptr1, ptr2 = 0;
 	int channel = channel=epcm->channel_id;
 
@@ -814,107 +876,99 @@ snd_ca0106_pcm_pointer_capture(snd_pcm_substream_t *substream)
 }
 
 /* operators */
-static snd_pcm_ops_t snd_ca0106_playback_front_ops = {
-	/*.open =        */snd_ca0106_pcm_open_playback_front,
-	/*.close =       */snd_ca0106_pcm_close_playback,
-	/*.ioctl =       */snd_pcm_lib_ioctl,
-	/*.hw_params =   */snd_ca0106_pcm_hw_params_playback,
-	/*.hw_free =     */snd_ca0106_pcm_hw_free_playback,
-	/*.prepare =     */snd_ca0106_pcm_prepare_playback,
-	/*.trigger =     */snd_ca0106_pcm_trigger_playback,
-        /*.pointer =     */snd_ca0106_pcm_pointer_playback,
-        0,0,0,0
+static struct snd_pcm_ops snd_ca0106_playback_front_ops = {
+	.open =        snd_ca0106_pcm_open_playback_front,
+	.close =       snd_ca0106_pcm_close_playback,
+	.ioctl =       snd_pcm_lib_ioctl,
+	.hw_params =   snd_ca0106_pcm_hw_params_playback,
+	.hw_free =     snd_ca0106_pcm_hw_free_playback,
+	.prepare =     snd_ca0106_pcm_prepare_playback,
+	.trigger =     snd_ca0106_pcm_trigger_playback,
+	.pointer =     snd_ca0106_pcm_pointer_playback,
 };
 
-static snd_pcm_ops_t snd_ca0106_capture_0_ops = {
-	/*.open =        */snd_ca0106_pcm_open_0_capture,
-	/*.close =       */snd_ca0106_pcm_close_capture,
-	/*.ioctl =       */snd_pcm_lib_ioctl,
-	/*.hw_params =   */snd_ca0106_pcm_hw_params_capture,
-	/*.hw_free =     */snd_ca0106_pcm_hw_free_capture,
-	/*.prepare =     */snd_ca0106_pcm_prepare_capture,
-	/*.trigger =     */snd_ca0106_pcm_trigger_capture,
-        /*.pointer =     */snd_ca0106_pcm_pointer_capture,
-        0,0,0,0
+static struct snd_pcm_ops snd_ca0106_capture_0_ops = {
+	.open =        snd_ca0106_pcm_open_0_capture,
+	.close =       snd_ca0106_pcm_close_capture,
+	.ioctl =       snd_pcm_lib_ioctl,
+	.hw_params =   snd_ca0106_pcm_hw_params_capture,
+	.hw_free =     snd_ca0106_pcm_hw_free_capture,
+	.prepare =     snd_ca0106_pcm_prepare_capture,
+	.trigger =     snd_ca0106_pcm_trigger_capture,
+	.pointer =     snd_ca0106_pcm_pointer_capture,
 };
 
-static snd_pcm_ops_t snd_ca0106_capture_1_ops = {
-	/*.open =        */snd_ca0106_pcm_open_1_capture,
-	/*.close =       */snd_ca0106_pcm_close_capture,
-	/*.ioctl =       */snd_pcm_lib_ioctl,
-	/*.hw_params =   */snd_ca0106_pcm_hw_params_capture,
-	/*.hw_free =     */snd_ca0106_pcm_hw_free_capture,
-	/*.prepare =     */snd_ca0106_pcm_prepare_capture,
-	/*.trigger =     */snd_ca0106_pcm_trigger_capture,
-        /*.pointer =     */snd_ca0106_pcm_pointer_capture,
-        0,0,0,0
+static struct snd_pcm_ops snd_ca0106_capture_1_ops = {
+	.open =        snd_ca0106_pcm_open_1_capture,
+	.close =       snd_ca0106_pcm_close_capture,
+	.ioctl =       snd_pcm_lib_ioctl,
+	.hw_params =   snd_ca0106_pcm_hw_params_capture,
+	.hw_free =     snd_ca0106_pcm_hw_free_capture,
+	.prepare =     snd_ca0106_pcm_prepare_capture,
+	.trigger =     snd_ca0106_pcm_trigger_capture,
+	.pointer =     snd_ca0106_pcm_pointer_capture,
 };
 
-static snd_pcm_ops_t snd_ca0106_capture_2_ops = {
-	/*.open =        */snd_ca0106_pcm_open_2_capture,
-	/*.close =       */snd_ca0106_pcm_close_capture,
-	/*.ioctl =       */snd_pcm_lib_ioctl,
-	/*.hw_params =   */snd_ca0106_pcm_hw_params_capture,
-	/*.hw_free =     */snd_ca0106_pcm_hw_free_capture,
-	/*.prepare =     */snd_ca0106_pcm_prepare_capture,
-	/*.trigger =     */snd_ca0106_pcm_trigger_capture,
-        /*.pointer =     */snd_ca0106_pcm_pointer_capture,
-        0,0,0,0
+static struct snd_pcm_ops snd_ca0106_capture_2_ops = {
+	.open =        snd_ca0106_pcm_open_2_capture,
+	.close =       snd_ca0106_pcm_close_capture,
+	.ioctl =       snd_pcm_lib_ioctl,
+	.hw_params =   snd_ca0106_pcm_hw_params_capture,
+	.hw_free =     snd_ca0106_pcm_hw_free_capture,
+	.prepare =     snd_ca0106_pcm_prepare_capture,
+	.trigger =     snd_ca0106_pcm_trigger_capture,
+	.pointer =     snd_ca0106_pcm_pointer_capture,
 };
 
-static snd_pcm_ops_t snd_ca0106_capture_3_ops = {
-	/*.open =        */snd_ca0106_pcm_open_3_capture,
-	/*.close =       */snd_ca0106_pcm_close_capture,
-	/*.ioctl =       */snd_pcm_lib_ioctl,
-	/*.hw_params =   */snd_ca0106_pcm_hw_params_capture,
-	/*.hw_free =     */snd_ca0106_pcm_hw_free_capture,
-	/*.prepare =     */snd_ca0106_pcm_prepare_capture,
-	/*.trigger =     */snd_ca0106_pcm_trigger_capture,
-        /*.pointer =     */snd_ca0106_pcm_pointer_capture,
-        0,0,0,0
+static struct snd_pcm_ops snd_ca0106_capture_3_ops = {
+	.open =        snd_ca0106_pcm_open_3_capture,
+	.close =       snd_ca0106_pcm_close_capture,
+	.ioctl =       snd_pcm_lib_ioctl,
+	.hw_params =   snd_ca0106_pcm_hw_params_capture,
+	.hw_free =     snd_ca0106_pcm_hw_free_capture,
+	.prepare =     snd_ca0106_pcm_prepare_capture,
+	.trigger =     snd_ca0106_pcm_trigger_capture,
+	.pointer =     snd_ca0106_pcm_pointer_capture,
 };
 
-static snd_pcm_ops_t snd_ca0106_playback_center_lfe_ops = {
-        /*.open =         */snd_ca0106_pcm_open_playback_center_lfe,
-        /*.close =        */snd_ca0106_pcm_close_playback,
-        /*.ioctl =        */snd_pcm_lib_ioctl,
-        /*.hw_params =    */snd_ca0106_pcm_hw_params_playback,
-        /*.hw_free =      */snd_ca0106_pcm_hw_free_playback,
-        /*.prepare =      */snd_ca0106_pcm_prepare_playback,
-        /*.trigger =      */snd_ca0106_pcm_trigger_playback,
-        /*.pointer =      */snd_ca0106_pcm_pointer_playback,
-        0,0,0,0
+static struct snd_pcm_ops snd_ca0106_playback_center_lfe_ops = {
+        .open =         snd_ca0106_pcm_open_playback_center_lfe,
+        .close =        snd_ca0106_pcm_close_playback,
+        .ioctl =        snd_pcm_lib_ioctl,
+        .hw_params =    snd_ca0106_pcm_hw_params_playback,
+        .hw_free =      snd_ca0106_pcm_hw_free_playback,
+        .prepare =      snd_ca0106_pcm_prepare_playback,     
+        .trigger =      snd_ca0106_pcm_trigger_playback,  
+        .pointer =      snd_ca0106_pcm_pointer_playback, 
 };
 
-static snd_pcm_ops_t snd_ca0106_playback_unknown_ops = {
-        /*.open =         */snd_ca0106_pcm_open_playback_unknown,
-        /*.close =        */snd_ca0106_pcm_close_playback,
-        /*.ioctl =        */snd_pcm_lib_ioctl,
-        /*.hw_params =    */snd_ca0106_pcm_hw_params_playback,
-        /*.hw_free =      */snd_ca0106_pcm_hw_free_playback,
-        /*.prepare =      */snd_ca0106_pcm_prepare_playback,
-        /*.trigger =      */snd_ca0106_pcm_trigger_playback,
-        /*.pointer =      */snd_ca0106_pcm_pointer_playback,
-        0,0,0,0
+static struct snd_pcm_ops snd_ca0106_playback_unknown_ops = {
+        .open =         snd_ca0106_pcm_open_playback_unknown,
+        .close =        snd_ca0106_pcm_close_playback,
+        .ioctl =        snd_pcm_lib_ioctl,
+        .hw_params =    snd_ca0106_pcm_hw_params_playback,
+        .hw_free =      snd_ca0106_pcm_hw_free_playback,
+        .prepare =      snd_ca0106_pcm_prepare_playback,     
+        .trigger =      snd_ca0106_pcm_trigger_playback,  
+        .pointer =      snd_ca0106_pcm_pointer_playback, 
 };
 
-static snd_pcm_ops_t snd_ca0106_playback_rear_ops = {
-        /*.open =         */snd_ca0106_pcm_open_playback_rear,
-        /*.close =        */snd_ca0106_pcm_close_playback,
-        /*.ioctl =        */snd_pcm_lib_ioctl,
-        /*.hw_params =    */snd_ca0106_pcm_hw_params_playback,
-	/*.hw_free =      */snd_ca0106_pcm_hw_free_playback,
-        /*.prepare =      */snd_ca0106_pcm_prepare_playback,
-        /*.trigger =      */snd_ca0106_pcm_trigger_playback,
-        /*.pointer =      */snd_ca0106_pcm_pointer_playback,
-        0,0,0,0
+static struct snd_pcm_ops snd_ca0106_playback_rear_ops = {
+        .open =         snd_ca0106_pcm_open_playback_rear,
+        .close =        snd_ca0106_pcm_close_playback,
+        .ioctl =        snd_pcm_lib_ioctl,
+        .hw_params =    snd_ca0106_pcm_hw_params_playback,
+		.hw_free =      snd_ca0106_pcm_hw_free_playback,
+        .prepare =      snd_ca0106_pcm_prepare_playback,     
+        .trigger =      snd_ca0106_pcm_trigger_playback,  
+        .pointer =      snd_ca0106_pcm_pointer_playback, 
 };
 
 
-static unsigned short snd_ca0106_ac97_read(ac97_t *ac97,
+static unsigned short snd_ca0106_ac97_read(struct snd_ac97 *ac97,
 					     unsigned short reg)
 {
-	ca0106_t *emu = ac97->private_data;
+	struct snd_ca0106 *emu = ac97->private_data;
 	unsigned long flags;
 	unsigned short val;
 
@@ -925,40 +979,39 @@ static unsigned short snd_ca0106_ac97_read(ac97_t *ac97,
 	return val;
 }
 
-static void snd_ca0106_ac97_write(ac97_t *ac97,
+static void snd_ca0106_ac97_write(struct snd_ac97 *ac97,
 				    unsigned short reg, unsigned short val)
 {
-	ca0106_t *emu = ac97->private_data;
+	struct snd_ca0106 *emu = ac97->private_data;
 	unsigned long flags;
-
+  
 	spin_lock_irqsave(&emu->emu_lock, flags);
 	outb(reg, emu->port + AC97ADDRESS);
 	outw(val, emu->port + AC97DATA);
 	spin_unlock_irqrestore(&emu->emu_lock, flags);
 }
 
-static int snd_ca0106_ac97(ca0106_t *chip)
+static int snd_ca0106_ac97(struct snd_ca0106 *chip)
 {
-	ac97_bus_t *pbus;
-	ac97_template_t ac97;
+	struct snd_ac97_bus *pbus;
+	struct snd_ac97_template ac97;
 	int err;
-        static ac97_bus_ops_t ops = {
-            0,
-	      /*  .write = */snd_ca0106_ac97_write,
-              /*  .read = */snd_ca0106_ac97_read,
-              0,0
+	static struct snd_ac97_bus_ops ops = {
+		.write = snd_ca0106_ac97_write,
+		.read = snd_ca0106_ac97_read,
 	};
-
+  
 	if ((err = snd_ac97_bus(chip->card, 0, &ops, NULL, &pbus)) < 0)
-            return err;
-        pbus->no_vra = 1; /* we don't need VRA */
+		return err;
+	pbus->no_vra = 1; /* we don't need VRA */
+
 	memset(&ac97, 0, sizeof(ac97));
-        ac97.private_data = chip;
-        ac97.scaps = AC97_SCAP_NO_SPDIF;
+	ac97.private_data = chip;
+	ac97.scaps = AC97_SCAP_NO_SPDIF;
 	return snd_ac97_mixer(pbus, &ac97, &chip->ac97);
 }
 
-static int snd_ca0106_free(ca0106_t *chip)
+static int snd_ca0106_free(struct snd_ca0106 *chip)
 {
 	if (chip->res_port != NULL) {    /* avoid access to already used hardware */
 		// disable interrupts
@@ -981,10 +1034,8 @@ static int snd_ca0106_free(ca0106_t *chip)
 #endif
 
 	// release the i/o port
-	if (chip->res_port) {
-		release_resource(chip->res_port);
-		kfree_nocheck(chip->res_port);
-	}
+	release_and_free_resource(chip->res_port);
+
 	// release the irq
 	if (chip->irq >= 0)
 		free_irq(chip->irq, (void *)chip);
@@ -993,9 +1044,9 @@ static int snd_ca0106_free(ca0106_t *chip)
 	return 0;
 }
 
-static int snd_ca0106_dev_free(snd_device_t *device)
+static int snd_ca0106_dev_free(struct snd_device *device)
 {
-	ca0106_t *chip = device->device_data;
+	struct snd_ca0106 *chip = device->device_data;
 	return snd_ca0106_free(chip);
 }
 
@@ -1004,19 +1055,13 @@ static irqreturn_t snd_ca0106_interrupt(int irq, void *dev_id,
 {
 	unsigned int status;
 
-	ca0106_t *chip = dev_id;
+	struct snd_ca0106 *chip = dev_id;
 	int i;
 	int mask;
         unsigned int stat76;
-	ca0106_channel_t *pchannel;
-
-	spin_lock(&chip->emu_lock);
+	struct snd_ca0106_channel *pchannel;
 
 	status = inl(chip->port + IPR);
-
-	// call updater, unlock before it
-	spin_unlock(&chip->emu_lock);
-
 	if (! status)
 		return IRQ_NONE;
 
@@ -1026,11 +1071,11 @@ static irqreturn_t snd_ca0106_interrupt(int irq, void *dev_id,
         mask = 0x11; /* 0x1 for one half, 0x10 for the other half period. */
 	for(i = 0; i < 4; i++) {
 		pchannel = &(chip->playback_channels[i]);
-		if(stat76 & mask) {
+		if (stat76 & mask) {
 /* FIXME: Select the correct substream for period elapsed */
 			if(pchannel->use) {
-                          snd_pcm_period_elapsed(pchannel->epcm->substream);
-	                //printk(KERN_INFO "interrupt [%d] used\n", i);
+				snd_pcm_period_elapsed(pchannel->epcm->substream);
+				//printk(KERN_INFO "interrupt [%d] used\n", i);
                         }
 		}
 	        //printk(KERN_INFO "channel=%p\n",pchannel);
@@ -1040,11 +1085,11 @@ static irqreturn_t snd_ca0106_interrupt(int irq, void *dev_id,
         mask = 0x110000; /* 0x1 for one half, 0x10 for the other half period. */
 	for(i = 0; i < 4; i++) {
 		pchannel = &(chip->capture_channels[i]);
-		if(stat76 & mask) {
+		if (stat76 & mask) {
 /* FIXME: Select the correct substream for period elapsed */
 			if(pchannel->use) {
-                          snd_pcm_period_elapsed(pchannel->epcm->substream);
-	                //printk(KERN_INFO "interrupt [%d] used\n", i);
+				snd_pcm_period_elapsed(pchannel->epcm->substream);
+				//printk(KERN_INFO "interrupt [%d] used\n", i);
                         }
 		}
 	        //printk(KERN_INFO "channel=%p\n",pchannel);
@@ -1053,37 +1098,33 @@ static irqreturn_t snd_ca0106_interrupt(int irq, void *dev_id,
 	}
 
         snd_ca0106_ptr_write(chip, EXTENDED_INT, 0, stat76);
-	spin_lock(&chip->emu_lock);
+
+	if (chip->midi.dev_id &&
+	    (status & (chip->midi.ipr_tx|chip->midi.ipr_rx))) {
+		if (chip->midi.interrupt)
+			chip->midi.interrupt(&chip->midi, status);
+		else
+			chip->midi.interrupt_disable(&chip->midi, chip->midi.tx_enable | chip->midi.rx_enable);
+	}
+
 	// acknowledge the interrupt if necessary
 	outl(status, chip->port+IPR);
-
-	spin_unlock(&chip->emu_lock);
-
-        eoi_irq(irq);
 
 	return IRQ_HANDLED;
 }
 
-static void snd_ca0106_pcm_free(snd_pcm_t *pcm)
+static int __devinit snd_ca0106_pcm(struct snd_ca0106 *emu, int device, struct snd_pcm **rpcm)
 {
-	ca0106_t *emu = pcm->private_data;
-	emu->pcm = NULL;
-	snd_pcm_lib_preallocate_free_for_all(pcm);
-}
-
-static int __devinit snd_ca0106_pcm(ca0106_t *emu, int device, snd_pcm_t **rpcm)
-{
-	snd_pcm_t *pcm;
-	snd_pcm_substream_t *substream;
+	struct snd_pcm *pcm;
+	struct snd_pcm_substream *substream;
 	int err;
-
+  
 	if (rpcm)
 		*rpcm = NULL;
 	if ((err = snd_pcm_new(emu->card, "ca0106", device, 1, 1, &pcm)) < 0)
 		return err;
-
+  
 	pcm->private_data = emu;
-	pcm->private_free = snd_ca0106_pcm_free;
 
 	switch (device) {
 	case 0:
@@ -1109,66 +1150,89 @@ static int __devinit snd_ca0106_pcm(ca0106_t *emu, int device, snd_pcm_t **rpcm)
 	strcpy(pcm->name, "CA0106");
 	emu->pcm = pcm;
 
-	for(substream = pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
-	    substream;
+	for(substream = pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream; 
+	    substream; 
 	    substream = substream->next) {
-		if ((err = snd_pcm_lib_preallocate_pages(substream,
-							 SNDRV_DMA_TYPE_DEV,
-							 snd_dma_pci_data(emu->pci),
+		if ((err = snd_pcm_lib_preallocate_pages(substream, 
+							 SNDRV_DMA_TYPE_DEV, 
+							 snd_dma_pci_data(emu->pci), 
 							 64*1024, 64*1024)) < 0) /* FIXME: 32*1024 for sound buffer, between 32and64 for Periods table. */
 			return err;
 	}
 
-	for (substream = pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream;
-	      substream;
+	for (substream = pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream; 
+	      substream; 
 	      substream = substream->next) {
- 		if ((err = snd_pcm_lib_preallocate_pages(substream,
-	                                           SNDRV_DMA_TYPE_DEV,
-	                                           snd_dma_pci_data(emu->pci),
+ 		if ((err = snd_pcm_lib_preallocate_pages(substream, 
+	                                           SNDRV_DMA_TYPE_DEV, 
+	                                           snd_dma_pci_data(emu->pci), 
 	                                           64*1024, 64*1024)) < 0)
 			return err;
 	}
-
+  
 	if (rpcm)
 		*rpcm = pcm;
-
+  
 	return 0;
 }
 
-static int __devinit snd_ca0106_create(snd_card_t *card,
+static unsigned int spi_dac_init[] = {
+	0x00ff,
+	0x02ff,
+	0x0400,
+	0x0520,
+	0x0600,
+	0x08ff,
+	0x0aff,
+	0x0cff,
+	0x0eff,
+	0x10ff,
+	0x1200,
+	0x1400,
+	0x1480,
+	0x1800,
+	0x1aff,
+	0x1cff,
+	0x1e00,
+	0x0530,
+	0x0602,
+	0x0622,
+	0x1400,
+};
+
+static int __devinit snd_ca0106_create(struct snd_card *card,
 					 struct pci_dev *pci,
-					 ca0106_t **rchip)
+					 struct snd_ca0106 **rchip)
 {
-    ca0106_t *chip;
-    ca0106_details_t *c;
+	struct snd_ca0106 *chip;
+	struct snd_ca0106_details *c;
 	int err;
 	int ch;
-	static snd_device_ops_t ops = {
-		/*.dev_free = */snd_ca0106_dev_free, 0,0,0
+	static struct snd_device_ops ops = {
+		.dev_free = snd_ca0106_dev_free,
 	};
-
+  
 	*rchip = NULL;
-
+  
 	if ((err = pci_enable_device(pci)) < 0)
-            return err;
-        pci_set_dma_mask(pci, 0xffffffffUL);
-	pci_set_consistent_dma_mask(pci, 0xffffffffUL);
-
-	chip = kcalloc(1, sizeof(*chip), GFP_KERNEL);
+		return err;
+	pci_set_dma_mask(pci, 0xFFFFFFFF);
+  
+	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	if (chip == NULL) {
 		pci_disable_device(pci);
 		return -ENOMEM;
 	}
-
+  
 	chip->card = card;
 	chip->pci = pci;
 	chip->irq = -1;
 
 	spin_lock_init(&chip->emu_lock);
-
+  
 	chip->port = pci_resource_start(pci, 0);
 	if ((chip->res_port = request_region(chip->port, 0x20,
-					     "snd_ca0106")) == NULL) {
+					     "snd_ca0106")) == NULL) { 
 		snd_ca0106_free(chip);
 		printk(KERN_ERR "cannot allocate the port\n");
 		return -EBUSY;
@@ -1182,8 +1246,8 @@ static int __devinit snd_ca0106_create(snd_card_t *card,
 		return -EBUSY;
 	}
 	chip->irq = pci->irq;
-
- 	/* This stores the periods table. */
+  
+ 	/* This stores the periods table. */ 
 	if(snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, snd_dma_pci_data(pci), 1024, &chip->buffer) < 0) {
 		snd_ca0106_free(chip);
 		return -ENOMEM;
@@ -1198,15 +1262,16 @@ static int __devinit snd_ca0106_create(snd_card_t *card,
 	printk(KERN_INFO "Model %04x Rev %08x Serial %08x\n", chip->model,
 	       chip->revision, chip->serial);
 #endif
-        strcpy(card->driver, "CA0106");
-        strcpy(card->shortname, "CA0106");
+	strcpy(card->driver, "CA0106");
+	strcpy(card->shortname, "CA0106");
 
-        for (c=ca0106_chip_details; c->serial; c++) {
-            if (c->serial == chip->serial) break;
-        }
-        chip->details = c;
-        sprintf(card->longname, "%s at 0x%lx irq %i",
-                c->name, chip->port, chip->irq);
+	for (c = ca0106_chip_details; c->serial; c++) {
+		if (c->serial == chip->serial)
+			break;
+	}
+	chip->details = c;
+	sprintf(card->longname, "%s at 0x%lx irq %i",
+		c->name, chip->port, chip->irq);
 
 	outl(0, chip->port + INTE);
 
@@ -1265,8 +1330,8 @@ static int __devinit snd_ca0106_create(snd_card_t *card,
 
 	//snd_ca0106_ptr_write(chip, SPDIF_SELECT2, 0, 0xf0f003f); /* OSS drivers set this. */
 	/* Analog or Digital output */
-        snd_ca0106_ptr_write(chip, SPDIF_SELECT1, 0, 0xf);
-        snd_ca0106_ptr_write(chip, SPDIF_SELECT2, 0, 0x000f0000); /* 0x0b000000 for digital, 0x000b0000 for analog, from win2000 drivers. Use 0x000f0000 for surround71 */
+	snd_ca0106_ptr_write(chip, SPDIF_SELECT1, 0, 0xf);
+	snd_ca0106_ptr_write(chip, SPDIF_SELECT2, 0, 0x000f0000); /* 0x0b000000 for digital, 0x000b0000 for analog, from win2000 drivers. Use 0x000f0000 for surround71 */
 	chip->spdif_enable = 0; /* Set digital SPDIF output off */
 	chip->capture_source = 3; /* Set CAPTURE_SOURCE */
 	//snd_ca0106_ptr_write(chip, 0x45, 0, 0); /* Analogue out */
@@ -1294,8 +1359,8 @@ static int __devinit snd_ca0106_create(snd_card_t *card,
         if (chip->details->gpio_type == 1) { /* The SB0410 and SB0413 use GPIO differently. */
 		/* FIXME: Still need to find out what the other GPIO bits do. E.g. For digital spdif out. */
 		outl(0x0, chip->port+GPIO);
-                //outl(0x00f0e000, chip->port+GPIO); /* Analog */
-                outl(0x005f5301, chip->port+GPIO); /* Analog */
+		//outl(0x00f0e000, chip->port+GPIO); /* Analog */
+		outl(0x005f5301, chip->port+GPIO); /* Analog */
 	} else {
 		outl(0x0, chip->port+GPIO);
 		outl(0x005f03a3, chip->port+GPIO); /* Analog */
@@ -1309,8 +1374,15 @@ static int __devinit snd_ca0106_create(snd_card_t *card,
 	outl(HCFG_AC97 | HCFG_AUDIOENABLE, chip->port+HCFG); /* AC97 2.0, Enable outputs. */
 
         if (chip->details->i2c_adc == 1) { /* The SB0410 and SB0413 use I2C to control ADC. */
-            snd_ca0106_i2c_write(chip, ADC_MUX, ADC_MUX_LINEIN); /* Enable Line-in capture. MIC in currently untested. */
-        }
+	        snd_ca0106_i2c_write(chip, ADC_MUX, ADC_MUX_LINEIN); /* Enable Line-in capture. MIC in currently untested. */
+	}
+        if (chip->details->spi_dac == 1) { /* The SB0570 use SPI to control DAC. */
+		int size, n;
+
+		size = ARRAY_SIZE(spi_dac_init);
+		for (n=0; n < size; n++)
+			snd_ca0106_spi_write(chip, spi_dac_init[n]);
+	}
 
 	if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL,
 				  chip, &ops)) < 0) {
@@ -1321,12 +1393,95 @@ static int __devinit snd_ca0106_create(snd_card_t *card,
 	return 0;
 }
 
+
+static void ca0106_midi_interrupt_enable(struct snd_ca_midi *midi, int intr)
+{
+	snd_ca0106_intr_enable((struct snd_ca0106 *)(midi->dev_id), intr);
+}
+
+static void ca0106_midi_interrupt_disable(struct snd_ca_midi *midi, int intr)
+{
+	snd_ca0106_intr_disable((struct snd_ca0106 *)(midi->dev_id), intr);
+}
+
+static unsigned char ca0106_midi_read(struct snd_ca_midi *midi, int idx)
+{
+	return (unsigned char)snd_ca0106_ptr_read((struct snd_ca0106 *)(midi->dev_id),
+						  midi->port + idx, 0);
+}
+
+static void ca0106_midi_write(struct snd_ca_midi *midi, int data, int idx)
+{
+	snd_ca0106_ptr_write((struct snd_ca0106 *)(midi->dev_id), midi->port + idx, 0, data);
+}
+
+static struct snd_card *ca0106_dev_id_card(void *dev_id)
+{
+	return ((struct snd_ca0106 *)dev_id)->card;
+}
+
+static int ca0106_dev_id_port(void *dev_id)
+{
+	return ((struct snd_ca0106 *)dev_id)->port;
+}
+
+static int __devinit snd_ca0106_midi(struct snd_ca0106 *chip, unsigned int channel)
+{
+	struct snd_ca_midi *midi;
+	char *name;
+	int err;
+
+	if (channel == CA0106_MIDI_CHAN_B) {
+		name = "CA0106 MPU-401 (UART) B";
+		midi =  &chip->midi2;
+		midi->tx_enable = INTE_MIDI_TX_B;
+		midi->rx_enable = INTE_MIDI_RX_B;
+		midi->ipr_tx = IPR_MIDI_TX_B;
+		midi->ipr_rx = IPR_MIDI_RX_B;
+		midi->port = MIDI_UART_B_DATA;
+	} else {
+		name = "CA0106 MPU-401 (UART)";
+		midi =  &chip->midi;
+		midi->tx_enable = INTE_MIDI_TX_A;
+		midi->rx_enable = INTE_MIDI_TX_B;
+		midi->ipr_tx = IPR_MIDI_TX_A;
+		midi->ipr_rx = IPR_MIDI_RX_A;
+		midi->port = MIDI_UART_A_DATA;
+	}
+
+	midi->reset = CA0106_MPU401_RESET;
+	midi->enter_uart = CA0106_MPU401_ENTER_UART;
+	midi->ack = CA0106_MPU401_ACK;
+
+	midi->input_avail = CA0106_MIDI_INPUT_AVAIL;
+	midi->output_ready = CA0106_MIDI_OUTPUT_READY;
+
+	midi->channel = channel;
+
+	midi->interrupt_enable = ca0106_midi_interrupt_enable;
+	midi->interrupt_disable = ca0106_midi_interrupt_disable;
+
+	midi->read = ca0106_midi_read;
+	midi->write = ca0106_midi_write;
+
+	midi->get_dev_id_card = ca0106_dev_id_card;
+	midi->get_dev_id_port = ca0106_dev_id_port;
+
+	midi->dev_id = chip;
+	
+	if ((err = ca_midi_init(chip, midi, 0, name)) < 0)
+		return err;
+
+	return 0;
+}
+
+
 static int __devinit snd_ca0106_probe(struct pci_dev *pci,
 					const struct pci_device_id *pci_id)
 {
 	static int dev;
-	snd_card_t *card;
-	ca0106_t *chip;
+	struct snd_card *card;
+	struct snd_ca0106 *chip;
 	int err;
 
 	if (dev >= SNDRV_CARDS)
@@ -1360,19 +1515,29 @@ static int __devinit snd_ca0106_probe(struct pci_dev *pci,
 	if ((err = snd_ca0106_pcm(chip, 3, NULL)) < 0) {
 		snd_card_free(card);
 		return err;
-        }
+	}
         if (chip->details->ac97 == 1) { /* The SB0410 and SB0413 do not have an AC97 chip. */
-            if ((err = snd_ca0106_ac97(chip)) < 0) {
-                snd_card_free(card);
-                return err;
-            }
-        }
+		if ((err = snd_ca0106_ac97(chip)) < 0) {
+			snd_card_free(card);
+			return err;
+		}
+	}
 	if ((err = snd_ca0106_mixer(chip)) < 0) {
 		snd_card_free(card);
 		return err;
 	}
 
+	snd_printdd("ca0106: probe for MIDI channel A ...");
+	if ((err = snd_ca0106_midi(chip,CA0106_MIDI_CHAN_A)) < 0) {
+		snd_card_free(card);
+		snd_printdd(" failed, err=0x%x\n",err);
+		return err;
+	}
+	snd_printdd(" done.\n");
+
+#ifdef CONFIG_PROC_FS
 	snd_ca0106_proc_init(chip);
+#endif
 
 	if ((err = snd_card_register(card)) < 0) {
 		snd_card_free(card);
@@ -1399,23 +1564,16 @@ MODULE_DEVICE_TABLE(pci, snd_ca0106_ids);
 
 // pci_driver definition
 static struct pci_driver driver = {
-    0,0,0,
-	/*.name = */"CA0106",
-	/*.id_table = */snd_ca0106_ids,
-	/*.probe = */snd_ca0106_probe,
-        /*.remove = */snd_ca0106_remove,
-        0,0
+	.name = "CA0106",
+	.id_table = snd_ca0106_ids,
+	.probe = snd_ca0106_probe,
+	.remove = __devexit_p(snd_ca0106_remove),
 };
 
 // initialization of the module
 static int __init alsa_card_ca0106_init(void)
 {
-	int err;
-
-	if ((err = pci_module_init(&driver)) > 0)
-		return err;
-
-	return 0;
+	return pci_register_driver(&driver);
 }
 
 // clean up the module

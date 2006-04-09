@@ -305,7 +305,7 @@
 /* S/PDIF input status 2 bit defines */
 #define AC97_ALC650_SOUCE_MASK      0x000f  /* Source number */
 #define AC97_ALC650_CHANNEL_MASK    0x00f0  /* Channel number */
-#define AC97_ALC650_CHANNEL_SHIFT   4 
+#define AC97_ALC650_CHANNEL_SHIFT   4
 #define AC97_ALC650_SPSR_MASK       0x0f00  /* S/PDIF Sample Rate bits */
 #define AC97_ALC650_SPSR_SHIFT      8
 #define AC97_ALC650_SPSR_44K        0x0000  /* Use 44.1kHz Sample rate */
@@ -433,6 +433,12 @@ struct snd_ac97_bus {
 	struct snd_info_entry *proc;
 };
 
+/* static resolution table */
+struct snd_ac97_res_table {
+    unsigned short reg;     /* register */
+    unsigned short bits;    /* resolution bitmask */
+};
+
 struct snd_ac97_template {
 	void *private_data;
 	void (*private_free) (struct snd_ac97 *ac97);
@@ -440,8 +446,7 @@ struct snd_ac97_template {
 	unsigned short num;	/* number of codec: 0 = primary, 1 = secondary */
 	unsigned short addr;	/* physical address of codec [0-3] */
 	unsigned int scaps;	/* driver capabilities */
-	unsigned int limited_regs; /* allow limited registers only */
-	DECLARE_BITMAP(reg_accessed, 0x80); /* bit flags */
+        const struct snd_ac97_res_table *res_table;     /* static resolution */
 };
 
 struct snd_ac97 {
@@ -463,13 +468,13 @@ struct snd_ac97 {
 	unsigned int id;	/* identification of codec */
 	unsigned short caps;	/* capabilities (register 0) */
 	unsigned short ext_id;	/* extended feature identification (register 28) */
-	unsigned short ext_mid;	/* extended modem ID (register 3C) */
+        unsigned short ext_mid;	/* extended modem ID (register 3C) */
+        const struct snd_ac97_res_table *res_table;     /* static resolution */
 	unsigned int scaps;	/* driver capabilities */
 	unsigned int flags;	/* specific code */
 	unsigned int rates[6];	/* see AC97_RATES_* defines */
 	unsigned int spdif_status;
 	unsigned short regs[0x80]; /* register cache */
-	unsigned int limited_regs; /* allow limited registers only */
 	DECLARE_BITMAP(reg_accessed, 0x80); /* bit flags */
 	union {			/* vendor specific code */
 		struct {

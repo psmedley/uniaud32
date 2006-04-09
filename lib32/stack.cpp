@@ -76,9 +76,17 @@ DWORD StackAlloc()
 
         //allocate our private stack
         rc = DevVMAlloc(VMDHA_USEHIGHMEM|VMDHA_FIXED|VMDHL_CONTIGUOUS, TOTAL_STACKSIZE, (LINEAR)-1, (LINEAR)&StackBase);
+
         if(rc) {
-            DebugInt3();
-            return 0;
+            if (rc == 87)
+            {
+                rc = DevVMAlloc(VMDHA_FIXED|VMDHL_CONTIGUOUS, TOTAL_STACKSIZE, (LINEAR)-1, (LINEAR)&StackBase);
+            }
+            if (rc)
+            {
+                DebugInt3();
+                return 0;
+            }
         }
     	Ring0Stack[0].addr = StackBase;
 

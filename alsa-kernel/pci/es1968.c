@@ -1816,13 +1816,16 @@ static void __devinit es1968_measure_clock(es1968_t *chip)
     offset -= (pa & 0xffff);
     offset &= 0xfffe;
     offset += chip->measure_count * (CLOCK_MEASURE_BUFSIZE/2);
-
+#if 0 /* vladest patch baseg on r.ihle suggestion */
     t = stop_time.tv_sec - start_time.tv_sec;
     t *= 1000000;
     if (stop_time.tv_usec < start_time.tv_usec)
         t -= start_time.tv_usec - stop_time.tv_usec;
     else
         t += stop_time.tv_usec - start_time.tv_usec;
+#else
+    t = 50000;
+#endif
     if (t == 0) {
         snd_printk("?? calculation error..\n");
     } else {

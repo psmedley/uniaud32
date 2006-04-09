@@ -1062,12 +1062,14 @@ void UniaudCloseAll(USHORT fileid)
             {
                 if (fileid == opened_handles[i].FileId)
                 {
+                    opened_handles[i].reuse = 0;
                     if (OSS32_WaveClose((OSSSTREAMID)opened_handles[i].handle) == 0)
                         opened_handles[i].handle = 0;
                 }
             }
             else
             {
+                opened_handles[i].reuse = 0;
                 if (OSS32_WaveClose((OSSSTREAMID)opened_handles[i].handle) == 0)
                     opened_handles[i].handle = 0;
             }
