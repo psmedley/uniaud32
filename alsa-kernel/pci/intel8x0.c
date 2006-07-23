@@ -1839,6 +1839,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
         },
         {
             .subvendor = 0x1028,
+            .subdevice = 0x014e,
+            .name = "Dell D800", /* STAC9750/51 */
+            .type = AC97_TUNE_HP_ONLY
+	},
+	{
+		.subvendor = 0x1028,
 		.subdevice = 0x0163,
 		.name = "Dell Unknown",	/* STAC9750/51 */
 		.type = AC97_TUNE_HP_ONLY
@@ -1980,6 +1986,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subdevice = 0x2885,
 		.name = "AMD64 Mobo",	/* ALC650 */
 		.type = AC97_TUNE_HP_ONLY
+	},
+        {
+            .subvendor = 0x10f1,
+            .subdevice = 0x2895,
+            .name = "Tyan Thunder K8WE",
+            .type = AC97_TUNE_HP_ONLY
 	},
 	{
 		.subvendor = 0x110a,
@@ -2295,6 +2307,16 @@ static int snd_intel8x0_ich_chip_init(struct intel8x0 *chip, int probing)
     // added by vladest
     //    cnt &= ~ICH_ACLINK;
     cnt &= ~(ICH_ACLINK | ICH_PCM_246_MASK);
+#ifdef CONFIG_SND_AC97_POWER_SAVE
+    /* do cold reset - the full ac97 powerdown may leave the controller
+     * in a warm state but actually it cannot communicate with the codec.
+     */
+    iputdword(chip, ICHREG(GLOB_CNT), cnt & ~ICH_AC97COLD);
+    cnt = igetdword(chip, ICHREG(GLOB_CNT));
+    udelay(10);
+    iputdword(chip, ICHREG(GLOB_CNT), cnt | ICH_AC97COLD);
+    msleep(1);
+#else
     cnt |= (cnt & ICH_AC97COLD) == 0 ? ICH_AC97COLD : ICH_AC97WARM;
 
     //  ??? 25.03.2004 by vladest  cnt &= ~(ICH_ACLINK | ICH_PCM_246_MASK);
@@ -2320,6 +2342,7 @@ static int snd_intel8x0_ich_chip_init(struct intel8x0 *chip, int probing)
     snd_printk("AC'97 warm reset still in progress? [0x%x]\n", igetdword(chip, ICHREG(GLOB_CNT)));
     return -EIO;
 __ok:
+#endif /* CONFIG_SND_AC97_POWER_SAVE */
 #ifdef DEBUG
     dprintf(("ICH chip init ACLink ON"));
 #endif
@@ -2541,7 +2564,7 @@ static int intel8x0_resume(struct pci_dev *pci)
                 card->shortname, (void *)chip);
     chip->irq = pci->irq;
     synchronize_irq(chip->irq);
-    snd_intel8x0_chip_init(chip, 1);
+    snd_intel8x0_chip_init(chip, 0);
     /* re-initialize mixer stuff */
     if (chip->device_type == DEVICE_INTEL_ICH4 ||
         chip->device_type == DEVICE_INTEL_ICH5) {
@@ -2657,6 +2680,7 @@ static void __devinit intel8x0_measure_ac97_clock(struct intel8x0 *chip)
         /* not 48000Hz, tuning the clock.. */
         chip->ac97_bus->clock = (chip->ac97_bus->clock * 48000) / pos;
     printk(KERN_INFO "intel8x0: clocking to %d\n", chip->ac97_bus->clock);
+    snd_ac97_update_power(chip->ac97[0], AC97_PCM_FRONT_DAC_RATE, 0);
 }
 
 #ifdef CONFIG_PROC_FS

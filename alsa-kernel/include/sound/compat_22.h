@@ -122,6 +122,17 @@ static inline void module_put(struct module *module)
 #define list_for_each_safe(pos, npos, head) \
 	for (pos = (head)->next, npos = pos->next ; pos != (head); pos = npos, npos = pos->next)
 
+/**
+ * list_for_each_entry	-	iterate over list of given type
+ * @pos:	the type * to use as a loop counter.
+ * @head:	the head for your list.
+ * @member:	the name of the list_struct within the struct.
+ */
+#define list_for_each_entry(pos, head, member)				\
+	for (pos = list_entry((head)->next, typeof(*pos), member);	\
+	     pos->member.next, &pos->member != (head); 	\
+	     pos = list_entry(pos->member.next, typeof(*pos), member))
+
 #ifndef IORESOURCE_IO
 struct resource {
 	const char *name;

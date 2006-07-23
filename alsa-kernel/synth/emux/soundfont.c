@@ -194,20 +194,20 @@ snd_soundfont_load(struct snd_sf_list *sflist, const void __user *data,
 		rc = probe_data(sflist, patch.optarg);
 		break;
 	case SNDRV_SFNT_REMOVE_INFO:
-		/* patch must be opened */
-		if (sflist->currsf) {
-			snd_printk("soundfont: remove_info: patch not opened\n");
-			rc = -EINVAL;
-		} else {
-			int bank, instr;
-			bank = ((unsigned short)patch.optarg >> 8) & 0xff;
-			instr = (unsigned short)patch.optarg & 0xff;
-			if (! remove_info(sflist, sflist->currsf, bank, instr))
-				rc = -EINVAL;
-			else
-				rc = 0;
-		}
-		break;
+            /* patch must be opened */
+            if (!sflist->currsf) {
+                snd_printk("soundfont: remove_info: patch not opened\n");
+                rc = -EINVAL;
+            } else {
+                int bank, instr;
+                bank = ((unsigned short)patch.optarg >> 8) & 0xff;
+                instr = (unsigned short)patch.optarg & 0xff;
+                if (! remove_info(sflist, sflist->currsf, bank, instr))
+                    rc = -EINVAL;
+                else
+                    rc = 0;
+            }
+            break;
 	}
 	unlock_preset(sflist);
 

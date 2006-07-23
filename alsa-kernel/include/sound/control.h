@@ -39,6 +39,7 @@ struct snd_kcontrol_new {
     snd_kcontrol_info_t *info;
     snd_kcontrol_get_t *get;
     snd_kcontrol_put_t *put;
+    unsigned int *tlv;
     unsigned long private_value;
 };
 
@@ -54,7 +55,8 @@ struct snd_kcontrol {
 	unsigned int count;		/* count of same elements */
 	snd_kcontrol_info_t *info;
 	snd_kcontrol_get_t *get;
-	snd_kcontrol_put_t *put;
+        snd_kcontrol_put_t *put;
+        unsigned int *tlv;
 	unsigned long private_value;
 #ifdef TARGET_OS2
         void *private_ptr;

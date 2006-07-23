@@ -258,7 +258,7 @@ int snd_ac97_set_rate(struct snd_ac97 *ac97, int reg, unsigned int rate)
 {
 	int dbl;
 	unsigned int tmp;
-	
+
 	dbl = rate > 48000;
 	if (dbl) {
 		if (!(ac97->flags & AC97_DOUBLE_RATE))
@@ -267,6 +267,7 @@ int snd_ac97_set_rate(struct snd_ac97 *ac97, int reg, unsigned int rate)
 			return -EINVAL;
 	}
 
+        snd_ac97_update_power(ac97, reg, 1);
 	switch (reg) {
 	case AC97_PCM_MIC_ADC_RATE:
 		if ((ac97->regs[AC97_EXTENDED_STATUS] & AC97_EA_VRM) == 0)	/* MIC VRA */
@@ -599,7 +600,8 @@ int snd_ac97_pcm_open(struct ac97_pcm *pcm, unsigned int rate,
 			err = -EAGAIN;
 			goto error;
 		}
-	}
+        }
+        pcm->cur_dbl = r;
 	spin_unlock_irq(&pcm->bus->bus_lock);
 	for (i = 3; i < 12; i++) {
 		if (!(slots & (1 << i)))
@@ -639,21 +641,37 @@ int snd_ac97_pcm_open(struct ac97_pcm *pcm, unsigned int rate,
  */
 int snd_ac97_pcm_close(struct ac97_pcm *pcm)
 {
-	struct snd_ac97_bus *bus;
-	unsigned short slots = pcm->aslots;
-	int i, cidx;
+    struct snd_ac97_bus *bus;
+    unsigned short slots = pcm->aslots;
+    int i, cidx;
 
-	bus = pcm->bus;
-	spin_lock_irq(&pcm->bus->bus_lock);
-	for (i = 3; i < 12; i++) {
-		if (!(slots & (1 << i)))
-			continue;
-		for (cidx = 0; cidx < 4; cidx++)
-			bus->used_slots[pcm->stream][cidx] &= ~(1 << i);
-	}
-	pcm->aslots = 0;
-	spin_unlock_irq(&pcm->bus->bus_lock);
-	return 0;
+#ifdef CONFIG_SND_AC97_POWER_SAVE
+    int r = pcm->cur_dbl;
+    for (i = 3; i < 12; i++) {
+        if (!(slots & (1 << i)))
+            continue;
+        for (cidx = 0; cidx < 4; cidx++) {
+            if (pcm->r[r].rslots[cidx] & (1 << i)) {
+                int reg = get_slot_reg(pcm, cidx, i, r);
+                snd_ac97_update_power(pcm->r[r].codec[cidx],
+                                      reg, 0);
+            }
+        }
+    }
+#endif
+
+    bus = pcm->bus;
+    spin_lock_irq(&pcm->bus->bus_lock);
+    for (i = 3; i < 12; i++) {
+        if (!(slots & (1 << i)))
+            continue;
+        for (cidx = 0; cidx < 4; cidx++)
+            bus->used_slots[pcm->stream][cidx] &= ~(1 << i);
+    }
+    pcm->aslots = 0;
+    pcm->cur_dbl = 0;
+    spin_unlock_irq(&pcm->bus->bus_lock);
+    return 0;
 }
 
 static int double_rate_hw_constraint_rate(struct snd_pcm_hw_params *params,

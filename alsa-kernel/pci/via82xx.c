@@ -1274,8 +1274,20 @@ static int snd_via82xx_pcm_close(struct snd_pcm_substream *substream)
 	ratep->used--;
 	if (! ratep->used)
 		ratep->rate = 0;
-	spin_unlock_irq(&ratep->lock);
+        spin_unlock_irq(&ratep->lock);
 
+        if (! ratep->rate) {
+            if (! viadev->direction) {
+                snd_ac97_update_power(chip->ac97,
+                                      AC97_PCM_FRONT_DAC_RATE, 0);
+                snd_ac97_update_power(chip->ac97,
+                                      AC97_PCM_SURR_DAC_RATE, 0);
+                snd_ac97_update_power(chip->ac97,
+                                      AC97_PCM_LFE_DAC_RATE, 0);
+            } else
+                snd_ac97_update_power(chip->ac97,
+                                      AC97_PCM_LR_ADC_RATE, 0);
+        }
 	viadev->substream = NULL;
 	return 0;
 }
@@ -1771,7 +1783,13 @@ static struct ac97_quirk ac97_quirks[] = {
 		.subvendor = 0x161f,
 		.subdevice = 0x2032,
 		.name = "Targa Traveller 811",
-		.type = AC97_TUNE_HP_ONLY,
+                .type = AC97_TUNE_HP_ONLY,
+        },
+	{
+		.subvendor = 0x161f,
+		.subdevice = 0x2032,
+		.name = "m680x",
+		.type = AC97_TUNE_HP_ONLY, /* http://launchpad.net/bugs/38546 */
 	},
 	{0} /* terminator */
 };
@@ -1970,9 +1988,9 @@ static int __devinit snd_via686_init_misc(struct via82xx *chip)
 	pci_write_config_byte(chip->pci, VIA_FUNC_ENABLE, legacy);
 	pci_write_config_byte(chip->pci, VIA_PNP_CONTROL, legacy_cfg);
 	if (chip->mpu_res) {
-		if (snd_mpu401_uart_new(chip->card, 0, MPU401_HW_VIA686A,
-					mpu_port, 1,
-					chip->irq, 0, &chip->rmidi) < 0) {
+            if (snd_mpu401_uart_new(chip->card, 0, MPU401_HW_VIA686A,
+                                    mpu_port, MPU401_INFO_INTEGRATED,
+                                    chip->irq, 0, &chip->rmidi) < 0) {
 			printk(KERN_WARNING "unable to initialize MPU-401"
 			       " at 0x%lx, skipping\n", mpu_port);
 			legacy &= ~VIA_FUNC_ENABLE_MIDI;
@@ -2329,7 +2347,7 @@ struct dxs_whitelist {
 	short action;	/* new dxs_support value */
 };
 
-static int __devinit check_dxs_list(struct pci_dev *pci)
+static int __devinit check_dxs_list(struct pci_dev *pci, int revision)
 {
 	static struct dxs_whitelist whitelist[] = {
 		{ .subvendor = 0x1005, .subdevice = 0x4710, .action = VIA_DXS_ENABLE }, /* Avance Logic Mobo */
@@ -2359,8 +2377,8 @@ static int __devinit check_dxs_list(struct pci_dev *pci)
 		{ .subvendor = 0x1462, .subdevice = 0x0430, .action = VIA_DXS_SRC }, /* MSI 7142 (K8MM-V) */
 		{ .subvendor = 0x1462, .subdevice = 0x0470, .action = VIA_DXS_SRC }, /* MSI KT880 Delta-FSR */
 		{ .subvendor = 0x1462, .subdevice = 0x3800, .action = VIA_DXS_ENABLE }, /* MSI KT266 */
-		{ .subvendor = 0x1462, .subdevice = 0x5901, .action = VIA_DXS_NO_VRA }, /* MSI KT6 Delta-SR */
-		{ .subvendor = 0x1462, .subdevice = 0x7023, .action = VIA_DXS_NO_VRA }, /* MSI K8T Neo2-FI */
+                { .subvendor = 0x1462, .subdevice = 0x5901, .action = VIA_DXS_NO_VRA }, /* MSI KT6 Delta-SR */
+                { .subvendor = 0x1462, .subdevice = 0x7023, .action = VIA_DXS_SRC }, /* MSI K8T Neo2-FI */
 		{ .subvendor = 0x1462, .subdevice = 0x7120, .action = VIA_DXS_ENABLE }, /* MSI KT4V */
                 { .subvendor = 0x1462, .subdevice = 0x7142, .action = VIA_DXS_ENABLE }, /* MSI K8MM-V */
                 { .subvendor = 0x1462, .subdevice = 0xb012, .action = VIA_DXS_SRC }, /* P4M800/VIA8237R */
@@ -2405,8 +2423,10 @@ static int __devinit check_dxs_list(struct pci_dev *pci)
 			if (subsystem_device == w->subdevice)
 				return w->action;
 		}
-	}
-
+        }
+        /* for newer revision, default to DXS_SRC */
+        if (revision >= VIA_REV_8235)
+            return VIA_DXS_SRC;
 	/*
 	 * not detected, try 48k rate only to be sure.
 	 */
@@ -2450,8 +2470,8 @@ static int __devinit snd_via82xx_probe(struct pci_dev *pci,
 			}
 		}
 		if (chip_type != TYPE_VIA8233A) {
-			if (dxs_support == VIA_DXS_AUTO)
-				dxs_support = check_dxs_list(pci);
+                    if (dxs_support == VIA_DXS_AUTO)
+                        dxs_support = check_dxs_list(pci, revision);
 			/* force to use VIA8233 or 8233A model according to
 			 * dxs_support module option
 			 */

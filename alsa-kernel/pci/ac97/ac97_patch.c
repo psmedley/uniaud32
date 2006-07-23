@@ -460,9 +460,13 @@ static struct snd_ac97_build_ops patch_wolfson_wm9705_ops = {
 
 int patch_wolfson05(struct snd_ac97 * ac97)
 {
-	/* WM9705, WM9710 */
-	ac97->build_ops = &patch_wolfson_wm9705_ops;
-	return 0;
+    /* WM9705, WM9710 */
+    ac97->build_ops = &patch_wolfson_wm9705_ops;
+#ifdef CONFIG_TOUCHSCREEN_WM9705
+    /* WM9705 touchscreen uses AUX and VIDEO for touch */
+    ac97->flags |= AC97_HAS_NO_VIDEO | AC97_HAS_NO_AUX;
+#endif
+    return 0;
 }
 
 static const char* wm9711_alc_select[] = {"None", "Left", "Right", "Stereo"};
@@ -1365,6 +1369,13 @@ static void ad18xx_resume(struct snd_ac97 *ac97)
 
 	snd_ac97_restore_iec958(ac97);
 }
+
+static void ad1888_resume(struct snd_ac97 *ac97)
+{
+    ad18xx_resume(ac97);
+    snd_ac97_write_cache(ac97, AC97_CODEC_CLASS_REV, 0x8080);
+}
+
 #endif
 
 int patch_ad1819(struct snd_ac97 * ac97)
@@ -1625,8 +1636,9 @@ static const struct snd_kcontrol_new snd_ac97_ad1981x_jack_sense[] = {
  * (SS vendor << 16 | device)
  */
 static unsigned int ad1981_jacks_blacklist[] = {
-	0x10140554, /* Thinkpad T42p/R50p */
-	0 /* end */
+    0x10140537, /* Thinkpad T41p */
+    0x10140554, /* Thinkpad T42p/R50p */
+    0 /* end */
 };
 
 static int check_list(struct snd_ac97 *ac97, const unsigned int *list)
@@ -1809,7 +1821,9 @@ static const struct snd_kcontrol_new snd_ac97_ad1888_controls[] = {
 		.info = snd_ac97_ad1888_lohpsel_info,
 		.get = snd_ac97_ad1888_lohpsel_get,
 		.put = snd_ac97_ad1888_lohpsel_put
-	},
+        },
+        AC97_SINGLE("V_REFOUT Enable", AC97_AD_MISC, 2, 1, 1),
+	AC97_SINGLE("High Pass Filter Enable", AC97_AD_TEST2, 12, 1, 1),
 	AC97_SINGLE("Spread Front to Surround and Center/LFE", AC97_AD_MISC, 7, 1, 0),
 	{
 		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
@@ -1837,7 +1851,7 @@ static struct snd_ac97_build_ops patch_ad1888_build_ops = {
 	.build_post_spdif = patch_ad198x_post_spdif,
 	.build_specific = patch_ad1888_specific,
 #ifdef CONFIG_PM
-	.resume = ad18xx_resume,
+        .resume = ad1888_resume,
 #endif
 	.update_jacks = ad1888_update_jacks,
 };
@@ -2045,11 +2059,14 @@ int patch_alc650(struct snd_ac97 * ac97)
 
 	/* Enable SPDIF-IN only on Rev.E and above */
 	val = snd_ac97_read(ac97, AC97_ALC650_CLOCK);
-	/* SPDIF IN with pin 47 */
-	if (ac97->spec.dev_flags)
-		val |= 0x03; /* enable */
-	else
-		val &= ~0x03; /* disable */
+        /* SPDIF IN with pin 47 */
+        if (ac97->spec.dev_flags &&
+            /* ASUS A6KM requires EAPD */
+            ! (ac97->subsystem_vendor == 0x1043 &&
+               ac97->subsystem_device == 0x1103))
+            val |= 0x03; /* enable */
+        else
+            val &= ~0x03; /* disable */
 	snd_ac97_write_cache(ac97, AC97_ALC650_CLOCK, val);
 
 	/* set default: slot 3,4,7,8,6,9
@@ -2854,3 +2871,40 @@ int patch_lm4550(struct snd_ac97 *ac97)
     return 0;
 }
 
+/*
+ *  UCB1400 codec (http://www.semiconductors.philips.com/acrobat_download/datasheets/UCB1400-02.pdf)
+ */
+static const struct snd_kcontrol_new snd_ac97_controls_ucb1400[] = {
+    /* enable/disable headphone driver which allows direct connection to
+     stereo headphone without the use of external DC blocking
+     capacitors */
+    AC97_SINGLE("Headphone Driver", 0x6a, 6, 1, 0),
+    /* Filter used to compensate the DC offset is added in the ADC to remove idle
+     tones from the audio band. */
+    AC97_SINGLE("DC Filter", 0x6a, 4, 1, 0),
+    /* Control smart-low-power mode feature. Allows automatic power down
+     of unused blocks in the ADC analog front end and the PLL. */
+    AC97_SINGLE("Smart Low Power Mode", 0x6c, 4, 3, 0),
+};
+
+static int patch_ucb1400_specific(struct snd_ac97 * ac97)
+{
+    int idx, err;
+    for (idx = 0; idx < ARRAY_SIZE(snd_ac97_controls_ucb1400); idx++)
+        if ((err = snd_ctl_add(ac97->bus->card, snd_ctl_new1(&snd_ac97_controls_ucb1400[idx], ac97))) < 0)
+            return err;
+    return 0;
+}
+
+static struct snd_ac97_build_ops patch_ucb1400_ops = {
+    .build_specific	= patch_ucb1400_specific,
+};
+
+int patch_ucb1400(struct snd_ac97 * ac97)
+{
+    ac97->build_ops = &patch_ucb1400_ops;
+    /* enable headphone driver and smart low power mode by default */
+    snd_ac97_write(ac97, 0x6a, 0x0050);
+    snd_ac97_write(ac97, 0x6c, 0x0030);
+    return 0;
+}

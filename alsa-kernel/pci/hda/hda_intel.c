@@ -79,7 +79,8 @@ MODULE_SUPPORTED_DEVICE("{{Intel, ICH6},"
 			 "{Intel, ICH7},"
 			 "{Intel, ESB2},"
 			 "{Intel, ICH8},"
-			 "{ATI, SB450},"
+                        "{ATI, SB450},"
+                        "{ATI, RS600},"
 			 "{VIA, VT8251},"
 			 "{VIA, VT8237A},"
 			 "{SiS, SIS966},"
@@ -164,6 +165,12 @@ enum { SDI0, SDI1, SDI2, SDI3, SDO0, SDO1, SDO2, SDO3 };
 #define ULI_NUM_CAPTURE		5
 #define ULI_PLAYBACK_INDEX	5
 #define ULI_NUM_PLAYBACK	6
+
+/* ATI HDMI has 1 playback and 0 capture */
+#define ATIHDMI_CAPTURE_INDEX	0
+#define ATIHDMI_NUM_CAPTURE	0
+#define ATIHDMI_PLAYBACK_INDEX	0
+#define ATIHDMI_NUM_PLAYBACK	1
 
 /* this number is statically defined for simplicity */
 #define MAX_AZX_DEV		16
@@ -328,7 +335,8 @@ struct azx {
 /* driver types */
 enum {
 	AZX_DRIVER_ICH,
-	AZX_DRIVER_ATI,
+        AZX_DRIVER_ATI,
+        AZX_DRIVER_ATIHDMI,
 	AZX_DRIVER_VIA,
 	AZX_DRIVER_SIS,
 	AZX_DRIVER_ULI,
@@ -337,7 +345,8 @@ enum {
 
 static char *driver_short_names[] __devinitdata = {
 	[AZX_DRIVER_ICH] = "HDA Intel",
-	[AZX_DRIVER_ATI] = "HDA ATI SB",
+        [AZX_DRIVER_ATI] = "HDA ATI SB",
+        [AZX_DRIVER_ATIHDMI] = "HDA ATI HDMI",
 	[AZX_DRIVER_VIA] = "HDA VIA VT82xx",
 	[AZX_DRIVER_SIS] = "HDA SIS966",
 	[AZX_DRIVER_ULI] = "HDA ULI M5461",
@@ -1391,10 +1400,10 @@ static int azx_free(struct azx *chip)
 		msleep(1);
 	}
 
+        if (chip->irq >= 0)
+		free_irq(chip->irq, (void*)chip);
 	if (chip->remap_addr)
 		iounmap(chip->remap_addr);
-	if (chip->irq >= 0)
-		free_irq(chip->irq, (void*)chip);
 
 	if (chip->bdl.area)
 		snd_dma_free_pages(&chip->bdl);
@@ -1492,6 +1501,12 @@ static int __devinit azx_create(struct snd_card *card, struct pci_dev *pci,
 		chip->capture_streams = ULI_NUM_CAPTURE;
 		chip->playback_index_offset = ULI_PLAYBACK_INDEX;
 		chip->capture_index_offset = ULI_CAPTURE_INDEX;
+                break;
+        case AZX_DRIVER_ATIHDMI:
+		chip->playback_streams = ATIHDMI_NUM_PLAYBACK;
+		chip->capture_streams = ATIHDMI_NUM_CAPTURE;
+		chip->playback_index_offset = ATIHDMI_PLAYBACK_INDEX;
+		chip->capture_index_offset = ATIHDMI_CAPTURE_INDEX;
 		break;
 	default:
 		chip->playback_streams = ICH6_NUM_PLAYBACK;
@@ -1617,7 +1632,8 @@ static struct pci_device_id azx_ids[] = {
 	{ 0x8086, 0x27d8, PCI_ANY_ID, PCI_ANY_ID, 0, 0, AZX_DRIVER_ICH }, /* ICH7 */
 	{ 0x8086, 0x269a, PCI_ANY_ID, PCI_ANY_ID, 0, 0, AZX_DRIVER_ICH }, /* ESB2 */
 	{ 0x8086, 0x284b, PCI_ANY_ID, PCI_ANY_ID, 0, 0, AZX_DRIVER_ICH }, /* ICH8 */
-	{ 0x1002, 0x437b, PCI_ANY_ID, PCI_ANY_ID, 0, 0, AZX_DRIVER_ATI }, /* ATI SB450 */
+        { 0x1002, 0x437b, PCI_ANY_ID, PCI_ANY_ID, 0, 0, AZX_DRIVER_ATI }, /* ATI SB450 */
+        { 0x1002, 0x793b, PCI_ANY_ID, PCI_ANY_ID, 0, 0, AZX_DRIVER_ATIHDMI }, /* ATI RS600 HDMI */
 	{ 0x1106, 0x3288, PCI_ANY_ID, PCI_ANY_ID, 0, 0, AZX_DRIVER_VIA }, /* VIA VT8251/VT8237A */
 	{ 0x1039, 0x7502, PCI_ANY_ID, PCI_ANY_ID, 0, 0, AZX_DRIVER_SIS }, /* SIS966 */
 	{ 0x10b9, 0x5461, PCI_ANY_ID, PCI_ANY_ID, 0, 0, AZX_DRIVER_ULI }, /* ULI M5461 */
