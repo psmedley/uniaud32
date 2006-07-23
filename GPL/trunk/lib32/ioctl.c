@@ -332,6 +332,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
             //set operation to non-blocking
             pHandle->file.f_flags = O_NONBLOCK;
 
+            printk("GetUniaudPcmCaps: cp1. phandle %x\n", pHandle);
             ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_INFO, (ULONG)pcminfo);
             if(ret != 0) {
                 printk("GetUniaudPcmCaps: SNDRV_PCM_IOCTL_INFO error %i\n", ret);
@@ -349,6 +350,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 
             pWaveCaps->nrStreams = pcminfo->subdevices_count;
 
+            printk("GetUniaudPcmCaps: cp2. nr of streams: %i\n", pWaveCaps->nrStreams);
             //get all hardware parameters
             _snd_pcm_hw_params_any(params);
             ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)params);
@@ -358,6 +360,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
                 //goto fail;
                 continue;
             }
+            printk("GetUniaudPcmCaps: cp3\n");
 
             pWaveCaps->ulMinChannels = hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS)->min;
             pWaveCaps->ulMaxChannels = hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS)->max;

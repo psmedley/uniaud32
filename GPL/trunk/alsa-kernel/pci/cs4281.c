@@ -1425,19 +1425,19 @@ static int __devinit snd_cs4281_create(snd_card_t * card,
     }
     chip->ba0_addr = pci_resource_start(pci, 0);
     chip->ba1_addr = pci_resource_start(pci, 1);
-    if (request_irq(pci->irq, snd_cs4281_interrupt, SA_INTERRUPT|SA_SHIRQ, "CS4281", (void *)chip)) {
-        snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
-        snd_cs4281_free(chip);
-        return -ENOMEM;
-    }
-    chip->irq = pci->irq;
-
     chip->ba0 = (unsigned long) ioremap_nocache(chip->ba0_addr, pci_resource_len(pci, 0));
     chip->ba1 = (unsigned long) ioremap_nocache(chip->ba1_addr, pci_resource_len(pci, 1));
     if (!chip->ba0 || !chip->ba1) {
         snd_cs4281_free(chip);
         return -ENOMEM;
     }
+
+    if (request_irq(pci->irq, snd_cs4281_interrupt, SA_INTERRUPT|SA_SHIRQ, "CS4281", (void *)chip)) {
+        snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
+        snd_cs4281_free(chip);
+        return -ENOMEM;
+    }
+    chip->irq = pci->irq;
 
     tmp = snd_cs4281_chip_init(chip);
     if(tmp) {
