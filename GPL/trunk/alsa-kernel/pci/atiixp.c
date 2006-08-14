@@ -365,15 +365,19 @@ static int atiixp_build_dma_packets(struct atiixp *chip, struct atiixp_dma *dma,
 		dma->period_bytes = dma->periods = 0; /* clear */
 	}
 
-	if (dma->periods == periods && dma->period_bytes == period_bytes)
-		return 0;
-
 	/* reset DMA before changing the descriptor table */
 	spin_lock_irqsave(&chip->reg_lock, flags);
 	writel(0, (char*)chip->remap_addr + dma->ops->llp_offset);
 	dma->ops->enable_dma(chip, 0);
 	dma->ops->enable_dma(chip, 1);
 	spin_unlock_irqrestore(&chip->reg_lock, flags);
+
+        if (dma->periods == periods && dma->period_bytes == period_bytes)
+        {
+            writel((u32)dma->desc_buf.addr | ATI_REG_LINKPTR_EN,
+                   (char*)chip->remap_addr + dma->ops->llp_offset);
+            return 0;
+        }
 
 	/* fill the entries */
 	addr = (u32)substream->runtime->dma_addr;
