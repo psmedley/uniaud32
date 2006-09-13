@@ -533,20 +533,25 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 
     printk("OSS32_WaveOpen: cp1\n");
     ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
-    printk("OSS32_WaveOpen: cp2\n");
+    printk("OSS32_WaveOpen. ret: %i\n", ret);
     /* check if PCM already opened (stupid uniaud16.sys doesnt closes it) */
     if (ret == -16)
     {
-        kfree(pHandle);
         for (i=0; i < 8*256; i++)
         {
             if (opened_handles[i].handle != 0)
             {
                 if (pStreamId)
                     *pStreamId = (ULONG)opened_handles[i].handle;
-                opened_handles[i].reuse = 1;
-                printk("OSS32_WaveOpen. Reuse streamid %X\n",(ULONG)opened_handles[i].handle);
-                return OSSERR_SUCCESS;
+                opened_handles[i].reuse = 0; /* prevent from reusing */
+                if (OSS32_WaveClose((OSSSTREAMID)opened_handles[i].handle) == 0)
+                {
+                    OSS32_CloseUNI16(); /* say to UNIAUD16 that we closing now */
+                    opened_handles[i].handle = 0;
+                    ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
+                    printk("OSS32_WaveOpen. Reopen ret: %i\n", ret);
+                    break;
+                }
             }
         }
     }
