@@ -1273,13 +1273,13 @@ static int snd_ymfpci_spdif_default_put(snd_kcontrol_t * kcontrol,
     return change;
 }
 
-static snd_kcontrol_new_t snd_ymfpci_spdif_default __devinitdata =
+static struct snd_kcontrol_new snd_ymfpci_spdif_default __devinitdata =
 {
-    SNDRV_CTL_ELEM_IFACE_PCM,0,0,
-    SNDRV_CTL_NAME_IEC958("",PLAYBACK,DEFAULT),0,0,0,
-    snd_ymfpci_spdif_default_info,
-    snd_ymfpci_spdif_default_get,
-    snd_ymfpci_spdif_default_put,0
+	.iface =	SNDRV_CTL_ELEM_IFACE_PCM,
+	.name =         SNDRV_CTL_NAME_IEC958("",PLAYBACK,DEFAULT),
+	.info =		snd_ymfpci_spdif_default_info,
+	.get =		snd_ymfpci_spdif_default_get,
+	.put =		snd_ymfpci_spdif_default_put
 };
 
 static int snd_ymfpci_spdif_mask_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
@@ -1301,14 +1301,15 @@ static int snd_ymfpci_spdif_mask_get(snd_kcontrol_t * kcontrol,
     return 0;
 }
 
-static snd_kcontrol_new_t snd_ymfpci_spdif_mask __devinitdata =
+static struct snd_kcontrol_new snd_ymfpci_spdif_mask __devinitdata =
 {
-    SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-    SNDRV_CTL_NAME_IEC958("",PLAYBACK,CON_MASK),0,
-    SNDRV_CTL_ELEM_ACCESS_READ,0,
-    snd_ymfpci_spdif_mask_info,
-    snd_ymfpci_spdif_mask_get,0,0
+	.access =	SNDRV_CTL_ELEM_ACCESS_READ,
+	.iface =	SNDRV_CTL_ELEM_IFACE_PCM,
+	.name =         SNDRV_CTL_NAME_IEC958("",PLAYBACK,CON_MASK),
+	.info =		snd_ymfpci_spdif_mask_info,
+	.get =		snd_ymfpci_spdif_mask_get,
 };
+
 
 static int snd_ymfpci_spdif_stream_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -1347,15 +1348,16 @@ static int snd_ymfpci_spdif_stream_put(snd_kcontrol_t * kcontrol,
     return change;
 }
 
-static snd_kcontrol_new_t snd_ymfpci_spdif_stream __devinitdata =
+static struct snd_kcontrol_new snd_ymfpci_spdif_stream __devinitdata =
 {
-    SNDRV_CTL_ELEM_IFACE_PCM,0,0,
-    SNDRV_CTL_NAME_IEC958("",PLAYBACK,PCM_STREAM),0,
-    SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_INACTIVE,0,
-    snd_ymfpci_spdif_stream_info,
-    snd_ymfpci_spdif_stream_get,
-    snd_ymfpci_spdif_stream_put,0
+	.access =	SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_INACTIVE,
+	.iface =	SNDRV_CTL_ELEM_IFACE_PCM,
+	.name =         SNDRV_CTL_NAME_IEC958("",PLAYBACK,PCM_STREAM),
+	.info =		snd_ymfpci_spdif_stream_info,
+	.get =		snd_ymfpci_spdif_stream_get,
+	.put =		snd_ymfpci_spdif_stream_put
 };
+
 
 static int snd_ymfpci_drec_source_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t *info)
 {
@@ -1401,25 +1403,33 @@ static int snd_ymfpci_drec_source_put(snd_kcontrol_t *kcontrol, snd_ctl_elem_val
     return reg != old_reg;
 }
 
-static snd_kcontrol_new_t snd_ymfpci_drec_source __devinitdata = {
-    /*	.iface =   */     SNDRV_CTL_ELEM_IFACE_MIXER, 0,0,
-    /*	.name =	   */     "Direct Recording Source", 0,
-    /*	.access =  */     SNDRV_CTL_ELEM_ACCESS_READWRITE, 0,
-    /*	.info =	   */     snd_ymfpci_drec_source_info,
-    /*	.get =	   */     snd_ymfpci_drec_source_get,
-    /*	.put =	   */     snd_ymfpci_drec_source_put,
-    0
+static struct snd_kcontrol_new snd_ymfpci_drec_source __devinitdata = {
+	.access =	SNDRV_CTL_ELEM_ACCESS_READWRITE,
+	.iface =	SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name =		"Direct Recording Source",
+	.info =		snd_ymfpci_drec_source_info,
+	.get =		snd_ymfpci_drec_source_get,
+	.put =		snd_ymfpci_drec_source_put
 };
+
 /*
  *  Mixer controls
  */
 
+#define YMFPCI_SINGLE(xname, xindex, reg, shift) \
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_ymfpci_info_single, \
+  .get = snd_ymfpci_get_single, .put = snd_ymfpci_put_single, \
+  .private_value = ((reg) | ((shift) << 16)) }
+
+#if 0
 #define YMFPCI_SINGLE(xname, xindex, reg) \
     { SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
     0, 0, snd_ymfpci_info_single, \
     snd_ymfpci_get_single, snd_ymfpci_put_single, \
     reg }
 
+#endif
 static int snd_ymfpci_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
     unsigned int mask = 1;
@@ -1480,10 +1490,10 @@ static int snd_ymfpci_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t
 }
 
 #define YMFPCI_DOUBLE(xname, xindex, reg) \
-    { SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-    0, 0, snd_ymfpci_info_double, \
-    snd_ymfpci_get_double, snd_ymfpci_put_double, \
-    reg }
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_ymfpci_info_double, \
+  .get = snd_ymfpci_get_double, .put = snd_ymfpci_put_double, \
+  .private_value = reg }
 
 static int snd_ymfpci_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -1576,32 +1586,30 @@ static int snd_ymfpci_put_dup4ch(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t
     return change;
 }
 
-
-#define YMFPCI_CONTROLS (sizeof(snd_ymfpci_controls)/sizeof(snd_kcontrol_new_t))
-
-static snd_kcontrol_new_t snd_ymfpci_controls[] __devinitdata = {
-    YMFPCI_DOUBLE("Wave Playback Volume", 0, YDSXGR_NATIVEDACOUTVOL),
-    YMFPCI_DOUBLE("Wave Capture Volume", 0, YDSXGR_NATIVEDACLOOPVOL),
-    YMFPCI_DOUBLE("Digital Capture Volume", 0, YDSXGR_NATIVEDACINVOL),
-    YMFPCI_DOUBLE("Digital Capture Volume", 1, YDSXGR_NATIVEADCINVOL),
-    YMFPCI_DOUBLE("ADC Playback Volume", 0, YDSXGR_PRIADCOUTVOL),
-    YMFPCI_DOUBLE("ADC Capture Volume", 0, YDSXGR_PRIADCLOOPVOL),
-    YMFPCI_DOUBLE("ADC Playback Volume", 1, YDSXGR_SECADCOUTVOL),
-    YMFPCI_DOUBLE("ADC Capture Volume", 1, YDSXGR_SECADCLOOPVOL),
-    YMFPCI_DOUBLE("FM Legacy Volume", 0, YDSXGR_LEGACYOUTVOL),
-    YMFPCI_DOUBLE(SNDRV_CTL_NAME_IEC958("AC97 ", PLAYBACK,VOLUME), 0, YDSXGR_ZVOUTVOL),
-    YMFPCI_DOUBLE(SNDRV_CTL_NAME_IEC958("", CAPTURE,VOLUME), 0, YDSXGR_ZVLOOPVOL),
-    YMFPCI_DOUBLE(SNDRV_CTL_NAME_IEC958("AC97 ",PLAYBACK,VOLUME), 1, YDSXGR_SPDIFOUTVOL),
-    YMFPCI_DOUBLE(SNDRV_CTL_NAME_IEC958("",CAPTURE,VOLUME), 1, YDSXGR_SPDIFLOOPVOL),
-    YMFPCI_SINGLE(SNDRV_CTL_NAME_IEC958("",PLAYBACK,SWITCH), 0, YDSXGR_SPDIFOUTCTRL),
-    YMFPCI_SINGLE(SNDRV_CTL_NAME_IEC958("",CAPTURE,SWITCH), 0, YDSXGR_SPDIFINCTRL),
-    {
-        /*.iface = */SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-        /*.name =  */"4ch Duplication",0,0,0,
-        /*.info =  */snd_ymfpci_info_dup4ch,
-        /*.get =   */snd_ymfpci_get_dup4ch,
-        /*.put =   */snd_ymfpci_put_dup4ch,
-    },
+static struct snd_kcontrol_new snd_ymfpci_controls[] __devinitdata = {
+YMFPCI_DOUBLE("Wave Playback Volume", 0, YDSXGR_NATIVEDACOUTVOL),
+YMFPCI_DOUBLE("Wave Capture Volume", 0, YDSXGR_NATIVEDACLOOPVOL),
+YMFPCI_DOUBLE("Digital Capture Volume", 0, YDSXGR_NATIVEDACINVOL),
+YMFPCI_DOUBLE("Digital Capture Volume", 1, YDSXGR_NATIVEADCINVOL),
+YMFPCI_DOUBLE("ADC Playback Volume", 0, YDSXGR_PRIADCOUTVOL),
+YMFPCI_DOUBLE("ADC Capture Volume", 0, YDSXGR_PRIADCLOOPVOL),
+YMFPCI_DOUBLE("ADC Playback Volume", 1, YDSXGR_SECADCOUTVOL),
+YMFPCI_DOUBLE("ADC Capture Volume", 1, YDSXGR_SECADCLOOPVOL),
+YMFPCI_DOUBLE("FM Legacy Volume", 0, YDSXGR_LEGACYOUTVOL),
+YMFPCI_DOUBLE(SNDRV_CTL_NAME_IEC958("AC97 ", PLAYBACK,VOLUME), 0, YDSXGR_ZVOUTVOL),
+YMFPCI_DOUBLE(SNDRV_CTL_NAME_IEC958("", CAPTURE,VOLUME), 0, YDSXGR_ZVLOOPVOL),
+YMFPCI_DOUBLE(SNDRV_CTL_NAME_IEC958("AC97 ",PLAYBACK,VOLUME), 1, YDSXGR_SPDIFOUTVOL),
+YMFPCI_DOUBLE(SNDRV_CTL_NAME_IEC958("",CAPTURE,VOLUME), 1, YDSXGR_SPDIFLOOPVOL),
+YMFPCI_SINGLE(SNDRV_CTL_NAME_IEC958("",PLAYBACK,SWITCH), 0, YDSXGR_SPDIFOUTCTRL, 0),
+YMFPCI_SINGLE(SNDRV_CTL_NAME_IEC958("",CAPTURE,SWITCH), 0, YDSXGR_SPDIFINCTRL, 0),
+YMFPCI_SINGLE(SNDRV_CTL_NAME_IEC958("Loop",NONE,NONE), 0, YDSXGR_SPDIFINCTRL, 4),
+{
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "4ch Duplication",
+	.info = snd_ymfpci_info_dup4ch,
+	.get = snd_ymfpci_get_dup4ch,
+	.put = snd_ymfpci_put_dup4ch,
+},
 };
 
 
@@ -1676,13 +1684,13 @@ static int snd_ymfpci_gpio_sw_put(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t
     return 0;
 }
 
-static snd_kcontrol_new_t snd_ymfpci_rear_shared __devinitdata = {
-    /*.iface =         */SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-    /*.name =          */"Shared Rear/Line-In Switch",0,0,0,
-    /*.info =          */snd_ymfpci_gpio_sw_info,
-    /*.get =           */snd_ymfpci_gpio_sw_get,
-    /*.put =           */snd_ymfpci_gpio_sw_put,
-    /*.private_value = */2,
+static struct snd_kcontrol_new snd_ymfpci_rear_shared __devinitdata = {
+	.name = "Shared Rear/Line-In Switch",
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.info = snd_ymfpci_gpio_sw_info,
+	.get = snd_ymfpci_gpio_sw_get,
+	.put = snd_ymfpci_gpio_sw_put,
+	.private_value = 2,
 };
 
 /*
@@ -1768,9 +1776,10 @@ int __devinit snd_ymfpci_mixer(ymfpci_t *chip, int rear_switch)
     snd_pcm_substream_t *substream;
     unsigned int idx;
     int err;
-    static ac97_bus_ops_t ops = {
-        0,snd_ymfpci_codec_write,
-        snd_ymfpci_codec_read,0,0
+
+    static struct snd_ac97_bus_ops ops = {
+        .write = snd_ymfpci_codec_write,
+        .read = snd_ymfpci_codec_read,
     };
     if ((err = snd_ac97_bus(chip->card, 0, &ops, chip, &chip->ac97_bus)) < 0)
         return err;
@@ -1782,7 +1791,8 @@ int __devinit snd_ymfpci_mixer(ymfpci_t *chip, int rear_switch)
     if ((err = snd_ac97_mixer(chip->ac97_bus, &ac97, &chip->ac97)) < 0)
         return err;
 
-    for (idx = 0; idx < YMFPCI_CONTROLS; idx++) {
+
+    for (idx = 0; idx < ARRAY_SIZE(snd_ymfpci_controls); idx++) {
         if ((err = snd_ctl_add(chip->card, snd_ctl_new1(&snd_ymfpci_controls[idx], chip))) < 0)
             return err;
     }
@@ -2275,15 +2285,11 @@ int __devinit snd_ymfpci_create(snd_card_t * card,
 {
     ymfpci_t *chip;
     int err;
-#ifdef TARGET_OS2
-    static snd_device_ops_t ops = {
-        snd_ymfpci_dev_free,0,0,0
+
+    static struct snd_device_ops ops = {
+        .dev_free =	snd_ymfpci_dev_free,
     };
-#else
-    static snd_device_ops_t ops = {
-    dev_free:	snd_ymfpci_dev_free,
-    };
-#endif
+
     *rchip = NULL;
 
     /* enable PCI device */
@@ -2305,16 +2311,18 @@ int __devinit snd_ymfpci_create(snd_card_t * card,
     pci_read_config_byte(pci, PCI_REVISION_ID, (u8 *)&chip->rev);
 
     // vladest resource workaround
+#if 0
     if (chip->device_id >= 0x0010)
         chip->reg_area_phys = pci_resource_start(pci, 2);
     else
+#endif
         chip->reg_area_phys = pci_resource_start(pci, 0);
 
-    chip->reg_area_virt = (unsigned long)ioremap_nocache(chip->reg_area_phys, 0x8000);
+    chip->reg_area_virt = (unsigned long)ioremap_nocache(chip->reg_area_phys, /*0x8000*/pci_resource_len(pci, 0));
     pci_set_master(pci);
 
-    if ((chip->res_reg_area = request_mem_region(chip->reg_area_phys, 0x8000, "YMFPCI")) == NULL) {
-        snd_printk("unable to grab memory region 0x%lx-0x%lx\n", chip->reg_area_phys, chip->reg_area_phys + 0x8000 - 1);
+    if ((chip->res_reg_area = request_mem_region(chip->reg_area_phys, /*0x8000*/pci_resource_len(pci, 0), "YMFPCI")) == NULL) {
+        snd_printk("unable to grab memory region 0x%lx-0x%lx\n", chip->reg_area_phys, chip->reg_area_phys + /*0x8000*/pci_resource_len(pci, 0) - 1);
         snd_ymfpci_free(chip);
         return -EBUSY;
     }
