@@ -64,7 +64,6 @@ static inline void set_silent_ptb(struct snd_emu10k1 *emu, int page)
 	for (i = 0; i < UNIT_PAGES; i++, page++)
             /* do not increment ptr */
             __set_ptb_entry(emu, page, emu->silent_page.addr);
-//		__set_ptb_entry(emu, page, emu->silent_page_dmaaddr);
 }
 #endif /* PAGE_SIZE */
 
@@ -289,12 +288,12 @@ int snd_emu10k1_memblk_map(struct snd_emu10k1 *emu, struct snd_emu10k1_memblk *b
 /*
  * page allocation for DMA
  */
-snd_util_memblk_t *
-snd_emu10k1_alloc_pages(struct snd_emu10k1 *emu, snd_pcm_substream_t *substream)
+struct snd_util_memblk *
+snd_emu10k1_alloc_pages(struct snd_emu10k1 *emu, struct snd_pcm_substream *substream)
 {
-    snd_pcm_runtime_t *runtime = substream->runtime;
+    struct snd_pcm_runtime *runtime = substream->runtime;
     struct snd_sg_buf *sgbuf = snd_pcm_substream_sgbuf(substream);
-    snd_util_memhdr_t *hdr;
+    struct snd_util_memhdr *hdr;
     struct snd_emu10k1_memblk *blk;
     int page, err, idx;
 
@@ -337,19 +336,19 @@ snd_emu10k1_alloc_pages(struct snd_emu10k1 *emu, snd_pcm_substream_t *substream)
     blk->map_locked = 1; /* do not unmap this block! */
     err = snd_emu10k1_memblk_map(emu, blk);
     if (err < 0) {
-        __snd_util_mem_free(hdr, (snd_util_memblk_t *)blk);
+        __snd_util_mem_free(hdr, (struct snd_util_memblk *)blk);
         up(&hdr->block_mutex);
         return NULL;
     }
     up(&hdr->block_mutex);
-    return (snd_util_memblk_t *)blk;
+    return (struct snd_util_memblk *)blk;
 }
 
 
 /*
  * release DMA buffer from page table
  */
-int snd_emu10k1_free_pages(struct snd_emu10k1 *emu, snd_util_memblk_t *blk)
+int snd_emu10k1_free_pages(struct snd_emu10k1 *emu, struct snd_util_memblk *blk)
 {
 	snd_assert(emu && blk, return -EINVAL);
 	return snd_emu10k1_synth_free(emu, blk);
@@ -364,11 +363,11 @@ int snd_emu10k1_free_pages(struct snd_emu10k1 *emu, snd_util_memblk_t *blk)
 /*
  * allocate a synth sample area
  */
-snd_util_memblk_t *
+struct snd_util_memblk *
 snd_emu10k1_synth_alloc(struct snd_emu10k1 *hw, unsigned int size)
 {
-	struct snd_emu10k1_memblk *blk;
-	snd_util_memhdr_t *hdr = hw->memhdr;
+    struct snd_emu10k1_memblk *blk;
+    struct snd_util_memhdr *hdr = hw->memhdr; 
 
 	down(&hdr->block_mutex);
 	blk = (struct snd_emu10k1_memblk *)__snd_util_mem_alloc(hdr, size);
@@ -376,14 +375,14 @@ snd_emu10k1_synth_alloc(struct snd_emu10k1 *hw, unsigned int size)
 		up(&hdr->block_mutex);
 		return NULL;
 	}
-	if (synth_alloc_pages(hw, blk)) {
-		__snd_util_mem_free(hdr, (snd_util_memblk_t *)blk);
+        if (synth_alloc_pages(hw, blk)) {
+            __snd_util_mem_free(hdr, (struct snd_util_memblk *)blk);
 		up(&hdr->block_mutex);
 		return NULL;
 	}
 	snd_emu10k1_memblk_map(hw, blk);
 	up(&hdr->block_mutex);
-	return (snd_util_memblk_t *)blk;
+	return (struct snd_util_memblk *)blk;
 }
 
 

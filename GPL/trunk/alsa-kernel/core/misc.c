@@ -20,7 +20,7 @@
  */
 
 #include <sound/driver.h>
-
+#include <sound/firmware.h>
 int snd_task_name(struct task_struct *task, char *name, size_t size)
 {
 	unsigned int idx;
@@ -666,5 +666,48 @@ void release_and_free_resource(struct resource *res)
                 release_resource(res);
                 kfree(res);
         }
+}
+
+int mod_firmware_load(const char *fn, char **fp)
+{
+    return 0;
+}
+
+static int snd_try_load_firmware(const char *path, const char *name,
+				 struct firmware *firmware)
+{
+	char filename[30 + FIRMWARE_NAME_MAX];
+
+	sprintf(filename, "%s/%s", path, name);
+	firmware->size = mod_firmware_load(filename, (char **)&firmware->data);
+	if (firmware->size)
+		printk(KERN_INFO "Loaded '%s'.", filename);
+	return firmware->size;
+}
+
+int request_firmware(const struct firmware **fw, const char *name)
+{
+	struct firmware *firmware;
+
+	*fw = NULL;
+	firmware = kmalloc(sizeof *firmware, GFP_KERNEL);
+	if (!firmware)
+		return -ENOMEM;
+	if (!snd_try_load_firmware("/lib/firmware", name, firmware) &&
+	    !snd_try_load_firmware("/lib/hotplug/firmware", name, firmware) &&
+	    !snd_try_load_firmware("/usr/lib/hotplug/firmware", name, firmware)) {
+		kfree(firmware);
+		return -EIO;
+	}
+	*fw = firmware;
+	return 0;
+}
+
+void release_firmware(const struct firmware *fw)
+{
+	if (fw) {
+		vfree(fw->data);
+		kfree(fw);
+	}
 }
 

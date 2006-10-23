@@ -1791,6 +1791,9 @@ int __devinit snd_ymfpci_mixer(ymfpci_t *chip, int rear_switch)
     if ((err = snd_ac97_mixer(chip->ac97_bus, &ac97, &chip->ac97)) < 0)
         return err;
 
+    /* to be sure */
+    snd_ac97_update_bits(chip->ac97, AC97_EXTENDED_STATUS,
+                         AC97_EA_VRA|AC97_EA_VRM, 0);
 
     for (idx = 0; idx < ARRAY_SIZE(snd_ymfpci_controls); idx++) {
         if ((err = snd_ctl_add(chip->card, snd_ctl_new1(&snd_ymfpci_controls[idx], chip))) < 0)

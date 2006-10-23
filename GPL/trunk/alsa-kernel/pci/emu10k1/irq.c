@@ -31,36 +31,22 @@
 #include <sound/core.h>
 #include <sound/emu10k1.h>
 
-irqreturn_t snd_emu10k1_interrupt(int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t snd_emu10k1_interrupt(int irq, void *dev_id)
 {
     struct snd_emu10k1 *emu = dev_id;
     unsigned int status, status2, orig_status, orig_status2;
     int handled = 0;
-#ifdef TARGET_OS2
-    int fOurIrq = FALSE;
-#endif
 
     while ((status = inl(emu->port + IPR)) != 0) {
-        // printk("irq - status = 0x%x\n", status);
-#ifdef TARGET_OS2
-#if 1
-        if (status & (IPR_CHANNELNUMBERMASK|IPR_A_MIDITRANSBUFEMPTY2|IPR_A_MIDIRECVBUFEMPTY2|
-                      IPR_SAMPLERATETRACKER|IPR_FXDSP|IPR_FORCEINT|IPR_PCIERROR|IPR_VOLINCR|
-                      IPR_VOLDECR|IPR_MUTE|IPR_MICBUFFULL|IPR_MICBUFHALFFULL|IPR_ADCBUFFULL|
-                      IPR_ADCBUFHALFFULL|IPR_EFXBUFFULL|IPR_EFXBUFHALFFULL|IPR_GPSPDIFSTATUSCHANGE|
-                      IPR_CDROMSTATUSCHANGE|IPR_INTERVALTIMER|IPR_MIDITRANSBUFEMPTY|IPR_MIDIRECVBUFEMPTY|
-                      IPR_CHANNELLOOP))
-#else
-            if (status)
-#endif
-            {
-                fOurIrq = TRUE;
-            }
-#endif
+        //snd_printk(KERN_INFO "emu10k1 irq - status = 0x%x\n", status);
         orig_status = status;
         handled = 1;
+        if ((status & 0xffffffff) == 0xffffffff) {
+            snd_printk(KERN_INFO "snd-emu10k1: Suspected sound card removal\n");
+            break;
+        }
         if (status & IPR_PCIERROR) {
-            //			snd_printk("interrupt: PCI error\n");
+            snd_printk("interrupt: PCI error\n");
             snd_emu10k1_intr_disable(emu, INTE_PCIERRORENABLE);
             status &= ~IPR_PCIERROR;
         }

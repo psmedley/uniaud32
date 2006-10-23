@@ -22,7 +22,6 @@
  * chip specific here.  Just the actual writing to the board.
  */
 
-#define __NO_VERSION__
 #include "emu10k1_synth_local.h"
 
 /*
@@ -37,7 +36,8 @@
  */
 int
 snd_emu10k1_sample_new(struct snd_emux *rec, struct snd_sf_sample *sp,
-		       snd_util_memhdr_t *hdr, const void *data, long count)
+		       struct snd_util_memhdr *hdr,
+		       const void __user *data, long count)
 {
 	int offset;
 	int truesize, size, loopsize, blocksize;
@@ -210,7 +210,7 @@ snd_emu10k1_sample_new(struct snd_emux *rec, struct snd_sf_sample *sp,
  */
 int
 snd_emu10k1_sample_free(struct snd_emux *rec, struct snd_sf_sample *sp,
-			snd_util_memhdr_t *hdr)
+                        struct snd_util_memhdr *hdr)
 {
 	struct snd_emu10k1 *emu;
 

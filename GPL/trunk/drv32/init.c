@@ -282,10 +282,15 @@ WORD32 DiscardableInit(RPInit __far* rp)
 #endif
         WriteString(szEOL, sizeof(szEOL)-1);
     }
-
+#ifdef DEBUG
+    dprintf(("DiscardableInit. cp1"));
+#endif
     // Complete the installation
     rp->Out.FinalCS = _OffsetFinalCS16;
     rp->Out.FinalDS = _OffsetFinalDS16;
+#ifdef DEBUG
+    dprintf(("DiscardableInit. cp2"));
+#endif
 
 //    SaveBuffer();
 

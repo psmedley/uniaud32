@@ -175,7 +175,7 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
     IRQ_SLOT	*pSlot;
 
 #ifdef DEBUG
-    dprintf(("enter int proc %d %d",ulSlotNo, *pulIrq));
+//    dprintf(("enter int proc %d %d",ulSlotNo, *pulIrq));
 #endif
 
     if(fSuspended)
@@ -212,7 +212,7 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
                     //ok, this interrupt was intended for us; notify the 16 bits MMPM/2 driver
                     OSS32_ProcessIRQ();
 #ifdef DEBUG
-                    dprintf(("exit(1) int proc %d %d",ulSlotNo, *pulIrq));
+//                    dprintf(("exit(1) int proc %d %d",ulSlotNo, *pulIrq));
 #endif
                     eoiIrq[pSlot->irqNo] = 0;
                     return TRUE;
@@ -221,7 +221,7 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
         }
     }
 #ifdef DEBUG
-                    dprintf(("exit(0) int proc %d %d",ulSlotNo, *pulIrq));
+//                    dprintf(("exit(0) int proc %d %d",ulSlotNo, *pulIrq));
 #endif
 
     return FALSE;

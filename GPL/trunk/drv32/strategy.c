@@ -69,7 +69,9 @@ ULONG StratInit(RP __far* _rp)
 
     RPInit __far* rp = (RPInit __far*)_rp;
     rc = DiscardableInit(rp);
-
+#ifdef DEBUG
+    dprintf(("StratInit. cp1.rc %d", rc));
+#endif
     return rc;
 }
 //******************************************************************************
@@ -79,6 +81,9 @@ ULONG StratInit(RP __far* _rp)
 ULONG StratInitComplete(RP __far* _rp)
 #pragma on (unreferenced)
 {
+#ifdef DEBUG
+    dprintf(("StratInitComplete"));
+#endif
   return(RPDONE);
 }
 //******************************************************************************
@@ -89,7 +94,9 @@ ULONG StratShutdown(RP __far *_rp)
 {
  RPShutdown __far *rp = (RPShutdown __far *)_rp;
 
-  dprintf(("StratShutdown %d", rp->Function));
+#ifdef DEBUG
+ dprintf(("StratShutdown %d", rp->Function));
+#endif
   if(rp->Function == 1) {//end of shutdown
   	OSS32_Shutdown(); 
   }

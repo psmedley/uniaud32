@@ -753,6 +753,7 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
 {
     soundhandle        *pHandle = (soundhandle *)streamid;
     snd_pcm_hw_params_t params;
+    snd_pcm_status_t    status;
     snd_pcm_sw_params_t swparams;
     int                 ret, ret1, nrperiods, minnrperiods, maxnrperiods, samplesize, i;
     ULONG               bufsize, periodsize, minperiodsize, maxperiodsize;
@@ -888,6 +889,7 @@ tryagain:
                 }
             }
         }
+
 //        ret1 = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         DebugInt3();
         return UNIXToOSSError(ret);
@@ -1039,6 +1041,13 @@ __next:
     }
     total = 0;
     per_bytes = periodbytes;
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+    if ( ((status.state != SNDRV_PCM_STATE_PREPARED) &&
+          (status.state != SNDRV_PCM_STATE_RUNNING) &&
+          (status.state != SNDRV_PCM_STATE_DRAINING))) {
+        printk("Device is not in proper state: %i. Calling prepare\n", status.state);
+        ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
+    }
     printk("OSS32_WaveSetHwParams return %d after SNDRV_PCM_IOCTL_SW_PARAMS ioctl, streamid %X", ret,(ULONG)pHandle);
     return UNIXToOSSError(ret);
 }
@@ -1132,7 +1141,10 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
                 if(transferred > 0) {
                     printk("OSS32_WaveAddBuffer failed on partial transfer %x %i; ret = %i\n", buffer, size, ret);
                     *pTransferred = transferred;
-                    return OSSERR_SUCCESS;
+                    if (toret)
+                        return OSSERR_SUCCESS; /* avoid infinite loop */
+                    toret = 1;
+                    goto again;
                 }
 
                 ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
@@ -1142,10 +1154,11 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
                       (status.state != SNDRV_PCM_STATE_DRAINING)) || ret == -32 ) {
                     ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
                     printk("OSS32_WaveAddBuffer buffer overrun: size %i, ret %i, trans %i, prev sz %i per sz %i total %i\n", size, ret, transferred, prev_size, per_bytes, total);
-                    ret = size;
-                    transferred = size;
-                    break; /* UGLY hack*/
-                    //goto again;
+                    //ret = size;
+                    //transferred = size;
+                    if (toret) break; /* avoid infinite loop */
+                    toret = 1;
+                    goto again;
                 }
                 else {
                     printk("OSS32_WaveAddBuffer failed when SNDRV_MINOR_PCM_PLAYBACK. rc = %i\n",ret);
@@ -1161,6 +1174,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
             if(ret == 0) {
                 break;
             }
+            toret = 0;
             transferred += ret;
 //            printk("written: now: %i, buffer: %i, total: %i\n", ret, transferred, total);
             buffer += ret;

@@ -71,6 +71,7 @@ static struct {
 	/* OSS_MIXER_MONITOR  */ { "Monitor", 0 , -1},
 	/* OSS_MIXER_3DDEPTH  */ { "3D Control - Depth", 0 , -1},
         /* OSS_MIXER_3DCENTER */ { "3D Control - Center", 0 , -1},
+        /* OSS_MIXER_FRONT    */ { "Front", 0 , -1},
 };
 char *szRecSources[OSS32_MIX_RECSRC_MAX] = {
     "Mic", "CD", "Line", "Video", "Aux", "Mix", "Mix Mono", "Phone", "Synth"
@@ -200,7 +201,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
             {
                 int controlnamelen = strlen(pHandle->pids[i].name);
 
-                if(namelen == controlnamelen) 
+                if(namelen == controlnamelen)
                 {//control names are identical; found exact match
                     pHandle->controls[j].idxVolume = i;
                     break;
@@ -391,6 +392,12 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     case OSS32_MIX_VOLUME_MASTER_FRONT:
         idx = pHandle->controls[OSS_MIXER_VOLUME].idxVolume;
         idxMute = pHandle->controls[OSS_MIXER_VOLUME].idxMute;
+        if (idx == -1)
+        {
+            /* HDA codecs workaround */
+            idx = pHandle->controls[OSS_MIXER_FRONT].idxVolume;
+            idxMute = pHandle->controls[OSS_MIXER_FRONT].idxMute;
+        }
         break;
     case OSS32_MIX_VOLUME_MASTER_REAR: //TODO:
         idx = pHandle->controls[OSS_MIXER_VOLUME].idxVolume;
@@ -399,6 +406,12 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     case OSS32_MIX_VOLUME_PCM:
         idx = pHandle->controls[OSS_MIXER_PCM].idxVolume;
         idxMute = pHandle->controls[OSS_MIXER_PCM].idxMute;
+        if (idx == -1)
+        {
+            /* HDA codecs workaround */
+            idx = pHandle->controls[OSS_MIXER_FRONT].idxVolume;
+            idxMute = pHandle->controls[OSS_MIXER_FRONT].idxMute;
+        }
         break;
     case OSS32_MIX_VOLUME_MIDI:
         idx = pHandle->controls[OSS_MIXER_SYNTH].idxVolume;

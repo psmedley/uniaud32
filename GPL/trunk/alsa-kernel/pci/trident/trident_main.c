@@ -33,16 +33,6 @@
 #include <sound/control.h>
 #include <sound/trident.h>
 
-static inline snd_ctl_elem_id_t *snd_ctl_build_ioff(snd_ctl_elem_id_t *dst_id,
-                                                    snd_kcontrol_t *src_kctl,
-                                                    unsigned int offset)
-{
-        *dst_id = src_kctl->id;
-        dst_id->index += offset;
-        dst_id->numid += offset;
-        return dst_id;
-}
-
 static int snd_trident_pcm_mixer_build(struct snd_trident *trident, struct snd_trident_voice* voice, snd_pcm_substream_t *substream);
 static int snd_trident_pcm_mixer_free(struct snd_trident *trident, struct snd_trident_voice* voice, snd_pcm_substream_t *substream);
 static irqreturn_t snd_trident_interrupt(int irq, void *dev_id, struct pt_regs *regs);

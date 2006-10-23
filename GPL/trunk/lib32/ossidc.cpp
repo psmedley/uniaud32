@@ -282,12 +282,18 @@ OSSRET OSS32_Initialize(void)
     fStrategyInit = FALSE;
 
     if(nrCardsDetected != 0) {
+        dprintf(("OSS32_Initialize2"));
         pcm_info();
+        dprintf(("OSS32_Initialize3"));
         for(int i=0;i<nrCardsDetected;i++) {
+            dprintf(("OSS32_Initialize4 start: %d",i));
             FillCaps(i);
+            dprintf(("OSS32_Initialize4 end: %d",i));
         }
+        dprintf(("OSS32_Initialize: SUCCESS. nr. of cards: %d",nrCardsDetected));
         return OSSERR_SUCCESS;
     }
+    dprintf(("OSS32_Initialize. FAILED"));
     return OSSERR_INIT_FAILED;
 }
 //******************************************************************************

@@ -1039,7 +1039,9 @@ static int azx_pcm_open(struct snd_pcm_substream *substream)
 	runtime->hw.channels_min = hinfo->channels_min;
 	runtime->hw.channels_max = hinfo->channels_max;
 	runtime->hw.formats = hinfo->formats;
-	runtime->hw.rates = hinfo->rates;
+        runtime->hw.rates = hinfo->rates;
+        printk("azx hw rates: %x. ratemin: %i, ratemax: %i\n",
+               runtime->hw.rates, runtime->hw.rate_min, runtime->hw.rate_max);
 	snd_pcm_limit_hw_rates(runtime);
 	snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS);
 	if ((err = hinfo->ops.open(hinfo, apcm->codec, substream)) < 0) {

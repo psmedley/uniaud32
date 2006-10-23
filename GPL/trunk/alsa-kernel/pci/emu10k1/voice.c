@@ -46,7 +46,8 @@
  *                                                      --rlrevell
  */
 
-static int voice_alloc(struct snd_emu10k1 *emu, int type, int number, struct snd_emu10k1_voice **rvoice)
+static int voice_alloc(struct snd_emu10k1 *emu, int type, int number,
+                       struct snd_emu10k1_voice **rvoice)
 {
     struct snd_emu10k1_voice *voice;
     int i, j, k, first_voice, last_voice, skip;
@@ -62,15 +63,12 @@ static int voice_alloc(struct snd_emu10k1 *emu, int type, int number, struct snd
             continue;
         }
 
-        /* make sure the block of voices does not cross the 32 voice boundary */
-        //if (((i % 32) + number) > 32)
-        //      continue;
-
         skip = 0;
         for (k = 0; k < number; k++) {
             voice = &emu->voices[(i+k) % NUM_G];
             if (voice->use) {
                 skip = 1;
+                break;
             }
         }
         if (!skip) {

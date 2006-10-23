@@ -32,7 +32,7 @@ extern "C" {
 #include <kee.h>
 #endif
 
-#define MAX_STACK	        8
+#define MAX_STACK               16
 #define STACKSIZE	        (16*1024)
 #define TOTAL_STACKSIZE	    MAX_STACK*(16*1024)
 #define MAX_STACK_SEL       TOTAL_STACKSIZE/(64*1024)
