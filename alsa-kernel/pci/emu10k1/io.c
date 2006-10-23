@@ -25,7 +25,6 @@
  *
  */
 
-#define __NO_VERSION__
 #include <sound/driver.h>
 #include <linux/time.h>
 #include <sound/core.h>
@@ -62,6 +61,8 @@ unsigned int snd_emu10k1_ptr_read(struct snd_emu10k1 * emu, unsigned int reg, un
 	}
 }
 
+EXPORT_SYMBOL(snd_emu10k1_ptr_read);
+
 void snd_emu10k1_ptr_write(struct snd_emu10k1 *emu, unsigned int reg, unsigned int chn, unsigned int data)
 {
 	unsigned int regptr;
@@ -91,6 +92,8 @@ void snd_emu10k1_ptr_write(struct snd_emu10k1 *emu, unsigned int reg, unsigned i
 		spin_unlock_irqrestore(&emu->emu_lock, flags);
 	}
 }
+
+EXPORT_SYMBOL(snd_emu10k1_ptr_write);
 
 unsigned int snd_emu10k1_ptr20_read(struct snd_emu10k1 * emu,
                                     unsigned int reg,
@@ -122,6 +125,90 @@ void snd_emu10k1_ptr20_write(struct snd_emu10k1 *emu,
     outl(regptr, emu->port + 0x20 + PTR);
     outl(data, emu->port + 0x20 + DATA);
     spin_unlock_irqrestore(&emu->emu_lock, flags);
+}
+
+int snd_emu10k1_spi_write(struct snd_emu10k1 * emu,
+				   unsigned int data)
+{
+	unsigned int reset, set;
+	unsigned int reg, tmp;
+	int n, result;
+	if (emu->card_capabilities->ca0108_chip)
+		reg = 0x3c; /* PTR20, reg 0x3c */
+	else {
+		/* For other chip types the SPI register
+		 * is currently unknown. */
+		return 1;
+	}
+	if (data > 0xffff) /* Only 16bit values allowed */
+		return 1;
+
+	tmp = snd_emu10k1_ptr20_read(emu, reg, 0);
+	reset = (tmp & ~0x3ffff) | 0x20000; /* Set xxx20000 */
+	set = reset | 0x10000; /* Set xxx1xxxx */
+	snd_emu10k1_ptr20_write(emu, reg, 0, reset | data);
+	tmp = snd_emu10k1_ptr20_read(emu, reg, 0); /* write post */
+	snd_emu10k1_ptr20_write(emu, reg, 0, set | data);
+	result = 1;
+	/* Wait for status bit to return to 0 */
+	for (n = 0; n < 100; n++) {
+		udelay(10);
+		tmp = snd_emu10k1_ptr20_read(emu, reg, 0);
+		if (!(tmp & 0x10000)) {
+			result = 0;
+			break;
+		}
+	}
+	if (result) /* Timed out */
+		return 1;
+	snd_emu10k1_ptr20_write(emu, reg, 0, reset | data);
+	tmp = snd_emu10k1_ptr20_read(emu, reg, 0); /* Write post */
+	return 0;
+}
+
+int snd_emu1010_fpga_write(struct snd_emu10k1 * emu, int reg, int value)
+{
+	if (reg < 0 || reg > 0x3f)
+		return 1;
+	reg += 0x40; /* 0x40 upwards are registers. */
+	if (value < 0 || value > 0x3f) /* 0 to 0x3f are values */
+		return 1;
+	outl(reg, emu->port + A_IOCFG);
+	udelay(10);
+	outl(reg | 0x80, emu->port + A_IOCFG);  /* High bit clocks the value into the fpga. */
+	udelay(10);
+	outl(value, emu->port + A_IOCFG);
+	udelay(10);
+	outl(value | 0x80 , emu->port + A_IOCFG);  /* High bit clocks the value into the fpga. */
+
+	return 0;
+}
+
+int snd_emu1010_fpga_read(struct snd_emu10k1 * emu, int reg, int *value)
+{
+	if (reg < 0 || reg > 0x3f)
+		return 1;
+	reg += 0x40; /* 0x40 upwards are registers. */
+	outl(reg, emu->port + A_IOCFG);
+	udelay(10);
+	outl(reg | 0x80, emu->port + A_IOCFG);  /* High bit clocks the value into the fpga. */
+	udelay(10);
+	*value = ((inl(emu->port + A_IOCFG) >> 8) & 0x7f);
+
+	return 0;
+}
+
+/* Each Destination has one and only one Source,
+ * but one Source can feed any number of Destinations simultaneously.
+ */
+int snd_emu1010_fpga_link_dst_src_write(struct snd_emu10k1 * emu, int dst, int src)
+{
+	snd_emu1010_fpga_write(emu, 0x00, ((dst >> 8) & 0x3f) );
+	snd_emu1010_fpga_write(emu, 0x01, (dst & 0x3f) );
+	snd_emu1010_fpga_write(emu, 0x02, ((src >> 8) & 0x3f) );
+	snd_emu1010_fpga_write(emu, 0x03, (src & 0x3f) );
+
+	return 0;
 }
 
 void snd_emu10k1_intr_enable(struct snd_emu10k1 *emu, unsigned int intrenb)
@@ -319,7 +406,7 @@ void snd_emu10k1_wait(struct snd_emu10k1 *emu, unsigned int wait)
 	}
 }
 
-unsigned short snd_emu10k1_ac97_read(ac97_t *ac97, unsigned short reg)
+unsigned short snd_emu10k1_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 {
     struct snd_emu10k1 *emu = ac97->private_data;
 	unsigned long flags;
@@ -332,7 +419,7 @@ unsigned short snd_emu10k1_ac97_read(ac97_t *ac97, unsigned short reg)
 	return val;
 }
 
-void snd_emu10k1_ac97_write(ac97_t *ac97, unsigned short reg, unsigned short data)
+void snd_emu10k1_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short data)
 {
     struct snd_emu10k1 *emu = ac97->private_data;
 	unsigned long flags;
@@ -401,30 +488,4 @@ unsigned int snd_emu10k1_rate_to_pitch(unsigned int rate)
 	}
 
 	return 0;		/* Should never reach this point */
-}
-
-/*
- *  Returns an attenuation based upon a cumulative volume value
- *  Algorithm calculates 0x200 - 0x10 log2 (input)
- */
-
-unsigned char snd_emu10k1_sum_vol_attn(unsigned int value)
-{
-	unsigned short count = 16, ans;
-
-	if (value == 0)
-		return 0xFF;
-
-	/* Find first SET bit. This is the integer part of the value */
-	while ((value & 0x10000) == 0) {
-		value <<= 1;
-		count--;
-	}
-
-	/* The REST of the data is the fractional part. */
-	ans = (unsigned short) (0x110 - ((count << 4) + ((value & 0x0FFFFL) >> 12)));
-	if (ans > 0xFF)
-		ans = 0xFF;
-
-	return (unsigned char) ans;
 }

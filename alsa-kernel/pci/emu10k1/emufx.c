@@ -3,6 +3,9 @@
  *                   Creative Labs, Inc.
  *  Routines for effect processor FX8010
  *
+ *  Copyright (c) by James Courtier-Dutton <James@superbug.co.uk>
+ *  	Added EMU 1010 support.
+ *
  *  BUGS:
  *    --
  *
@@ -28,9 +31,10 @@
 #include <sound/driver.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
-#include <sound/core.h>
-#include <sound/emu10k1.h>
 
+#include <sound/core.h>
+#include <sound/tlv.h>
+#include <sound/emu10k1.h>
 
 #if 0		/* for testing purposes - digital out -> capture */
 #define EMU10K1_CAPTURE_DIGITAL_OUT
@@ -261,6 +265,7 @@ static const u32 treble_table[41][5] = {
     { 0x37c4448b, 0xa45ef51d, 0x262f3267, 0x081e36dc, 0xfd8f5d14 }
 };
 
+/* dB gain = (float) 20 * log10( float(db_table_value) / 0x8000000 ) */
 static const u32 db_table[101] = {
     0x00000000, 0x01571f82, 0x01674b41, 0x01783a1b, 0x0189f540,
     0x019c8651, 0x01aff763, 0x01c45306, 0x01d9a446, 0x01eff6b8,
@@ -284,6 +289,9 @@ static const u32 db_table[101] = {
     0x65ac8c2f, 0x6a773c39, 0x6f7bbc23, 0x74bcc56c, 0x7a3d3272,
     0x7fffffff,
 };
+
+/* EMU10k1/EMU10k2 DSP control db gain */
+static DECLARE_TLV_DB_SCALE(snd_emu10k1_db_scale1, -4000, 40, 1);
 
 static const u32 onoff_table[2] = {
     0x00000000, 0x00000001
@@ -309,9 +317,10 @@ static inline void snd_leave_user(mm_segment_t fs)
  *   controls
  */
 
-static int snd_emu10k1_gpr_ctl_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
+static int snd_emu10k1_gpr_ctl_info(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_info *uinfo)
 {
-    struct snd_emu10k1_fx8010_ctl *ctl = (struct snd_emu10k1_fx8010_ctl *)kcontrol->private_value;
+    struct snd_emu10k1_fx8010_ctl *ctl =
+        (struct snd_emu10k1_fx8010_ctl *) kcontrol->private_value;
 
     if (ctl->min == 0 && ctl->max == 1)
         uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
@@ -323,10 +332,11 @@ static int snd_emu10k1_gpr_ctl_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_
     return 0;
 }
 
-static int snd_emu10k1_gpr_ctl_get(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
+static int snd_emu10k1_gpr_ctl_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
     struct snd_emu10k1 *emu = snd_kcontrol_chip(kcontrol);
-    struct snd_emu10k1_fx8010_ctl *ctl = (struct snd_emu10k1_fx8010_ctl *)kcontrol->private_value;
+    struct snd_emu10k1_fx8010_ctl *ctl =
+        (struct snd_emu10k1_fx8010_ctl *) kcontrol->private_value;
     unsigned long flags;
     unsigned int i;
 
@@ -337,10 +347,11 @@ static int snd_emu10k1_gpr_ctl_get(snd_kcontrol_t * kcontrol, snd_ctl_elem_value
     return 0;
 }
 
-static int snd_emu10k1_gpr_ctl_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
+static int snd_emu10k1_gpr_ctl_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
     struct snd_emu10k1 *emu = snd_kcontrol_chip(kcontrol);
-    struct snd_emu10k1_fx8010_ctl *ctl = (struct snd_emu10k1_fx8010_ctl *)kcontrol->private_value;
+    struct snd_emu10k1_fx8010_ctl *ctl =
+        (struct snd_emu10k1_fx8010_ctl *) kcontrol->private_value;
     unsigned long flags;
     unsigned int nval, val;
     unsigned int i, j;
@@ -364,12 +375,18 @@ static int snd_emu10k1_gpr_ctl_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value
             snd_emu10k1_ptr_write(emu, emu->gpr_base + ctl->gpr[i], 0, db_table[val]);
             break;
         case EMU10K1_GPR_TRANSLATION_BASS:
-            snd_runtime_check((ctl->count % 5) == 0 && (ctl->count / 5) == ctl->vcount, change = -EIO; goto __error);
+            if ((ctl->count % 5) != 0 || (ctl->count / 5) != ctl->vcount) {
+                change = -EIO;
+                goto __error;
+            }
             for (j = 0; j < 5; j++)
                 snd_emu10k1_ptr_write(emu, emu->gpr_base + ctl->gpr[j * ctl->vcount + i], 0, bass_table[val][j]);
             break;
         case EMU10K1_GPR_TRANSLATION_TREBLE:
-            snd_runtime_check((ctl->count % 5) == 0 && (ctl->count / 5) == ctl->vcount, change = -EIO; goto __error);
+            if ((ctl->count % 5) != 0 || (ctl->count / 5) != ctl->vcount) {
+                change = -EIO;
+                goto __error;
+            }
             for (j = 0; j < 5; j++)
                 snd_emu10k1_ptr_write(emu, emu->gpr_base + ctl->gpr[j * ctl->vcount + i], 0, treble_table[val][j]);
             break;
@@ -412,8 +429,6 @@ int snd_emu10k1_fx8010_register_irq_handler(struct snd_emu10k1 *emu,
     struct snd_emu10k1_fx8010_irq *irq;
     unsigned long flags;
 
-    snd_runtime_check(emu, return -EINVAL);
-    snd_runtime_check(handler, return -EINVAL);
     irq = kmalloc(sizeof(*irq), GFP_ATOMIC);
     if (irq == NULL)
         return -ENOMEM;
@@ -442,7 +457,6 @@ int snd_emu10k1_fx8010_unregister_irq_handler(struct snd_emu10k1 *emu,
     struct snd_emu10k1_fx8010_irq *tmp;
     unsigned long flags;
 
-    snd_runtime_check(irq, return -EINVAL);
     spin_lock_irqsave(&emu->fx8010.irq_lock, flags);
     if ((tmp = emu->fx8010.irq_handlers) == irq) {
         emu->fx8010.irq_handlers = tmp->next;
@@ -465,12 +479,13 @@ int snd_emu10k1_fx8010_unregister_irq_handler(struct snd_emu10k1 *emu,
  * EMU10K1 effect manager
  *************************************************************************/
 
-static void snd_emu10k1_write_op(emu10k1_fx8010_code_t *icode, unsigned int *ptr,
-                                u32 op, u32 r, u32 a, u32 x, u32 y)
+static void snd_emu10k1_write_op(struct snd_emu10k1_fx8010_code *icode,
+                                 unsigned int *ptr,
+                                 u32 op, u32 r, u32 a, u32 x, u32 y)
 {
     u_int32_t *code;
     snd_assert(*ptr < 512, return);
-    code = (u_int32_t *)icode->code + (*ptr) * 2;
+    code = (u_int32_t __force *)icode->code + (*ptr) * 2;
     set_bit(*ptr, icode->code_valid);
     code[0] = ((x & 0x3ff) << 10) | (y & 0x3ff);
     code[1] = ((op & 0x0f) << 20) | ((r & 0x3ff) << 10) | (a & 0x3ff);
@@ -480,12 +495,13 @@ static void snd_emu10k1_write_op(emu10k1_fx8010_code_t *icode, unsigned int *ptr
 #define OP(icode, ptr, op, r, a, x, y) \
     snd_emu10k1_write_op(icode, ptr, op, r, a, x, y)
 
-static void snd_emu10k1_audigy_write_op(emu10k1_fx8010_code_t *icode, unsigned int *ptr,
-                                       u32 op, u32 r, u32 a, u32 x, u32 y)
+static void snd_emu10k1_audigy_write_op(struct snd_emu10k1_fx8010_code *icode,
+                                        unsigned int *ptr,
+                                        u32 op, u32 r, u32 a, u32 x, u32 y)
 {
     u_int32_t *code;
     snd_assert(*ptr < 1024, return);
-    code = (u_int32_t *)icode->code + (*ptr) * 2;
+    code = (u_int32_t __force *)icode->code + (*ptr) * 2;
     set_bit(*ptr, icode->code_valid);
     code[0] = ((x & 0x7ff) << 12) | (y & 0x7ff);
     code[1] = ((op & 0x0f) << 24) | ((r & 0x7ff) << 12) | (a & 0x7ff);
@@ -495,7 +511,7 @@ static void snd_emu10k1_audigy_write_op(emu10k1_fx8010_code_t *icode, unsigned i
 #define A_OP(icode, ptr, op, r, a, x, y) \
     snd_emu10k1_audigy_write_op(icode, ptr, op, r, a, x, y)
 
-void snd_emu10k1_efx_write(struct snd_emu10k1 *emu, unsigned int pc, unsigned int data)
+static void snd_emu10k1_efx_write(struct snd_emu10k1 *emu, unsigned int pc, unsigned int data)
 {
     pc += emu->audigy ? A_MICROCODEBASE : MICROCODEBASE;
     snd_emu10k1_ptr_write(emu, pc, 0, data);
@@ -507,7 +523,8 @@ unsigned int snd_emu10k1_efx_read(struct snd_emu10k1 *emu, unsigned int pc)
     return snd_emu10k1_ptr_read(emu, pc, 0);
 }
 
-static int snd_emu10k1_gpr_poke(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_gpr_poke(struct snd_emu10k1 *emu,
+                                struct snd_emu10k1_fx8010_code *icode)
 {
     int gpr;
     u32 val;
@@ -522,7 +539,8 @@ static int snd_emu10k1_gpr_poke(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *
     return 0;
 }
 
-static int snd_emu10k1_gpr_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_gpr_peek(struct snd_emu10k1 *emu,
+                                struct snd_emu10k1_fx8010_code *icode)
 {
     int gpr;
     u32 val;
@@ -536,7 +554,8 @@ static int snd_emu10k1_gpr_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *
     return 0;
 }
 
-static int snd_emu10k1_tram_poke(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_tram_poke(struct snd_emu10k1 *emu,
+                                 struct snd_emu10k1_fx8010_code *icode)
 {
     int tram;
     u32 addr, val;
@@ -558,7 +577,8 @@ static int snd_emu10k1_tram_poke(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t 
     return 0;
 }
 
-static int snd_emu10k1_tram_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_tram_peek(struct snd_emu10k1 *emu,
+                                 struct snd_emu10k1_fx8010_code *icode)
 {
     int tram;
     u32 val, addr;
@@ -580,7 +600,8 @@ static int snd_emu10k1_tram_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t 
     return 0;
 }
 
-static int snd_emu10k1_code_poke(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_code_poke(struct snd_emu10k1 *emu,
+                                 struct snd_emu10k1_fx8010_code *icode)
 {
     u32 pc, lo, hi;
 
@@ -596,7 +617,8 @@ static int snd_emu10k1_code_poke(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t 
     return 0;
 }
 
-static int snd_emu10k1_code_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_code_peek(struct snd_emu10k1 *emu,
+                                 struct snd_emu10k1_fx8010_code *icode)
 {
     u32 pc;
 
@@ -611,10 +633,11 @@ static int snd_emu10k1_code_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t 
     return 0;
 }
 
-static struct snd_emu10k1_fx8010_ctl *snd_emu10k1_look_for_ctl(struct snd_emu10k1 *emu, snd_ctl_elem_id_t *id)
+static struct snd_emu10k1_fx8010_ctl *
+snd_emu10k1_look_for_ctl(struct snd_emu10k1 *emu, struct snd_ctl_elem_id *id)
 {
     struct snd_emu10k1_fx8010_ctl *ctl;
-    snd_kcontrol_t *kcontrol;
+    struct snd_kcontrol *kcontrol;
     struct list_head *list;
 
     list_for_each(list, &emu->fx8010.gpr_ctl) {
@@ -628,12 +651,14 @@ static struct snd_emu10k1_fx8010_ctl *snd_emu10k1_look_for_ctl(struct snd_emu10k
     return NULL;
 }
 
-static int snd_emu10k1_verify_controls(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_verify_controls(struct snd_emu10k1 *emu,
+                                       struct snd_emu10k1_fx8010_code *icode)
 {
     unsigned int i;
-    snd_ctl_elem_id_t *_id, id;
-    emu10k1_fx8010_control_gpr_t *_gctl;
-    emu10k1_fx8010_control_gpr_t *gctl;
+    struct snd_ctl_elem_id __user *_id;
+    struct snd_ctl_elem_id id;
+    struct snd_emu10k1_fx8010_control_gpr __user *_gctl;
+    struct snd_emu10k1_fx8010_control_gpr *gctl;
     int err;
 
     for (i = 0, _id = icode->gpr_del_controls;
@@ -681,7 +706,7 @@ __error:
     return err;
 }
 
-static void snd_emu10k1_ctl_private_free(snd_kcontrol_t *kctl)
+static void snd_emu10k1_ctl_private_free(struct snd_kcontrol *kctl)
 {
     struct snd_emu10k1_fx8010_ctl *ctl;
 
@@ -691,18 +716,19 @@ static void snd_emu10k1_ctl_private_free(snd_kcontrol_t *kctl)
     kfree(ctl);
 }
 
-static int snd_emu10k1_add_controls(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_add_controls(struct snd_emu10k1 *emu,
+                                    struct snd_emu10k1_fx8010_code *icode)
 {
     unsigned int i, j;
-    emu10k1_fx8010_control_gpr_t *_gctl;
-    emu10k1_fx8010_control_gpr_t *gctl;
+    struct snd_emu10k1_fx8010_control_gpr __user *_gctl;
+    struct snd_emu10k1_fx8010_control_gpr *gctl;
     struct snd_emu10k1_fx8010_ctl *ctl, *nctl;
-    snd_kcontrol_new_t knew;
-    snd_kcontrol_t *kctl;
-    snd_ctl_elem_value_t *val;
+    struct snd_kcontrol_new knew;
+    struct snd_kcontrol *kctl;
+    struct snd_ctl_elem_value *val;
     int err = 0;
 
-    val = (snd_ctl_elem_value_t *)kmalloc(sizeof(*val), GFP_KERNEL);
+    val = kmalloc(sizeof(*val), GFP_KERNEL);
     gctl = kmalloc(sizeof(*gctl), GFP_KERNEL);
     nctl = kmalloc(sizeof(*nctl), GFP_KERNEL);
     if (!val || !gctl || !nctl) {
@@ -716,9 +742,15 @@ static int snd_emu10k1_add_controls(struct snd_emu10k1 *emu, emu10k1_fx8010_code
             err = -EFAULT;
             goto __error;
         }
-        snd_runtime_check(gctl->id.iface == SNDRV_CTL_ELEM_IFACE_MIXER ||
-                          gctl->id.iface == SNDRV_CTL_ELEM_IFACE_PCM, err = -EINVAL; goto __error);
-        snd_runtime_check(gctl->id.name[0] != '\0', err = -EINVAL; goto __error);
+        if (gctl->id.iface != SNDRV_CTL_ELEM_IFACE_MIXER &&
+            gctl->id.iface != SNDRV_CTL_ELEM_IFACE_PCM) {
+            err = -EINVAL;
+            goto __error;
+        }
+        if (! gctl->id.name[0]) {
+            err = -EINVAL;
+            goto __error;
+        }
         ctl = snd_emu10k1_look_for_ctl(emu, &gctl->id);
         memset(&knew, 0, sizeof(knew));
         knew.iface = gctl->id.iface;
@@ -727,6 +759,11 @@ static int snd_emu10k1_add_controls(struct snd_emu10k1 *emu, emu10k1_fx8010_code
         knew.device = gctl->id.device;
         knew.subdevice = gctl->id.subdevice;
         knew.info = snd_emu10k1_gpr_ctl_info;
+        if (gctl->tlv.p) {
+            knew.tlv.p = gctl->tlv.p;
+            knew.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |
+                SNDRV_CTL_ELEM_ACCESS_TLV_READ;
+        }
         knew.get = snd_emu10k1_gpr_ctl_get;
         knew.put = snd_emu10k1_gpr_ctl_put;
         memset(nctl, 0, sizeof(*nctl));
@@ -741,7 +778,7 @@ static int snd_emu10k1_add_controls(struct snd_emu10k1 *emu, emu10k1_fx8010_code
         nctl->max = gctl->max;
         nctl->translation = gctl->translation;
         if (ctl == NULL) {
-            ctl = (struct snd_emu10k1_fx8010_ctl *)kmalloc(sizeof(*ctl), GFP_KERNEL);
+            ctl = kmalloc(sizeof(*ctl), GFP_KERNEL);
             if (ctl == NULL) {
                 err = -ENOMEM;
                 goto __error;
@@ -772,16 +809,19 @@ __error:
     return err;
 }
 
-static int snd_emu10k1_del_controls(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_del_controls(struct snd_emu10k1 *emu,
+                                    struct snd_emu10k1_fx8010_code *icode)
 {
     unsigned int i;
-    snd_ctl_elem_id_t *_id, id;
+    struct snd_ctl_elem_id id;
+    struct snd_ctl_elem_id __user *_id;
     struct snd_emu10k1_fx8010_ctl *ctl;
-    snd_card_t *card = emu->card;
+    struct snd_card *card = emu->card;
 
     for (i = 0, _id = icode->gpr_del_controls;
          i < icode->gpr_del_control_count; i++, _id++) {
-        snd_runtime_check(copy_from_user(&id, _id, sizeof(id)) == 0, return -EFAULT);
+        if (copy_from_user(&id, _id, sizeof(id)))
+            return -EFAULT;
         down_write(&card->controls_rwsem);
         ctl = snd_emu10k1_look_for_ctl(emu, &id);
         if (ctl)
@@ -791,14 +831,15 @@ static int snd_emu10k1_del_controls(struct snd_emu10k1 *emu, emu10k1_fx8010_code
     return 0;
 }
 
-static int snd_emu10k1_list_controls(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_list_controls(struct snd_emu10k1 *emu,
+                                     struct snd_emu10k1_fx8010_code *icode)
 {
     unsigned int i = 0, j;
     unsigned int total = 0;
-    emu10k1_fx8010_control_gpr_t *gctl;
-    emu10k1_fx8010_control_gpr_t *_gctl;
+    struct snd_emu10k1_fx8010_control_gpr *gctl;
+    struct snd_emu10k1_fx8010_control_gpr __user *_gctl;
     struct snd_emu10k1_fx8010_ctl *ctl;
-    snd_ctl_elem_id_t *id;
+    struct snd_ctl_elem_id *id;
     struct list_head *list;
 
     gctl = kmalloc(sizeof(*gctl), GFP_KERNEL);
@@ -839,7 +880,8 @@ static int snd_emu10k1_list_controls(struct snd_emu10k1 *emu, emu10k1_fx8010_cod
     return 0;
 }
 
-static int snd_emu10k1_icode_poke(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_icode_poke(struct snd_emu10k1 *emu,
+                                  struct snd_emu10k1_fx8010_code *icode)
 {
     int err = 0;
 
@@ -870,7 +912,8 @@ __error:
     return err;
 }
 
-static int snd_emu10k1_icode_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t *icode)
+static int snd_emu10k1_icode_peek(struct snd_emu10k1 *emu,
+                                  struct snd_emu10k1_fx8010_code *icode)
 {
     int err;
 
@@ -888,7 +931,8 @@ static int snd_emu10k1_icode_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_code_t
     return err;
 }
 
-static int snd_emu10k1_ipcm_poke(struct snd_emu10k1 *emu, emu10k1_fx8010_pcm_t *ipcm)
+static int snd_emu10k1_ipcm_poke(struct snd_emu10k1 *emu,
+                                 struct snd_emu10k1_fx8010_pcm_rec *ipcm)
 {
     unsigned int i;
     int err = 0;
@@ -933,7 +977,8 @@ __error:
     return err;
 }
 
-static int snd_emu10k1_ipcm_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_pcm_t *ipcm)
+static int snd_emu10k1_ipcm_peek(struct snd_emu10k1 *emu,
+                                 struct snd_emu10k1_fx8010_pcm_rec *ipcm)
 {
     unsigned int i;
     int err = 0;
@@ -967,7 +1012,9 @@ static int snd_emu10k1_ipcm_peek(struct snd_emu10k1 *emu, emu10k1_fx8010_pcm_t *
 #define SND_EMU10K1_PLAYBACK_CHANNELS   8
 #define SND_EMU10K1_CAPTURE_CHANNELS	4
 
-static void __devinit snd_emu10k1_init_mono_control(emu10k1_fx8010_control_gpr_t *ctl, const char *name, int gpr, int defval)
+static void __devinit
+snd_emu10k1_init_mono_control(struct snd_emu10k1_fx8010_control_gpr *ctl,
+                              const char *name, int gpr, int defval)
 {
     ctl->id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
     strcpy(ctl->id.name, name);
@@ -975,10 +1022,13 @@ static void __devinit snd_emu10k1_init_mono_control(emu10k1_fx8010_control_gpr_t
     ctl->gpr[0] = gpr + 0; ctl->value[0] = defval;
     ctl->min = 0;
     ctl->max = 100;
+    ctl->tlv.p = snd_emu10k1_db_scale1;
     ctl->translation = EMU10K1_GPR_TRANSLATION_TABLE100;
 }
 
-static void __devinit snd_emu10k1_init_stereo_control(emu10k1_fx8010_control_gpr_t *ctl, const char *name, int gpr, int defval)
+static void __devinit
+snd_emu10k1_init_stereo_control(struct snd_emu10k1_fx8010_control_gpr *ctl,
+                                const char *name, int gpr, int defval)
 {
     ctl->id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
     strcpy(ctl->id.name, name);
@@ -987,10 +1037,13 @@ static void __devinit snd_emu10k1_init_stereo_control(emu10k1_fx8010_control_gpr
     ctl->gpr[1] = gpr + 1; ctl->value[1] = defval;
     ctl->min = 0;
     ctl->max = 100;
+    ctl->tlv.p = snd_emu10k1_db_scale1;
     ctl->translation = EMU10K1_GPR_TRANSLATION_TABLE100;
 }
 
-static void __devinit snd_emu10k1_init_mono_onoff_control(emu10k1_fx8010_control_gpr_t *ctl, const char *name, int gpr, int defval)
+static void __devinit
+snd_emu10k1_init_mono_onoff_control(struct snd_emu10k1_fx8010_control_gpr *ctl,
+                                    const char *name, int gpr, int defval)
 {
     ctl->id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
     strcpy(ctl->id.name, name);
@@ -1001,7 +1054,9 @@ static void __devinit snd_emu10k1_init_mono_onoff_control(emu10k1_fx8010_control
     ctl->translation = EMU10K1_GPR_TRANSLATION_ONOFF;
 }
 
-static void __devinit snd_emu10k1_init_stereo_onoff_control(emu10k1_fx8010_control_gpr_t *ctl, const char *name, int gpr, int defval)
+static void __devinit
+snd_emu10k1_init_stereo_onoff_control(struct snd_emu10k1_fx8010_control_gpr *ctl,
+                                      const char *name, int gpr, int defval)
 {
     ctl->id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
     strcpy(ctl->id.name, name);
@@ -1013,6 +1068,21 @@ static void __devinit snd_emu10k1_init_stereo_onoff_control(emu10k1_fx8010_contr
     ctl->translation = EMU10K1_GPR_TRANSLATION_ONOFF;
 }
 
+static int snd_emu10k1_audigy_dsp_convert_32_to_2x16(
+                                                     struct snd_emu10k1_fx8010_code *icode,
+                                                     u32 *ptr, int tmp, int bit_shifter16,
+                                                     int reg_in, int reg_out)
+{
+    A_OP(icode, ptr, iACC3, A_GPR(tmp + 1), reg_in, A_C_00000000, A_C_00000000);
+    A_OP(icode, ptr, iANDXOR, A_GPR(tmp), A_GPR(tmp + 1), A_GPR(bit_shifter16 - 1), A_C_00000000);
+    A_OP(icode, ptr, iTSTNEG, A_GPR(tmp + 2), A_GPR(tmp), A_C_80000000, A_GPR(bit_shifter16 - 2));
+    A_OP(icode, ptr, iANDXOR, A_GPR(tmp + 2), A_GPR(tmp + 2), A_C_80000000, A_C_00000000);
+    A_OP(icode, ptr, iANDXOR, A_GPR(tmp), A_GPR(tmp), A_GPR(bit_shifter16 - 3), A_C_00000000);
+    A_OP(icode, ptr, iMACINT0, A_GPR(tmp), A_C_00000000, A_GPR(tmp), A_C_00010000);
+    A_OP(icode, ptr, iANDXOR, reg_out, A_GPR(tmp), A_C_ffffffff, A_GPR(tmp + 2));
+    A_OP(icode, ptr, iACC3, reg_out + 1, A_GPR(tmp + 1), A_C_00000000, A_C_00000000);
+    return 1;
+}
 
 /*
  * initial DSP configuration for Audigy
@@ -1021,26 +1091,27 @@ static void __devinit snd_emu10k1_init_stereo_onoff_control(emu10k1_fx8010_contr
 static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
 {
     int err, i, z, gpr, nctl;
+    int bit_shifter16;
     const int playback = 10;
     const int capture = playback + (SND_EMU10K1_PLAYBACK_CHANNELS * 2); /* we reserve 10 voices */
     const int stereo_mix = capture + 2;
     const int tmp = 0x88;
     u32 ptr;
-    emu10k1_fx8010_code_t *icode = NULL;
-    emu10k1_fx8010_control_gpr_t *controls = NULL, *ctl;
+    struct snd_emu10k1_fx8010_code *icode = NULL;
+    struct snd_emu10k1_fx8010_control_gpr *controls = NULL, *ctl;
     u32 *gpr_map;
     mm_segment_t seg;
 
-    spin_lock_init(&emu->fx8010.irq_lock);
-    INIT_LIST_HEAD(&emu->fx8010.gpr_ctl);
-
-    if ((icode = (emu10k1_fx8010_code_t *)kzalloc(sizeof(*icode), GFP_KERNEL)) == NULL ||
-        (icode->gpr_map = (u_int32_t __user *)kcalloc(512 + 256 + 256 + 2 * 1024, sizeof(u_int32_t), GFP_KERNEL)) == NULL ||
-        (controls = kcalloc(SND_EMU10K1_GPR_CONTROLS, sizeof(*controls), GFP_KERNEL)) == NULL) {
+    if ((icode = kzalloc(sizeof(*icode), GFP_KERNEL)) == NULL ||
+        (icode->gpr_map = (u_int32_t __user *)
+         kcalloc(512 + 256 + 256 + 2 * 1024, sizeof(u_int32_t),
+                 GFP_KERNEL)) == NULL ||
+        (controls = kcalloc(SND_EMU10K1_GPR_CONTROLS,
+                            sizeof(*controls), GFP_KERNEL)) == NULL) {
         err = -ENOMEM;
         goto __err;
     }
-    gpr_map = (u32 *)icode->gpr_map;
+    gpr_map = (u32 __force *)icode->gpr_map;
 
     icode->tram_data_map = icode->gpr_map + 512;
     icode->tram_addr_map = icode->tram_data_map + 256;
@@ -1058,10 +1129,15 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
     ptr = 0;
     nctl = 0;
     gpr = stereo_mix + 10;
+    gpr_map[gpr++] = 0x00007fff;
+    gpr_map[gpr++] = 0x00008000;
+    gpr_map[gpr++] = 0x0000ffff;
+    bit_shifter16 = gpr;
 
     /* stop FX processor */
     snd_emu10k1_ptr_write(emu, A_DBG, 0, (emu->fx8010.dbg = 0) | A_DBG_SINGLE_STEP);
 
+#if 1
     /* PCM front Playback Volume (independent from stereo mix) */
     A_OP(icode, &ptr, iMAC0, A_GPR(playback), A_C_00000000, A_GPR(gpr), A_FXBUS(FXBUS_PCM_LEFT_FRONT));
     A_OP(icode, &ptr, iMAC0, A_GPR(playback+1), A_C_00000000, A_GPR(gpr+1), A_FXBUS(FXBUS_PCM_RIGHT_FRONT));
@@ -1101,10 +1177,10 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
     snd_emu10k1_init_stereo_control(&controls[nctl++], "Wave Playback Volume", gpr, 100);
     gpr += 2;
 
-    /* Music Playback */
+    /* Synth Playback */
     A_OP(icode, &ptr, iMAC0, A_GPR(stereo_mix+0), A_GPR(stereo_mix+0), A_GPR(gpr), A_FXBUS(FXBUS_MIDI_LEFT));
     A_OP(icode, &ptr, iMAC0, A_GPR(stereo_mix+1), A_GPR(stereo_mix+1), A_GPR(gpr+1), A_FXBUS(FXBUS_MIDI_RIGHT));
-    snd_emu10k1_init_stereo_control(&controls[nctl++], "Music Playback Volume", gpr, 100);
+    snd_emu10k1_init_stereo_control(&controls[nctl++], "Synth Playback Volume", gpr, 100);
     gpr += 2;
 
     /* Wave (PCM) Capture */
@@ -1113,10 +1189,10 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
     snd_emu10k1_init_stereo_control(&controls[nctl++], "PCM Capture Volume", gpr, 0);
     gpr += 2;
 
-    /* Music Capture */
+    /* Synth Capture */
     A_OP(icode, &ptr, iMAC0, A_GPR(capture+0), A_GPR(capture+0), A_GPR(gpr), A_FXBUS(FXBUS_MIDI_LEFT));
     A_OP(icode, &ptr, iMAC0, A_GPR(capture+1), A_GPR(capture+1), A_GPR(gpr+1), A_FXBUS(FXBUS_MIDI_RIGHT));
-    snd_emu10k1_init_stereo_control(&controls[nctl++], "Music Capture Volume", gpr, 0);
+    snd_emu10k1_init_stereo_control(&controls[nctl++], "Synth Capture Volume", gpr, 0);
     gpr += 2;
 
     /*
@@ -1125,7 +1201,14 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
 #define A_ADD_VOLUME_IN(var,vol,input) \
     A_OP(icode, &ptr, iMAC0, A_GPR(var), A_GPR(var), A_GPR(vol), A_EXTIN(input))
 
-    /* AC'97 Playback Volume - used only for mic */
+    /* emu1212 DSP 0 and DSP 1 Capture */
+    if (emu->card_capabilities->emu1010) {
+        A_OP(icode, &ptr, iMAC0, A_GPR(capture+0), A_GPR(capture+0), A_GPR(gpr), A_P16VIN(0x0));
+        A_OP(icode, &ptr, iMAC0, A_GPR(capture+1), A_GPR(capture+1), A_GPR(gpr+1), A_P16VIN(0x1));
+        snd_emu10k1_init_stereo_control(&controls[nctl++], "EMU Capture Volume", gpr, 0);
+        gpr += 2;
+    }
+    /* AC'97 Playback Volume - used only for mic (renamed later) */
     A_ADD_VOLUME_IN(stereo_mix, gpr, A_EXTIN_AC97_L);
     A_ADD_VOLUME_IN(stereo_mix+1, gpr+1, A_EXTIN_AC97_R);
     snd_emu10k1_init_stereo_control(&controls[nctl++], "AMic Playback Volume", gpr, 0);
@@ -1157,12 +1240,12 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
     /* Optical SPDIF Playback Volume */
     A_ADD_VOLUME_IN(stereo_mix, gpr, A_EXTIN_OPT_SPDIF_L);
     A_ADD_VOLUME_IN(stereo_mix+1, gpr+1, A_EXTIN_OPT_SPDIF_R);
-    snd_emu10k1_init_stereo_control(&controls[nctl++], "IEC958 Optical Playback Volume", gpr, 0);
+    snd_emu10k1_init_stereo_control(&controls[nctl++], SNDRV_CTL_NAME_IEC958("Optical ",PLAYBACK,VOLUME), gpr, 0);
     gpr += 2;
     /* Optical SPDIF Capture Volume */
     A_ADD_VOLUME_IN(capture, gpr, A_EXTIN_OPT_SPDIF_L);
     A_ADD_VOLUME_IN(capture+1, gpr+1, A_EXTIN_OPT_SPDIF_R);
-    snd_emu10k1_init_stereo_control(&controls[nctl++], "IEC958 Optical Capture Volume", gpr, 0);
+    snd_emu10k1_init_stereo_control(&controls[nctl++], SNDRV_CTL_NAME_IEC958("Optical ",CAPTURE,VOLUME), gpr, 0);
     gpr += 2;
 
     /* Line2 Playback Volume */
@@ -1264,11 +1347,11 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
     A_OP(icode, &ptr, iACC3, A_GPR(playback + SND_EMU10K1_PLAYBACK_CHANNELS + 3), A_GPR(playback + 3), A_C_00000000, A_C_00000000); /* rear right */
     A_OP(icode, &ptr, iACC3, A_GPR(playback + SND_EMU10K1_PLAYBACK_CHANNELS + 4), A_GPR(playback + 4), A_C_00000000, A_C_00000000); /* center */
     A_OP(icode, &ptr, iACC3, A_GPR(playback + SND_EMU10K1_PLAYBACK_CHANNELS + 5), A_GPR(playback + 5), A_C_00000000, A_C_00000000); /* LFE */
-
     if (emu->card_capabilities->spk71) {
         A_OP(icode, &ptr, iACC3, A_GPR(playback + SND_EMU10K1_PLAYBACK_CHANNELS + 6), A_GPR(playback + 6), A_C_00000000, A_C_00000000); /* side left */
         A_OP(icode, &ptr, iACC3, A_GPR(playback + SND_EMU10K1_PLAYBACK_CHANNELS + 7), A_GPR(playback + 7), A_C_00000000, A_C_00000000); /* side right */
     }
+
 
     ctl = &controls[nctl + 0];
     ctl->id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
@@ -1349,8 +1432,7 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
     A_OP(icode, &ptr, iMAC0, A_GPR(playback+5+SND_EMU10K1_PLAYBACK_CHANNELS), A_C_00000000, A_GPR(gpr), A_GPR(playback+5+SND_EMU10K1_PLAYBACK_CHANNELS));
     A_OP(icode, &ptr, iMAC0, A_GPR(playback+6+SND_EMU10K1_PLAYBACK_CHANNELS), A_C_00000000, A_GPR(gpr), A_GPR(playback+6+SND_EMU10K1_PLAYBACK_CHANNELS));
     A_OP(icode, &ptr, iMAC0, A_GPR(playback+7+SND_EMU10K1_PLAYBACK_CHANNELS), A_C_00000000, A_GPR(gpr), A_GPR(playback+7+SND_EMU10K1_PLAYBACK_CHANNELS));
-    snd_emu10k1_init_stereo_control(&controls[nctl++], "Wave Master Playback Volume", gpr, 0);
-    //snd_emu10k1_init_mono_control(&controls[nctl++], "Wave Master Playback Volume", gpr, 0);
+    snd_emu10k1_init_mono_control(&controls[nctl++], "Wave Master Playback Volume", gpr, 0);
     gpr += 2;
 
     /* analog speakers */
@@ -1358,7 +1440,6 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
     A_PUT_STEREO_OUTPUT(A_EXTOUT_AREAR_L, A_EXTOUT_AREAR_R, playback+2 + SND_EMU10K1_PLAYBACK_CHANNELS);
     A_PUT_OUTPUT(A_EXTOUT_ACENTER, playback+4 + SND_EMU10K1_PLAYBACK_CHANNELS);
     A_PUT_OUTPUT(A_EXTOUT_ALFE, playback+5 + SND_EMU10K1_PLAYBACK_CHANNELS);
-
     if (emu->card_capabilities->spk71)
         A_PUT_STEREO_OUTPUT(A_EXTOUT_ASIDE_L, A_EXTOUT_ASIDE_R, playback+6 + SND_EMU10K1_PLAYBACK_CHANNELS);
 
@@ -1367,6 +1448,13 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
 
     /* digital outputs */
     /* A_PUT_STEREO_OUTPUT(A_EXTOUT_FRONT_L, A_EXTOUT_FRONT_R, playback + SND_EMU10K1_PLAYBACK_CHANNELS); */
+    if (emu->card_capabilities->emu1010) {
+        /* EMU1010 Outputs from PCM Front, Rear, Center, LFE, Side */
+        snd_printk("EMU outputs on\n");
+        for (z = 0; z < 8; z++) {
+            A_OP(icode, &ptr, iACC3, A_EMU32OUTL(z), A_GPR(playback + SND_EMU10K1_PLAYBACK_CHANNELS + z), A_C_00000000, A_C_00000000);
+        }
+    }
 
     /* IEC958 Optical Raw Playback Switch */
     gpr_map[gpr++] = 0;
@@ -1389,7 +1477,7 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
             A_OP(icode, &ptr, iACC3, A_EXTOUT(A_EXTOUT_FRONT_L + z), A_GPR(tmp + 0), A_GPR(tmp + 1), A_C_00000000);
         }
     }
-    snd_emu10k1_init_stereo_onoff_control(controls + nctl++, "IEC958 Optical Raw Playback Switch", gpr, 0);
+    snd_emu10k1_init_stereo_onoff_control(controls + nctl++, SNDRV_CTL_NAME_IEC958("Optical Raw ",PLAYBACK,SWITCH), gpr, 0);
     gpr += 2;
 
     A_PUT_STEREO_OUTPUT(A_EXTOUT_REAR_L, A_EXTOUT_REAR_R, playback+2 + SND_EMU10K1_PLAYBACK_CHANNELS);
@@ -1397,14 +1485,68 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
     A_PUT_OUTPUT(A_EXTOUT_LFE, playback+5 + SND_EMU10K1_PLAYBACK_CHANNELS);
 
     /* ADC buffer */
+#ifdef EMU10K1_CAPTURE_DIGITAL_OUT
+    A_PUT_STEREO_OUTPUT(A_EXTOUT_ADC_CAP_L, A_EXTOUT_ADC_CAP_R, playback + SND_EMU10K1_PLAYBACK_CHANNELS);
+#else
     A_PUT_OUTPUT(A_EXTOUT_ADC_CAP_L, capture);
     A_PUT_OUTPUT(A_EXTOUT_ADC_CAP_R, capture+1);
+#endif
 
-    /* EFX capture - capture the 16 EXTINs */
-    for (z = 0; z < 16; z++) {
-        A_OP(icode, &ptr, iACC3, A_FXBUS2(z), A_C_00000000, A_C_00000000, A_EXTIN(z));
+    if (emu->card_capabilities->emu1010) {
+        snd_printk("EMU inputs on\n");
+        /* Capture 8 channels of S32_LE sound */
+
+        /* printk("emufx.c: gpr=0x%x, tmp=0x%x\n",gpr, tmp); */
+        /* For the EMU1010: How to get 32bit values from the DSP. High 16bits into L, low 16bits into R. */
+        /* A_P16VIN(0) is delayed by one sample,
+         * so all other A_P16VIN channels will need to also be delayed
+         */
+        /* Left ADC in. 1 of 2 */
+        snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp, bit_shifter16, A_P16VIN(0x0), A_FXBUS2(0) );
+        /* Right ADC in 1 of 2 */
+        gpr_map[gpr++] = 0x00000000;
+        snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp, bit_shifter16, A_GPR(gpr - 1), A_FXBUS2(2) );
+        A_OP(icode, &ptr, iACC3, A_GPR(gpr - 1), A_P16VIN(0x1), A_C_00000000, A_C_00000000);
+        gpr_map[gpr++] = 0x00000000;
+        snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp, bit_shifter16, A_GPR(gpr - 1), A_FXBUS2(4) );
+        A_OP(icode, &ptr, iACC3, A_GPR(gpr - 1), A_P16VIN(0x2), A_C_00000000, A_C_00000000);
+        gpr_map[gpr++] = 0x00000000;
+        snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp, bit_shifter16, A_GPR(gpr - 1), A_FXBUS2(6) );
+        A_OP(icode, &ptr, iACC3, A_GPR(gpr - 1), A_P16VIN(0x3), A_C_00000000, A_C_00000000);
+        /* For 96kHz mode */
+        /* Left ADC in. 2 of 2 */
+        gpr_map[gpr++] = 0x00000000;
+        snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp, bit_shifter16, A_GPR(gpr - 1), A_FXBUS2(0x8) );
+        A_OP(icode, &ptr, iACC3, A_GPR(gpr - 1), A_P16VIN(0x4), A_C_00000000, A_C_00000000);
+        /* Right ADC in 2 of 2 */
+        gpr_map[gpr++] = 0x00000000;
+        snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp, bit_shifter16, A_GPR(gpr - 1), A_FXBUS2(0xa) );
+        A_OP(icode, &ptr, iACC3, A_GPR(gpr - 1), A_P16VIN(0x5), A_C_00000000, A_C_00000000);
+        gpr_map[gpr++] = 0x00000000;
+        snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp, bit_shifter16, A_GPR(gpr - 1), A_FXBUS2(0xc) );
+        A_OP(icode, &ptr, iACC3, A_GPR(gpr - 1), A_P16VIN(0x6), A_C_00000000, A_C_00000000);
+        gpr_map[gpr++] = 0x00000000;
+        snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp, bit_shifter16, A_GPR(gpr - 1), A_FXBUS2(0xe) );
+        A_OP(icode, &ptr, iACC3, A_GPR(gpr - 1), A_P16VIN(0x7), A_C_00000000, A_C_00000000);
+
+#if 0
+        for (z = 4; z < 8; z++) {
+            A_OP(icode, &ptr, iACC3, A_FXBUS2(z), A_C_00000000, A_C_00000000, A_C_00000000);
+        }
+        for (z = 0xc; z < 0x10; z++) {
+            A_OP(icode, &ptr, iACC3, A_FXBUS2(z), A_C_00000000, A_C_00000000, A_C_00000000);
+        }
+#endif
+    } else {
+
+        /* EFX capture - capture the 16 EXTINs */
+        /* Capture 16 channels of S16_LE sound */
+        for (z = 0; z < 16; z++) {
+            A_OP(icode, &ptr, iACC3, A_FXBUS2(z), A_C_00000000, A_C_00000000, A_EXTIN(z));
+        }
     }
 
+#endif /* JCD test */
     /*
      * ok, set up done..
      */
@@ -1420,14 +1562,14 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
 
     seg = snd_enter_user();
     icode->gpr_add_control_count = nctl;
-    icode->gpr_add_controls = (emu10k1_fx8010_control_gpr_t __user *)controls;
+    icode->gpr_add_controls = (struct snd_emu10k1_fx8010_control_gpr __user *)controls;
     err = snd_emu10k1_icode_poke(emu, icode);
     snd_leave_user(seg);
 
 __err:
     kfree(controls);
     if (icode != NULL) {
-        kfree((void *)icode->gpr_map);
+        kfree((void __force *)icode->gpr_map);
         kfree(icode);
     }
     return err;
@@ -1440,14 +1582,14 @@ __err:
 
 /* when volume = max, then copy only to avoid volume modification */
 /* with iMAC0 (negative values) */
-static void __devinit _volume(emu10k1_fx8010_code_t *icode, u32 *ptr, u32 dst, u32 src, u32 vol)
+static void __devinit _volume(struct snd_emu10k1_fx8010_code *icode, u32 *ptr, u32 dst, u32 src, u32 vol)
 {
     OP(icode, ptr, iMAC0, dst, C_00000000, src, vol);
     OP(icode, ptr, iANDXOR, C_00000000, vol, C_ffffffff, C_7fffffff);
     OP(icode, ptr, iSKIP, GPR_COND, GPR_COND, CC_REG_NONZERO, C_00000001);
     OP(icode, ptr, iACC3, dst, src, C_00000000, C_00000000);
 }
-static void __devinit _volume_add(emu10k1_fx8010_code_t *icode, u32 *ptr, u32 dst, u32 src, u32 vol)
+static void __devinit _volume_add(struct snd_emu10k1_fx8010_code *icode, u32 *ptr, u32 dst, u32 src, u32 vol)
 {
     OP(icode, ptr, iANDXOR, C_00000000, vol, C_ffffffff, C_7fffffff);
     OP(icode, ptr, iSKIP, GPR_COND, GPR_COND, CC_REG_NONZERO, C_00000002);
@@ -1455,7 +1597,7 @@ static void __devinit _volume_add(emu10k1_fx8010_code_t *icode, u32 *ptr, u32 ds
     OP(icode, ptr, iSKIP, C_00000000, C_7fffffff, C_7fffffff, C_00000001);
     OP(icode, ptr, iMAC0, dst, dst, src, vol);
 }
-static void __devinit _volume_out(emu10k1_fx8010_code_t *icode, u32 *ptr, u32 dst, u32 src, u32 vol)
+static void __devinit _volume_out(struct snd_emu10k1_fx8010_code *icode, u32 *ptr, u32 dst, u32 src, u32 vol)
 {
     OP(icode, ptr, iANDXOR, C_00000000, vol, C_ffffffff, C_7fffffff);
     OP(icode, ptr, iSKIP, GPR_COND, GPR_COND, CC_REG_NONZERO, C_00000002);
@@ -1490,24 +1632,25 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
 {
     int err, i, z, gpr, tmp, playback, capture;
     u32 ptr;
-    emu10k1_fx8010_code_t *icode;
-    emu10k1_fx8010_pcm_t *ipcm = NULL;
-    emu10k1_fx8010_control_gpr_t *controls = NULL, *ctl;
+    struct snd_emu10k1_fx8010_code *icode;
+    struct snd_emu10k1_fx8010_pcm_rec *ipcm = NULL;
+    struct snd_emu10k1_fx8010_control_gpr *controls = NULL, *ctl;
     u32 *gpr_map;
     mm_segment_t seg;
 
-    spin_lock_init(&emu->fx8010.irq_lock);
-    INIT_LIST_HEAD(&emu->fx8010.gpr_ctl);
-
-    if ((icode = (emu10k1_fx8010_code_t *)kzalloc(sizeof(*icode), GFP_KERNEL)) == NULL)
+    if ((icode = kzalloc(sizeof(*icode), GFP_KERNEL)) == NULL)
         return -ENOMEM;
-    if ((icode->gpr_map = (u_int32_t __user *)kcalloc(256 + 160 + 160 + 2 * 512, sizeof(u_int32_t), GFP_KERNEL)) == NULL ||
-        (controls = kcalloc(SND_EMU10K1_GPR_CONTROLS, sizeof(emu10k1_fx8010_control_gpr_t), GFP_KERNEL)) == NULL ||
-        (ipcm = (emu10k1_fx8010_pcm_t *)kzalloc(sizeof(*ipcm), GFP_KERNEL)) == NULL) {
+    if ((icode->gpr_map = (u_int32_t __user *)
+         kcalloc(256 + 160 + 160 + 2 * 512, sizeof(u_int32_t),
+                 GFP_KERNEL)) == NULL ||
+        (controls = kcalloc(SND_EMU10K1_GPR_CONTROLS,
+                            sizeof(struct snd_emu10k1_fx8010_control_gpr),
+                            GFP_KERNEL)) == NULL ||
+        (ipcm = kzalloc(sizeof(*ipcm), GFP_KERNEL)) == NULL) {
         err = -ENOMEM;
         goto __err;
     }
-    gpr_map = (u32 *)icode->gpr_map;
+    gpr_map = (u32 __force *)icode->gpr_map;
 
     icode->tram_data_map = icode->gpr_map + 256;
     icode->tram_addr_map = icode->tram_data_map + 160;
@@ -1564,19 +1707,19 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
     ipcm->etram[0] = 0;
     ipcm->etram[1] = 1;
 
-	gpr_map[gpr + 0] = 0xfffff000;
-	gpr_map[gpr + 1] = 0xffff0000;
-	gpr_map[gpr + 2] = 0x70000000;
-	gpr_map[gpr + 3] = 0x00000007;
-	gpr_map[gpr + 4] = 0x001f << 11;
-	gpr_map[gpr + 5] = 0x001c << 11;
-	gpr_map[gpr + 6] = (0x22  - 0x01) - 1;	/* skip at 01 to 22 */
-	gpr_map[gpr + 7] = (0x22  - 0x06) - 1;	/* skip at 06 to 22 */
-	gpr_map[gpr + 8] = 0x2000000 + (2<<11);
-	gpr_map[gpr + 9] = 0x4000000 + (2<<11);
-	gpr_map[gpr + 10] = 1<<11;
-	gpr_map[gpr + 11] = (0x24 - 0x0a) - 1;	/* skip at 0a to 24 */
-	gpr_map[gpr + 12] = 0;
+    gpr_map[gpr + 0] = 0xfffff000;
+    gpr_map[gpr + 1] = 0xffff0000;
+    gpr_map[gpr + 2] = 0x70000000;
+    gpr_map[gpr + 3] = 0x00000007;
+    gpr_map[gpr + 4] = 0x001f << 11;
+    gpr_map[gpr + 5] = 0x001c << 11;
+    gpr_map[gpr + 6] = (0x22  - 0x01) - 1;	/* skip at 01 to 22 */
+    gpr_map[gpr + 7] = (0x22  - 0x06) - 1;	/* skip at 06 to 22 */
+    gpr_map[gpr + 8] = 0x2000000 + (2<<11);
+    gpr_map[gpr + 9] = 0x4000000 + (2<<11);
+    gpr_map[gpr + 10] = 1<<11;
+    gpr_map[gpr + 11] = (0x24 - 0x0a) - 1;	/* skip at 0a to 24 */
+    gpr_map[gpr + 12] = 0;
 
     /* if the trigger flag is not set, skip */
     /* 00: */ OP(icode, &ptr, iMAC0, C_00000000, GPR(ipcm->gpr_trigger), C_00000000, C_00000000);
@@ -1657,19 +1800,19 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
     snd_emu10k1_init_stereo_onoff_control(controls + i++, "Wave Capture Switch", gpr + 2, 0);
     gpr += 4;
 
-    /* Music Playback Volume */
+    /* Synth Playback Volume */
     for (z = 0; z < 2; z++)
         VOLUME_ADD(icode, &ptr, playback + z, 2 + z, gpr + z);
-    snd_emu10k1_init_stereo_control(controls + i++, "Music Playback Volume", gpr, 100);
+    snd_emu10k1_init_stereo_control(controls + i++, "Synth Playback Volume", gpr, 100);
     gpr += 2;
 
-    /* Music Capture Volume + Switch */
+    /* Synth Capture Volume + Switch */
     for (z = 0; z < 2; z++) {
         SWITCH(icode, &ptr, tmp + 0, 2 + z, gpr + 2 + z);
         VOLUME_ADD(icode, &ptr, capture + z, tmp + 0, gpr + z);
     }
-    snd_emu10k1_init_stereo_control(controls + i++, "Music Capture Volume", gpr, 0);
-    snd_emu10k1_init_stereo_onoff_control(controls + i++, "Music Capture Switch", gpr + 2, 0);
+    snd_emu10k1_init_stereo_control(controls + i++, "Synth Capture Volume", gpr, 0);
+    snd_emu10k1_init_stereo_onoff_control(controls + i++, "Synth Capture Switch", gpr + 2, 0);
     gpr += 4;
 
     /* Surround Digital Playback Volume (renamed later without Digital) */
@@ -1729,7 +1872,7 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
         /* IEC958 TTL Playback Volume */
         for (z = 0; z < 2; z++)
             VOLUME_ADDIN(icode, &ptr, playback + z, EXTIN_SPDIF_CD_L + z, gpr + z);
-        snd_emu10k1_init_stereo_control(controls + i++, "IEC958 TTL Playback Volume", gpr, 0);
+        snd_emu10k1_init_stereo_control(controls + i++, SNDRV_CTL_NAME_IEC958("TTL ",PLAYBACK,VOLUME), gpr, 0);
         gpr += 2;
 
         /* IEC958 TTL Capture Volume + Switch */
@@ -1737,8 +1880,8 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
             SWITCH_IN(icode, &ptr, tmp + 0, EXTIN_SPDIF_CD_L + z, gpr + 2 + z);
             VOLUME_ADD(icode, &ptr, capture + z, tmp + 0, gpr + z);
         }
-        snd_emu10k1_init_stereo_control(controls + i++, "IEC958 TTL Capture Volume", gpr, 0);
-        snd_emu10k1_init_stereo_onoff_control(controls + i++, "IEC958 TTL Capture Switch", gpr + 2, 0);
+        snd_emu10k1_init_stereo_control(controls + i++, SNDRV_CTL_NAME_IEC958("TTL ",CAPTURE,VOLUME), gpr, 0);
+        snd_emu10k1_init_stereo_onoff_control(controls + i++, SNDRV_CTL_NAME_IEC958("TTL ",CAPTURE,SWITCH), gpr + 2, 0);
         gpr += 4;
     }
 
@@ -1763,7 +1906,7 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
         /* IEC958 Optical Playback Volume */
         for (z = 0; z < 2; z++)
             VOLUME_ADDIN(icode, &ptr, playback + z, EXTIN_TOSLINK_L + z, gpr + z);
-        snd_emu10k1_init_stereo_control(controls + i++, "IEC958 LiveDrive Playback Volume", gpr, 0);
+        snd_emu10k1_init_stereo_control(controls + i++, SNDRV_CTL_NAME_IEC958("LiveDrive ",PLAYBACK,VOLUME), gpr, 0);
         gpr += 2;
 
         /* IEC958 Optical Capture Volume */
@@ -1771,8 +1914,8 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
             SWITCH_IN(icode, &ptr, tmp + 0, EXTIN_TOSLINK_L + z, gpr + 2 + z);
             VOLUME_ADD(icode, &ptr, capture + z, tmp + 0, gpr + z);
         }
-        snd_emu10k1_init_stereo_control(controls + i++, "IEC958 LiveDrive Capture Volume", gpr, 0);
-        snd_emu10k1_init_stereo_onoff_control(controls + i++, "IEC958 LiveDrive Capture Switch", gpr + 2, 0);
+        snd_emu10k1_init_stereo_control(controls + i++, SNDRV_CTL_NAME_IEC958("LiveDrive ",CAPTURE,VOLUME), gpr, 0);
+        snd_emu10k1_init_stereo_onoff_control(controls + i++, SNDRV_CTL_NAME_IEC958("LiveDrive ",CAPTURE,SWITCH), gpr + 2, 0);
         gpr += 4;
     }
 
@@ -1797,7 +1940,7 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
         /* IEC958 Coax Playback Volume */
         for (z = 0; z < 2; z++)
             VOLUME_ADDIN(icode, &ptr, playback + z, EXTIN_COAX_SPDIF_L + z, gpr + z);
-        snd_emu10k1_init_stereo_control(controls + i++, "IEC958 Coaxial Playback Volume", gpr, 0);
+        snd_emu10k1_init_stereo_control(controls + i++, SNDRV_CTL_NAME_IEC958("Coaxial ",PLAYBACK,VOLUME), gpr, 0);
         gpr += 2;
 
         /* IEC958 Coax Capture Volume + Switch */
@@ -1805,8 +1948,8 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
             SWITCH_IN(icode, &ptr, tmp + 0, EXTIN_COAX_SPDIF_L + z, gpr + 2 + z);
             VOLUME_ADD(icode, &ptr, capture + z, tmp + 0, gpr + z);
         }
-        snd_emu10k1_init_stereo_control(controls + i++, "IEC958 Coaxial Capture Volume", gpr, 0);
-        snd_emu10k1_init_stereo_onoff_control(controls + i++, "IEC958 Coaxial Capture Switch", gpr + 2, 0);
+        snd_emu10k1_init_stereo_control(controls + i++, SNDRV_CTL_NAME_IEC958("Coaxial ",CAPTURE,VOLUME), gpr, 0);
+        snd_emu10k1_init_stereo_onoff_control(controls + i++, SNDRV_CTL_NAME_IEC958("Coaxial ",CAPTURE,SWITCH), gpr + 2, 0);
         gpr += 4;
     }
 
@@ -1933,7 +2076,7 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
 #endif
         }
 
-        snd_emu10k1_init_stereo_onoff_control(controls + i++, "IEC958 Optical Raw Playback Switch", gpr, 0);
+        snd_emu10k1_init_stereo_onoff_control(controls + i++, SNDRV_CTL_NAME_IEC958("Optical Raw ",PLAYBACK,SWITCH), gpr, 0);
         gpr += 2;
     }
 
@@ -2034,7 +2177,7 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
         goto __err;
     seg = snd_enter_user();
     icode->gpr_add_control_count = i;
-    icode->gpr_add_controls = (emu10k1_fx8010_control_gpr_t __user *)controls;
+    icode->gpr_add_controls = (struct snd_emu10k1_fx8010_control_gpr __user *)controls;
     err = snd_emu10k1_icode_poke(emu, icode);
     snd_leave_user(seg);
     if (err >= 0)
@@ -2043,7 +2186,7 @@ __err:
     kfree(ipcm);
     kfree(controls);
     if (icode != NULL) {
-        kfree((void *)icode->gpr_map);
+        kfree((void __force *)icode->gpr_map);
         kfree(icode);
     }
     return err;
@@ -2051,6 +2194,8 @@ __err:
 
 int __devinit snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
 {
+    spin_lock_init(&emu->fx8010.irq_lock);
+    INIT_LIST_HEAD(&emu->fx8010.gpr_ctl);
     if (emu->audigy)
         return _snd_emu10k1_audigy_init_efx(emu);
     else
@@ -2066,17 +2211,19 @@ void snd_emu10k1_free_efx(struct snd_emu10k1 *emu)
         snd_emu10k1_ptr_write(emu, DBG, 0, emu->fx8010.dbg = EMU10K1_DBG_SINGLE_STEP);
 }
 
-#if 0 // FIXME: who use them?
+#if 0 /* FIXME: who use them? */
 int snd_emu10k1_fx8010_tone_control_activate(struct snd_emu10k1 *emu, int output)
 {
-    snd_runtime_check(output >= 0 && output < 6, return -EINVAL);
+    if (output < 0 || output >= 6)
+        return -EINVAL;
     snd_emu10k1_ptr_write(emu, emu->gpr_base + 0x94 + output, 0, 1);
     return 0;
 }
 
 int snd_emu10k1_fx8010_tone_control_deactivate(struct snd_emu10k1 *emu, int output)
 {
-    snd_runtime_check(output >= 0 && output < 6, return -EINVAL);
+    if (output < 0 || output >= 6)
+        return -EINVAL;
     snd_emu10k1_ptr_write(emu, emu->gpr_base + 0x94 + output, 0, 0);
     return 0;
 }
@@ -2096,7 +2243,7 @@ int snd_emu10k1_fx8010_tram_setup(struct snd_emu10k1 *emu, u32 size)
         }
         size = 0x2000 << size_reg;
     }
-    if (emu->fx8010.etram_pages.bytes == size)
+    if ((emu->fx8010.etram_pages.bytes / 2) == size)
         return 0;
     spin_lock_irq(&emu->emu_lock);
     outl(HCFG_LOCKTANKCACHE_MASK | inl(emu->port + HCFG), emu->port + HCFG);
@@ -2124,7 +2271,7 @@ int snd_emu10k1_fx8010_tram_setup(struct snd_emu10k1 *emu, u32 size)
     return 0;
 }
 
-static int snd_emu10k1_fx8010_open(snd_hwdep_t * hw, struct file *file)
+static int snd_emu10k1_fx8010_open(struct snd_hwdep * hw, struct file *file)
 {
     return 0;
 }
@@ -2137,7 +2284,8 @@ static void copy_string(char *dst, char *src, char *null, int idx)
         strcpy(dst, src);
 }
 
-static int snd_emu10k1_fx8010_info(struct snd_emu10k1 *emu, emu10k1_fx8010_info_t *info)
+static int snd_emu10k1_fx8010_info(struct snd_emu10k1 *emu,
+                                   struct snd_emu10k1_fx8010_info *info)
 {
     char **fxbus, **extin, **extout;
     unsigned short fxbus_mask, extin_mask, extout_mask;
@@ -2163,25 +2311,26 @@ static int snd_emu10k1_fx8010_info(struct snd_emu10k1 *emu, emu10k1_fx8010_info_
     return 0;
 }
 
-static int snd_emu10k1_fx8010_ioctl(snd_hwdep_t * hw, struct file *file, unsigned int cmd, unsigned long arg)
+static int snd_emu10k1_fx8010_ioctl(struct snd_hwdep * hw, struct file *file, unsigned int cmd, unsigned long arg)
 {
     struct snd_emu10k1 *emu = hw->private_data;
-    emu10k1_fx8010_info_t *info;
-    emu10k1_fx8010_code_t *icode;
-    emu10k1_fx8010_pcm_t *ipcm;
+    struct snd_emu10k1_fx8010_info *info;
+    struct snd_emu10k1_fx8010_code *icode;
+    struct snd_emu10k1_fx8010_pcm_rec *ipcm;
     unsigned int addr;
+    void __user *argp = (void __user *)arg;
     int res;
 
     switch (cmd) {
     case SNDRV_EMU10K1_IOCTL_INFO:
-        info = (emu10k1_fx8010_info_t *)kmalloc(sizeof(*info), GFP_KERNEL);
+        info = kmalloc(sizeof(*info), GFP_KERNEL);
         if (!info)
             return -ENOMEM;
         if ((res = snd_emu10k1_fx8010_info(emu, info)) < 0) {
             kfree(info);
             return res;
         }
-        if (copy_to_user((void *)arg, info, sizeof(*info))) {
+        if (copy_to_user(argp, info, sizeof(*info))) {
             kfree(info);
             return -EFAULT;
         }
@@ -2190,10 +2339,10 @@ static int snd_emu10k1_fx8010_ioctl(snd_hwdep_t * hw, struct file *file, unsigne
     case SNDRV_EMU10K1_IOCTL_CODE_POKE:
         if (!capable(CAP_SYS_ADMIN))
             return -EPERM;
-        icode = (emu10k1_fx8010_code_t *)kmalloc(sizeof(*icode), GFP_KERNEL);
+        icode = kmalloc(sizeof(*icode), GFP_KERNEL);
         if (icode == NULL)
             return -ENOMEM;
-        if (copy_from_user(icode, (void *)arg, sizeof(*icode))) {
+        if (copy_from_user(icode, argp, sizeof(*icode))) {
             kfree(icode);
             return -EFAULT;
         }
@@ -2201,25 +2350,25 @@ static int snd_emu10k1_fx8010_ioctl(snd_hwdep_t * hw, struct file *file, unsigne
         kfree(icode);
         return res;
     case SNDRV_EMU10K1_IOCTL_CODE_PEEK:
-        icode = (emu10k1_fx8010_code_t *)kmalloc(sizeof(*icode), GFP_KERNEL);
+        icode = kmalloc(sizeof(*icode), GFP_KERNEL);
         if (icode == NULL)
             return -ENOMEM;
-        if (copy_from_user(icode, (void *)arg, sizeof(*icode))) {
+        if (copy_from_user(icode, argp, sizeof(*icode))) {
             kfree(icode);
             return -EFAULT;
         }
         res = snd_emu10k1_icode_peek(emu, icode);
-        if (res == 0 && copy_to_user((void *)arg, icode, sizeof(*icode))) {
+        if (res == 0 && copy_to_user(argp, icode, sizeof(*icode))) {
             kfree(icode);
             return -EFAULT;
         }
         kfree(icode);
         return res;
     case SNDRV_EMU10K1_IOCTL_PCM_POKE:
-        ipcm = (emu10k1_fx8010_pcm_t *)kmalloc(sizeof(*ipcm), GFP_KERNEL);
+        ipcm = kmalloc(sizeof(*ipcm), GFP_KERNEL);
         if (ipcm == NULL)
             return -ENOMEM;
-        if (copy_from_user(ipcm, (void *)arg, sizeof(*ipcm))) {
+        if (copy_from_user(ipcm, argp, sizeof(*ipcm))) {
             kfree(ipcm);
             return -EFAULT;
         }
@@ -2227,15 +2376,15 @@ static int snd_emu10k1_fx8010_ioctl(snd_hwdep_t * hw, struct file *file, unsigne
         kfree(ipcm);
         return res;
     case SNDRV_EMU10K1_IOCTL_PCM_PEEK:
-        ipcm = (emu10k1_fx8010_pcm_t *)kzalloc(sizeof(*ipcm), GFP_KERNEL);
+        ipcm = kzalloc(sizeof(*ipcm), GFP_KERNEL);
         if (ipcm == NULL)
             return -ENOMEM;
-        if (copy_from_user(ipcm, (void *)arg, sizeof(*ipcm))) {
+        if (copy_from_user(ipcm, argp, sizeof(*ipcm))) {
             kfree(ipcm);
             return -EFAULT;
         }
         res = snd_emu10k1_ipcm_peek(emu, ipcm);
-        if (res == 0 && copy_to_user((void *)arg, ipcm, sizeof(*ipcm))) {
+        if (res == 0 && copy_to_user(argp, ipcm, sizeof(*ipcm))) {
             kfree(ipcm);
             return -EFAULT;
         }
@@ -2244,7 +2393,7 @@ static int snd_emu10k1_fx8010_ioctl(snd_hwdep_t * hw, struct file *file, unsigne
     case SNDRV_EMU10K1_IOCTL_TRAM_SETUP:
         if (!capable(CAP_SYS_ADMIN))
             return -EPERM;
-        if (get_user(addr, (unsigned int *)arg))
+        if (get_user(addr, (unsigned int __user *)argp))
             return -EFAULT;
         down(&emu->fx8010.lock);
         res = snd_emu10k1_fx8010_tram_setup(emu, addr);
@@ -2282,7 +2431,7 @@ static int snd_emu10k1_fx8010_ioctl(snd_hwdep_t * hw, struct file *file, unsigne
     case SNDRV_EMU10K1_IOCTL_SINGLE_STEP:
         if (!capable(CAP_SYS_ADMIN))
             return -EPERM;
-        if (get_user(addr, (unsigned int *)arg))
+        if (get_user(addr, (unsigned int __user *)argp))
             return -EFAULT;
         if (addr > 0x1ff)
             return -EINVAL;
@@ -2301,21 +2450,21 @@ static int snd_emu10k1_fx8010_ioctl(snd_hwdep_t * hw, struct file *file, unsigne
             addr = snd_emu10k1_ptr_read(emu, A_DBG, 0);
         else
             addr = snd_emu10k1_ptr_read(emu, DBG, 0);
-        if (put_user(addr, (unsigned int *)arg))
+        if (put_user(addr, (unsigned int __user *)argp))
             return -EFAULT;
         return 0;
     }
     return -ENOTTY;
 }
 
-static int snd_emu10k1_fx8010_release(snd_hwdep_t * hw, struct file *file)
+static int snd_emu10k1_fx8010_release(struct snd_hwdep * hw, struct file *file)
 {
     return 0;
 }
 
-int __devinit snd_emu10k1_fx8010_new(struct snd_emu10k1 *emu, int device, snd_hwdep_t ** rhwdep)
+int __devinit snd_emu10k1_fx8010_new(struct snd_emu10k1 *emu, int device, struct snd_hwdep ** rhwdep)
 {
-    snd_hwdep_t *hw;
+    struct snd_hwdep *hw;
     int err;
 
     if (rhwdep)
@@ -2332,3 +2481,114 @@ int __devinit snd_emu10k1_fx8010_new(struct snd_emu10k1 *emu, int device, snd_hw
         *rhwdep = hw;
     return 0;
 }
+
+#ifdef CONFIG_PM
+int __devinit snd_emu10k1_efx_alloc_pm_buffer(struct snd_emu10k1 *emu)
+{
+    int len;
+
+    len = emu->audigy ? 0x200 : 0x100;
+    emu->saved_gpr = kmalloc(len * 4, GFP_KERNEL);
+    if (! emu->saved_gpr)
+        return -ENOMEM;
+    len = emu->audigy ? 0x100 : 0xa0;
+    emu->tram_val_saved = kmalloc(len * 4, GFP_KERNEL);
+    emu->tram_addr_saved = kmalloc(len * 4, GFP_KERNEL);
+    if (! emu->tram_val_saved || ! emu->tram_addr_saved)
+        return -ENOMEM;
+    len = emu->audigy ? 2 * 1024 : 2 * 512;
+    emu->saved_icode = vmalloc(len * 4);
+    if (! emu->saved_icode)
+        return -ENOMEM;
+    return 0;
+}
+
+void snd_emu10k1_efx_free_pm_buffer(struct snd_emu10k1 *emu)
+{
+    kfree(emu->saved_gpr);
+    kfree(emu->tram_val_saved);
+    kfree(emu->tram_addr_saved);
+    vfree(emu->saved_icode);
+}
+
+/*
+ * save/restore GPR, TRAM and codes
+ */
+void snd_emu10k1_efx_suspend(struct snd_emu10k1 *emu)
+{
+    int i, len;
+
+    len = emu->audigy ? 0x200 : 0x100;
+    for (i = 0; i < len; i++)
+        emu->saved_gpr[i] = snd_emu10k1_ptr_read(emu, emu->gpr_base + i, 0);
+
+    len = emu->audigy ? 0x100 : 0xa0;
+    for (i = 0; i < len; i++) {
+        emu->tram_val_saved[i] = snd_emu10k1_ptr_read(emu, TANKMEMDATAREGBASE + i, 0);
+        emu->tram_addr_saved[i] = snd_emu10k1_ptr_read(emu, TANKMEMADDRREGBASE + i, 0);
+        if (emu->audigy) {
+            emu->tram_addr_saved[i] >>= 12;
+            emu->tram_addr_saved[i] |=
+                snd_emu10k1_ptr_read(emu, A_TANKMEMCTLREGBASE + i, 0) << 20;
+        }
+    }
+
+    len = emu->audigy ? 2 * 1024 : 2 * 512;
+    for (i = 0; i < len; i++)
+        emu->saved_icode[i] = snd_emu10k1_efx_read(emu, i);
+}
+
+void snd_emu10k1_efx_resume(struct snd_emu10k1 *emu)
+{
+    int i, len;
+
+    /* set up TRAM */
+    if (emu->fx8010.etram_pages.bytes > 0) {
+        unsigned size, size_reg = 0;
+        size = emu->fx8010.etram_pages.bytes / 2;
+        size = (size - 1) >> 13;
+        while (size) {
+            size >>= 1;
+            size_reg++;
+        }
+        outl(HCFG_LOCKTANKCACHE_MASK | inl(emu->port + HCFG), emu->port + HCFG);
+        snd_emu10k1_ptr_write(emu, TCB, 0, emu->fx8010.etram_pages.addr);
+        snd_emu10k1_ptr_write(emu, TCBS, 0, size_reg);
+        outl(inl(emu->port + HCFG) & ~HCFG_LOCKTANKCACHE_MASK, emu->port + HCFG);
+    }
+
+    if (emu->audigy)
+        snd_emu10k1_ptr_write(emu, A_DBG, 0, emu->fx8010.dbg | A_DBG_SINGLE_STEP);
+    else
+        snd_emu10k1_ptr_write(emu, DBG, 0, emu->fx8010.dbg | EMU10K1_DBG_SINGLE_STEP);
+
+    len = emu->audigy ? 0x200 : 0x100;
+    for (i = 0; i < len; i++)
+        snd_emu10k1_ptr_write(emu, emu->gpr_base + i, 0, emu->saved_gpr[i]);
+
+    len = emu->audigy ? 0x100 : 0xa0;
+    for (i = 0; i < len; i++) {
+        snd_emu10k1_ptr_write(emu, TANKMEMDATAREGBASE + i, 0,
+                              emu->tram_val_saved[i]);
+        if (! emu->audigy)
+            snd_emu10k1_ptr_write(emu, TANKMEMADDRREGBASE + i, 0,
+                                  emu->tram_addr_saved[i]);
+        else {
+            snd_emu10k1_ptr_write(emu, TANKMEMADDRREGBASE + i, 0,
+                                  emu->tram_addr_saved[i] << 12);
+            snd_emu10k1_ptr_write(emu, TANKMEMADDRREGBASE + i, 0,
+                                  emu->tram_addr_saved[i] >> 20);
+        }
+    }
+
+    len = emu->audigy ? 2 * 1024 : 2 * 512;
+    for (i = 0; i < len; i++)
+        snd_emu10k1_efx_write(emu, i, emu->saved_icode[i]);
+
+    /* start FX processor when the DSP code is updated */
+    if (emu->audigy)
+        snd_emu10k1_ptr_write(emu, A_DBG, 0, emu->fx8010.dbg);
+    else
+        snd_emu10k1_ptr_write(emu, DBG, 0, emu->fx8010.dbg);
+}
+#endif

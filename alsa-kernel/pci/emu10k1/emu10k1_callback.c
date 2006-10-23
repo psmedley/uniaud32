@@ -18,7 +18,6 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#define __NO_VERSION__
 #include "emu10k1_synth_local.h"
 #include <sound/asoundef.h>
 
@@ -28,15 +27,15 @@ enum {
 };
 
 /* Keeps track of what we are finding */
-typedef struct best_voice {
+struct best_voice {
 	unsigned int time;
 	int voice;
-} best_voice_t;
+};
 
 /*
  * prototypes
  */
-static void lookup_voices(struct snd_emux *emu, struct snd_emu10k1 *hw, best_voice_t *best, int active_only);
+static void lookup_voices(struct snd_emux *emu, struct snd_emu10k1 *hw, struct best_voice *best, int active_only);
 static struct snd_emux_voice *get_voice(struct snd_emux *emu, struct snd_emux_port *port);
 static int start_voice(struct snd_emux_voice *vp);
 static void trigger_voice(struct snd_emux_voice *vp);
@@ -88,8 +87,8 @@ int
 snd_emu10k1_synth_get_voice(struct snd_emu10k1 *hw)
 {
 	struct snd_emux *emu;
-	struct snd_emux_voice *vp;
-	best_voice_t best[V_END];
+        struct snd_emux_voice *vp;
+        struct best_voice best[V_END];
 	unsigned long flags;
 	int i;
 
@@ -210,10 +209,11 @@ update_voice(struct snd_emux_voice *vp, int update)
  */
 /* spinlock held! */
 static void
-lookup_voices(struct snd_emux *emu, struct snd_emu10k1 *hw, best_voice_t *best, int active_only)
+lookup_voices(struct snd_emux *emu, struct snd_emu10k1 *hw,
+	      struct best_voice *best, int active_only)
 {
-	struct snd_emux_voice *vp;
-	best_voice_t *bp;
+    struct snd_emux_voice *vp;
+    struct best_voice *bp;
 	int  i;
 
 	for (i = 0; i < V_END; i++) {
@@ -278,8 +278,8 @@ static struct snd_emux_voice *
 get_voice(struct snd_emux *emu, struct snd_emux_port *port)
 {
 	struct snd_emu10k1 *hw;
-	struct snd_emux_voice *vp;
-	best_voice_t best[V_END];
+        struct snd_emux_voice *vp;
+        struct best_voice best[V_END];
 	int i;
 
         hw = emu->hw;
@@ -312,8 +312,8 @@ start_voice(struct snd_emux_voice *vp)
 {
 	unsigned int temp;
 	int ch;
-	unsigned int addr, mapped_offset;
-	snd_midi_channel_t *chan;
+        unsigned int addr, mapped_offset;
+        struct snd_midi_channel *chan;
 	struct snd_emu10k1 *hw;
         struct snd_emu10k1_memblk *emem;
 

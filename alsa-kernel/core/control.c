@@ -27,16 +27,6 @@
 /* max number of user-defined controls */
 #define MAX_USER_CONTROLS       32
 
-static inline struct snd_ctl_elem_id *snd_ctl_build_ioff(struct snd_ctl_elem_id *dst_id,
-						    struct snd_kcontrol *src_kctl,
-						    unsigned int offset)
-{
-	*dst_id = src_kctl->id;
-	dst_id->index += offset;
-	dst_id->numid += offset;
-	return dst_id;
-}
-
 extern int control_id_changed;
 extern int card_id_changed;
 
@@ -222,7 +212,8 @@ struct snd_kcontrol *snd_ctl_new(struct snd_kcontrol * control, unsigned int acc
  *
  * Returns the pointer of the newly generated instance, or NULL on failure.
  */
-struct snd_kcontrol *snd_ctl_new1(struct snd_kcontrol_new const * ncontrol, void *private_data)
+struct snd_kcontrol *snd_ctl_new1(struct snd_kcontrol_new const * ncontrol,
+                                  void *private_data)
 {
     struct snd_kcontrol kctl;
     unsigned int access;
@@ -243,7 +234,8 @@ struct snd_kcontrol *snd_ctl_new1(struct snd_kcontrol_new const * ncontrol, void
     kctl.info = ncontrol->info;
     kctl.get = ncontrol->get;
     kctl.put = ncontrol->put;
-    kctl.tlv = ncontrol->tlv;
+    kctl.tlv.p =
+        ncontrol->tlv.p;
     kctl.private_value = ncontrol->private_value;
     kctl.private_data = private_data;
     return snd_ctl_new(&kctl, access);
@@ -1036,39 +1028,67 @@ static int snd_ctl_set_power_state(struct snd_card *card, unsigned int power_sta
 
 #endif
 
-static int snd_ctl_tlv_read(struct snd_card *card,
-                            struct snd_ctl_tlv __user *_tlv)
+static int snd_ctl_tlv_ioctl(struct snd_ctl_file *file,
+                             struct snd_ctl_tlv __user *_tlv,
+                             int op_flag)
 {
-    struct snd_ctl_tlv tlv;
-    struct snd_kcontrol *kctl;
-    unsigned int len;
-    int err = 0;
+	struct snd_card *card = file->card;
+	struct snd_ctl_tlv tlv;
+	struct snd_kcontrol *kctl;
+	struct snd_kcontrol_volatile *vd;
+	unsigned int len;
+	int err = 0;
 
-    if (copy_from_user(&tlv, _tlv, sizeof(tlv)))
-        return -EFAULT;
-    if (tlv.length < sizeof(unsigned int) * 3)
-        return -EINVAL;
-    down_read(&card->controls_rwsem);
-    kctl = snd_ctl_find_numid(card, tlv.numid);
-    if (kctl == NULL) {
-        err = -ENOENT;
-        goto __kctl_end;
-    }
-    if (kctl->tlv == NULL) {
-        err = -ENXIO;
-        goto __kctl_end;
-    }
-    len = kctl->tlv[1] + 2 * sizeof(unsigned int);
-    if (tlv.length < len) {
-        err = -ENOMEM;
-        goto __kctl_end;
-    }
-    if (copy_to_user(_tlv->tlv, kctl->tlv, len))
-        err = -EFAULT;
-__kctl_end:
-    up_read(&card->controls_rwsem);
-    return err;
+	if (copy_from_user(&tlv, _tlv, sizeof(tlv)))
+		return -EFAULT;
+	if (tlv.length < sizeof(unsigned int) * 3)
+		return -EINVAL;
+	down_read(&card->controls_rwsem);
+	kctl = snd_ctl_find_numid(card, tlv.numid);
+	if (kctl == NULL) {
+		err = -ENOENT;
+		goto __kctl_end;
+	}
+	if (kctl->tlv.p == NULL) {
+		err = -ENXIO;
+		goto __kctl_end;
+	}
+	vd = &kctl->vd[tlv.numid - kctl->id.numid];
+	if ((op_flag == 0 && (vd->access & SNDRV_CTL_ELEM_ACCESS_TLV_READ) == 0) ||
+	    (op_flag > 0 && (vd->access & SNDRV_CTL_ELEM_ACCESS_TLV_WRITE) == 0) ||
+	    (op_flag < 0 && (vd->access & SNDRV_CTL_ELEM_ACCESS_TLV_COMMAND) == 0)) {
+	    	err = -ENXIO;
+	    	goto __kctl_end;
+	}
+	if (vd->access & SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK) {
+		if (file && vd->owner != NULL && vd->owner != file) {
+			err = -EPERM;
+			goto __kctl_end;
+		}
+		err = kctl->tlv.c(kctl, op_flag, tlv.length, _tlv->tlv); 
+		if (err > 0) {
+			up_read(&card->controls_rwsem);
+			snd_ctl_notify(card, SNDRV_CTL_EVENT_MASK_TLV, &kctl->id);
+			return 0;
+		}
+	} else {
+		if (op_flag) {
+			err = -ENXIO;
+			goto __kctl_end;
+		}
+		len = kctl->tlv.p[1] + 2 * sizeof(unsigned int);
+		if (tlv.length < len) {
+			err = -ENOMEM;
+			goto __kctl_end;
+		}
+		if (copy_to_user(_tlv->tlv, kctl->tlv.p, len))
+			err = -EFAULT;
+	}
+      __kctl_end:
+	up_read(&card->controls_rwsem);
+	return err;
 }
+
 
 static int snd_ctl_ioctl(struct inode *inode, struct file *file,
                          unsigned int cmd, unsigned long arg)
@@ -1092,17 +1112,10 @@ static int snd_ctl_ioctl(struct inode *inode, struct file *file,
         return snd_ctl_elem_list(ctl->card, (struct snd_ctl_elem_list *) arg);
     case SNDRV_CTL_IOCTL_ELEM_INFO:
         return snd_ctl_elem_info(ctl, (struct snd_ctl_elem_info *) arg);
-#if 1
     case SNDRV_CTL_IOCTL_ELEM_READ:
         return snd_ctl_elem_read_user(ctl->card, argp);
     case SNDRV_CTL_IOCTL_ELEM_WRITE:
         return snd_ctl_elem_write_user(ctl, argp);
-#else
-    case SNDRV_CTL_IOCTL_ELEM_READ:
-        return snd_ctl_elem_read(ctl->card, (struct snd_ctl_elem_value *) arg);
-    case SNDRV_CTL_IOCTL_ELEM_WRITE:
-        return snd_ctl_elem_write(ctl, (struct snd_ctl_elem_value *) arg);
-#endif
     case SNDRV_CTL_IOCTL_ELEM_LOCK:
         return snd_ctl_elem_lock(ctl, (struct snd_ctl_elem_id *) arg);
     case SNDRV_CTL_IOCTL_ELEM_UNLOCK:
@@ -1116,7 +1129,11 @@ static int snd_ctl_ioctl(struct inode *inode, struct file *file,
     case SNDRV_CTL_IOCTL_SUBSCRIBE_EVENTS:
         return snd_ctl_subscribe_events(ctl, (int *) arg);
     case SNDRV_CTL_IOCTL_TLV_READ:
-        return snd_ctl_tlv_read(card, argp);
+        return snd_ctl_tlv_ioctl(ctl, argp, 0);
+    case SNDRV_CTL_IOCTL_TLV_WRITE:
+        return snd_ctl_tlv_ioctl(ctl, argp, 1);
+    case SNDRV_CTL_IOCTL_TLV_COMMAND:
+        return snd_ctl_tlv_ioctl(ctl, argp, -1);
     case SNDRV_CTL_IOCTL_POWER:
         if (get_user(err, (int *)arg))
             return -EFAULT;

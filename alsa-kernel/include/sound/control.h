@@ -27,6 +27,10 @@ struct snd_kcontrol;
 typedef int (snd_kcontrol_info_t) (struct snd_kcontrol * kcontrol, struct snd_ctl_elem_info * uinfo);
 typedef int (snd_kcontrol_get_t) (struct snd_kcontrol * kcontrol, struct snd_ctl_elem_value * ucontrol);
 typedef int (snd_kcontrol_put_t) (struct snd_kcontrol * kcontrol, struct snd_ctl_elem_value * ucontrol);
+typedef int (snd_kcontrol_tlv_rw_t)(struct snd_kcontrol *kcontrol,
+				    int op_flag, /* 0=read,1=write,-1=command */
+				    unsigned int size,
+				    unsigned int __user *tlv);
 
 struct snd_kcontrol_new {
     snd_ctl_elem_iface_t iface;	/* interface identifier */
@@ -39,7 +43,10 @@ struct snd_kcontrol_new {
     snd_kcontrol_info_t *info;
     snd_kcontrol_get_t *get;
     snd_kcontrol_put_t *put;
-    unsigned int *tlv;
+    union {
+        snd_kcontrol_tlv_rw_t *c;
+        unsigned int *p;
+    } tlv;
     unsigned long private_value;
 };
 
@@ -56,7 +63,10 @@ struct snd_kcontrol {
 	snd_kcontrol_info_t *info;
 	snd_kcontrol_get_t *get;
         snd_kcontrol_put_t *put;
-        unsigned int *tlv;
+	union {
+		snd_kcontrol_tlv_rw_t *c;
+		unsigned int *p;
+	} tlv;
 	unsigned long private_value;
 #ifdef TARGET_OS2
         void *private_ptr;
@@ -137,6 +147,16 @@ static inline unsigned int snd_ctl_get_ioff(struct snd_kcontrol *kctl, struct sn
 	} else {
 		return snd_ctl_get_ioffidx(kctl, id);
 	}
+}
+
+static inline struct snd_ctl_elem_id *snd_ctl_build_ioff(struct snd_ctl_elem_id *dst_id,
+						    struct snd_kcontrol *src_kctl,
+						    unsigned int offset)
+{
+	*dst_id = src_kctl->id;
+	dst_id->index += offset;
+	dst_id->numid += offset;
+	return dst_id;
 }
 
 #endif				/* __CONTROL_H */

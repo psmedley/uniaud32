@@ -85,6 +85,7 @@ typedef ULONG HFILE;
 #define OSS_MIXER_MONITOR	24	/* Monitor (usually mic) volume */
 #define OSS_MIXER_3DDEPTH       25    
 #define OSS_MIXER_3DCENTER      26
-#define OSS_MIXER_NRDEVICES	27
+#define OSS_MIXER_FRONT         27
+#define OSS_MIXER_NRDEVICES	28
 
 #endif

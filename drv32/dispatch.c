@@ -94,6 +94,9 @@ ULONG StratIOCtl(RP __far* _rp)
     ULONG card_id;
     ULONG ctl_id;
 
+#ifdef DEBUG
+    printk("StratIOCtl\n");
+#endif
     if (rp->Category != CAT_IOCTL_OSS32)
     {
 //        printk("not our cat %x. func %x\n", rp->Category, rp->Function);

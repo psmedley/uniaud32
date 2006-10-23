@@ -2,6 +2,9 @@
  *  The driver for the EMU10K1 (SB Live!) based soundcards
  *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
  *
+ *  Copyright (c) by James Courtier-Dutton <James@superbug.demon.co.uk>
+ *      Added support for Audigy 2 Value.
+ *
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+ *
  *
  */
 
@@ -120,10 +124,10 @@ static int __devinit snd_card_emu10k1_probe(struct pci_dev *pci,
 #else
 	static int dev;
 #endif
-	snd_card_t *card;
+        struct snd_card *card;
 	struct snd_emu10k1 *emu;
 #ifdef ENABLE_SYNTH
-	snd_seq_device_t *wave = NULL;
+        struct snd_seq_device *wave = NULL;
 #endif
 	int err;
 
@@ -144,67 +148,43 @@ static int __devinit snd_card_emu10k1_probe(struct pci_dev *pci,
 	if ((err = snd_emu10k1_create(card, pci, extin[dev], extout[dev],
                                       (long)max_buffer_size[dev] * 1024 * 1024,
                                       enable_ir[dev], subsystem[dev],
-				      &emu)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
-	if ((err = snd_emu10k1_pcm(emu, 0, NULL)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
-	if ((err = snd_emu10k1_pcm_mic(emu, 1, NULL)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
-	if ((err = snd_emu10k1_pcm_efx(emu, 2, NULL)) < 0) {
-		snd_card_free(card);
-		return err;
-        }
+                                      &emu)) < 0)
+            goto error;
+        card->private_data = emu;
+	if ((err = snd_emu10k1_pcm(emu, 0, NULL)) < 0)
+		goto error;
+	if ((err = snd_emu10k1_pcm_mic(emu, 1, NULL)) < 0)
+		goto error;
+	if ((err = snd_emu10k1_pcm_efx(emu, 2, NULL)) < 0)
+		goto error;
         /* This stores the periods table. */
         if (emu->card_capabilities->ca0151_chip) { /* P16V */
-            if(snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, snd_dma_pci_data(pci), 1024, &emu->p16v_buffer) < 0) {
-                snd_p16v_free(emu);
-                return -ENOMEM;
-            }
-        }
-        if ((err = snd_emu10k1_mixer(emu, 0, 3)) < 0) {
-            snd_card_free(card);
-            return err;
+            if ((err = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, snd_dma_pci_data(pci),
+                                           1024, &emu->p16v_buffer)) < 0)
+                goto error;
         }
 
-        if ((err = snd_emu10k1_timer(emu, 0)) < 0) {
-            snd_card_free(card);
-            return err;
-        }
+	if ((err = snd_emu10k1_mixer(emu, 0, 3)) < 0)
+		goto error;
 
-        if ((err = snd_emu10k1_pcm_multi(emu, 3, NULL)) < 0) {
-            snd_card_free(card);
-            return err;
-        }
+	if ((err = snd_emu10k1_timer(emu, 0)) < 0)
+		goto error;
 
+	if ((err = snd_emu10k1_pcm_multi(emu, 3, NULL)) < 0)
+		goto error;
         if (emu->card_capabilities->ca0151_chip) { /* P16V */
-            if ((err = snd_p16v_pcm(emu, 4, NULL)) < 0) {
-                snd_card_free(card);
-                return err;
-            }
+            if ((err = snd_p16v_pcm(emu, 4, NULL)) < 0)
+                goto error;
         }
-#ifdef TARGET_OS2
-	if (emu->audigy) {
-		if ((err = snd_emu10k1_audigy_midi(emu)) < 0) {
-			snd_card_free(card);
-			return err;
-		}
-	} else {
-		if ((err = snd_emu10k1_midi(emu)) < 0) {
-			snd_card_free(card);
-			return err;
-		}
-	}
-#endif
-	if ((err = snd_emu10k1_fx8010_new(emu, 0, NULL)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
+        if (emu->audigy) {
+            if ((err = snd_emu10k1_audigy_midi(emu)) < 0)
+                goto error;
+        } else {
+            if ((err = snd_emu10k1_midi(emu)) < 0)
+                goto error;
+        }
+	if ((err = snd_emu10k1_fx8010_new(emu, 0, NULL)) < 0)
+		goto error;
 #ifdef ENABLE_SYNTH
 	if (snd_seq_device_new(card, 1, SNDRV_SEQ_DEV_ID_EMU10K1_SYNTH,
 			       sizeof(struct snd_emu10k1_synth_arg), &wave) < 0 ||
@@ -223,17 +203,20 @@ static int __devinit snd_card_emu10k1_probe(struct pci_dev *pci,
 
         strcpy(card->driver, emu->card_capabilities->driver);
         strcpy(card->shortname, emu->card_capabilities->name);
-        sprintf(card->longname, "%s (rev.%d) at 0x%lx, irq %i", card->shortname, emu->revision, emu->port, emu->irq);
+        sprintf(card->longname,
+                "%s (rev.%d, serial:0x%x) at 0x%lx, irq %i",
+                card->shortname, emu->revision, emu->serial, emu->port, emu->irq);
 
-//        DebugInt3();
+	if ((err = snd_card_register(card)) < 0)
+		goto error;
 
-	if ((err = snd_card_register(card)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
 	pci_set_drvdata(pci, card);
 	dev++;
-	return 0;
+        return 0;
+
+ error:
+	snd_card_free(card);
+	return err;
 }
 
 static void __devexit snd_card_emu10k1_remove(struct pci_dev *pci)
@@ -242,65 +225,82 @@ static void __devexit snd_card_emu10k1_remove(struct pci_dev *pci)
 	pci_set_drvdata(pci, NULL);
 }
 
-#ifdef TARGET_OS2
-static struct pci_driver driver = {
-        0, 0, 0,
-/*	name:    */ "EMU10K1/Audigy",
-/*	id_table:*/ snd_emu10k1_ids,
-/*	probe:   */ snd_card_emu10k1_probe,
-/*	remove:  */ snd_card_emu10k1_remove,
-        0, 0
-};
-#else
-static struct pci_driver driver = {
-	name: "EMU10K1/Audigy",
-	id_table: snd_emu10k1_ids,
-	probe: snd_card_emu10k1_probe,
-	remove: __devexit_p(snd_card_emu10k1_remove),
-};
+#ifdef CONFIG_PM
+static int snd_emu10k1_suspend(struct pci_dev *pci, pm_message_t state)
+{
+    struct snd_card *card = pci_get_drvdata(pci);
+    struct snd_emu10k1 *emu = card->private_data;
+    snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
+
+    snd_pcm_suspend_all(emu->pcm);
+    snd_pcm_suspend_all(emu->pcm_mic);
+    snd_pcm_suspend_all(emu->pcm_efx);
+    snd_pcm_suspend_all(emu->pcm_multi);
+    snd_pcm_suspend_all(emu->pcm_p16v);
+
+    snd_ac97_suspend(emu->ac97);
+
+    snd_emu10k1_efx_suspend(emu);
+    snd_emu10k1_suspend_regs(emu);
+    if (emu->card_capabilities->ca0151_chip)
+        snd_p16v_suspend(emu);
+
+    snd_emu10k1_done(emu);
+
+    pci_disable_device(pci);
+    pci_save_state(pci);
+    pci_set_power_state(pci, PCI_D3hot);
+    return 0;
+}
+
+static int snd_emu10k1_resume(struct pci_dev *pci)
+{
+    struct snd_card *card = pci_get_drvdata(pci);
+    struct snd_emu10k1 *emu = card->private_data;
+
+    pci_set_power_state(pci, PCI_D0);
+    pci_restore_state(pci);
+    if (pci_enable_device(pci) < 0) {
+        printk(KERN_ERR "emu10k1: pci_enable_device failed, "
+               "disabling device\n");
+        snd_card_disconnect(card);
+        return -EIO;
+    }
+
+    pci_set_master(pci);
+
+    snd_emu10k1_resume_init(emu);
+    snd_emu10k1_efx_resume(emu);
+    snd_ac97_resume(emu->ac97);
+    snd_emu10k1_resume_regs(emu);
+
+    if (emu->card_capabilities->ca0151_chip)
+        snd_p16v_resume(emu);
+    snd_power_change_state(card, SNDRV_CTL_POWER_D0);
+    return 0;
+}
 #endif
+
+static struct pci_driver driver = {
+	.name = "EMU10K1_Audigy",
+	.id_table = snd_emu10k1_ids,
+	.probe = snd_card_emu10k1_probe,
+	.remove = snd_card_emu10k1_remove,
+#ifdef CONFIG_PM
+	.suspend = snd_emu10k1_suspend,
+	.resume = snd_emu10k1_resume,
+#endif
+};
 
 static int __init alsa_card_emu10k1_init(void)
 {
-	int err;
-
-	if ((err = pci_module_init(&driver)) < 0) {
-#ifdef MODULE
-//		printk(KERN_ERR "EMU10K1/Audigy soundcard not found or device busy\n");
-#endif
-		return err;
-	}
-	return 0;
+    return pci_register_driver(&driver);
 }
 
 static void __exit alsa_card_emu10k1_exit(void)
 {
-	pci_unregister_driver(&driver);
+    pci_unregister_driver(&driver);
 }
 
 module_init(alsa_card_emu10k1_init)
 module_exit(alsa_card_emu10k1_exit)
-
-#ifndef MODULE
-
-/* format is: snd-emu10k1=enable,index,id,
-			  seq_ports,max_synth_voices */
-
-static int __init alsa_card_emu10k1_setup(char *str)
-{
-	static unsigned __initdata nr_dev = 0;
-
-	if (nr_dev >= SNDRV_CARDS)
-		return 0;
-	(void)(get_option(&str,&enable[nr_dev]) == 2 &&
-	       get_option(&str,&index[nr_dev]) == 2 &&
-	       get_id(&str,&id[nr_dev]) == 2 &&
-	       get_option(&str,&seq_ports[nr_dev]) == 2 &&
-	       get_option(&str,&max_synth_voices[nr_dev]) == 2);
-	nr_dev++;
-	return 1;
-}
-
-__setup("snd-emu10k1=", alsa_card_emu10k1_setup);
-
-#endif /* ifndef MODULE */
