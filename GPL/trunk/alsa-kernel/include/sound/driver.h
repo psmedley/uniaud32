@@ -185,6 +185,7 @@ void *snd_pci_hack_alloc_consistent(struct pci_dev *hwdev, size_t size,
 #define PCI_D2     2
 #define PCI_D3hot  3
 #define PCI_D3cold 4
+#define pci_choose_state(pci,state)     ((state) ? PCI_D3hot : PCI_D0)
 #endif
 
 

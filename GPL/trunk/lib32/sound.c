@@ -531,9 +531,8 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
         return OSSERR_INVALID_PARAMETER;
     }
 
-    printk("OSS32_WaveOpen: cp1\n");
     ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
-    printk("OSS32_WaveOpen. ret: %i\n", ret);
+    //printk("OSS32_WaveOpen. ret: %i\n", ret);
     /* check if PCM already opened (stupid uniaud16.sys doesnt closes it) */
     if (ret == -16)
     {
@@ -555,7 +554,6 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
             }
         }
     }
-    printk("OSS32_WaveOpen: cp3\n");
 
     if(ret) {
         kfree(pHandle);
@@ -564,8 +562,6 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
         return UNIXToOSSError(ret);
     }
     pHandle->magic = MAGIC_WAVE_ALSA32;
-    printk("OSS32_WaveOpen: cp4\n");
-
     if (pStreamId)
         *pStreamId = (ULONG)pHandle;
     // filling opened handles table
