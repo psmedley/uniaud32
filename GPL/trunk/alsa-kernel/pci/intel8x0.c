@@ -2293,21 +2293,17 @@ static int snd_intel8x0_ich_chip_init(struct intel8x0 *chip, int probing)
 #endif
     /* put logic to right state */
     /* first clear status bits */
-#if 1 // noone do it. wtf? //vladest 06.10.2003 13:51
     status = ICH_RCS | ICH_MCINT | ICH_POINT | ICH_PIINT;
     if (chip->device_type == DEVICE_NFORCE)
         status |= ICH_NVSPINT;
     cnt = igetdword(chip, ICHREG(GLOB_STA));
     iputdword(chip, ICHREG(GLOB_STA), cnt & status);
-#endif
-    // hmm. at least we should try
-    //iputdword(chip, ICHREG(GLOB_CNT), igetdword(chip, ICHREG(GLOB_CNT)) & ~ICH_AC97COLD);
     /* ACLink on, 2 channels */
     cnt = igetdword(chip, ICHREG(GLOB_CNT));
-    // added by vladest
     //    cnt &= ~ICH_ACLINK;
     cnt &= ~(ICH_ACLINK | ICH_PCM_246_MASK);
-#ifdef CONFIG_SND_AC97_POWER_SAVE
+#if 0
+    //def CONFIG_SND_AC97_POWER_SAVE
     /* do cold reset - the full ac97 powerdown may leave the controller
      * in a warm state but actually it cannot communicate with the codec.
      */
@@ -2318,15 +2314,12 @@ static int snd_intel8x0_ich_chip_init(struct intel8x0 *chip, int probing)
     msleep(1);
 #else
     cnt |= (cnt & ICH_AC97COLD) == 0 ? ICH_AC97COLD : ICH_AC97WARM;
-
-    //  ??? 25.03.2004 by vladest  cnt &= ~(ICH_ACLINK | ICH_PCM_246_MASK);
-    // FIXME!!! cmi drivers didnt uses ICH_PCM_246_MASK
     /* finish cold or do warm reset */
 #ifdef DEBUG
     dprintf(("ICH chip init try to wake up ACLink with %x",cnt));
 #endif
     iputdword(chip, ICHREG(GLOB_CNT), cnt);
-//    mdelay(500); //vladest 06.10.2003 15:08
+    mdelay(500); //vladest 06.10.2003 15:08
     end_time = (jiffies + (HZ / 4)) + 1;
     i = 0;
     do {

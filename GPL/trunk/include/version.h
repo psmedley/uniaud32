@@ -29,11 +29,11 @@
 #define	BUILDER_NAME            "Netlabs"
 #define	PRODUCT_NAME            "OS/2 Universal Audio Driver"
 #define	VENDOR_NAME             "Netlabs"
-#define	PRODUCT_VERSION		"1.1.4"         // version
-#define	PRODUCT_TIMESTAMP	20051231L       // YYYYMMDD
+#define	PRODUCT_VERSION		"1.1.4RC2"         // version
+#define	PRODUCT_TIMESTAMP	20061125L       // YYYYMMDD
 
 
-#define ALSA_VERSION            "1.1.3"
+#define ALSA_VERSION            "1.1.4RC2"
 #define RM_DRIVER_NAME          "UNIAUD32.SYS"
 #define RM_DRIVER_DESCRIPTION   "OS/2 Universal Audio Driver"
 #define RM_ADAPTER_NAME         "OS/2 Universal Audio"

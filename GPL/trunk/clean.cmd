@@ -1,0 +1,1 @@
+xdel.exe *.sys *.sym *.obj *.lib *.err *.*~ *.lst *.map *.wmap *.lrf *.diff *.lnk *.old .cvsignore /U:rcpp.err /s /n

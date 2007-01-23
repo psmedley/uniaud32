@@ -51,7 +51,7 @@ const char szALSA[]      = "\r\n\r\nOS/2 Universal Audio Core Driver v"ALSA_VERS
 
 const char szCopyRight1[]= "Copyright 2000-2002 InnoTek Systemberatung GmbH\r\n";
 const char szCopyRight2[]= "Copyright 2000-2002 The ALSA Project\r\n\r\n";
-const char szCopyRight3[]= "Copyright 2005 Netlabs http://www.netlabs.org\r\n";
+const char szCopyRight3[]= "Copyright 2005-2006 Netlabs http://www.netlabs.org\r\n";
 //const char szCopyRight3[]= "Maintained by http://os2.kiev.ua/en/uniaud.php\r\n\r\n";
 
 const char szCodeStartEnd[] = "Code 0x%0x - 0x%0x\r\n\r\n";

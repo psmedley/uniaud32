@@ -117,7 +117,7 @@ int WaitForPCMInterrupt(void *handle, int timeout)
 
         if (j++ > timeout)
         {
-            printk("j with tout =%i\n",j);
+            printk("j with tout =%i. handle: %x\n",j, pHandle);
             return -ETIME;
         }
 
