@@ -540,17 +540,38 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
         {
             if (opened_handles[i].handle != 0)
             {
+                ret = 0;
                 if (pStreamId)
                     *pStreamId = (ULONG)opened_handles[i].handle;
-                opened_handles[i].reuse = 0; /* prevent from reusing */
+                opened_handles[i].reuse = 1; /* try to reuse */
                 if (OSS32_WaveClose((OSSSTREAMID)opened_handles[i].handle) == 0)
                 {
-                    OSS32_CloseUNI16(); /* say to UNIAUD16 that we closing now */
-                    opened_handles[i].handle = 0;
-                    ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
-                    printk("OSS32_WaveOpen. Reopen ret: %i\n", ret);
+                    if (!opened_handles[i].reuse)
+                    {
+                        //opened_handles[i].handle = 0;
+                        kfree(opened_handles[i].handle);   //free handle data
+                        ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
+                        printk("OSS32_WaveOpen. Reopen ret: %i\n", ret);
+                    }
+                    else
+                    {
+                        kfree(pHandle);
+                        pHandle = opened_handles[i].handle;
+                    }
                     break;
                 }
+            }
+        }
+    }
+    else if (ret == 0)
+    {
+        for (i=0; i < 8*256; i++)
+        {
+            if (opened_handles[i].handle == 0)
+            {
+                opened_handles[i].handle = pHandle;
+                opened_handles[i].FileId = fileid;
+                break;
             }
         }
     }
@@ -565,15 +586,6 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
     if (pStreamId)
         *pStreamId = (ULONG)pHandle;
     // filling opened handles table
-    for (i=0; i < 8*256; i++)
-    {
-        if (opened_handles[i].handle == 0)
-        {
-            opened_handles[i].handle = pHandle;
-            opened_handles[i].FileId = fileid;
-            break;
-        }
-    }
     printk("OSS32_WaveOpen. streamid %X\n",(ULONG)pHandle);
     return OSSERR_SUCCESS;
 }
@@ -603,9 +615,11 @@ OSSRET OSS32_WaveClose(OSSSTREAMID streamid)
                 ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
                 opened_handles[i].handle = 0;
                 kfree(pHandle);   //free handle data
+                OSS32_CloseUNI16(); /* say to UNIAUD16 that we closing now */
             } else
             {
                 /* prepare for reuse */
+                pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_RESET, 0);
                 pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
             }
             break;
@@ -761,7 +775,7 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
     dprintf(("OSS32_WaveSetHwParams"));
 #endif
     if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
-        printk("OSS32_WaveSetHwParams error. Invalid handle\n");
+        printk("OSS32_WaveSetHwParams error. Invalid handle: %x\n", pHandle);
         DebugInt3();
         return OSSERR_INVALID_STREAMID;
     }
@@ -1088,7 +1102,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
 
     size = min(size, samples_to_bytes(status.avail));
     if (size1 != size)
-        printk("requested size [%i] less then available [%s]\n", size1, size);
+        printk("requested size [%i] less then available [%i]\n", size1, size);
 #if 0
     if (size < per_bytes)
     { /*HACK!!!*/

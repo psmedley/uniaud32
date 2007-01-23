@@ -752,4 +752,14 @@ typedef unsigned gfp_t;
 #define cpu_relax()
 #endif
 
+static inline int snd_pci_enable_msi(struct pci_dev *dev) { return -1; }
+#undef pci_enable_msi
+#define pci_enable_msi(dev) snd_pci_enable_msi(dev)
+#undef pci_disable_msi
+#define pci_disable_msi(dev)
+
+#undef pci_intx
+#define pci_intx(pci,x)
+
+
 #endif				/* __DRIVER_H */

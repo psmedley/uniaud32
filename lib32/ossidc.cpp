@@ -153,85 +153,71 @@ OSSRET OSS32_Initialize(void)
 #else
     dprintf(("force card: %d",ForceCard));
     //Check for SoundBlaster Live!
-    if((ForceCard == CARD_NONE || ForceCard == CARD_SBLIVE) &&
-       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_emu10k1_init) == 0)
-    {
-        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_emu10k1_exit);
-    }
-//    else //Check for C-Media 8738 Audio
-    if((ForceCard == CARD_NONE || ForceCard == CARD_CMEDIA) &&
-       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cmipci_init) == 0)
-    {
-        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_cmipci_exit);
-    }
-//    else //Check for Avance Logic ALS4000 Audio
-    if((ForceCard == CARD_NONE || ForceCard == CARD_ALS4000) &&
-       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_als4000_init) == 0)
-    {
-        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_als4000_exit);
-    }
-//    else //Check for Crystal Semi 4281 Audio
-    if((ForceCard == CARD_NONE || ForceCard == CARD_CS4281) &&
-       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cs4281_init) == 0)
-    {
-        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_cs4281_exit);
-    }
-//    else //check for Crystal CS46XX
-    //Check for Intel ICH Audio
     if((ForceCard == CARD_NONE || ForceCard == CARD_ICH) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_intel8x0_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_intel8x0_exit);
     }
-//    else
-    if((ForceCard == CARD_NONE || ForceCard == CARD_CS46XX) &&
-       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cs46xx_init) == 0)
-    {
-        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_cs46xx_exit);
-    }
-//    else //check for ESS 1938
-    if((ForceCard == CARD_NONE || ForceCard == CARD_ESS1938) &&
-       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_es1938_init) == 0)
-    {
-        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_es1938_exit);
-    }
-//    else //check for ENSONIQ
-    if((ForceCard == CARD_NONE || ForceCard == CARD_ENSONIQ) &&
-       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_ens137x_init) == 0)
-    {
-        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_ens137x_exit);
-    }
-//    else //check for VIA 82XX
     if((ForceCard == CARD_NONE || ForceCard == CARD_VIA82XX) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_via82xx_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_via82xx_exit);
     }
-//    else //check for YAMAHA
+    if((ForceCard == CARD_NONE || ForceCard == CARD_SBLIVE) &&
+       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_emu10k1_init) == 0)
+    {
+        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_emu10k1_exit);
+    }
+    if((ForceCard == CARD_NONE || ForceCard == CARD_CMEDIA) &&
+       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cmipci_init) == 0)
+    {
+        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_cmipci_exit);
+    }
+    if((ForceCard == CARD_NONE || ForceCard == CARD_ALS4000) &&
+       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_als4000_init) == 0)
+    {
+        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_als4000_exit);
+    }
+    if((ForceCard == CARD_NONE || ForceCard == CARD_CS4281) &&
+       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cs4281_init) == 0)
+    {
+        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_cs4281_exit);
+    }
+    if((ForceCard == CARD_NONE || ForceCard == CARD_CS46XX) &&
+       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cs46xx_init) == 0)
+    {
+        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_cs46xx_exit);
+    }
+    if((ForceCard == CARD_NONE || ForceCard == CARD_ESS1938) &&
+       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_es1938_init) == 0)
+    {
+        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_es1938_exit);
+    }
+    if((ForceCard == CARD_NONE || ForceCard == CARD_ENSONIQ) &&
+       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_ens137x_init) == 0)
+    {
+        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_ens137x_exit);
+    }
     if((ForceCard == CARD_NONE || ForceCard == CARD_YAMAHA) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_ymfpci_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_ymfpci_exit);
     }
-//    else //check for MAESTRO
     if((ForceCard == CARD_NONE || ForceCard == CARD_MAESTRO) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_es1968_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_es1968_exit);
     }
-//    else //check for MAESTRO3
     if((ForceCard == CARD_NONE || ForceCard == CARD_MAESTRO3) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_m3_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_m3_exit);
     }
-//    else //check for ALI5451
     if((ForceCard == CARD_NONE || ForceCard == CARD_ALI5451) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_ali_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_ali_exit);
     }
-//    else
     if((ForceCard == CARD_NONE || ForceCard == CARD_TRIDENT) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_trident_init) == 0)
     {
@@ -239,14 +225,12 @@ OSSRET OSS32_Initialize(void)
     }
 
 #ifdef VORTEX
-//    else //check for Aureal VORTEX
     if((ForceCard == CARD_NONE || ForceCard == CARD_VORTEX) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_vortex_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_vortex_exit);
    }
 #endif
-//    else //check for NeoMagik
     if((ForceCard == CARD_NONE || ForceCard == CARD_NEOMAGIC) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_nm256_init) == 0)
     {
