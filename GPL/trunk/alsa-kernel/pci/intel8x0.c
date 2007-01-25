@@ -2089,14 +2089,15 @@ static int __devinit snd_intel8x0_mixer(struct intel8x0 *chip, int ac97_clock, c
     unsigned int i, codecs;
     unsigned int glob_sta = 0;
     ac97_bus_ops_t *ops;
-    static ac97_bus_ops_t standard_bus_ops = {
-        0,snd_intel8x0_codec_write,
-        snd_intel8x0_codec_read,0,0
+    static struct snd_ac97_bus_ops standard_bus_ops = {
+        .write = snd_intel8x0_codec_write,
+        .read = snd_intel8x0_codec_read,
     };
-    static ac97_bus_ops_t ali_bus_ops = {
-        0,snd_intel8x0_ali_codec_write,
-        snd_intel8x0_ali_codec_read,0,0
+    static struct snd_ac97_bus_ops ali_bus_ops = {
+        .write = snd_intel8x0_ali_codec_write,
+        .read = snd_intel8x0_ali_codec_read,
     };
+
     chip->spdif_idx = -1; /* use PCMOUT (or disabled) */
     switch (chip->device_type) {
     case DEVICE_NFORCE:
@@ -3007,13 +3008,18 @@ port_inited:
         snd_intel8x0_free(chip);
         return err;
     }
-
+#ifdef DEBUG
+    dprintf(("snd_intel8x0_create. cp1"));
+#endif
     if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops)) < 0) {
         snd_intel8x0_free(chip);
         return err;
     }
 
     *r_intel8x0 = chip;
+#ifdef DEBUG
+    dprintf(("snd_intel8x0_create. cp2"));
+#endif
     return 0;
 }
 
@@ -3111,12 +3117,18 @@ static int __devinit snd_intel8x0_probe(struct pci_dev *pci,
         //            printk(KERN_ERR "ICH: mixer error. err = %x\n",err);
         return err;
     }
+#ifdef DEBUG
+    dprintf(("snd_intel8x0_mixer passed"));
+#endif
     if ((err = snd_intel8x0_pcm(chip)) < 0) {
         snd_card_free(card);
         printk(KERN_ERR "ICH: pcm error. err = %x\n",err);
         return err;
     }
 
+#ifdef DEBUG
+    dprintf(("snd_intel8x0_pcm passed"));
+#endif
     if (mpu_port[dev] == 0x300 || mpu_port[dev] == 0x330) {
         if ((err = snd_mpu401_uart_new(card, 0, MPU401_HW_INTEL8X0,
                                        mpu_port[dev], 0,
@@ -3128,18 +3140,27 @@ static int __devinit snd_intel8x0_probe(struct pci_dev *pci,
         mpu_port[dev] = 0;
 
     snd_intel8x0_proc_init(chip);
+#ifdef DEBUG
+    dprintf(("snd_intel8x0_proc_init passed"));
+#endif
 
     sprintf(card->longname, "%s at 0x%lx, irq %i",
             card->shortname, chip->addr, chip->irq);
 
     if (! ac97_clock[dev])
         intel8x0_measure_ac97_clock(chip);
+#ifdef DEBUG
+    dprintf(("intel8x0_measure_ac97_clock passed"));
+#endif
 
     if ((err = snd_card_register(card)) < 0) {
         snd_card_free(card);
         printk(KERN_ERR "ICH: card register error. err = %x\n",err);
         return err;
     }
+#ifdef DEBUG
+    dprintf(("snd_card_register passed"));
+#endif
     pci_set_drvdata(pci, card);
     dev++;
     return 0;

@@ -794,7 +794,7 @@ static struct hda_verb ad1986a_ultra_init[] = {
 	{ 0x0f, AC_VERB_SET_CONNECT_SEL, 0x2 },
 	{ 0x1d, AC_VERB_SET_PIN_WIDGET_CONTROL, 0x24 },
 	{ 0x1d, AC_VERB_SET_AMP_GAIN_MUTE, 0xb080 },
-	{ } /* end */
+	{0} /* end */
 };
 
 /* models */
