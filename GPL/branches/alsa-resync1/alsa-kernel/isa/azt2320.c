@@ -15,7 +15,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 */
 
 /*
@@ -30,8 +30,13 @@
     activation method (full-duplex audio!).
 */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 #include <sound/cs4231.h>
@@ -40,8 +45,13 @@
 
 #define chip_t cs4231_t
 
+#define PFX "azt2320: "
+
 EXPORT_NO_SYMBOLS;
+
+MODULE_AUTHOR("Massimo Piccioni <dafastidio@libero.it>");
 MODULE_DESCRIPTION("Aztech Systems AZT2320");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Aztech Systems,PRO16V},"
 		"{Aztech Systems,AZT2320},"
@@ -187,7 +197,7 @@ static int __init snd_card_azt2320_isapnp(int dev, struct snd_card_azt2320 *acar
 		isapnp_resource_change(&pdev->irq_resource[0], snd_irq[dev], 1);
 
 	if (pdev->activate(pdev) < 0) {
-		snd_printk("AUDIO isapnp configure failure\n");
+		printk(KERN_ERR PFX "AUDIO isapnp configure failure\n");
 		return -EBUSY;
 	}
 
@@ -213,7 +223,7 @@ static int __init snd_card_azt2320_isapnp(int dev, struct snd_card_azt2320 *acar
 
 	if (pdev->activate(pdev) < 0) {
 		/* not fatal error */
-		snd_printk("MPU-401 isapnp configure failure\n");
+		printk(KERN_ERR PFX "MPU-401 isapnp configure failure\n");
 		snd_mpu_port[dev] = -1;
 		acard->devmpu = NULL;
 	} else {
@@ -325,7 +335,7 @@ static int __init snd_card_azt2320_probe(int dev)
 				snd_mpu_port[dev], 0,
 				snd_mpu_irq[dev], SA_INTERRUPT,
 				NULL) < 0)
-			snd_printk("no MPU-401 device at 0x%lx\n",
+			printk(KERN_ERR PFX "no MPU-401 device at 0x%lx\n",
 				snd_mpu_port[dev]);
 	}
 
@@ -333,7 +343,7 @@ static int __init snd_card_azt2320_probe(int dev)
 		if (snd_opl3_create(card,
 				    snd_fm_port[dev], snd_fm_port[dev] + 2,
 				    OPL3_HW_AUTO, 0, &opl3) < 0) {
-			snd_printk("no OPL device at 0x%lx-0x%lx\n",
+			printk(KERN_ERR PFX "no OPL device at 0x%lx-0x%lx\n",
 				snd_fm_port[dev], snd_fm_port[dev] + 2);
 		} else {
 			if ((error = snd_opl3_timer_new(opl3, 1, 2)) < 0) {
@@ -389,11 +399,11 @@ static int __init alsa_card_azt2320_init(void)
 #ifdef __ISAPNP__
 	cards += isapnp_probe_cards(snd_azt2320_pnpids, snd_azt2320_isapnp_detect);
 #else
-	snd_printk("you have to enable ISA PnP support.\n");
+	printk(KERN_ERR PFX "you have to enable ISA PnP support.\n");
 #endif
 #ifdef MODULE
 	if (!cards)
-		snd_printk("no AZT2320 based soundcards found\n");
+		printk(KERN_ERR "no AZT2320 based soundcards found\n");
 #endif
 	return cards ? 0 : -ENODEV;
 }
@@ -411,7 +421,7 @@ module_exit(alsa_card_azt2320_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-azt2320=snd_enable,snd_index,snd_id,snd_port,
+/* format is: snd-azt2320=snd_enable,snd_index,snd_id,snd_port,
 			       snd_wss_port,snd_mpu_port,snd_fm_port,
 			       snd_irq,snd_mpu_irq,snd_dma1,snd_dma2 */
 
@@ -435,6 +445,6 @@ static int __init alsa_card_azt2320_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-azt2320=", alsa_card_azt2320_setup);
+__setup("snd-azt2320=", alsa_card_azt2320_setup);
 
 #endif /* ifndef MODULE */

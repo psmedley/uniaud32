@@ -1605,6 +1605,7 @@ static int snd_es1968_playback_open(snd_pcm_substream_t *substream)
     es->running = 0;
     es->substream = substream;
     es->mode = ESM_MODE_PLAY;
+	INIT_LIST_HEAD(&es->list);
 
     runtime->private_data = es;
     runtime->hw = snd_es1968_playback;
@@ -1656,6 +1657,7 @@ static int snd_es1968_capture_open(snd_pcm_substream_t *substream)
     es->running = 0;
     es->substream = substream;
     es->mode = ESM_MODE_CAPTURE;
+	INIT_LIST_HEAD(&es->list);
 
     /* get mixbuffer */
     if ((es->mixbuf = snd_es1968_new_memory(chip, ESM_MIXBUF_SIZE)) == NULL) {
@@ -1716,6 +1718,7 @@ static int snd_es1968_capture_close(snd_pcm_substream_t * substream)
 
     return 0;
 }
+
 static snd_pcm_ops_t snd_es1968_playback_ops = {
     /*	open:	  */	snd_es1968_playback_open,
     /*	close:	  */	snd_es1968_playback_close,
@@ -2004,9 +2007,12 @@ static irqreturn_t snd_es1968_interrupt(int irq, void *dev_id, struct pt_regs *r
     }
 
     if (event & ESM_SOUND_IRQ) {
-        struct list_head *p;
+		struct list_head *p, *n;
         spin_lock(&chip->substream_lock);
-        list_for_each(p, &chip->substream_list) {
+		/* we need to use list_for_each_safe here since the substream
+		 * can be deleted in period_elapsed().
+		 */
+		list_for_each_safe(p, n, &chip->substream_list) {
             esschan_t *es = list_entry(p, esschan_t, list);
             if (es->running)
                 snd_es1968_update_pcm(chip, es);
@@ -2840,7 +2846,7 @@ static int __init alsa_card_es1968_init(void)
 
     if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-        //		snd_printk("ESS Maestro soundcard not found or device busy\n");
+//		snd_printk(KERN_ERR "ESS Maestro soundcard not found or device busy\n");
 #endif
         return err;
     }

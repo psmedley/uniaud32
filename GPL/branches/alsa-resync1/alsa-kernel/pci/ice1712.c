@@ -15,29 +15,44 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */      
 
 /*
   NOTES:
-  - spdif nonaudio consumer mode does not work (at least with my 
+  - spdif nonaudio consumer mode does not work (at least with my
     Sony STR-DB830)
 */
 
-#define SNDRV_MAIN_OBJECT_FILE
-
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/pcm.h>
 #include <sound/ac97_codec.h>
 #include <sound/mpu401.h>
+#include <sound/i2c.h>
+#include <sound/cs8427.h>
 #include <sound/info.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
+#include <sound/asoundef.h>
+
+#define SND_CS8403
+#define SND_CS8404
+#include <sound/cs8403.h>
+
 EXPORT_NO_SYMBOLS;
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("ICEnsemble ICE1712 (Envy24)");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Hoontech SoundTrack DSP 24},"
 		"{MidiMan M Audio,Delta 1010},"
@@ -48,13 +63,14 @@ MODULE_DEVICES("{{Hoontech SoundTrack DSP 24},"
 		"{TerraTec,EWX 24/96},"
 		"{TerraTec,EWS 88MT},"
 		"{TerraTec,EWS 88D},"
+		"{TerraTec,DMX 6Fire},"
 		"{ICEnsemble,Generic ICE1712},"
 		"{ICEnsemble,Generic Envy24}}");
-MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 
 static int snd_index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *snd_id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;		/* Enable this card */
+static int snd_omni[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS-1)] = 0};	/* Delta44 & 66 Omni I/O support */
 
 MODULE_PARM(snd_index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(snd_index, "Index value for ICE1712 soundcard.");
@@ -65,6 +81,9 @@ MODULE_PARM_SYNTAX(snd_id, SNDRV_ID_DESC);
 MODULE_PARM(snd_enable, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(snd_enable, "Enable ICE1712 soundcard.");
 MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
+MODULE_PARM(snd_omni, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
+MODULE_PARM_DESC(snd_omni, "Enable Midiman M-Audio Delta Omni I/O support.");
+MODULE_PARM_SYNTAX(snd_omni, SNDRV_ENABLED "," SNDRV_ENABLE_DESC);
 
 #ifndef PCI_VENDOR_ID_ICE
 #define PCI_VENDOR_ID_ICE		0x1412
@@ -82,6 +101,7 @@ MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
 #define ICE1712_SUBDEVICE_EWX2496	0x3b153011
 #define ICE1712_SUBDEVICE_EWS88MT	0x3b151511
 #define ICE1712_SUBDEVICE_EWS88D	0x3b152b11
+#define ICE1712_SUBDEVICE_DMX6FIRE	0x3b153811
 
 /*
  *  Direct registers
@@ -255,11 +275,13 @@ MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
 #define ICE1712_CFG_SPDIF_IN	0x02	/* S/PDIF input is present */
 #define ICE1712_CFG_SPDIF_OUT	0x01	/* S/PDIF output is present */
 
-/* MidiMan Delta GPIO definitions */
+/*
+ *  MidiMan M-Audio Delta GPIO definitions
+ */
 
-#define ICE1712_DELTA_DFS	0x01	/* fast/slow sample rate mode */
+/* MidiMan M-Audio Delta1010 */
+#define ICE1712_DELTA_DFS 0x01		/* fast/slow sample rate mode */
 					/* (>48kHz must be 1) */
-					/* all cards */
 #define ICE1712_DELTA_SPDIF_IN_STAT 0x02
 					/* S/PDIF input status */
 					/* 0 = valid signal is present */
@@ -274,39 +296,57 @@ MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
 					/* S/PDIF output status data */
 					/* all except Delta44 */
 					/* look to CS8404A datasheet */
+/* MidiMan M-Audio DeltaDiO */
+/* 0x01 = DFS */
+/* 0x02 = SPDIF_IN_STAT */
+/* 0x04 = SPDIF_OUT_STAT_CLOCK */
+/* 0x08 = SPDIF_OUT_STAT_DATA */
 #define ICE1712_DELTA_SPDIF_INPUT_SELECT 0x10
 					/* coaxial (0), optical (1) */
 					/* S/PDIF input select*/
-					/* DeltaDiO only */
+
+/* MidiMan M-Audio Delta1010 */
+/* 0x01 = DFS */
+/* 0x02 = SPDIF_IN_STAT */
+/* 0x04 = SPDIF_OUT_STAT_CLOCK */
+/* 0x08 = SPDIF_OUT_STAT_DATA */
 #define ICE1712_DELTA_WORD_CLOCK_SELECT 0x10
 					/* 1 - clock are taken from S/PDIF input */
 					/* 0 - clock are taken from Word Clock input */
-					/* Delta1010 only (affected SPMCLKIN pin of Envy24) */
-#define ICE1712_DELTA_CODEC_SERIAL_DATA 0x10
-					/* AKM4524 serial data */
-					/* Delta66 and Delta44 */
+					/* affected SPMCLKIN pin of Envy24 */
 #define ICE1712_DELTA_WORD_CLOCK_STATUS	0x20
 					/* 0 = valid word clock signal is present */
-					/* Delta1010 only */
+
+/* MidiMan M-Audio Delta66 */
+/* 0x01 = DFS */
+/* 0x02 = SPDIF_IN_STAT */
+/* 0x04 = SPDIF_OUT_STAT_CLOCK */
+/* 0x08 = SPDIF_OUT_STAT_DATA */
+#define ICE1712_DELTA_CODEC_SERIAL_DATA 0x10
+					/* AKM4524 serial data */
 #define ICE1712_DELTA_CODEC_SERIAL_CLOCK 0x20
 					/* AKM4524 serial clock */
 					/* (writting on rising edge - 0->1 */
-					/* Delta66 and Delta44 */
 #define ICE1712_DELTA_CODEC_CHIP_A	0x40
 #define ICE1712_DELTA_CODEC_CHIP_B	0x80
 					/* 1 - select chip A or B */
-					/* Delta66 and Delta44 */
 
-/* M-Audio Audiophile definitions */
+/* MidiMan M-Audio Delta44 */
 /* 0x01 = DFS */
-#define ICE1712_DELTA_AP_CCLK	0x02	/* AudioPhile only */
-					/* SPI clock */
+/* 0x10 = CODEC_SERIAL_DATA */
+/* 0x20 = CODEC_SERIAL_CLOCK */
+/* 0x40 = CODEC_CHIP_A */
+/* 0x80 = CODEC_CHIP_B */
+
+/* MidiMan M-Audio Audiophile definitions */
+/* 0x01 = DFS */
+#define ICE1712_DELTA_AP_CCLK	0x02	/* SPI clock */
 					/* (clocking on rising edge - 0->1) */
-#define ICE1712_DELTA_AP_DIN	0x04	/* AudioPhile only - data input */
-#define ICE1712_DELTA_AP_DOUT	0x08	/* AudioPhile only - data output */
-#define ICE1712_DELTA_AP_CS_DIGITAL 0x10 /* AudioPhile only - CS8427 chip select */
+#define ICE1712_DELTA_AP_DIN	0x04	/* data input */
+#define ICE1712_DELTA_AP_DOUT	0x08	/* data output */
+#define ICE1712_DELTA_AP_CS_DIGITAL 0x10 /* CS8427 chip select */
 					/* low signal = select */
-#define ICE1712_DELTA_AP_CS_CODEC 0x20	/* AudioPhile only - AK4528 chip select */
+#define ICE1712_DELTA_AP_CS_CODEC 0x20	/* AK4528 chip select */
 					/* low signal = select */
 
 /* Hoontech SoundTrack Audio DSP 24 GPIO definitions */
@@ -352,7 +392,6 @@ MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
 
 /* TerraTec EWS 88MT/D configuration definitions */
 /* RW, SDA snd SCLK are identical with EWX24/96 */
-
 #define ICE1712_EWS88_CS8414_RATE	0x07	/* CS8414 sample rate: gpio 0-2 */
 #define ICE1712_EWS88_RW		0x08	/* read/write switch for i2c; high = write  */
 #define ICE1712_EWS88_SERIAL_DATA	0x10	/* i2c & ak4524 data */
@@ -361,11 +400,21 @@ MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
 #define ICE1712_EWS88_RX2		0x80	/* MIDI2 (only on 88D) */
 
 /* i2c address */
-#define ICE1712_EWS88MT_CS8404_ADDR	0x40
-#define ICE1712_EWS88MT_INPUT_ADDR	0x46
-#define ICE1712_EWS88MT_OUTPUT_ADDR	0x48
+#define ICE1712_EWS88MT_CS8404_ADDR	(0x40>>1)
+#define ICE1712_EWS88MT_INPUT_ADDR	(0x46>>1)
+#define ICE1712_EWS88MT_OUTPUT_ADDR	(0x48>>1)
 #define ICE1712_EWS88MT_OUTPUT_SENSE	0x40	/* mask */
-#define ICE1712_EWS88D_PCF_ADDR		0x40
+#define ICE1712_EWS88D_PCF_ADDR		(0x40>>1)
+
+/* TerraTec DMX 6Fire configuration definitions */
+#define ICE1712_6FIRE_AK4524_CS_MASK	0x07	/* AK4524 chip select #1-#3 */
+#define ICE1712_6FIRE_RW		0x08	/* read/write switch for i2c; high = write  */
+#define ICE1712_6FIRE_SERIAL_DATA	0x10	/* i2c & ak4524 data */
+#define ICE1712_6FIRE_SERIAL_CLOCK	0x20	/* i2c & ak4524 clock */
+#define ICE1712_6FIRE_TX2		0x40	/* MIDI2 */
+#define ICE1712_6FIRE_RX2		0x80	/* MIDI2 */
+
+#define ICE1712_6FIRE_CS8427_ADDR	(0x22>>1) /* ?? */
 
 /*
  * DMA mode values
@@ -380,13 +429,6 @@ MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
  */
 
 typedef struct _snd_ice1712 ice1712_t;
-
-typedef struct {
-	void (*write)(ice1712_t *ice, unsigned char reg, unsigned char data);
-	unsigned char (*read)(ice1712_t *ice, unsigned char reg);
-	void (*write_bytes)(ice1712_t *ice, unsigned char reg, int bytes, unsigned char *data);
-	void (*read_bytes)(ice1712_t *ice, unsigned char reg, int bytes, unsigned char *data);
-} ice1712_cs8427_ops_t;
 
 typedef struct {
 	unsigned int subvendor;	/* PCI[2c-2f] */
@@ -452,20 +494,26 @@ struct _snd_ice1712 {
 	ice1712_eeprom_t eeprom;
 
 	unsigned int pro_volumes[20];
-	int num_adcs;
-	int num_dacs;
+	int ak4528: 1,			/* AK4524 or AK4528 */
+	    omni: 1;			/* Delta Omni I/O */
+	int num_adcs;			/* AK4524 or AK4528 ADCs */
+	int num_dacs;			/* AK4524 or AK4528 DACs */
+	int num_total_dacs;		/* total DACs */
 	unsigned char ak4524_images[4][8];
+	unsigned char ak4524_ipga_gain[4][2];
 	unsigned char hoontech_boxbits[4];
 	unsigned int hoontech_config;
 	unsigned short hoontech_boxconfig[4];
 
+	snd_i2c_bus_t *i2c;		/* I2C bus */
+	snd_i2c_device_t *cs8404;	/* CS8404A I2C device */
+	snd_i2c_device_t *cs8427;	/* CS8427 I2C device */
+	snd_i2c_device_t *pcf8574[2];	/* PCF8574 Output/Input (EWS88MT) */
+	snd_i2c_device_t *pcf8575;	/* PCF8575 (EWS88D) */
+	
 	unsigned char cs8403_spdif_bits;
 	unsigned char cs8403_spdif_stream_bits;
 	snd_kcontrol_t *spdif_stream_ctl;
-
-	unsigned char cs8427_spdif_status[5];
-	unsigned char cs8427_spdif_stream_status[5];
-	ice1712_cs8427_ops_t *cs8427_ops;
 
 	unsigned char gpio_direction, gpio_write_mask;
 };
@@ -650,7 +698,7 @@ static int snd_ice1712_digmix_route_ac97_put(snd_kcontrol_t *kcontrol, snd_ctl_e
 	return val != nval;
 }
 
-static snd_kcontrol_new_t snd_ice1712_mixer_digmix_route_ac97 = {
+static snd_kcontrol_new_t snd_ice1712_mixer_digmix_route_ac97 __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"Digital Mixer To AC97",0,0,
@@ -669,6 +717,7 @@ static snd_kcontrol_new_t snd_ice1712_mixer_digmix_route_ac97 = {
 
 /*
  */
+
 static void snd_ice1712_delta_cs8403_spdif_write(ice1712_t *ice, unsigned char bits)
 {
 	unsigned char tmp, mask1, mask2;
@@ -691,122 +740,6 @@ static void snd_ice1712_delta_cs8403_spdif_write(ice1712_t *ice, unsigned char b
 	tmp &= ~mask1;
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DATA, tmp);
 	up(&ice->gpio_mutex);
-}
-
-static void snd_ice1712_decode_cs8403_spdif_bits(snd_aes_iec958_t *diga,
-						 unsigned char bits)
-{
-	if (bits & 0x01) {	/* consumer */
-		if (!(bits & 0x02))
-			diga->status[0] |= IEC958_AES0_NONAUDIO;
-		if (!(bits & 0x08))
-			diga->status[0] |= IEC958_AES0_CON_NOT_COPYRIGHT;
-		switch (bits & 0x10) {
-		case 0x10: diga->status[0] |= IEC958_AES0_CON_EMPHASIS_NONE; break;
-		case 0x00: diga->status[0] |= IEC958_AES0_CON_EMPHASIS_5015; break;
-		}
-		if (!(bits & 0x80))
-			diga->status[1] |= IEC958_AES1_CON_ORIGINAL;
-		switch (bits & 0x60) {
-		case 0x00: diga->status[1] |= IEC958_AES1_CON_MAGNETIC_ID; break;
-		case 0x20: diga->status[1] |= IEC958_AES1_CON_DIGDIGCONV_ID; break;
-		case 0x40: diga->status[1] |= IEC958_AES1_CON_LASEROPT_ID; break;
-		case 0x60: diga->status[1] |= IEC958_AES1_CON_GENERAL; break;
-		}
-		switch (bits & 0x06) {
-		case 0x00: diga->status[3] |= IEC958_AES3_CON_FS_44100; break;
-		case 0x02: diga->status[3] |= IEC958_AES3_CON_FS_48000; break;
-		case 0x04: diga->status[3] |= IEC958_AES3_CON_FS_32000; break;
-		}
-	} else {
-		diga->status[0] = IEC958_AES0_PROFESSIONAL;
-		switch (bits & 0x18) {
-		case 0x00: diga->status[0] |= IEC958_AES0_PRO_FS_32000; break;
-		case 0x10: diga->status[0] |= IEC958_AES0_PRO_FS_44100; break;
-		case 0x08: diga->status[0] |= IEC958_AES0_PRO_FS_48000; break;
-		case 0x18: diga->status[0] |= IEC958_AES0_PRO_FS_NOTID; break;
-		}
-		switch (bits & 0x60) {
-		case 0x20: diga->status[0] |= IEC958_AES0_PRO_EMPHASIS_NONE; break;
-		case 0x40: diga->status[0] |= IEC958_AES0_PRO_EMPHASIS_5015; break;
-		case 0x00: diga->status[0] |= IEC958_AES0_PRO_EMPHASIS_CCITT; break;
-		case 0x60: diga->status[0] |= IEC958_AES0_PRO_EMPHASIS_NOTID; break;
-		}
-		if (bits & 0x80)
-			diga->status[1] |= IEC958_AES1_PRO_MODE_STEREOPHONIC;
-	}
-}
-
-static unsigned char snd_ice1712_encode_cs8403_spdif_bits(snd_aes_iec958_t *diga)
-{
-	unsigned char bits;
-
-	if (!(diga->status[0] & IEC958_AES0_PROFESSIONAL)) {
-		bits = 0x01;	/* consumer mode */
-		if (diga->status[0] & IEC958_AES0_NONAUDIO)
-			bits &= ~0x02;
-		else
-			bits |= 0x02;
-		if (diga->status[0] & IEC958_AES0_CON_NOT_COPYRIGHT)
-			bits &= ~0x08;
-		else
-			bits |= 0x08;
-		switch (diga->status[0] & IEC958_AES0_CON_EMPHASIS) {
-		default:
-		case IEC958_AES0_CON_EMPHASIS_NONE: bits |= 0x10; break;
-		case IEC958_AES0_CON_EMPHASIS_5015: bits |= 0x00; break;
-		}
-		if (diga->status[1] & IEC958_AES1_CON_ORIGINAL)
-			bits &= ~0x80;
-		else
-			bits |= 0x80;
-		if ((diga->status[1] & IEC958_AES1_CON_CATEGORY) == IEC958_AES1_CON_GENERAL)
-			bits |= 0x60;
-		else {
-			switch(diga->status[1] & IEC958_AES1_CON_MAGNETIC_MASK) {
-			case IEC958_AES1_CON_MAGNETIC_ID:
-				bits |= 0x00; break;
-			case IEC958_AES1_CON_DIGDIGCONV_ID:
-				bits |= 0x20; break;
-			default:
-			case IEC958_AES1_CON_LASEROPT_ID:
-				bits |= 0x40; break;
-			}
-		}
-		switch (diga->status[3] & IEC958_AES3_CON_FS) {
-		default:
-		case IEC958_AES3_CON_FS_44100: bits |= 0x00; break;
-		case IEC958_AES3_CON_FS_48000: bits |= 0x02; break;
-		case IEC958_AES3_CON_FS_32000: bits |= 0x04; break;
-		}
-	} else {
-		bits = 0x00;	/* professional mode */
-		if (diga->status[0] & IEC958_AES0_NONAUDIO)
-			bits &= ~0x02;
-		else
-			bits |= 0x02;
-		/* CHECKME: I'm not sure about the bit order in val here */
-		switch (diga->status[0] & IEC958_AES0_PRO_FS) {
-		case IEC958_AES0_PRO_FS_32000:	bits |= 0x00; break;
-		case IEC958_AES0_PRO_FS_44100:	bits |= 0x10; break;	/* 44.1kHz */
-		case IEC958_AES0_PRO_FS_48000:	bits |= 0x08; break;	/* 48kHz */
-		default:
-		case IEC958_AES0_PRO_FS_NOTID: bits |= 0x18; break;
-		}
-		switch (diga->status[0] & IEC958_AES0_PRO_EMPHASIS) {
-		case IEC958_AES0_PRO_EMPHASIS_NONE: bits |= 0x20; break;
-		case IEC958_AES0_PRO_EMPHASIS_5015: bits |= 0x40; break;
-		case IEC958_AES0_PRO_EMPHASIS_CCITT: bits |= 0x00; break;
-		default:
-		case IEC958_AES0_PRO_EMPHASIS_NOTID: bits |= 0x60; break;
-		}
-		switch (diga->status[1] & IEC958_AES1_PRO_MODE) {
-		case IEC958_AES1_PRO_MODE_TWO:
-		case IEC958_AES1_PRO_MODE_STEREOPHONIC: bits |= 0x00; break;
-		default: bits |= 0x80; break;
-		}
-	}
-	return bits;
 }
 
 
@@ -840,7 +773,7 @@ static void restore_gpio_status(ice1712_t *ice, unsigned char *tmp)
 }
 
 /*
- * CS8427 via SPI mode (for Audiophile)
+ * CS8427 via SPI mode (for Audiophile), emulated I2C
  */
 
 /* send 8 bits */
@@ -898,105 +831,69 @@ static void ap_cs8427_codec_deassert(ice1712_t *ice, unsigned char tmp)
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DATA, tmp);
 }
 
-/* write a register */
-static void snd_ice1712_ap_cs8427_write(ice1712_t *ice, unsigned char reg, unsigned char data)
-{
-	unsigned char tmp;
-	down(&ice->gpio_mutex);
-	tmp = ap_cs8427_codec_select(ice);
-	ap_cs8427_write_byte(ice, 0x20, tmp); /* address + write mode */
-	ap_cs8427_write_byte(ice, reg, tmp);
-	ap_cs8427_write_byte(ice, data, tmp);
-	ap_cs8427_codec_deassert(ice, tmp);
-	up(&ice->gpio_mutex);
-}
-
-/* read a register */
-static unsigned char snd_ice1712_ap_cs8427_read(ice1712_t *ice, unsigned char reg)
-{
-	unsigned char tmp, data;
-
-	down(&ice->gpio_mutex);
-	tmp = ap_cs8427_codec_select(ice);
-	ap_cs8427_write_byte(ice, 0x20, tmp); /* address + write mode */
-	ap_cs8427_write_byte(ice, reg, tmp);
-	ap_cs8427_codec_deassert(ice, tmp);
-	udelay(5);
-	tmp = ap_cs8427_codec_select(ice);
-	ap_cs8427_write_byte(ice, 0x21, tmp); /* address + read mode */
-	data = ap_cs8427_read_byte(ice, tmp);
-	ap_cs8427_codec_deassert(ice, tmp);
-	up(&ice->gpio_mutex);
-	return data;
-}
-
 /* sequential write */
-static void snd_ice1712_ap_cs8427_write_bytes(ice1712_t *ice, unsigned char reg, int bytes, unsigned char *data)
+static int ap_cs8427_sendbytes(snd_i2c_device_t *device, unsigned char *bytes, int count)
 {
-#if 1
+	ice1712_t *ice = snd_magic_cast(ice1712_t, device->bus->private_data, return -EIO);
+	int res = count;
 	unsigned char tmp;
+
 	down(&ice->gpio_mutex);
 	tmp = ap_cs8427_codec_select(ice);
-	ap_cs8427_write_byte(ice, 0x20, tmp); /* address + write mode */
-	ap_cs8427_write_byte(ice, reg | 0x80, tmp); /* incremental mode */
-	while (bytes-- > 0)
-		ap_cs8427_write_byte(ice, *data++, tmp);
+	ap_cs8427_write_byte(ice, (device->addr << 1) | 0, tmp); /* address + write mode */
+	while (count-- > 0)
+		ap_cs8427_write_byte(ice, *bytes++, tmp);
 	ap_cs8427_codec_deassert(ice, tmp);
 	up(&ice->gpio_mutex);
-#else
-	while (bytes-- > 0)
-		snd_ice1712_ap_cs8427_write(ice, reg++, *data++);
-#endif
+	return res;
 }
 
 /* sequential read */
-static void snd_ice1712_ap_cs8427_read_bytes(ice1712_t *ice, unsigned char reg, int bytes, unsigned char *data)
+static int ap_cs8427_readbytes(snd_i2c_device_t *device, unsigned char *bytes, int count)
 {
-#if 0 // is this working?  -- ti
+	ice1712_t *ice = snd_magic_cast(ice1712_t, device->bus->private_data, return -EIO);
+	int res = count;
 	unsigned char tmp;
-	
+
 	down(&ice->gpio_mutex);
 	tmp = ap_cs8427_codec_select(ice);
-	ap_cs8427_write_byte(ice, 0x20, tmp); /* address + write mode */
-	ap_cs8427_write_byte(ice, reg | 0x80, tmp); /* incremental mode */
-	ap_cs8427_codec_deassert(ice, tmp);
-	udelay(5);
-	tmp = ap_cs8427_codec_select(ice);
-	ap_cs8427_write_byte(ice, 0x21, tmp); /* address + read mode */
-	while (bytes-- > 0)
-		*data++ = ap_cs8427_read_byte(ice, tmp);
+	ap_cs8427_write_byte(ice, (device->addr << 1) | 1, tmp); /* address + read mode */
+	while (count-- > 0)
+		*bytes++ = ap_cs8427_read_byte(ice, tmp);
 	ap_cs8427_codec_deassert(ice, tmp);
 	up(&ice->gpio_mutex);
-#else
-	while (bytes-- > 0)
-		*data++ = snd_ice1712_ap_cs8427_read(ice, reg++); 
-#endif
+	return res;
+}
+
+static int ap_cs8427_probeaddr(snd_i2c_bus_t *bus, unsigned short addr)
+{
+	if (addr == 0x10)
+		return 1;
+	return -ENOENT;
 }
 
 #ifdef TARGET_OS2
 static ice1712_cs8427_ops_t snd_ice1712_ap_cs8427_ops = {
-	snd_ice1712_ap_cs8427_write,
-	snd_ice1712_ap_cs8427_read,
-	snd_ice1712_ap_cs8427_write_bytes,
-	snd_ice1712_ap_cs8427_read_bytes
+	ap_cs8427_sendbytes,
+	ap_cs8427_readbytes,
+	ap_cs8427_probeaddr,
 };
 #else
-static ice1712_cs8427_ops_t snd_ice1712_ap_cs8427_ops = {
-	write: snd_ice1712_ap_cs8427_write,
-	read: snd_ice1712_ap_cs8427_read,
-	write_bytes: snd_ice1712_ap_cs8427_write_bytes,
-	read_bytes: snd_ice1712_ap_cs8427_read_bytes,
+static snd_i2c_ops_t ap_cs8427_i2c_ops = {
+	sendbytes: ap_cs8427_sendbytes,
+	readbytes: ap_cs8427_readbytes,
+	probeaddr: ap_cs8427_probeaddr,
 };
 #endif
-
 
 /*
  * access via i2c mode (for EWX 24/96, EWS 88MT&D)
  */
 
 /* send SDA and SCL */
-static void ewx_i2c_set(ice1712_t *ice, int clk, int data)
+static void ewx_i2c_setlines(snd_i2c_bus_t *bus, int clk, int data)
 {
+	ice1712_t *ice = snd_magic_cast(ice1712_t, bus->private_data, return);
 	unsigned char tmp = 0;
 	if (clk)
 		tmp |= ICE1712_EWX2496_SERIAL_CLOCK;
@@ -1006,234 +903,88 @@ static void ewx_i2c_set(ice1712_t *ice, int clk, int data)
 	udelay(5);
 }
 
-/* send one bit */
-static void ewx_i2c_send(ice1712_t *ice, int data)
+static int ewx_i2c_getclock(snd_i2c_bus_t *bus)
 {
-	ewx_i2c_set(ice, 0, data);
-	ewx_i2c_set(ice, 1, data);
-	ewx_i2c_set(ice, 0, data);
+	ice1712_t *ice = snd_magic_cast(ice1712_t, bus->private_data, return -EIO);
+	return snd_ice1712_read(ice, ICE1712_IREG_GPIO_DATA) & ICE1712_EWX2496_SERIAL_CLOCK ? 1 : 0;
 }
 
-/* start i2c */
-static void ewx_i2c_start(ice1712_t *ice)
+static int ewx_i2c_getdata(snd_i2c_bus_t *bus, int ack)
 {
-	ewx_i2c_set(ice, 0, 1);
-	ewx_i2c_set(ice, 1, 1);
-	ewx_i2c_set(ice, 1, 0);
-	ewx_i2c_set(ice, 0, 0);
-}
-
-/* stop i2c */
-static void ewx_i2c_stop(ice1712_t *ice)
-{
-	ewx_i2c_set(ice, 0, 0);
-	ewx_i2c_set(ice, 1, 0);
-	ewx_i2c_set(ice, 1, 1);
-}
-
-/* send a byte and get ack */
-static void ewx_i2c_write(ice1712_t *ice, unsigned char val)
-{
-	int i;
-	for (i = 7; i >= 0; i--)
-		ewx_i2c_send(ice, val & (1 << i));
-	ewx_i2c_send(ice, 1); /* ack */
-}
-
-/* prepare for write and send i2c_start */
-static void ewx_i2c_write_prepare(ice1712_t *ice)
-{
-	/* set RW high */
-	unsigned char mask = ICE1712_EWX2496_RW;
-	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_EWX2496)
-		mask |= ICE1712_EWX2496_AK4524_CS; /* CS high also */
-	snd_ice1712_gpio_write_bits(ice, mask, mask);
-	/* set direction both SDA and SCL write */
-	ice->gpio_direction |= ICE1712_EWX2496_SERIAL_CLOCK|ICE1712_EWX2496_SERIAL_DATA;
-	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DIRECTION, ice->gpio_direction);
-	snd_ice1712_write(ice, ICE1712_IREG_GPIO_WRITE_MASK, ~(ICE1712_EWX2496_SERIAL_CLOCK|ICE1712_EWX2496_SERIAL_DATA));
-			  
-	ewx_i2c_start(ice);
-}
-
-/* read a bit from serial data;
-   this changes write mask
-   SDA direction must be set to low
-*/
-static int ewx_i2c_read_bit(ice1712_t *ice)
-{
-	int data;
+	ice1712_t *ice = snd_magic_cast(ice1712_t, bus->private_data, return -EIO);
+	int bit;
 	/* set RW pin to low */
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_WRITE_MASK, ~ICE1712_EWX2496_RW);
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DATA, 0);
-	data = (snd_ice1712_read(ice, ICE1712_IREG_GPIO_DATA) & ICE1712_EWX2496_SERIAL_DATA) ? 1 : 0;
+	if (ack)
+		udelay(5);
+	bit = snd_ice1712_read(ice, ICE1712_IREG_GPIO_DATA) & ICE1712_EWX2496_SERIAL_DATA ? 1 : 0;
 	/* set RW pin to high */
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DATA, ICE1712_EWX2496_RW);
-	return data;
-}
-
-static void ewx_i2c_read_prepare(ice1712_t *ice)
-{
-	/* set SCL - write, SDA - read */
-	ice->gpio_direction |= ICE1712_EWX2496_SERIAL_CLOCK;
-	ice->gpio_direction &= ~ICE1712_EWX2496_SERIAL_DATA;
-	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DIRECTION, ice->gpio_direction);
-	/* set write mask only to SCL */
-	snd_ice1712_write(ice, ICE1712_IREG_GPIO_WRITE_MASK, ~ICE1712_EWX2496_SERIAL_CLOCK);
-}
-
-static void ewx_i2c_read_post(ice1712_t *ice)
-{
-	/* reset direction both SDA and SCL to write */
-	ice->gpio_direction |= ICE1712_EWX2496_SERIAL_CLOCK|ICE1712_EWX2496_SERIAL_DATA;
-	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DIRECTION, ice->gpio_direction);
-	snd_ice1712_write(ice, ICE1712_IREG_GPIO_WRITE_MASK, ~(ICE1712_EWX2496_SERIAL_CLOCK|ICE1712_EWX2496_SERIAL_DATA));
-}
-
-/* read a byte (and ack bit) */
-static unsigned char ewx_i2c_read(ice1712_t *ice)
-{
-	int i;
-	unsigned char data = 0;
-
-	for (i = 7; i >= 0; i--) {
-		ewx_i2c_set(ice, 1, 0);
-		data |= ewx_i2c_read_bit(ice) << i;
-		/* reset write mask */
-		snd_ice1712_write(ice, ICE1712_IREG_GPIO_WRITE_MASK,
-				  ~ICE1712_EWX2496_SERIAL_CLOCK);
-		ewx_i2c_set(ice, 0, 0);
-	}
 	/* reset write mask */
-	ewx_i2c_read_post(ice);
-	ewx_i2c_send(ice, 1); /* ack */
-	return data;
+	snd_ice1712_write(ice, ICE1712_IREG_GPIO_WRITE_MASK, ~ICE1712_EWX2496_SERIAL_CLOCK);
+	return bit;
 }
 
-
-/*
- * CS8427 on EWX 24/96; Address 0x20
- */
-/* write a register */
-static void snd_ice1712_ewx_cs8427_write(ice1712_t *ice, unsigned char reg, unsigned char data)
+static void ewx_i2c_start(snd_i2c_bus_t *bus)
 {
-	unsigned char saved[2];
+	ice1712_t *ice = snd_magic_cast(ice1712_t, bus->private_data, return);
+	unsigned char mask;
 
-	save_gpio_status(ice, saved);
-	ewx_i2c_write_prepare(ice);
-	ewx_i2c_write(ice, 0x20);  /* address + write */
-	ewx_i2c_write(ice, reg); /* MAP */
-	ewx_i2c_write(ice, data);
-	ewx_i2c_stop(ice);
-	restore_gpio_status(ice, saved);
+	save_gpio_status(ice, (unsigned char *)&bus->private_value);
+	/* set RW high */
+	mask = ICE1712_EWX2496_RW;
+	switch (ice->eeprom.subvendor) {
+	case ICE1712_SUBDEVICE_EWX2496:
+		mask |= ICE1712_EWX2496_AK4524_CS; /* CS high also */
+		break;
+	case ICE1712_SUBDEVICE_DMX6FIRE:
+		mask |= ICE1712_6FIRE_AK4524_CS_MASK; /* CS high also */
+		break;
+	}
+	snd_ice1712_gpio_write_bits(ice, mask, mask);
 }
 
-/* sequential write */
-static void snd_ice1712_ewx_cs8427_write_bytes(ice1712_t *ice, unsigned char reg, int bytes, unsigned char *data)
+static void ewx_i2c_stop(snd_i2c_bus_t *bus)
 {
-	unsigned char saved[2];
-
-	save_gpio_status(ice, saved);
-	ewx_i2c_write_prepare(ice);
-	ewx_i2c_write(ice, 0x20);  /* address + write */
-	ewx_i2c_write(ice, reg | 0x80); /* MAP incremental mode */
-	while (bytes-- > 0)
-		ewx_i2c_write(ice, *data++);
-	ewx_i2c_stop(ice);
-	restore_gpio_status(ice, saved);
+	ice1712_t *ice = snd_magic_cast(ice1712_t, bus->private_data, return);
+	restore_gpio_status(ice, (unsigned char *)&bus->private_value);
 }
 
-/* read a register */
-static unsigned char snd_ice1712_ewx_cs8427_read(ice1712_t *ice, unsigned char reg)
+static void ewx_i2c_direction(snd_i2c_bus_t *bus, int clock, int data)
 {
-	unsigned char saved[2];
-	unsigned char data;
+	ice1712_t *ice = snd_magic_cast(ice1712_t, bus->private_data, return);
+	unsigned char mask = 0;
 
-	save_gpio_status(ice, saved);
-	ewx_i2c_write_prepare(ice);
-	ewx_i2c_write(ice, 0x20);  /* address + write */
-	ewx_i2c_write(ice, reg); /* MAP */
-	/* we set up the address first but without data */
-	ewx_i2c_stop(ice);
-
-	/* now read */
-	ewx_i2c_start(ice);
-	ewx_i2c_write(ice, 0x21);  /* address + read */
-	ewx_i2c_read_prepare(ice);
-	data = ewx_i2c_read(ice);
-	ewx_i2c_read_post(ice);
-	ewx_i2c_stop(ice);
-
-	restore_gpio_status(ice, saved);
-	return data;
-}
-
-/* sequential read  */
-static void snd_ice1712_ewx_cs8427_read_bytes(ice1712_t *ice, unsigned char reg, int bytes, unsigned char *data)
-{
-#if 0 // the sequential read seems not working (yet)..
-	unsigned char saved[2];
-
-	save_gpio_status(ice, saved);
-	ewx_i2c_write_prepare(ice);
-	ewx_i2c_write(ice, 0x20);  /* address + write */
-	ewx_i2c_write(ice, reg | 0x80); /* MAP incremental mode */
-	/* we set up the address first but without data */
-	ewx_i2c_stop(ice);
-
-	/* now read */
-	ewx_i2c_start(ice);
-	ewx_i2c_write(ice, 0x21);  /* address + read */
-	ewx_i2c_read_prepare(ice);
-	while (bytes-- > 0)
-		*data++ = ewx_i2c_read(ice);
-	ewx_i2c_read_post(ice);
-	ewx_i2c_stop(ice);
-	restore_gpio_status(ice, saved);
-#else
-	while (bytes-- > 0)
-		*data++ = snd_ice1712_ewx_cs8427_read(ice, reg++); 
-#endif
+	if (clock)
+		mask |= ICE1712_EWX2496_SERIAL_CLOCK; /* write SCL */
+	if (data)
+		mask |= ICE1712_EWX2496_SERIAL_DATA; /* write SDA */
+	ice->gpio_direction &= ~(ICE1712_EWX2496_SERIAL_CLOCK|ICE1712_EWX2496_SERIAL_DATA);
+	ice->gpio_direction |= mask;
+	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DIRECTION, ice->gpio_direction);
+	snd_ice1712_write(ice, ICE1712_IREG_GPIO_WRITE_MASK, ~mask);
 }
 
 #ifdef TARGET_OS2
-static ice1712_cs8427_ops_t snd_ice1712_ewx_cs8427_ops = {
-	snd_ice1712_ewx_cs8427_write,
-	snd_ice1712_ewx_cs8427_read,
-	snd_ice1712_ewx_cs8427_write_bytes,
-	snd_ice1712_ewx_cs8427_read_bytes,
+static snd_i2c_bit_ops_t snd_ice1712_ewx_cs8427_bit_ops = {
+	ewx_i2c_start,
+	ewx_i2c_stop,
+	ewx_i2c_direction,
+	ewx_i2c_setlines,
+	ewx_i2c_getclock,
+	ewx_i2c_getdata,
 };
 #else
-static ice1712_cs8427_ops_t snd_ice1712_ewx_cs8427_ops = {
-	write: snd_ice1712_ewx_cs8427_write,
-	read: snd_ice1712_ewx_cs8427_read,
-	write_bytes: snd_ice1712_ewx_cs8427_write_bytes,
-	read_bytes: snd_ice1712_ewx_cs8427_read_bytes,
+static snd_i2c_bit_ops_t snd_ice1712_ewx_cs8427_bit_ops = {
+	start: ewx_i2c_start,
+	stop: ewx_i2c_stop,
+	direction: ewx_i2c_direction,
+	setlines: ewx_i2c_setlines,
+	getclock: ewx_i2c_getclock,
+	getdata: ewx_i2c_getdata,
 };
 #endif
-
-/*
- * PCF8574 on EWS88MT
- */
-static void snd_ice1712_ews88mt_pcf8574_write(ice1712_t *ice, unsigned char addr, unsigned char data)
-{
-	ewx_i2c_write_prepare(ice);
-	ewx_i2c_write(ice, addr); /* address + write */
-	ewx_i2c_write(ice, data);
-	ewx_i2c_stop(ice);
-}
-
-static unsigned char snd_ice1712_ews88mt_pcf8574_read(ice1712_t *ice, unsigned char addr)
-{
-	unsigned char data;
-	ewx_i2c_write_prepare(ice);
-	ewx_i2c_write(ice, addr | 0x01);  /* address + read */
-	ewx_i2c_read_prepare(ice);
-	data = ewx_i2c_read(ice);
-	ewx_i2c_read_post(ice);
-	ewx_i2c_stop(ice);
-	return data;
-}
 
 /* AK4524 chip select; address 0x48 bit 0-3 */
 static void snd_ice1712_ews88mt_chip_select(ice1712_t *ice, int chip_mask)
@@ -1241,37 +992,12 @@ static void snd_ice1712_ews88mt_chip_select(ice1712_t *ice, int chip_mask)
 	unsigned char data, ndata;
 
 	snd_assert(chip_mask >= 0 && chip_mask <= 0x0f, return);
-	data = snd_ice1712_ews88mt_pcf8574_read(ice, ICE1712_EWS88MT_OUTPUT_ADDR);
+	snd_i2c_lock(ice->i2c);
+	snd_runtime_check(snd_i2c_readbytes(ice->pcf8574[1], &data, 1) == 1, snd_i2c_unlock(ice->i2c); return);
 	ndata = (data & 0xf0) | chip_mask;
 	if (ndata != data)
-		snd_ice1712_ews88mt_pcf8574_write(ice, ICE1712_EWS88MT_OUTPUT_ADDR, ndata);
-}
-
-
-/*
- * PCF8575 on EWS88D (16bit)
- */
-static void snd_ice1712_ews88d_pcf8575_write(ice1712_t *ice, unsigned char addr, unsigned short data)
-{
-	ewx_i2c_write_prepare(ice);
-	ewx_i2c_write(ice, addr); /* address + write */
-	ewx_i2c_write(ice, data & 0xff);
-	ewx_i2c_write(ice, (data >> 8) & 0xff);
-	ewx_i2c_stop(ice);
-}
-
-static unsigned short snd_ice1712_ews88d_pcf8575_read(ice1712_t *ice, unsigned char addr)
-{
-	unsigned short data;
-	ewx_i2c_write_prepare(ice);
-	ewx_i2c_write(ice, addr | 0x01);  /* address + read */
-	ewx_i2c_read_prepare(ice);
-	data = ewx_i2c_read(ice);
-	data |= (unsigned short)ewx_i2c_read(ice) << 8;
-	//printk("pcf: read = 0x%x\n", data);
-	ewx_i2c_read_post(ice);
-	ewx_i2c_stop(ice);
-	return data;
+		snd_runtime_check(snd_i2c_sendbytes(ice->pcf8574[1], &ndata, 1) == 1, snd_i2c_unlock(ice->i2c); return);
+	snd_i2c_unlock(ice->i2c);
 }
 
 /*
@@ -1285,7 +1011,8 @@ static void snd_ice1712_ak4524_write(ice1712_t *ice, int chip,
 	int idx, cif;
 	unsigned int addrdata;
 
-	snd_assert(chip >=0 && chip < 4, return);
+	snd_assert(chip >= 0 && chip < 4, return);
+
 	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_EWS88MT) {
 		/* assert AK4524 CS */
 		snd_ice1712_ews88mt_chip_select(ice, ~(1 << chip) & 0x0f);
@@ -1328,6 +1055,19 @@ static void snd_ice1712_ak4524_write(ice1712_t *ice, int chip,
 				    codecs_mask | ICE1712_EWS88_RW));
 		cif = 1; /* CIF high */
 		break;
+	case ICE1712_SUBDEVICE_DMX6FIRE:
+		data_mask = ICE1712_6FIRE_SERIAL_DATA;
+		clk_mask = ICE1712_6FIRE_SERIAL_CLOCK;
+		codecs_mask = (1 << chip) & ICE1712_6FIRE_AK4524_CS_MASK;
+		tmp |= ICE1712_6FIRE_RW; /* set rw bit high */
+		snd_ice1712_write(ice, ICE1712_IREG_GPIO_DIRECTION,
+				  ice->gpio_direction | data_mask | clk_mask |
+				  codecs_mask | ICE1712_6FIRE_RW);
+		snd_ice1712_write(ice, ICE1712_IREG_GPIO_WRITE_MASK,
+				  ~(data_mask | clk_mask |
+				    codecs_mask | ICE1712_6FIRE_RW));
+		cif = 1; /* CIF high */
+		break;
 	default:
 		data_mask = ICE1712_DELTA_CODEC_SERIAL_DATA;
 		clk_mask = ICE1712_DELTA_CODEC_SERIAL_CLOCK;
@@ -1359,6 +1099,7 @@ static void snd_ice1712_ak4524_write(ice1712_t *ice, int chip,
 	}
 
 	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_EWS88MT) {
+		restore_gpio_status(ice, saved);
 		//snd_ice1712_ews88mt_chip_select(ice, ~(1 << chip) & 0x0f);
 		udelay(1);
 		snd_ice1712_ews88mt_chip_select(ice, 0x0f);
@@ -1372,120 +1113,51 @@ static void snd_ice1712_ak4524_write(ice1712_t *ice, int chip,
 		tmp |= codecs_mask; /* chip select high to trigger */
 		snd_ice1712_write(ice, ICE1712_IREG_GPIO_DATA, tmp);
 		udelay(1);
+		restore_gpio_status(ice, saved);
 	}
 
+	if ((addr != 0x04 && addr != 0x05) || (data & 0x80) == 0)
 	ice->ak4524_images[chip][addr] = data;
-	restore_gpio_status(ice, saved);
+	else
+		ice->ak4524_ipga_gain[chip][addr-4] = data;
 }
 
-
-/*
- * decode/encode channel status bits from CS8404A on EWS88MT&D
- */
-static void snd_ice1712_ews_decode_cs8404_spdif_bits(snd_aes_iec958_t *diga,
-						     unsigned char bits)
+static void snd_ice1712_ak4524_reset(ice1712_t *ice, int state)
 {
-	if (bits & 0x10) {	/* consumer */
-		if (!(bits & 0x20))
-			diga->status[0] |= IEC958_AES0_CON_NOT_COPYRIGHT;
-		if (!(bits & 0x40))
-			diga->status[0] |= IEC958_AES0_CON_EMPHASIS_5015;
-		if (!(bits & 0x80))
-			diga->status[1] |= IEC958_AES1_CON_ORIGINAL;
-		switch (bits & 0x03) {
-		case 0x00: diga->status[1] |= IEC958_AES1_CON_DAT; break;
-		case 0x03: diga->status[1] |= IEC958_AES1_CON_GENERAL; break;
-		}
-		switch (bits & 0x06) {
-		case 0x02: diga->status[3] |= IEC958_AES3_CON_FS_32000; break;
-		case 0x04: diga->status[3] |= IEC958_AES3_CON_FS_48000; break;
-		case 0x06: diga->status[3] |= IEC958_AES3_CON_FS_44100; break;
-		}
-	} else {
-		diga->status[0] = IEC958_AES0_PROFESSIONAL;
-		if (!(bits & 0x04))
-			diga->status[0] |= IEC958_AES0_NONAUDIO;
-		switch (bits & 0x60) {
-		case 0x00: diga->status[0] |= IEC958_AES0_PRO_FS_32000; break;
-		case 0x40: diga->status[0] |= IEC958_AES0_PRO_FS_44100; break;
-		case 0x20: diga->status[0] |= IEC958_AES0_PRO_FS_48000; break;
-		case 0x60: diga->status[0] |= IEC958_AES0_PRO_FS_NOTID; break;
-		}
-		switch (bits & 0x03) {
-		case 0x02: diga->status[0] |= IEC958_AES0_PRO_EMPHASIS_NONE; break;
-		case 0x01: diga->status[0] |= IEC958_AES0_PRO_EMPHASIS_5015; break;
-		case 0x00: diga->status[0] |= IEC958_AES0_PRO_EMPHASIS_CCITT; break;
-		case 0x03: diga->status[0] |= IEC958_AES0_PRO_EMPHASIS_NOTID; break;
-		}
-		if (!(bits & 0x80))
-			diga->status[1] |= IEC958_AES1_PRO_MODE_STEREOPHONIC;
+	int chip;
+	unsigned char reg;
+	
+	for (chip = 0; chip < ice->num_dacs/2; chip++) {
+		snd_ice1712_ak4524_write(ice, chip, 0x01, state ? 0x00 : 0x03);
+		if (state)
+			continue;
+		for (reg = 0x04; reg < (ice->ak4528 ? 0x06 : 0x08); reg++)
+			snd_ice1712_ak4524_write(ice, chip, reg, ice->ak4524_images[chip][reg]);
+		if (ice->ak4528)
+			continue;
+		for (reg = 0x04; reg < 0x06; reg++)
+			snd_ice1712_ak4524_write(ice, chip, reg, ice->ak4524_ipga_gain[chip][reg-4]);
 	}
 }
 
-static unsigned char snd_ice1712_ews_encode_cs8404_spdif_bits(snd_aes_iec958_t *diga)
-{
-	unsigned char bits;
-
-	if (!(diga->status[0] & IEC958_AES0_PROFESSIONAL)) {
-		bits = 0x10;	/* consumer mode */
-		if (!(diga->status[0] & IEC958_AES0_CON_NOT_COPYRIGHT))
-			bits |= 0x20;
-		if ((diga->status[0] & IEC958_AES0_CON_EMPHASIS) == IEC958_AES0_CON_EMPHASIS_NONE)
-			bits |= 0x40;
-		if (!(diga->status[1] & IEC958_AES1_CON_ORIGINAL))
-			bits |= 0x80;
-		if ((diga->status[1] & IEC958_AES1_CON_CATEGORY) == IEC958_AES1_CON_GENERAL)
-			bits |= 0x03;
-		switch (diga->status[3] & IEC958_AES3_CON_FS) {
-		default:
-		case IEC958_AES3_CON_FS_44100: bits |= 0x06; break;
-		case IEC958_AES3_CON_FS_48000: bits |= 0x04; break;
-		case IEC958_AES3_CON_FS_32000: bits |= 0x02; break;
-		}
-	} else {
-		bits = 0x00;	/* professional mode */
-		if (!(diga->status[0] & IEC958_AES0_NONAUDIO))
-			bits |= 0x04;
-		switch (diga->status[0] & IEC958_AES0_PRO_FS) {
-		case IEC958_AES0_PRO_FS_32000:	bits |= 0x00; break;
-		case IEC958_AES0_PRO_FS_44100:	bits |= 0x40; break;	/* 44.1kHz */
-		case IEC958_AES0_PRO_FS_48000:	bits |= 0x20; break;	/* 48kHz */
-		default:
-		case IEC958_AES0_PRO_FS_NOTID:	bits |= 0x00; break;
-		}
-		switch (diga->status[0] & IEC958_AES0_PRO_EMPHASIS) {
-		case IEC958_AES0_PRO_EMPHASIS_NONE: bits |= 0x02; break;
-		case IEC958_AES0_PRO_EMPHASIS_5015: bits |= 0x01; break;
-		case IEC958_AES0_PRO_EMPHASIS_CCITT: bits |= 0x00; break;
-		default:
-		case IEC958_AES0_PRO_EMPHASIS_NOTID: bits |= 0x03; break;
-		}
-		switch (diga->status[1] & IEC958_AES1_PRO_MODE) {
-		case IEC958_AES1_PRO_MODE_TWO:
-		case IEC958_AES1_PRO_MODE_STEREOPHONIC: bits |= 0x00; break;
-		default: bits |= 0x80; break;
-		}
-	}
-	return bits;
-}
-
-/* write on i2c address 0x40 */
 static void snd_ice1712_ews_cs8404_spdif_write(ice1712_t *ice, unsigned char bits)
 {
-	unsigned short val, nval;
+	unsigned char bytes[2];
 
+	snd_i2c_lock(ice->i2c);
 	switch (ice->eeprom.subvendor) {
 	case ICE1712_SUBDEVICE_EWS88MT:
-		snd_ice1712_ews88mt_pcf8574_write(ice, ICE1712_EWS88MT_CS8404_ADDR, bits);
+		snd_runtime_check(snd_i2c_sendbytes(ice->cs8404, &bits, 1) == 1, snd_i2c_unlock(ice->i2c); return);
 		break;
 	case ICE1712_SUBDEVICE_EWS88D:
-		val = snd_ice1712_ews88d_pcf8575_read(ice, ICE1712_EWS88D_PCF_ADDR);
-		nval = val & 0xff;
-		nval |= bits << 8;
-		if (val != nval)
-			snd_ice1712_ews88d_pcf8575_write(ice, ICE1712_EWS88D_PCF_ADDR, nval);
+		snd_runtime_check(snd_i2c_readbytes(ice->pcf8575, bytes, 2) == 2, snd_i2c_unlock(ice->i2c); return);
+		if (bits != bytes[1]) {
+			bytes[1] = bits;
+			snd_runtime_check(snd_i2c_readbytes(ice->pcf8575, bytes, 2) == 2, snd_i2c_unlock(ice->i2c); return);
+		}
 		break;
 	}
+	snd_i2c_unlock(ice->i2c);
 }
 
 
@@ -1495,91 +1167,32 @@ static void snd_ice1712_ews_cs8404_spdif_write(ice1712_t *ice, unsigned char bit
  */
 static int snd_ice1712_cs8427_set_input_clock(ice1712_t *ice, int spdif_clock)
 {
+	unsigned char reg[2] = { 0x80 | 4, 0 };   /* CS8427 auto increment | register number 4 + data */
 	unsigned char val, nval;
-	val = ice->cs8427_ops->read(ice, 4);
+	snd_i2c_lock(ice->i2c);
+	if (snd_i2c_sendbytes(ice->cs8427, reg, 1) != 1) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
+	if (snd_i2c_readbytes(ice->cs8427, &val, 1) != 1) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
 	nval = val & 0xf0;
 	if (spdif_clock)
 		nval |= 0x01;
 	else
 		nval |= 0x04;
 	if (val != nval) {
-		ice->cs8427_ops->write(ice, 4, nval);
+		if (snd_i2c_sendbytes(ice->cs8427, reg, 2) != 2) {
+			snd_i2c_unlock(ice->i2c);
+			return -EREMOTE;
+		}
 		return 1;
 	}
+	snd_i2c_unlock(ice->i2c);
 	return 0;
 }
-
-#if 0 // we change clock selection automatically according to the ice1712 clock source
-static int snd_ice1712_cs8427_clock_select_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t *uinfo)
-{
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
-	uinfo->count = 1;
-	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = 1;
-	return 0;
-}
-
-static int snd_ice1712_cs8427_clock_select_get(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
-{
-	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
-	int val;
-	val = ice->cs8427_ops->read(ice, 4);
-	ucontrol->value.integer.value[0] = (val & 0x01) ? 1 : 0;
-	return 0;
-}
-
-static int snd_ice1712_cs8427_clock_select_put(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
-{
-	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
-	return snd_ice1712_cs8427_set_input_clock(ice, ucontrol->value.integer.value[0]);
-}
-
-static snd_kcontrol_new_t snd_ice1712_cs8427_clock_select = {
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "CS8427 Clock Select",
-	info: snd_ice1712_cs8427_clock_select_info,
-	get: snd_ice1712_cs8427_clock_select_get,
-	put: snd_ice1712_cs8427_clock_select_put,
-};
-#endif
-
-
-/*
- */
-static int snd_ice1712_cs8427_in_status_info(snd_kcontrol_t *kcontrol,
-					     snd_ctl_elem_info_t *uinfo)
-{
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	uinfo->count = 1;
-	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = 255;
-	return 0;
-}
-
-static int snd_ice1712_cs8427_in_status_get(snd_kcontrol_t *kcontrol,
-					    snd_ctl_elem_value_t *ucontrol)
-{
-	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
-	ucontrol->value.integer.value[0] = ice->cs8427_ops->read(ice, 15);
-	return 0;
-}
-
-static snd_kcontrol_new_t snd_ice1712_cs8427_in_status = {
-#ifdef TARGET_OS2
-	SNDRV_CTL_ELEM_IFACE_PCM,0,0,
-	"IEC958 Input Status",0,
-	SNDRV_CTL_ELEM_ACCESS_READ | SNDRV_CTL_ELEM_ACCESS_VOLATILE,
-	snd_ice1712_cs8427_in_status_info,
-	snd_ice1712_cs8427_in_status_get,0,0
-#else
-	iface: SNDRV_CTL_ELEM_IFACE_PCM,
-	info: snd_ice1712_cs8427_in_status_info,
-	name: "IEC958 Input Status",
-	access: SNDRV_CTL_ELEM_ACCESS_READ | SNDRV_CTL_ELEM_ACCESS_VOLATILE,
-	get: snd_ice1712_cs8427_in_status_get,
-#endif
-};
-
 
 /*
  */
@@ -1623,9 +1236,8 @@ static void snd_ice1712_set_pro_rate(ice1712_t *ice, snd_pcm_substream_t *substr
 	case ICE1712_SUBDEVICE_DELTA66:
 	case ICE1712_SUBDEVICE_DELTA44:
 	case ICE1712_SUBDEVICE_AUDIOPHILE:
-		/* FIXME: we should put AK452x codecs to reset state
-		   when this bit is being changed */
 		spin_unlock_irqrestore(&ice->reg_lock, flags);
+		snd_ice1712_ak4524_reset(ice, 1);
 		down(&ice->gpio_mutex);
 		tmp = snd_ice1712_read(ice, ICE1712_IREG_GPIO_DATA);
 		if (val == 15 || val == 11 || val == 7) {
@@ -1635,6 +1247,7 @@ static void snd_ice1712_set_pro_rate(ice1712_t *ice, snd_pcm_substream_t *substr
 		}
 		snd_ice1712_write(ice, ICE1712_IREG_GPIO_DATA, tmp);
 		up(&ice->gpio_mutex);
+		snd_ice1712_ak4524_reset(ice, 0);
 		return;
 	}
       __end:
@@ -2196,14 +1809,14 @@ static snd_pcm_ops_t snd_ice1712_capture_ops = {
 };
 #endif
 
-static void __exit snd_ice1712_pcm_free(snd_pcm_t *pcm)
+static void snd_ice1712_pcm_free(snd_pcm_t *pcm)
 {
 	ice1712_t *ice = snd_magic_cast(ice1712_t, pcm->private_data, return);
 	ice->pcm = NULL;
 	snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
-static int __init snd_ice1712_pcm(ice1712_t * ice, int device, snd_pcm_t ** rpcm)
+static int __devinit snd_ice1712_pcm(ice1712_t * ice, int device, snd_pcm_t ** rpcm)
 {
 	snd_pcm_t *pcm;
 	int err;
@@ -2228,19 +1841,19 @@ static int __init snd_ice1712_pcm(ice1712_t * ice, int device, snd_pcm_t ** rpcm
 	if (rpcm)
 		*rpcm = pcm;
 
-	printk("Consumer PCM code does not work well at the moment --jk\n");
+	printk(KERN_WARNING "Consumer PCM code does not work well at the moment --jk\n");
 
 	return 0;
 }
 
-static void __exit snd_ice1712_pcm_free_ds(snd_pcm_t *pcm)
+static void snd_ice1712_pcm_free_ds(snd_pcm_t *pcm)
 {
 	ice1712_t *ice = snd_magic_cast(ice1712_t, pcm->private_data, return);
 	ice->pcm_ds = NULL;
 	snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
-static int __init snd_ice1712_pcm_ds(ice1712_t * ice, int device, snd_pcm_t ** rpcm)
+static int __devinit snd_ice1712_pcm_ds(ice1712_t * ice, int device, snd_pcm_t ** rpcm)
 {
 	snd_pcm_t *pcm;
 	int err;
@@ -2383,33 +1996,11 @@ static int snd_ice1712_pro_trigger(snd_pcm_substream_t *substream,
 	return 0;
 }
 
-static void snd_ice1712_cs8427_set_status(ice1712_t *ice, snd_pcm_runtime_t *runtime,
-					  unsigned char *status)
-{
-	if (status[0] & IEC958_AES0_PROFESSIONAL) {
-		status[0] &= ~IEC958_AES0_PRO_FS;
-		switch (runtime->rate) {
-		case 32000: status[0] |= IEC958_AES0_PRO_FS_32000; break;
-		case 44100: status[0] |= IEC958_AES0_PRO_FS_44100; break;
-		case 48000: status[0] |= IEC958_AES0_PRO_FS_48000; break;
-		default: status[0] |= IEC958_AES0_PRO_FS_NOTID; break;
-		}
-	} else {
-		status[3] &= ~IEC958_AES3_CON_FS;
-		switch (runtime->rate) {
-		case 32000: status[3] |= IEC958_AES3_CON_FS_32000; break;
-		case 44100: status[3] |= IEC958_AES3_CON_FS_44100; break;
-		case 48000: status[3] |= IEC958_AES3_CON_FS_48000; break;
-		}
-	}
-}
-
 static int snd_ice1712_playback_pro_prepare(snd_pcm_substream_t * substream)
 {
 	unsigned long flags;
 	ice1712_t *ice = snd_pcm_substream_chip(substream);
 	unsigned int tmp;
-	unsigned char tmpst[5];
 	int change;
 
 	ice->playback_pro_size = snd_pcm_lib_buffer_bytes(substream);
@@ -2441,17 +2032,8 @@ static int snd_ice1712_playback_pro_prepare(snd_pcm_substream_t * substream)
 		return 0;
 	case ICE1712_SUBDEVICE_EWX2496:
 	case ICE1712_SUBDEVICE_AUDIOPHILE:
-		/* setup S/PDIF */
-		memcpy(tmpst, ice->cs8427_spdif_stream_status, 5);
-		snd_ice1712_cs8427_set_status(ice, substream->runtime, tmpst); 
-		change = memcmp(tmpst, ice->cs8427_spdif_stream_status, 5) != 0;
-		memcpy(ice->cs8427_spdif_stream_status, tmpst, 5);
-		spin_unlock_irqrestore(&ice->reg_lock, flags);
-		if (change) {
-			snd_ctl_notify(ice->card, SNDRV_CTL_EVENT_MASK_VALUE, &ice->spdif_stream_ctl->id);
-			ice->cs8427_ops->write_bytes(ice, 32, 5, tmpst);
-		}
-		return 0;
+		snd_cs8427_iec958_pcm(ice->cs8427, substream->runtime->rate);
+		break;
 	case ICE1712_SUBDEVICE_EWS88MT:
 	case ICE1712_SUBDEVICE_EWS88D:
 		/* setup S/PDIF */
@@ -2608,12 +2190,8 @@ static int snd_ice1712_playback_pro_open(snd_pcm_substream_t * substream)
 	snd_pcm_hw_constraint_list(runtime, 0, SNDRV_PCM_HW_PARAM_RATE, &hw_constraints_rates);
 
 	ice->cs8403_spdif_stream_bits = ice->cs8403_spdif_bits;
-	memcpy(ice->cs8427_spdif_stream_status, ice->cs8427_spdif_status, 5);
-	if (ice->spdif_stream_ctl != NULL) {
-		ice->spdif_stream_ctl->access &= ~SNDRV_CTL_ELEM_ACCESS_INACTIVE;
-		snd_ctl_notify(ice->card, SNDRV_CTL_EVENT_MASK_VALUE |
-			       SNDRV_CTL_EVENT_MASK_INFO, &ice->spdif_stream_ctl->id);
-	}
+	if (ice->cs8427)
+		snd_cs8427_iec958_active(ice->cs8427, 1);
 
 	return 0;
 }
@@ -2636,12 +2214,8 @@ static int snd_ice1712_playback_pro_close(snd_pcm_substream_t * substream)
 	ice1712_t *ice = snd_pcm_substream_chip(substream);
 
 	ice->playback_pro_substream = NULL;
-
-	if (ice->spdif_stream_ctl != NULL) {
-		ice->spdif_stream_ctl->access |= SNDRV_CTL_ELEM_ACCESS_INACTIVE;
-		snd_ctl_notify(ice->card, SNDRV_CTL_EVENT_MASK_VALUE |
-			       SNDRV_CTL_EVENT_MASK_INFO, &ice->spdif_stream_ctl->id);
-	}
+	if (ice->cs8427)
+		snd_cs8427_iec958_active(ice->cs8427, 0);
 
 	return 0;
 }
@@ -2654,7 +2228,7 @@ static int snd_ice1712_capture_pro_close(snd_pcm_substream_t * substream)
 	return 0;
 }
 
-static void __exit snd_ice1712_pcm_profi_free(snd_pcm_t *pcm)
+static void snd_ice1712_pcm_profi_free(snd_pcm_t *pcm)
 {
 	ice1712_t *ice = snd_magic_cast(ice1712_t, pcm->private_data, return);
 	ice->pcm_pro = NULL;
@@ -2707,7 +2281,7 @@ static snd_pcm_ops_t snd_ice1712_capture_pro_ops = {
 };
 #endif
 
-static int __init snd_ice1712_pcm_profi(ice1712_t * ice, int device, snd_pcm_t ** rpcm)
+static int __devinit snd_ice1712_pcm_profi(ice1712_t * ice, int device, snd_pcm_t ** rpcm)
 {
 	snd_pcm_t *pcm;
 	int err;
@@ -2732,6 +2306,15 @@ static int __init snd_ice1712_pcm_profi(ice1712_t * ice, int device, snd_pcm_t *
 	if (rpcm)
 		*rpcm = pcm;
 	
+	if (ice->cs8427) {
+		/* assign channels to iec958 */
+		err = snd_cs8427_iec958_build(ice->cs8427,
+					      pcm->streams[0].substream,
+					      pcm->streams[1].substream);
+		if (err < 0)
+			return err;
+	}
+
 	if ((err = snd_ice1712_build_pro_mixer(ice)) < 0)
 		return err;
 	return 0;
@@ -2862,6 +2445,36 @@ static int snd_ice1712_ak4524_volume_put(snd_kcontrol_t *kcontrol, snd_ctl_elem_
 	return change;
 }
 
+static int snd_ice1712_ak4524_ipga_gain_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 36;
+	return 0;
+}
+
+static int snd_ice1712_ak4524_ipga_gain_get(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
+{
+	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
+	int chip = kcontrol->private_value / 8;
+	int addr = kcontrol->private_value % 8;
+	ucontrol->value.integer.value[0] = ice->ak4524_ipga_gain[chip][addr-4] & 0x7f;
+	return 0;
+}
+
+static int snd_ice1712_ak4524_ipga_gain_put(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
+{
+	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
+	int chip = kcontrol->private_value / 8;
+	int addr = kcontrol->private_value % 8;
+	unsigned char nval = (ucontrol->value.integer.value[0] % 37) | 0x80;
+	int change = ice->ak4524_ipga_gain[chip][addr] != nval;
+	if (change)
+		snd_ice1712_ak4524_write(ice, chip, addr, nval);
+	return change;
+}
+
 static int snd_ice1712_ak4524_deemphasis_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t *uinfo)
 {
 	static char *texts[4] = {
@@ -2959,10 +2572,15 @@ static int __init snd_ice1712_build_pro_mixer(ice1712_t *ice)
 			return err;
 	}
 	
+	/* initialize volumes */
+	for (idx = 0; idx < 20; idx++) {
+		ice->pro_volumes[idx] = 0x80008000;	/* mute */
+		snd_ice1712_update_volume(ice, idx);
+	}
 	return 0;
 }
 
-static void /*__init*/ snd_ice1712_ac97_init(ac97_t *ac97)
+static void snd_ice1712_ac97_init(ac97_t *ac97)
 {
 	// ice1712_t *ice = snd_magic_cast(ice1712_t, ac97->private_data, return);
 
@@ -2970,13 +2588,13 @@ static void /*__init*/ snd_ice1712_ac97_init(ac97_t *ac97)
         snd_ac97_update_bits(ac97, AC97_EXTENDED_STATUS, 0xe800, 0xe800);
 }
 
-static void __exit snd_ice1712_mixer_free_ac97(ac97_t *ac97)
+static void snd_ice1712_mixer_free_ac97(ac97_t *ac97)
 {
 	ice1712_t *ice = snd_magic_cast(ice1712_t, ac97->private_data, return);
 	ice->ac97 = NULL;
 }
 
-static int __init snd_ice1712_ac97_mixer(ice1712_t * ice)
+static int __devinit snd_ice1712_ac97_mixer(ice1712_t * ice)
 {
 	int err;
 
@@ -2988,8 +2606,13 @@ static int __init snd_ice1712_ac97_mixer(ice1712_t * ice)
 		ac97.init = snd_ice1712_ac97_init;
 		ac97.private_data = ice;
 		ac97.private_free = snd_ice1712_mixer_free_ac97;
-		if ((err = snd_ac97_mixer(ice->card, &ac97, &ice->ac97)) < 0)
+		if ((err = snd_ac97_mixer(ice->card, &ac97, &ice->ac97)) < 0) {
+			printk(KERN_WARNING "ice1712: cannot initialize ac97 for consumer, skipped\n");
+			// return err;
+		} else {
+		if ((err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_mixer_digmix_route_ac97, ice))) < 0)
 			return err;
+		}
 		return 0;
 	}
 	/* hmm.. can we have both consumer and pro ac97 mixers? */
@@ -3002,8 +2625,6 @@ static int __init snd_ice1712_ac97_mixer(ice1712_t * ice)
 		ac97.private_data = ice;
 		ac97.private_free = snd_ice1712_mixer_free_ac97;
 		if ((err = snd_ac97_mixer(ice->card, &ac97, &ice->ac97)) < 0)
-			return err;
-		if ((err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_mixer_digmix_route_ac97, ice))) < 0)
 			return err;
 		return 0;
 	}
@@ -3046,7 +2667,7 @@ static void snd_ice1712_proc_read(snd_info_entry_t *entry,
 		snd_iprintf(buffer, "  Extra #%02i        : 0x%x\n", idx, ice->eeprom.extra[idx - 0x1c]);
 }
 
-static void __init snd_ice1712_proc_init(ice1712_t * ice)
+static void __devinit snd_ice1712_proc_init(ice1712_t * ice)
 {
 	snd_info_entry_t *entry;
 
@@ -3091,7 +2712,7 @@ static int snd_ice1712_eeprom_get(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 	return 0;
 }
 
-static snd_kcontrol_new_t snd_ice1712_eeprom = {
+static snd_kcontrol_new_t snd_ice1712_eeprom __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_CARD,0,0,
 	"ICE1712 EEPROM",0,
@@ -3125,15 +2746,11 @@ static int snd_ice1712_spdif_default_get(snd_kcontrol_t * kcontrol,
 	case ICE1712_SUBDEVICE_DELTA1010:
 	case ICE1712_SUBDEVICE_DELTADIO2496:
 	case ICE1712_SUBDEVICE_DELTA66:
-		snd_ice1712_decode_cs8403_spdif_bits(&ucontrol->value.iec958, ice->cs8403_spdif_bits);
-		break;
-	case ICE1712_SUBDEVICE_AUDIOPHILE:
-	case ICE1712_SUBDEVICE_EWX2496:
-		memcpy(ucontrol->value.iec958.status, ice->cs8427_spdif_status, 5);
+		snd_cs8403_decode_spdif_bits(&ucontrol->value.iec958, ice->cs8403_spdif_bits);
 		break;
 	case ICE1712_SUBDEVICE_EWS88MT:
 	case ICE1712_SUBDEVICE_EWS88D:
-		snd_ice1712_ews_decode_cs8404_spdif_bits(&ucontrol->value.iec958, ice->cs8403_spdif_bits);
+		snd_cs8404_decode_spdif_bits(&ucontrol->value.iec958, ice->cs8403_spdif_bits);
 		break;
 	}
 	return 0;
@@ -3151,7 +2768,7 @@ static int snd_ice1712_spdif_default_put(snd_kcontrol_t * kcontrol,
 	case ICE1712_SUBDEVICE_DELTA1010:
 	case ICE1712_SUBDEVICE_DELTADIO2496:
 	case ICE1712_SUBDEVICE_DELTA66:
-		val = snd_ice1712_encode_cs8403_spdif_bits(&ucontrol->value.iec958);
+		val = snd_cs8403_encode_spdif_bits(&ucontrol->value.iec958);
 		spin_lock_irqsave(&ice->reg_lock, flags);
 		change = ice->cs8403_spdif_bits != val;
 		ice->cs8403_spdif_bits = val;
@@ -3162,20 +2779,9 @@ static int snd_ice1712_spdif_default_put(snd_kcontrol_t * kcontrol,
 			spin_unlock_irqrestore(&ice->reg_lock, flags);
 		}
 		break;
-	case ICE1712_SUBDEVICE_AUDIOPHILE:
-	case ICE1712_SUBDEVICE_EWX2496:
-		spin_lock_irqsave(&ice->reg_lock, flags);
-		change = memcmp(ucontrol->value.iec958.status, ice->cs8427_spdif_status, 5) != 0;
-		memcpy(ice->cs8427_spdif_status, ucontrol->value.iec958.status, 5);
-		if (change && ice->playback_pro_substream == NULL) {
-			spin_unlock_irqrestore(&ice->reg_lock, flags);
-			ice->cs8427_ops->write_bytes(ice, 32, 5, ice->cs8427_spdif_status);
-		} else
-			spin_unlock_irqrestore(&ice->reg_lock, flags);
-		break;
 	case ICE1712_SUBDEVICE_EWS88MT:
 	case ICE1712_SUBDEVICE_EWS88D:
-		val = snd_ice1712_ews_encode_cs8404_spdif_bits(&ucontrol->value.iec958);
+		val = snd_cs8404_encode_spdif_bits(&ucontrol->value.iec958);
 		spin_lock_irqsave(&ice->reg_lock, flags);
 		change = ice->cs8403_spdif_bits != val;
 		ice->cs8403_spdif_bits = val;
@@ -3192,7 +2798,7 @@ static int snd_ice1712_spdif_default_put(snd_kcontrol_t * kcontrol,
 	return change;
 }
 
-static snd_kcontrol_new_t snd_ice1712_spdif_default =
+static snd_kcontrol_new_t snd_ice1712_spdif_default __devinitdata =
 {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_PCM,0,0,
@@ -3276,7 +2882,7 @@ static int snd_ice1712_spdif_maskp_get(snd_kcontrol_t * kcontrol,
 	return 0;
 }
 
-static snd_kcontrol_new_t snd_ice1712_spdif_maskc =
+static snd_kcontrol_new_t snd_ice1712_spdif_maskc __devinitdata =
 {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
@@ -3293,7 +2899,7 @@ static snd_kcontrol_new_t snd_ice1712_spdif_maskc =
 #endif
 };
 
-static snd_kcontrol_new_t snd_ice1712_spdif_maskp =
+static snd_kcontrol_new_t snd_ice1712_spdif_maskp __devinitdata =
 {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
@@ -3326,16 +2932,11 @@ static int snd_ice1712_spdif_stream_get(snd_kcontrol_t * kcontrol,
 	case ICE1712_SUBDEVICE_DELTA1010:
 	case ICE1712_SUBDEVICE_DELTADIO2496:
 	case ICE1712_SUBDEVICE_DELTA66:
-		snd_ice1712_decode_cs8403_spdif_bits(&ucontrol->value.iec958, ice->cs8403_spdif_stream_bits);
-		break;
-	case ICE1712_SUBDEVICE_AUDIOPHILE:
-	case ICE1712_SUBDEVICE_EWX2496:
-		//ice->cs8427_ops->read_bytes(ice, 32, 5, ucontrol->value.iec958.status);
-		memcpy(ucontrol->value.iec958.status, ice->cs8427_spdif_stream_status, 5);
+		snd_cs8403_decode_spdif_bits(&ucontrol->value.iec958, ice->cs8403_spdif_stream_bits);
 		break;
 	case ICE1712_SUBDEVICE_EWS88MT:
 	case ICE1712_SUBDEVICE_EWS88D:
-		snd_ice1712_ews_decode_cs8404_spdif_bits(&ucontrol->value.iec958, ice->cs8403_spdif_stream_bits);
+		snd_cs8404_decode_spdif_bits(&ucontrol->value.iec958, ice->cs8403_spdif_stream_bits);
 		break;
 	}
 	return 0;
@@ -3353,7 +2954,7 @@ static int snd_ice1712_spdif_stream_put(snd_kcontrol_t * kcontrol,
 	case ICE1712_SUBDEVICE_DELTA1010:
 	case ICE1712_SUBDEVICE_DELTADIO2496:
 	case ICE1712_SUBDEVICE_DELTA66:
-		val = snd_ice1712_encode_cs8403_spdif_bits(&ucontrol->value.iec958);
+		val = snd_cs8403_encode_spdif_bits(&ucontrol->value.iec958);
 		spin_lock_irqsave(&ice->reg_lock, flags);
 		change = ice->cs8403_spdif_stream_bits != val;
 		ice->cs8403_spdif_stream_bits = val;
@@ -3364,22 +2965,9 @@ static int snd_ice1712_spdif_stream_put(snd_kcontrol_t * kcontrol,
 			spin_unlock_irqrestore(&ice->reg_lock, flags);
 		}
 		break;
-	case ICE1712_SUBDEVICE_AUDIOPHILE:
-	case ICE1712_SUBDEVICE_EWX2496:
-		spin_lock_irqsave(&ice->reg_lock, flags);
-		change = memcmp(ice->cs8427_spdif_stream_status,
-				ucontrol->value.iec958.status, 5) != 0;
-		if (change && ice->playback_pro_substream != NULL) {
-			memcpy(ice->cs8427_spdif_stream_status,
-			       ucontrol->value.iec958.status, 5);
-			spin_unlock_irqrestore(&ice->reg_lock, flags);
-			ice->cs8427_ops->write_bytes(ice, 32, 5, ucontrol->value.iec958.status);
-		} else
-			spin_unlock_irqrestore(&ice->reg_lock, flags);
-		break;
 	case ICE1712_SUBDEVICE_EWS88MT:
 	case ICE1712_SUBDEVICE_EWS88D:
-		val = snd_ice1712_ews_encode_cs8404_spdif_bits(&ucontrol->value.iec958);
+		val = snd_cs8404_encode_spdif_bits(&ucontrol->value.iec958);
 		spin_lock_irqsave(&ice->reg_lock, flags);
 		change = ice->cs8403_spdif_stream_bits != val;
 		ice->cs8403_spdif_stream_bits = val;
@@ -3396,7 +2984,7 @@ static int snd_ice1712_spdif_stream_put(snd_kcontrol_t * kcontrol,
 	return change;
 }
 
-static snd_kcontrol_new_t snd_ice1712_spdif_stream =
+static snd_kcontrol_new_t snd_ice1712_spdif_stream __devinitdata =
 {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_PCM,0,0,
@@ -3416,15 +3004,15 @@ static snd_kcontrol_new_t snd_ice1712_spdif_stream =
 };
 
 #ifdef TARGET_OS2
-#define ICE1712_GPIO(xiface, xname, xindex, shift, xaccess) \
+#define ICE1712_GPIO(xiface, xname, xindex, mask, invert, xaccess) \
 { xiface, 0, 0, xname, 0, xaccess, snd_ice1712_gpio_info, \
   snd_ice1712_gpio_get, snd_ice1712_gpio_put, \
-  shift }
+	mask | (invert << 24) }
 #else
-#define ICE1712_GPIO(xiface, xname, xindex, shift, xaccess) \
+#define ICE1712_GPIO(xiface, xname, xindex, mask, invert, xaccess) \
 { iface: xiface, name: xname, access: xaccess, info: snd_ice1712_gpio_info, \
   get: snd_ice1712_gpio_get, put: snd_ice1712_gpio_put, \
-  private_value: shift }
+  private_value: mask | (invert << 24) }
 #endif
 
 static int snd_ice1712_gpio_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
@@ -3440,10 +3028,11 @@ static int snd_ice1712_gpio_get(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t 
 {
 	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
 	unsigned char mask = kcontrol->private_value & 0xff;
+	int invert = (kcontrol->private_value & (1<<24)) ? 1 : 0;
 	unsigned char saved[2];
 	
 	save_gpio_status(ice, saved);
-	ucontrol->value.integer.value[0] = snd_ice1712_read(ice, ICE1712_IREG_GPIO_DATA) & mask ? 1 : 0;
+	ucontrol->value.integer.value[0] = (snd_ice1712_read(ice, ICE1712_IREG_GPIO_DATA) & mask ? 1 : 0) ^ invert;
 	restore_gpio_status(ice, saved);
 	return 0;
 }
@@ -3452,12 +3041,13 @@ static int snd_ice1712_gpio_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t 
 {
 	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
 	unsigned char mask = kcontrol->private_value & 0xff;
+	int invert = (kcontrol->private_value & (1<<24)) ? mask : 0;
 	unsigned char saved[2];
 	int val, nval;
 
 	if (kcontrol->private_value & (1 << 31))
 		return -EPERM;
-	nval = ucontrol->value.integer.value[0] ? mask : 0;
+	nval = (ucontrol->value.integer.value[0] ? mask : 0) ^ invert;
 	save_gpio_status(ice, saved);
 	val = snd_ice1712_read(ice, ICE1712_IREG_GPIO_DATA);
 	nval |= val & ~mask;
@@ -3466,14 +3056,14 @@ static int snd_ice1712_gpio_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t 
 	return val != nval;
 }
 
-static snd_kcontrol_new_t snd_ice1712_delta1010_wordclock_select =
-ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_PCM, "Word Clock Sync", 0, ICE1712_DELTA_WORD_CLOCK_SELECT, 0);
-static snd_kcontrol_new_t snd_ice1712_delta1010_wordclock_status =
-ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_PCM, "Word Clock Status", 0, ICE1712_DELTA_WORD_CLOCK_STATUS, SNDRV_CTL_ELEM_ACCESS_READ | SNDRV_CTL_ELEM_ACCESS_VOLATILE);
-static snd_kcontrol_new_t snd_ice1712_deltadio2496_spdif_in_select =
-ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_PCM, "IEC958 Input Optical", 0, ICE1712_DELTA_SPDIF_INPUT_SELECT, 0);
-static snd_kcontrol_new_t snd_ice1712_delta_spdif_in_status =
-ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_PCM, "Delta IEC958 Input Status", 0, ICE1712_DELTA_SPDIF_IN_STAT, SNDRV_CTL_ELEM_ACCESS_READ | SNDRV_CTL_ELEM_ACCESS_VOLATILE);
+static snd_kcontrol_new_t snd_ice1712_delta1010_wordclock_select __devinitdata =
+ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_PCM, "Word Clock Sync", 0, ICE1712_DELTA_WORD_CLOCK_SELECT, 1, 0);
+static snd_kcontrol_new_t snd_ice1712_delta1010_wordclock_status __devinitdata =
+ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_PCM, "Word Clock Status", 0, ICE1712_DELTA_WORD_CLOCK_STATUS, 1, SNDRV_CTL_ELEM_ACCESS_READ | SNDRV_CTL_ELEM_ACCESS_VOLATILE);
+static snd_kcontrol_new_t snd_ice1712_deltadio2496_spdif_in_select __devinitdata =
+ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_PCM, "IEC958 Input Optical", 0, ICE1712_DELTA_SPDIF_INPUT_SELECT, 0, 0);
+static snd_kcontrol_new_t snd_ice1712_delta_spdif_in_status __devinitdata =
+ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_PCM, "Delta IEC958 Input Status", 0, ICE1712_DELTA_SPDIF_IN_STAT, 1, SNDRV_CTL_ELEM_ACCESS_READ | SNDRV_CTL_ELEM_ACCESS_VOLATILE);
 
 static int snd_ice1712_pro_spdif_master_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -3508,7 +3098,7 @@ static int snd_ice1712_pro_spdif_master_put(snd_kcontrol_t * kcontrol, snd_ctl_e
 	outb(nval, ICEMT(ice, RATE));
 	spin_unlock_irqrestore(&ice->reg_lock, flags);
 
-	if (ice->cs8427_ops) {
+	if (ice->cs8427) {
 		/* change CS8427 clock source too */
 		snd_ice1712_cs8427_set_input_clock(ice, ucontrol->value.integer.value[0]);
 	}
@@ -3516,7 +3106,7 @@ static int snd_ice1712_pro_spdif_master_put(snd_kcontrol_t * kcontrol, snd_ctl_e
 	return change;
 }
 
-static snd_kcontrol_new_t snd_ice1712_pro_spdif_master = {
+static snd_kcontrol_new_t snd_ice1712_pro_spdif_master __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"Multi Track IEC958 Master",0,0,
@@ -3562,7 +3152,7 @@ static int snd_ice1712_pro_route_analog_get(snd_kcontrol_t * kcontrol, snd_ctl_e
 	val = inw(ICEMT(ice, ROUTE_PSDOUT03));
 	val >>= ((idx % 2) * 8) + ((idx / 2) * 2);
 	val &= 3;
-	cval = inw(ICEMT(ice, ROUTE_CAPTURE));
+	cval = inl(ICEMT(ice, ROUTE_CAPTURE));
 	cval >>= ((idx / 2) * 8) + ((idx % 2) * 4);
 	if (val == 1 && idx < 2)
 		ucontrol->value.enumerated.item[0] = 11;
@@ -3584,13 +3174,13 @@ static int snd_ice1712_pro_route_analog_put(snd_kcontrol_t * kcontrol, snd_ctl_e
 	
 	/* update PSDOUT */
 	if (ucontrol->value.enumerated.item[0] >= 11)
-		nval = idx < 2 ? 1 : 0;
+		nval = idx < 2 ? 1 : 0; /* dig mixer (or pcm) */
 	else if (ucontrol->value.enumerated.item[0] >= 9)
-		nval = 3;
+		nval = 3; /* spdif in */
 	else if (ucontrol->value.enumerated.item[0] >= 1)
-		nval = 2;
+		nval = 2; /* analog in */
 	else
-		nval = 0;
+		nval = 0; /* pcm */
 	shift = ((idx % 2) * 8) + ((idx / 2) * 2);
 	val = old_val = inw(ICEMT(ice, ROUTE_PSDOUT03));
 	val &= ~(0x03 << shift);
@@ -3598,24 +3188,24 @@ static int snd_ice1712_pro_route_analog_put(snd_kcontrol_t * kcontrol, snd_ctl_e
 	change = val != old_val;
 	if (change)
 		outw(val, ICEMT(ice, ROUTE_PSDOUT03));
-	if (nval < 2)
+	if (nval < 2) /* dig mixer of pcm */
 		return change;
 
 	/* update CAPTURE */
-	val = old_val = inw(ICEMT(ice, ROUTE_CAPTURE));
+	val = old_val = inl(ICEMT(ice, ROUTE_CAPTURE));
 	shift = ((idx / 2) * 8) + ((idx % 2) * 4);
-	if (nval == 2) {
+	if (nval == 2) { /* analog in */
 		nval = ucontrol->value.enumerated.item[0] - 1;
 		val &= ~(0x07 << shift);
 		val |= nval << shift;
-	} else {
+	} else { /* spdif in */
 		nval = (ucontrol->value.enumerated.item[0] - 9) << 3;
 		val &= ~(0x08 << shift);
 		val |= nval << shift;
 	}
 	if (val != old_val) {
 		change = 1;
-		outw(val, ICEMT(ice, ROUTE_CAPTURE));
+		outl(val, ICEMT(ice, ROUTE_CAPTURE));
 	}
 	return change;
 }
@@ -3675,7 +3265,7 @@ static int snd_ice1712_pro_route_spdif_put(snd_kcontrol_t * kcontrol, snd_ctl_el
 	return change;
 }
 
-static snd_kcontrol_new_t snd_ice1712_mixer_pro_analog_route = {
+static snd_kcontrol_new_t snd_ice1712_mixer_pro_analog_route __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"H/W Playback Route",0,0,
@@ -3691,7 +3281,7 @@ static snd_kcontrol_new_t snd_ice1712_mixer_pro_analog_route = {
 #endif
 };
 
-static snd_kcontrol_new_t snd_ice1712_mixer_pro_spdif_route = {
+static snd_kcontrol_new_t snd_ice1712_mixer_pro_spdif_route __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"IEC958 Playback Route",0,0,
@@ -3741,7 +3331,7 @@ static int snd_ice1712_pro_volume_rate_put(snd_kcontrol_t * kcontrol, snd_ctl_el
 	return change;
 }
 
-static snd_kcontrol_new_t snd_ice1712_mixer_pro_volume_rate = {
+static snd_kcontrol_new_t snd_ice1712_mixer_pro_volume_rate __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"Multi Track Volume Rate",0,0,
@@ -3781,7 +3371,7 @@ static int snd_ice1712_pro_peak_get(snd_kcontrol_t * kcontrol, snd_ctl_elem_valu
 	return 0;
 }
 
-static snd_kcontrol_new_t snd_ice1712_mixer_pro_peak = {
+static snd_kcontrol_new_t snd_ice1712_mixer_pro_peak __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"Multi Track Peak",0,
@@ -3845,7 +3435,7 @@ static int snd_ice1712_ewx_io_sense_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_
 	return val != nval;
 }
 
-static snd_kcontrol_new_t snd_ice1712_ewx_input_sense = {
+static snd_kcontrol_new_t snd_ice1712_ewx_input_sense __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"Input Sensitivity Switch",0,0,
@@ -3863,7 +3453,7 @@ static snd_kcontrol_new_t snd_ice1712_ewx_input_sense = {
 #endif
 };
 
-static snd_kcontrol_new_t snd_ice1712_ewx_output_sense = {
+static snd_kcontrol_new_t snd_ice1712_ewx_output_sense __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"Output Sensitivity Switch",0,0,
@@ -3889,12 +3479,14 @@ static snd_kcontrol_new_t snd_ice1712_ewx_output_sense = {
 static int snd_ice1712_ews88mt_output_sense_get(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
 {
 	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
-	unsigned char saved[2];
 	unsigned char data;
 
-	save_gpio_status(ice, saved);
-	data = snd_ice1712_ews88mt_pcf8574_read(ice, ICE1712_EWS88MT_OUTPUT_ADDR);
-	restore_gpio_status(ice, saved);
+	snd_i2c_lock(ice->i2c);
+	if (snd_i2c_readbytes(ice->pcf8574[1], &data, 1) != 1) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
+	snd_i2c_unlock(ice->i2c);
 	ucontrol->value.enumerated.item[0] = data & ICE1712_EWS88MT_OUTPUT_SENSE ? 1 : 0; /* high = -10dBV, low = +4dBu */
 	return 0;
 }
@@ -3903,17 +3495,20 @@ static int snd_ice1712_ews88mt_output_sense_get(snd_kcontrol_t *kcontrol, snd_ct
 static int snd_ice1712_ews88mt_output_sense_put(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
 {
 	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
-	unsigned char saved[2];
 	unsigned char data, ndata;
 
-	save_gpio_status(ice, saved);
-	data = snd_ice1712_ews88mt_pcf8574_read(ice, ICE1712_EWS88MT_OUTPUT_ADDR);
+	snd_i2c_lock(ice->i2c);
+	if (snd_i2c_readbytes(ice->pcf8574[1], &data, 1) != 1) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
 	ndata = (data & ~ICE1712_EWS88MT_OUTPUT_SENSE) | (ucontrol->value.enumerated.item[0] ? ICE1712_EWS88MT_OUTPUT_SENSE : 0);
-	if (ndata != data)
-		snd_ice1712_ews88mt_pcf8574_write(ice, ICE1712_EWS88MT_OUTPUT_ADDR, ndata);
-	restore_gpio_status(ice, saved);
+	if (ndata != data && snd_i2c_sendbytes(ice->pcf8574[1], &ndata, 1) != 1) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
+	snd_i2c_unlock(ice->i2c);
 	return ndata != data;
-
 }
 
 /* analog input sensitivity; address 0x46 */
@@ -3921,13 +3516,14 @@ static int snd_ice1712_ews88mt_input_sense_get(snd_kcontrol_t *kcontrol, snd_ctl
 {
 	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
 	int channel = kcontrol->id.index;
-	unsigned char saved[2];
 	unsigned char data;
 
 	snd_assert(channel >= 0 && channel <= 7, return 0);
-	save_gpio_status(ice, saved);
-	data = snd_ice1712_ews88mt_pcf8574_read(ice, ICE1712_EWS88MT_INPUT_ADDR);
-	restore_gpio_status(ice, saved);
+	snd_i2c_lock(ice->i2c);
+	if (snd_i2c_readbytes(ice->pcf8574[0], &data, 1) != 1) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
 	/* reversed; high = +4dBu, low = -10dBV */
 	ucontrol->value.enumerated.item[0] = data & (1 << channel) ? 0 : 1;
 	return 0;
@@ -3938,20 +3534,24 @@ static int snd_ice1712_ews88mt_input_sense_put(snd_kcontrol_t *kcontrol, snd_ctl
 {
 	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
 	int channel = kcontrol->id.index;
-	unsigned char saved[2];
 	unsigned char data, ndata;
 
 	snd_assert(channel >= 0 && channel <= 7, return 0);
-	save_gpio_status(ice, saved);
-	data = snd_ice1712_ews88mt_pcf8574_read(ice, ICE1712_EWS88MT_INPUT_ADDR);
+	snd_i2c_lock(ice->i2c);
+	if (snd_i2c_readbytes(ice->pcf8574[0], &data, 1) != 1) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
 	ndata = (data & ~(1 << channel)) | (ucontrol->value.enumerated.item[0] ? 0 : (1 << channel));
-	if (ndata != data)
-		snd_ice1712_ews88mt_pcf8574_write(ice, ICE1712_EWS88MT_INPUT_ADDR, ndata);
-	restore_gpio_status(ice, saved);
+	if (ndata != data && snd_i2c_sendbytes(ice->pcf8574[0], &ndata, 1) != 1) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
+	snd_i2c_unlock(ice->i2c);
 	return ndata != data;
 }
 
-static snd_kcontrol_new_t snd_ice1712_ews88mt_input_sense = {
+static snd_kcontrol_new_t snd_ice1712_ews88mt_input_sense __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"Input Sensitivity Switch",0,0,
@@ -3967,7 +3567,7 @@ static snd_kcontrol_new_t snd_ice1712_ews88mt_input_sense = {
 #endif
 };
 
-static snd_kcontrol_new_t snd_ice1712_ews88mt_output_sense = {
+static snd_kcontrol_new_t snd_ice1712_ews88mt_output_sense __devinitdata = {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
 	"Output Sensitivity Switch",0,0,
@@ -4002,14 +3602,18 @@ static int snd_ice1712_ews88d_control_get(snd_kcontrol_t *kcontrol, snd_ctl_elem
 	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
 	int shift = kcontrol->private_value & 0xff;
 	int invert = (kcontrol->private_value >> 8) & 1;
-	unsigned short data;
+	unsigned char data[2];
 	
-	data = snd_ice1712_ews88d_pcf8575_read(ice, ICE1712_EWS88D_PCF_ADDR);
-	//printk("pcf: read 0x%x\n", data);
-	data = (data >> shift) & 0x01;
+	snd_i2c_lock(ice->i2c);
+	if (snd_i2c_readbytes(ice->pcf8575, data, 2) != 2) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
+	snd_i2c_unlock(ice->i2c);
+	data[0] = (data[shift >> 3] >> (shift & 7)) & 0x01;
 	if (invert)
-		data ^= 0x01;
-	ucontrol->value.integer.value[0] = data;
+		data[0] ^= 0x01;
+	ucontrol->value.integer.value[0] = data[0];
 	return 0;
 }
 
@@ -4018,30 +3622,33 @@ static int snd_ice1712_ews88d_control_put(snd_kcontrol_t * kcontrol, snd_ctl_ele
 	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
 	int shift = kcontrol->private_value & 0xff;
 	int invert = (kcontrol->private_value >> 8) & 1;
-	unsigned short data, ndata;
+	unsigned char data[2], ndata[2];
 	int change;
 
-	data = snd_ice1712_ews88d_pcf8575_read(ice, ICE1712_EWS88D_PCF_ADDR);
-	ndata = data & ~(1 << shift);
+	snd_i2c_lock(ice->i2c);
+	if (snd_i2c_readbytes(ice->pcf8575, data, 2) != 2) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
+	ndata[shift >> 3] = data[shift >> 3] & ~(1 << (shift & 7));
 	if (invert) {
 		if (! ucontrol->value.integer.value[0])
-			ndata |= (1 << shift);
+			ndata[shift >> 3] |= (1 << (shift & 7));
 	} else {
 		if (ucontrol->value.integer.value[0])
-			ndata |= (1 << shift);
+			ndata[shift >> 3] |= (1 << (shift & 7));
 	}
-	change = (data != ndata);
-	if (change) {
-		ndata &= 0xff;
-		ndata |= (unsigned short)ice->cs8403_spdif_stream_bits << 8;
-		snd_ice1712_ews88d_pcf8575_write(ice, ICE1712_EWS88D_PCF_ADDR, ndata);
-		//printk("pcf: write 0x%x\n", ndata);
+	change = (data[shift >> 3] != ndata[shift >> 3]);
+	if (change && snd_i2c_sendbytes(ice->pcf8575, data, 2) != 2) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
 	}
+	snd_i2c_unlock(ice->i2c);
 	return change;
 }
 
 #ifdef TARGET_OS2
-#define EWS88D_CONTROL(xiface, xname, xindex, xshift, xinvert, xaccess) \
+#define EWS88D_CONTROL(xiface, xname, xshift, xinvert, xaccess) \
 { xiface,0,0,\
   xname, 0,\
   xaccess,\
@@ -4051,7 +3658,7 @@ static int snd_ice1712_ews88d_control_put(snd_kcontrol_t * kcontrol, snd_ctl_ele
   xshift | (xinvert << 8),\
 }
 #else
-#define EWS88D_CONTROL(xiface, xname, xindex, xshift, xinvert, xaccess) \
+#define EWS88D_CONTROL(xiface, xname, xshift, xinvert, xaccess) \
 { iface: xiface,\
   name: xname,\
   access: xaccess,\
@@ -4062,23 +3669,115 @@ static int snd_ice1712_ews88d_control_put(snd_kcontrol_t * kcontrol, snd_ctl_ele
 }
 #endif
 
-static snd_kcontrol_new_t snd_ice1712_ews88d_spdif_in_opt =
-EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "IEC958 Input Optical", 0, 0, 1, 0); /* inverted */
-static snd_kcontrol_new_t snd_ice1712_ews88d_opt_out_adat =
-EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "ADAT Output Optical", 0, 1, 0, 0);
-static snd_kcontrol_new_t snd_ice1712_ews88d_master_adat =
-EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "ADAT External Master Clock", 0, 2, 0, 0);
-static snd_kcontrol_new_t snd_ice1712_ews88d_adat_enable =
-EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "Enable ADAT", 0, 3, 0, 0);
-static snd_kcontrol_new_t snd_ice1712_ews88d_adat_through =
-EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "ADAT Through", 0, 4, 1, 0);
+static snd_kcontrol_new_t snd_ice1712_ews88d_controls[] __devinitdata = {
+	EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "IEC958 Input Optical", 0, 1, 0), /* inverted */
+	EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "ADAT Output Optical", 1, 0, 0),
+	EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "ADAT External Master Clock", 2, 0, 0),
+	EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "Enable ADAT", 3, 0, 0),
+	EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "ADAT Through", 4, 1, 0),
+};
+
+
+/*
+ * DMX 6Fire controls
+ */
+
+#if 0 // XXX not working yet
+static int snd_ice1712_6fire_read_pca(ice1712_t *ice)
+{
+	unsigned char byte;
+	snd_i2c_lock(ice->i2c);
+	byte = 0; /* read port */
+	snd_i2c_sendbytes(ice->pcf8575, &byte, 1);
+	if (snd_i2c_readbytes(ice->pcf8575, &byte, 1) != 1) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
+	snd_i2c_unlock(ice->i2c);
+	return byte;
+}
+
+static int snd_ice1712_6fire_write_pca(ice1712_t *ice, unsigned char data)
+{
+	unsigned char bytes[2];
+	snd_i2c_lock(ice->i2c);
+	bytes[0] = 1; /* write port */
+	bytes[1] = data;
+	if (snd_i2c_sendbytes(ice->pcf8575, bytes, 2) != 2) {
+		snd_i2c_unlock(ice->i2c);
+		return -EREMOTE;
+	}
+	snd_i2c_unlock(ice->i2c);
+	return 0;
+}
+
+static int snd_ice1712_6fire_control_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 1;
+	return 0;
+}
+
+static int snd_ice1712_6fire_control_get(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
+{
+	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
+	int shift = kcontrol->private_value & 0xff;
+	int invert = (kcontrol->private_value >> 8) & 1;
+	int data;
+	
+	if ((data = snd_ice1712_6fire_read_pca(ice)) < 0)
+		return data;
+	data = (data >> shift) & 1;
+	if (invert)
+		data ^= 1;
+	ucontrol->value.integer.value[0] = data;
+	return 0;
+}
+
+static int snd_ice1712_6fire_control_put(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
+{
+	ice1712_t *ice = snd_kcontrol_chip(kcontrol);
+	int shift = kcontrol->private_value & 0xff;
+	int invert = (kcontrol->private_value >> 8) & 1;
+	int data, ndata;
+	
+	if ((data = snd_ice1712_6fire_read_pca(ice)) < 0)
+		return data;
+	ndata = data & ~(1 << shift);
+	if (ucontrol->value.integer.value[0])
+		ndata |= (1 << shift);
+	if (invert)
+		ndata ^= (1 << shift);
+	if (data != ndata) {
+		snd_ice1712_6fire_write_pca(ice, (unsigned char)ndata);
+		return 1;
+	}
+	return 0;
+}
+
+#define DMX6FIRE_CONTROL(xiface, xname, xshift, xinvert, xaccess) \
+{ iface: xiface,\
+  name: xname,\
+  access: xaccess,\
+  info: snd_ice1712_6fire_control_info,\
+  get: snd_ice1712_6fire_control_get,\
+  put: snd_ice1712_6fire_control_put,\
+  private_value: xshift | (xinvert << 8),\
+}
+
+static snd_kcontrol_new_t snd_ice1712_6fire_led __devinitdata =
+DMX6FIRE_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "Breakbox LED", 6, 0, 0);
+
+#endif // XXX not working yet
 
 
 /*
  *
  */
 
-static unsigned char __init snd_ice1712_read_i2c(ice1712_t *ice,
+static unsigned char __devinit snd_ice1712_read_i2c(ice1712_t *ice,
 						 unsigned char dev,
 						 unsigned char addr)
 {
@@ -4090,7 +3789,7 @@ static unsigned char __init snd_ice1712_read_i2c(ice1712_t *ice,
 	return inb(ICEREG(ice, I2C_DATA));
 }
 
-static int __init snd_ice1712_read_eeprom(ice1712_t *ice)
+static int __devinit snd_ice1712_read_eeprom(ice1712_t *ice)
 {
 	int dev = 0xa0;		/* EEPROM device address */
 	unsigned int idx;
@@ -4136,91 +3835,44 @@ static int __init snd_ice1712_read_eeprom(ice1712_t *ice)
 	return 0;
 }
 
-static void __init snd_ice1712_ak4524_init(ice1712_t *ice)
+static void __devinit snd_ice1712_ak4524_init(ice1712_t *ice)
 {
-	static unsigned char inits[8] = {
-		0x07, /* 0: all power up */
-		0x03, /* 1: ADC/DAC reset */
-		0x60, /* 2: 24bit I2S */
-		0x19, /* 3: deemphasis off */
-		0x00, /* 4: ADC left muted */
-		0x00, /* 5: ADC right muted */
-		0x00, /* 6: DAC left muted */
-		0x00, /* 7: DAC right muted */
+	static unsigned char inits[] = {
+		0x00, 0x07, /* 0: all power up */
+		0x01, 0x00, /* 1: ADC/DAC reset */
+		0x02, 0x60, /* 2: 24bit I2S */
+		0x03, 0x19, /* 3: deemphasis off */
+		0x01, 0x03, /* 1: ADC/DAC enable */
+		0x04, 0x00, /* 4: ADC left muted */
+		0x05, 0x00, /* 5: ADC right muted */
+		0x04, 0x80, /* 4: ADC IPGA gain 0dB */
+		0x05, 0x80, /* 5: ADC IPGA gain 0dB */
+		0x06, 0x00, /* 6: DAC left muted */
+		0x07, 0x00, /* 7: DAC right muted */
+		0xff, 0xff
 	};
-	int chip;
-	unsigned char reg;
+	int chip, idx;
+	unsigned char *ptr, reg, data;
 
-	for (chip = 0; chip < ice->num_dacs/2; chip++) {
-		for (reg = 0; reg < 8; ++reg)
-			snd_ice1712_ak4524_write(ice, chip, reg, inits[reg]);
+	for (chip = idx = 0; chip < ice->num_dacs/2; chip++) {
+		ptr = inits;
+		while (*ptr != 0xff) {
+			reg = *ptr++;
+			data = *ptr++;
+			if (ice->ak4528) {
+				if (reg > 5)
+					continue;
+				if (reg >= 4 && (data & 0x80))
+					continue;
+			}
+			if (reg == 0x03 && ice->ak4528)
+				data = 0x0d;	/* deemphasis off, turn LR highpass filters on */
+			snd_ice1712_ak4524_write(ice, chip, reg, data);
+		}
 	}
 }
 
-/* init CS8427 transciever */
-static void __init snd_ice1712_cs8427_init(ice1712_t *ice)
-{
-	static unsigned char initvals[] = {
-		/* RMCK to OMCK, no validity, disable mutes, TCBL=output */
-		0x80,
-		/* hold last valid audio sample, RMCK=256*Fs, normal stereo operation */
-		0x00,
-		/* output drivers normal operation, Tx<=serial, Rx=>serial */
-		0x0c,
-		/* Run off, CMCK=256*Fs, output time base = OMCK, input time base =
-		   covered input clock, recovered input clock source is Envy24 */
-		0x04,
-		/* Serial audio input port data format = I2S */
-		0x05, /* SIDEL=1, SILRPOL=1 */
-		/* Serial audio output port data format = I2S */
-		0x05,	/* SODEL=1, SOLRPOL=1 */
-	};
-	unsigned char buf[32];
-
-	/* verify CS8427 ID */
-	if (ice->cs8427_ops->read(ice, 127) != 0x71) {
-		snd_printk("unable to find CS8427 signature, initialization is not completed\n");
-		return;
-	}
-	/* turn off run bit while making changes to configuration */
-	ice->cs8427_ops->write(ice, 4, 0x00);
-	/* send initial values */
-	ice->cs8427_ops->write_bytes(ice, 1, 6, initvals);
-	/* Turn off CS8427 interrupt stuff that is not used in hardware */
-	memset(buf, 0, sizeof(buf));
-	/* from address 9 to 15 */
-	ice->cs8427_ops->write_bytes(ice, 9, 7, buf);
-	/* unmask the input PLL clock, V, confidence, biphase, parity status bits */
-	//buf[0] = 0x1f;
-	buf[0] = 0;
-	/* Registers 32-55 window to CS buffer
-	   Inhibit D->E transfers from overwriting first 5 bytes of CS data.
-	   Allow D->E transfers (all) of CS data.
-	   Allow E->F transfer of CS data.
-	   One byte mode; both A/B channels get same written CB data.
-	   A channel info is output to chip's EMPH* pin. */
-	buf[1] = 0x10;
-	/* Use internal buffer to transmit User (U) data.
-	   Chip's U pin is an output.
-	   Transmit all O's for user data. */
-	//buf[2] = 0x10;
-	buf[2] = 0x00;
-	ice->cs8427_ops->write_bytes(ice, 17, 3, buf);
-	/* turn on run bit and rock'n'roll */
-	ice->cs8427_ops->write(ice, 4, initvals[3] | 0x40);
-	/* write default channel status bytes */
-	ice->cs8427_ops->write_bytes(ice, 32, 5, ice->cs8427_spdif_status);
-
-	/*
-	 * add controls..
-	 */
-	snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_cs8427_in_status, ice));
-#if 0
-	snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_cs8427_clock_select, ice));
-#endif
-}
-
-static void __init snd_ice1712_stdsp24_gpio_write(ice1712_t *ice, unsigned char byte)
+static void __devinit snd_ice1712_stdsp24_gpio_write(ice1712_t *ice, unsigned char byte)
 {
 	byte |= ICE1712_STDSP24_CLOCK_BIT;
 	udelay(100);
@@ -4233,7 +3885,7 @@ static void __init snd_ice1712_stdsp24_gpio_write(ice1712_t *ice, unsigned char 
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DATA, byte);
 }
 
-static void __init snd_ice1712_stdsp24_darear(ice1712_t *ice, int activate)
+static void __devinit snd_ice1712_stdsp24_darear(ice1712_t *ice, int activate)
 {
 	down(&ice->gpio_mutex);
 	ICE1712_STDSP24_0_DAREAR(ice->hoontech_boxbits, activate);
@@ -4241,7 +3893,7 @@ static void __init snd_ice1712_stdsp24_darear(ice1712_t *ice, int activate)
 	up(&ice->gpio_mutex);
 }
 
-static void __init snd_ice1712_stdsp24_mute(ice1712_t *ice, int activate)
+static void __devinit snd_ice1712_stdsp24_mute(ice1712_t *ice, int activate)
 {
 	down(&ice->gpio_mutex);
 	ICE1712_STDSP24_3_MUTE(ice->hoontech_boxbits, activate);
@@ -4249,7 +3901,7 @@ static void __init snd_ice1712_stdsp24_mute(ice1712_t *ice, int activate)
 	up(&ice->gpio_mutex);
 }
 
-static void __init snd_ice1712_stdsp24_insel(ice1712_t *ice, int activate)
+static void __devinit snd_ice1712_stdsp24_insel(ice1712_t *ice, int activate)
 {
 	down(&ice->gpio_mutex);
 	ICE1712_STDSP24_3_INSEL(ice->hoontech_boxbits, activate);
@@ -4257,7 +3909,7 @@ static void __init snd_ice1712_stdsp24_insel(ice1712_t *ice, int activate)
 	up(&ice->gpio_mutex);
 }
 
-static void __init snd_ice1712_stdsp24_box_channel(ice1712_t *ice, int box, int chn, int activate)
+static void __devinit snd_ice1712_stdsp24_box_channel(ice1712_t *ice, int box, int chn, int activate)
 {
 	down(&ice->gpio_mutex);
 
@@ -4304,7 +3956,7 @@ static void __init snd_ice1712_stdsp24_box_channel(ice1712_t *ice, int box, int 
 	up(&ice->gpio_mutex);
 }
 
-static void __init snd_ice1712_stdsp24_box_midi(ice1712_t *ice, int box, int master, int slave)
+static void __devinit snd_ice1712_stdsp24_box_midi(ice1712_t *ice, int box, int master, int slave)
 {
 	down(&ice->gpio_mutex);
 
@@ -4335,7 +3987,7 @@ static void __init snd_ice1712_stdsp24_box_midi(ice1712_t *ice, int box, int mas
 	up(&ice->gpio_mutex);
 }
 
-static void __init snd_ice1712_stdsp24_init(ice1712_t *ice)
+static void __devinit snd_ice1712_stdsp24_init(ice1712_t *ice)
 {
 	int box, chn;
 
@@ -4393,8 +4045,10 @@ static void __init snd_ice1712_stdsp24_init(ice1712_t *ice)
 	}
 }
 
-static int __init snd_ice1712_chip_init(ice1712_t *ice)
+static int __devinit snd_ice1712_chip_init(ice1712_t *ice)
 {
+	int err, has_i2c = 0;
+
 	outb(ICE1712_RESET | ICE1712_NATIVE, ICEREG(ice, CONTROL));
 	udelay(200);
 	outb(ICE1712_NATIVE, ICEREG(ice, CONTROL));
@@ -4425,26 +4079,93 @@ static int __init snd_ice1712_chip_init(ice1712_t *ice)
 		snd_ice1712_write(ice, ICE1712_IREG_CONSUMER_POWERDOWN, 0);
 	}
 
+	/* determine I2C, DACs and ADCs */
 	switch (ice->eeprom.subvendor) {
 	case ICE1712_SUBDEVICE_AUDIOPHILE:
+		ice->ak4528 = 1;
+		/* follow thru */
 	case ICE1712_SUBDEVICE_EWX2496:
-		ice->num_adcs = ice->num_dacs = 2;
+		has_i2c = 1;
+		ice->num_adcs = ice->num_dacs = ice->num_total_dacs = 2;
 		break;	
 	case ICE1712_SUBDEVICE_DELTA44:
 	case ICE1712_SUBDEVICE_DELTA66:
-		ice->num_adcs = ice->num_dacs = 4;
+		ice->num_adcs = ice->num_dacs = ice->num_total_dacs = 4;
+		if (ice->omni)
+			ice->num_total_dacs = 8;
 		break;
 	case ICE1712_SUBDEVICE_EWS88MT:
-		ice->num_adcs = ice->num_dacs = 8;
+		has_i2c = 1;
+		/* follow thru */
+	case ICE1712_SUBDEVICE_DELTA1010:
+		ice->num_adcs = ice->num_dacs = ice->num_total_dacs = 8;
+		break;
+	case ICE1712_SUBDEVICE_EWS88D:
+		has_i2c = 1;
+		break;
+	case ICE1712_SUBDEVICE_DMX6FIRE:
+		has_i2c = 1;
+		ice->num_adcs = ice->num_dacs = ice->num_total_dacs = 6;
 		break;
 	}
 
+	if (has_i2c) {
+		if ((err = snd_i2c_bus_create(ice->card, "ICE1712 GPIO 1", NULL, &ice->i2c)) < 0) {
+			snd_printk("unable to create I2C bus\n");
+			return err;
+		}
+		ice->i2c->private_data = ice;
+		switch (ice->eeprom.subvendor) {
+		case ICE1712_SUBDEVICE_AUDIOPHILE:
+			ice->i2c->ops = &ap_cs8427_i2c_ops;
+			break;
+		case ICE1712_SUBDEVICE_EWX2496:
+		case ICE1712_SUBDEVICE_EWS88MT:
+		case ICE1712_SUBDEVICE_EWS88D:
+		case ICE1712_SUBDEVICE_DMX6FIRE:
+			ice->i2c->hw_ops.bit = &snd_ice1712_ewx_cs8427_bit_ops;
+			break;
+		}
+		switch (ice->eeprom.subvendor) {
+		case ICE1712_SUBDEVICE_AUDIOPHILE:
+		case ICE1712_SUBDEVICE_EWX2496:
+			if ((err = snd_cs8427_create(ice->i2c, CS8427_BASE_ADDR, &ice->cs8427)) < 0) {
+				snd_printk("CS8427 initialization failed\n");
+				return err;
+			}
+			break;
+		case ICE1712_SUBDEVICE_DMX6FIRE:
+#if 0 // XXX not working yet
+			if ((err = snd_i2c_device_create(ice->i2c, "PCF9554", 0x40>>1, &ice->pcf8575)) < 0)
+				return err;
+			if ((err = snd_cs8427_create(ice->i2c, 0x11, &ice->cs8427)) < 0) {
+				snd_printk("CS8427 initialization failed\n");
+				return err;
+			}
+#endif // XXX not working yet
+			break;
+		case ICE1712_SUBDEVICE_EWS88MT:
+			if ((err = snd_i2c_device_create(ice->i2c, "CS8404", ICE1712_EWS88MT_CS8404_ADDR, &ice->cs8404)) < 0)
+				return err;
+			if ((err = snd_i2c_device_create(ice->i2c, "PCF8574 (1st)", ICE1712_EWS88MT_INPUT_ADDR, &ice->pcf8574[0])) < 0)
+				return err;
+			if ((err = snd_i2c_device_create(ice->i2c, "PCF8574 (2nd)", ICE1712_EWS88MT_OUTPUT_ADDR, &ice->pcf8574[1])) < 0)
+				return err;
+			break;
+		case ICE1712_SUBDEVICE_EWS88D:
+			if ((err = snd_i2c_device_create(ice->i2c, "PCF8575", ICE1712_EWS88D_PCF_ADDR, &ice->pcf8575)) < 0)
+				return err;
+			break;
+		}
+	}
+	/* second stage of initialization, analog parts and others */
 	switch (ice->eeprom.subvendor) {
 	case ICE1712_SUBDEVICE_DELTA66:
 	case ICE1712_SUBDEVICE_DELTA44:
 	case ICE1712_SUBDEVICE_AUDIOPHILE:
 	case ICE1712_SUBDEVICE_EWX2496:
 	case ICE1712_SUBDEVICE_EWS88MT:
+	case ICE1712_SUBDEVICE_DMX6FIRE:
 		snd_ice1712_ak4524_init(ice);
 		break;
 	case ICE1712_SUBDEVICE_STDSP24:
@@ -4466,6 +4187,8 @@ static int __init snd_ice1712_chip_init(ice1712_t *ice)
 		/* Set spdif defaults */
 		snd_ice1712_delta_cs8403_spdif_write(ice, ice->cs8403_spdif_bits);
 		break;
+	}
+	switch (ice->eeprom.subvendor) {
 	case ICE1712_SUBDEVICE_EWS88MT:
 	case ICE1712_SUBDEVICE_EWS88D:
 		/* Set spdif defaults */
@@ -4487,7 +4210,7 @@ static int __init snd_ice1712_build_controls(ice1712_t *ice)
 	err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_pro_spdif_master, ice));
 	if (err < 0)
 		return err;
-	for (idx = 0; idx < ice->num_dacs; idx++) {
+	for (idx = 0; idx < ice->num_total_dacs; idx++) {
 		kctl = snd_ctl_new1(&snd_ice1712_mixer_pro_analog_route, ice);
 		if (kctl == NULL)
 			return -ENOMEM;
@@ -4569,6 +4292,7 @@ static int __init snd_ice1712_build_controls(ice1712_t *ice)
 	case ICE1712_SUBDEVICE_DELTA44:
 	case ICE1712_SUBDEVICE_DELTA66:
 	case ICE1712_SUBDEVICE_EWS88MT:
+	case ICE1712_SUBDEVICE_DMX6FIRE:
 		for (idx = 0; idx < ice->num_dacs; ++idx) {
 			snd_kcontrol_t ctl;
 			memset(&ctl, 0, sizeof(ctl));
@@ -4579,12 +4303,15 @@ static int __init snd_ice1712_build_controls(ice1712_t *ice)
 			ctl.access = SNDRV_CTL_ELEM_ACCESS_READ|SNDRV_CTL_ELEM_ACCESS_WRITE;
 			ctl.get = snd_ice1712_ak4524_volume_get;
 			ctl.put = snd_ice1712_ak4524_volume_put;
-			ctl.private_value = (idx / 2) * 8 + (idx % 2) + 6; /* reigster 6 & 7 */
+			if (ice->ak4528)
+				ctl.private_value = (idx / 2) * 8 + (idx % 2) + 4; /* register 4 & 5 */
+			else
+				ctl.private_value = (idx / 2) * 8 + (idx % 2) + 6; /* register 6 & 7 */
 			ctl.private_data = ice;
 			if ((err = snd_ctl_add(ice->card, snd_ctl_new(&ctl))) < 0)
 				return err;
 		}
-		for (idx = 0; idx < ice->num_adcs; ++idx) {
+		for (idx = 0; idx < ice->num_adcs && !ice->ak4528; ++idx) {
 			snd_kcontrol_t ctl;
 			memset(&ctl, 0, sizeof(ctl));
 			strcpy(ctl.id.name, "ADC Volume");
@@ -4594,7 +4321,19 @@ static int __init snd_ice1712_build_controls(ice1712_t *ice)
 			ctl.access = SNDRV_CTL_ELEM_ACCESS_READ|SNDRV_CTL_ELEM_ACCESS_WRITE;
 			ctl.get = snd_ice1712_ak4524_volume_get;
 			ctl.put = snd_ice1712_ak4524_volume_put;
-			ctl.private_value = (idx / 2) * 8 + (idx % 2) + 4; /* reigster 4 & 5 */
+			ctl.private_value = (idx / 2) * 8 + (idx % 2) + 4; /* register 4 & 5 */
+			ctl.private_data = ice;
+			if ((err = snd_ctl_add(ice->card, snd_ctl_new(&ctl))) < 0)
+				return err;
+			memset(&ctl, 0, sizeof(ctl));
+			strcpy(ctl.id.name, "IPGA Analog Capture Volume");
+			ctl.id.index = idx;
+			ctl.id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+			ctl.info = snd_ice1712_ak4524_ipga_gain_info;
+			ctl.access = SNDRV_CTL_ELEM_ACCESS_READ|SNDRV_CTL_ELEM_ACCESS_WRITE;
+			ctl.get = snd_ice1712_ak4524_ipga_gain_get;
+			ctl.put = snd_ice1712_ak4524_ipga_gain_put;
+			ctl.private_value = (idx / 2) * 8 + (idx % 2) + 4; /* register 4 & 5 */
 			ctl.private_data = ice;
 			if ((err = snd_ctl_add(ice->card, snd_ctl_new(&ctl))) < 0)
 				return err;
@@ -4637,28 +4376,25 @@ static int __init snd_ice1712_build_controls(ice1712_t *ice)
 			return err;
 		break;
 	case ICE1712_SUBDEVICE_EWS88D:
-		err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_ews88d_spdif_in_opt, ice));
+		for (idx = 0; idx < sizeof(snd_ice1712_ews88d_controls)/sizeof(snd_ice1712_ews88d_controls[0]); idx++) {
+			err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_ews88d_controls[idx], ice));
 		if (err < 0)
 			return err;
-		err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_ews88d_opt_out_adat, ice));
+		}
+		break;
+	case ICE1712_SUBDEVICE_DMX6FIRE:
+#if 0 // XXX not working yet
+		err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_6fire_led, ice));
 		if (err < 0)
 			return err;
-		err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_ews88d_master_adat, ice));
-		if (err < 0)
-			return err;
-		err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_ews88d_adat_enable, ice));
-		if (err < 0)
-			return err;
-		err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_ews88d_adat_through, ice));
-		if (err < 0)
-			return err;
+#endif
 		break;
 	}
 
 	return 0;
 }
 
-static int __exit snd_ice1712_free(ice1712_t *ice)
+static int snd_ice1712_free(ice1712_t *ice)
 {
 	if (ice->res_port == NULL)
 		goto __hw_end;
@@ -4671,26 +4407,35 @@ static int __exit snd_ice1712_free(ice1712_t *ice)
 	synchronize_irq();
 	if (ice->irq)
 		free_irq(ice->irq, (void *) ice);
-	if (ice->res_port)
+	if (ice->res_port) {
 		release_resource(ice->res_port);
-	if (ice->res_ddma_port)
+		kfree_nocheck(ice->res_port);
+	}
+	if (ice->res_ddma_port) {
 		release_resource(ice->res_ddma_port);
-	if (ice->res_dmapath_port)
+		kfree_nocheck(ice->res_ddma_port);
+	}
+	if (ice->res_dmapath_port) {
 		release_resource(ice->res_dmapath_port);
-	if (ice->res_profi_port)
+		kfree_nocheck(ice->res_dmapath_port);
+	}
+	if (ice->res_profi_port) {
 		release_resource(ice->res_profi_port);
+		kfree_nocheck(ice->res_profi_port);
+	}
 	snd_magic_kfree(ice);
 	return 0;
 }
 
-static int __exit snd_ice1712_dev_free(snd_device_t *device)
+static int snd_ice1712_dev_free(snd_device_t *device)
 {
 	ice1712_t *ice = snd_magic_cast(ice1712_t, device->device_data, return -ENXIO);
 	return snd_ice1712_free(ice);
 }
 
-static int __init snd_ice1712_create(snd_card_t * card,
+static int __devinit snd_ice1712_create(snd_card_t * card,
 				     struct pci_dev *pci,
+				     int omni,
 				     ice1712_t ** r_ice1712)
 {
 	ice1712_t *ice;
@@ -4704,6 +4449,7 @@ static int __init snd_ice1712_create(snd_card_t * card,
 		dev_free:	snd_ice1712_dev_free,
 	};
 #endif
+
 	*r_ice1712 = NULL;
 
         /* enable PCI device */
@@ -4719,17 +4465,13 @@ static int __init snd_ice1712_create(snd_card_t * card,
 	ice = snd_magic_kcalloc(ice1712_t, 0, GFP_KERNEL);
 	if (ice == NULL)
 		return -ENOMEM;
+	ice->omni = omni ? 1 : 0;
 	spin_lock_init(&ice->reg_lock);
 	init_MUTEX(&ice->gpio_mutex);
 	ice->cs8403_spdif_bits =
 	ice->cs8403_spdif_stream_bits = (0x01 |	/* consumer format */
 					 0x10 |	/* no emphasis */
 					 0x20);	/* PCM encoder/decoder */
-	ice->cs8427_spdif_status[0] = (SNDRV_PCM_DEFAULT_CON_SPDIF >> 0) & 0xff;
-	ice->cs8427_spdif_status[1] = (SNDRV_PCM_DEFAULT_CON_SPDIF >> 8) & 0xff;
-	ice->cs8427_spdif_status[2] = (SNDRV_PCM_DEFAULT_CON_SPDIF >> 16) & 0xff;
-	ice->cs8427_spdif_status[3] = (SNDRV_PCM_DEFAULT_CON_SPDIF >> 24) & 0xff;
-	memcpy(ice->cs8427_spdif_stream_status, ice->cs8427_spdif_status, 5);
 	ice->card = card;
 	ice->pci = pci;
 	ice->irq = -1;
@@ -4794,7 +4536,7 @@ static int __init snd_ice1712_create(snd_card_t * card,
 	return 0;
 }
 
-static int __init snd_ice1712_probe(struct pci_dev *pci,
+static int __devinit snd_ice1712_probe(struct pci_dev *pci,
 				    const struct pci_device_id *id)
 {
 	static int dev = 0;
@@ -4802,21 +4544,18 @@ static int __init snd_ice1712_probe(struct pci_dev *pci,
 	ice1712_t *ice;
 	int pcm_dev = 0, err;
 
-	for ( ; dev < SNDRV_CARDS; dev++) {
+	if (dev >= SNDRV_CARDS)
+		return -ENODEV;
 		if (!snd_enable[dev]) {
 			dev++;
 			return -ENOENT;
 		}
-		break;
-	}
-	if (dev >= SNDRV_CARDS)
-		return -ENODEV;
 
 	card = snd_card_new(snd_index[dev], snd_id[dev], THIS_MODULE, 0);
 	if (card == NULL)
 		return -ENOMEM;
 
-	if ((err = snd_ice1712_create(card, pci, &ice)) < 0) {
+	if ((err = snd_ice1712_create(card, pci, snd_omni[dev], &ice)) < 0) {
 		snd_card_free(card);
 		return err;
 	}
@@ -4879,6 +4618,9 @@ static int __init snd_ice1712_probe(struct pci_dev *pci,
 	case ICE1712_SUBDEVICE_EWS88D:
 		strcpy(card->shortname, "TerraTec EWS 88D");
 		break;
+	case ICE1712_SUBDEVICE_DMX6FIRE:
+		strcpy(card->shortname, "TerraTec DMX 6Fire");
+		break;
 	}
 
 	if ((err = snd_mpu401_uart_new(card, 0, MPU401_HW_ICE1712,
@@ -4906,15 +4648,15 @@ static int __init snd_ice1712_probe(struct pci_dev *pci,
 		snd_card_free(card);
 		return err;
 	}
-	PCI_SET_DRIVER_DATA(pci, card);
+	pci_set_drvdata(pci, card);
 	dev++;
 	return 0;
 }
 
-static void __exit snd_ice1712_remove(struct pci_dev *pci)
+static void __devexit snd_ice1712_remove(struct pci_dev *pci)
 {
-	snd_card_free(PCI_GET_DRIVER_DATA(pci));
-	PCI_SET_DRIVER_DATA(pci, NULL);
+	snd_card_free(pci_get_drvdata(pci));
+	pci_set_drvdata(pci, NULL);
 }
 
 #ifdef TARGET_OS2
@@ -4929,7 +4671,7 @@ static struct pci_driver driver = {
 	name: "ICE1712",
 	id_table: snd_ice1712_ids,
 	probe: snd_ice1712_probe,
-	remove: snd_ice1712_remove,
+	remove: __devexit_p(snd_ice1712_remove),
 };
 #endif
 
@@ -4939,7 +4681,7 @@ static int __init alsa_card_ice1712_init(void)
 
 	if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-		snd_printk("ICE1712 soundcard not found or device busy\n");
+		printk(KERN_ERR "ICE1712 soundcard not found or device busy\n");
 #endif
 		return err;
 	}
@@ -4956,7 +4698,7 @@ module_exit(alsa_card_ice1712_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-ice1712=snd_enable,snd_index,snd_id */
+/* format is: snd-ice1712=snd_enable,snd_index,snd_id */
 
 static int __init alsa_card_ice1712_setup(char *str)
 {
@@ -4971,6 +4713,6 @@ static int __init alsa_card_ice1712_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-ice1712=", alsa_card_ice1712_setup);
+__setup("snd-ice1712=", alsa_card_ice1712_setup);
 
 #endif /* ifndef MODULE */

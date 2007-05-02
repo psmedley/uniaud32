@@ -17,12 +17,15 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/ad1848.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
@@ -30,7 +33,9 @@
 #define chip_t ad1848_t
 
 EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("Tugrul Galatali <galatalt@stuy.edu>, Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("AD1848/AD1847/CS4248");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Analog Devices,AD1848},"
 	        "{Analog Devices,AD1847},"
@@ -130,7 +135,7 @@ static int __init alsa_card_ad1848_init(void)
 
 	if (!cards) {
 #ifdef MODULE
-		snd_printk("AD1848 soundcard not found or device busy\n");
+		printk(KERN_ERR "AD1848 soundcard not found or device busy\n");
 #endif
 		return -ENODEV;
 	}
@@ -150,7 +155,7 @@ module_exit(alsa_card_ad1848_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-ad1848=snd_enable,snd_index,snd_id,snd_port,
+/* format is: snd-ad1848=snd_enable,snd_index,snd_id,snd_port,
 			      snd_irq,snd_dma1 */
 
 static int __init alsa_card_ad1848_setup(char *str)
@@ -169,6 +174,6 @@ static int __init alsa_card_ad1848_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-ad1848=", alsa_card_ad1848_setup);
+__setup("snd-ad1848=", alsa_card_ad1848_setup);
 
 #endif /* ifndef MODULE */

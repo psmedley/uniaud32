@@ -2618,7 +2618,12 @@ static int patch_ad1988(struct hda_codec *codec)
 
 	if (is_rev2(codec))
 		snd_printk(KERN_INFO "patch_analog: AD1988A rev.2 is detected, enable workarounds\n");
-
+//paul
+		snd_printk(KERN_INFO "patch_analog: Vendor Id: 0x%x\n", codec->vendor_id);
+		snd_printk(KERN_INFO "patch_analog: Subsystem Id: 0x%x\n", codec->subsystem_id);
+		snd_printk(KERN_INFO "patch_analog: Revision Id: 0x%x\n", codec->revision_id);
+		snd_printk(KERN_INFO "patch_analog: Model Name: %s\n", codec->bus->modelname);
+//endpaul
 	board_config = snd_hda_check_board_config(codec, AD1988_MODEL_LAST,
 						  ad1988_models, NULL);
 	if (board_config < 0) {
@@ -2637,7 +2642,11 @@ static int patch_ad1988(struct hda_codec *codec)
 			board_config = AD1988_6STACK;
 		}
 	}
-
+//paul
+	snd_printk(KERN_INFO "patch_analog: board_config: %d\n", board_config);
+	board_config = AD1988_3STACK_DIG;
+	snd_printk(KERN_INFO "patch_analog: kludged board_config: %d\n", board_config);
+//endpaul
 	switch (board_config) {
 	case AD1988_6STACK:
 	case AD1988_6STACK_DIG:

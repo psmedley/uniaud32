@@ -2923,7 +2923,7 @@ static int __init alsa_card_m3_init(void)
 
     if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-        //		snd_printk("Maestro3/Allegro soundcard not found or device busy\n");
+		//		snd_printk(KERN_ERR "Maestro3/Allegro soundcard not found or device busy\n");
 #endif
         return err;
     }

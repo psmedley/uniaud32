@@ -20,7 +20,7 @@
  */
 
 #include <sound/driver.h>
-#include <sound/firmware.h>
+#include <linux/firmware.h>
 int snd_task_name(struct task_struct *task, char *name, size_t size)
 {
 	unsigned int idx;
@@ -540,6 +540,7 @@ static void run_workqueue(struct workqueue_struct *wq)
 	spin_unlock_irqrestore(&wq->lock, flags);
 }
 
+#if 0
 void flush_workqueue(struct workqueue_struct *wq)
 {
 	if (0 /* wq->task == current */) {
@@ -560,11 +561,12 @@ void flush_workqueue(struct workqueue_struct *wq)
 		spin_unlock_irq(&wq->lock);
 	}
 }
+#endif 
 
 void destroy_workqueue(struct workqueue_struct *wq)
 {
-    flush_workqueue(wq);
 #if 0
+    flush_workqueue(wq);
 	kill_proc(wq->task_pid, SIGKILL, 1);
 	if (wq->task_pid >= 0)
             wait_for_completion(&wq->thread_exited);
@@ -685,7 +687,8 @@ static int snd_try_load_firmware(const char *path, const char *name,
 	return firmware->size;
 }
 
-int request_firmware(const struct firmware **fw, const char *name)
+int request_firmware(const struct firmware **fw, const char *name,
+		     struct device *device)
 {
 	struct firmware *firmware;
 

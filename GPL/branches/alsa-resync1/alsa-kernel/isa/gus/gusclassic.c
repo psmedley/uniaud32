@@ -15,12 +15,16 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #define SNDRV_LEGACY_AUTO_PROBE
 #define SNDRV_LEGACY_FIND_FREE_IRQ
@@ -29,7 +33,10 @@
 #include <sound/initval.h>
 
 EXPORT_NO_SYMBOLS;
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Gravis UltraSound Classic");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Gravis,UltraSound Classic}}");
 
@@ -251,7 +258,7 @@ static int __init alsa_card_gusclassic_init(void)
 	cards += snd_legacy_auto_probe(possible_ports, snd_gusclassic_legacy_auto_probe);
 	if (!cards) {
 #ifdef MODULE
-		snd_printk("GUS Classic soundcard not found or device busy\n");
+		printk(KERN_ERR "GUS Classic soundcard not found or device busy\n");
 #endif
 		return -ENODEV;
 	}
@@ -271,7 +278,7 @@ module_exit(alsa_card_gusclassic_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-gusclassic=snd_enable,snd_index,snd_id,
+/* format is: snd-gusclassic=snd_enable,snd_index,snd_id,
 				  snd_port,snd_irq,
 				  snd_dma1,snd_dma2,
 				  snd_joystick_dac,
@@ -297,6 +304,6 @@ static int __init alsa_card_gusclassic_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-gusclassic=", alsa_card_gusclassic_setup);
+__setup("snd-gusclassic=", alsa_card_gusclassic_setup);
 
 #endif /* ifndef MODULE */

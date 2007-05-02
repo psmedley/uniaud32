@@ -16,17 +16,23 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <asm/dma.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/sb.h>
 #include <sound/initval.h>
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("ALSA lowlevel driver for Sound Blaster cards");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 
 #define BUSY_LOOPS 100000
@@ -171,6 +177,7 @@ static int snd_sbdsp_free(struct snd_sb *chip)
         release_resource(chip->res_port);
     if (chip->irq >= 0)
         free_irq(chip->irq, (void *) chip);
+#ifdef CONFIG_ISA
     if (chip->dma8 >= 0) {
         disable_dma(chip->dma8);
         free_dma(chip->dma8);
@@ -179,7 +186,8 @@ static int snd_sbdsp_free(struct snd_sb *chip)
         disable_dma(chip->dma16);
         free_dma(chip->dma16);
     }
-    kfree(chip);
+#endif
+	kfree(chip);
     return 0;
 }
 
@@ -240,6 +248,7 @@ int snd_sbdsp_create(snd_card_t *card,
         return -EBUSY;
     }
 
+#ifdef CONFIG_ISA
     if (dma8 >= 0 && request_dma(dma8, "SoundBlaster - 8bit")) {
         snd_sbdsp_free(chip);
         return -EBUSY;
@@ -250,6 +259,7 @@ int snd_sbdsp_create(snd_card_t *card,
         return -EBUSY;
     }
     chip->dma16 = dma16;
+#endif
 
 __skip_allocation:
     chip->card = card;

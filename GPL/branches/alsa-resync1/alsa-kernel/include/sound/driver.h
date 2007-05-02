@@ -105,8 +105,13 @@ typedef int irqreturn_t;
 #include <linux/errno.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 7)
 #include <linux/malloc.h>
+#else
+#include <linux/slab.h>
+#endif
 #include <linux/delay.h>
+#include <linux/bitops.h>
 
 #include <linux/ioport.h>
 
@@ -135,7 +140,8 @@ typedef int irqreturn_t;
 #include <linux/init.h>
 #endif
 #include "compat_22.h"
-#endif
+#endif /* LINUX_2_2 */
+
 #ifdef LINUX_2_3
 #include <linux/init.h>
 #include <linux/pm.h>
@@ -165,6 +171,10 @@ void *snd_pci_hack_alloc_consistent(struct pci_dev *hwdev, size_t size,
 #undef pci_alloc_consistent
 #define pci_alloc_consistent snd_pci_hack_alloc_consistent
 #endif /* i386 or ppc */
+#ifndef list_for_each_safe
+#define list_for_each_safe(pos, n, head) \
+	for (pos = (head)->next, n = pos->next; pos != (head); pos = n, n = pos->next)
+#endif
 #endif
 
 #if defined(CONFIG_ISAPNP) || (defined(CONFIG_ISAPNP_MODULE) && defined(MODULE))
@@ -179,6 +189,8 @@ void *snd_pci_hack_alloc_consistent(struct pci_dev *hwdev, size_t size,
 #define __ISAPNP__
 #endif
 
+#ifndef MODULE_LICENSE
+#define MODULE_LICENSE(license)
 #ifndef PCI_D0
 #define PCI_D0     0
 #define PCI_D1     1
@@ -226,7 +238,7 @@ struct work_struct {
 int snd_compat_schedule_work(struct work_struct *work);
 #define schedule_work(w) snd_compat_schedule_work(w)
 
-/* Name change */
+/* Typedef's */
 typedef struct timeval snd_timestamp_t;
 #ifndef TARGET_OS2
 typedef enum sndrv_card_type snd_card_type;

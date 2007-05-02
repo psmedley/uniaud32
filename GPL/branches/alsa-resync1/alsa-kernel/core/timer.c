@@ -1872,10 +1872,10 @@ static int __init alsa_timer_init(void)
     }
     snd_timer_proc_entry = entry;
     if ((err = snd_timer_register_system()) < 0)
-        snd_printk("unable to register system timer (%i)\n", err);
+		snd_printk(KERN_ERR "unable to register system timer (%i)\n", err);
     if ((err = snd_register_device(SNDRV_DEVICE_TYPE_TIMER,
                                    NULL, 0, &snd_timer_reg, "timer"))<0)
-        snd_printk("unable to register timer device (%i)\n", err);
+		snd_printk(KERN_ERR "unable to register timer device (%i)\n", err);
     return 0;
 }
 
