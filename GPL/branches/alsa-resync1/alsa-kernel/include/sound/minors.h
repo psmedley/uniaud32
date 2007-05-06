@@ -1,5 +1,5 @@
-#ifndef __MINORS_H
-#define __MINORS_H
+#ifndef __SOUND_MINORS_H
+#define __SOUND_MINORS_H
 
 /*
  *  MINOR numbers
@@ -17,7 +17,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -83,4 +83,4 @@
 
 #endif
 
-#endif				/* __MINORS_H */
+#endif /* __SOUND_MINORS_H */

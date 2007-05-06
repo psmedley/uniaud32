@@ -6,6 +6,10 @@
  */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,3,0)
 
+#include <linux/list.h>
+#include <linux/pagemap.h>
+#include <linux/ioport.h>
+
 #ifndef CONFIG_HAVE_DMA_ADDR_T
 typedef unsigned long dma_addr_t;
 #endif
@@ -32,6 +36,33 @@ static __inline__ void list_add_tail(struct list_head *new, struct list_head *he
 
 #endif /* !CONFIG_HAVE_MUTEX_MACROS */
 
+/**
+ * list_del_init - deletes entry from list and reinitialize it.
+ * @entry: the element to delete from the list.
+ */
+static __inline__ void list_del_init(struct list_head *entry)
+{
+	__list_del(entry->prev, entry->next);
+	INIT_LIST_HEAD(entry); 
+}
+
+/**
+ * list_for_each_safe	-	iterate over a list safe against removal of list entry
+ * @pos:	the &struct list_head to use as a loop counter.
+ * @n:		another &struct list_head to use as temporary storage
+ * @head:	the head for your list.
+ */
+#define list_for_each_safe(pos, n, head) \
+	for (pos = (head)->next, n = pos->next; pos != (head); \
+		pos = n, n = pos->next)
+
+/* rw_semaphore - replaced with mutex */
+#define rw_semaphore semaphore
+#define init_rwsem(x) init_MUTEX(x)
+#define down_read(x) down(x)
+#define down_write(x) down(x)
+#define up_read(x) up(x)
+#define up_write(x) up(x)
 
 #define virt_to_page(x) (&mem_map[MAP_NR(x)])
 #define get_page(p) atomic_inc(&(p)->count)
@@ -49,11 +80,10 @@ static __inline__ void list_add_tail(struct list_head *new, struct list_head *he
 	do { __restore_flags(flags); } while (0)
 
 /* Some distributions use modified kill_fasync */
-#ifdef CONFIG_OLD_KILL_FASYNC
-#define snd_kill_fasync(fp, sig, band) kill_fasync(*(fp), sig)
-#else
-#define snd_kill_fasync(fp, sig, band) kill_fasync(*(fp), sig, band)
-#endif
+#include <linux/fs.h>
+#undef kill_fasync
+#define kill_fasync(fp, sig, band) snd_wrapper_kill_fasync(fp, sig, band)
+void snd_wrapper_kill_fasync(struct fasync_struct **, int, int);
 
 #define tasklet_hi_schedule(t)	queue_task((t), &tq_immediate); \
 				mark_bh(IMMEDIATE_BH)
@@ -69,14 +99,30 @@ static __inline__ void list_add_tail(struct list_head *new, struct list_head *he
 
 #define rwlock_init(x) do { *(x) = RW_LOCK_UNLOCKED; } while(0)
 
+#ifndef __init
 #define __init
+#endif
+#ifndef __initdata
 #define __initdata
+#endif
+#ifndef __exit
 #define __exit
+#endif
+#ifndef __exitdata
 #define __exitdata
+#endif
+#ifndef __devinit
 #define __devinit
+#endif
+#ifndef __devinitdata
 #define __devinitdata
+#endif
+#ifndef __devexit
 #define __devexit
+#endif
+#ifndef __devexitdata
 #define __devexitdata
+#endif
 
 #ifdef MODULE
   #ifndef module_init
@@ -166,11 +212,12 @@ int snd_compat_release_resource(struct resource *resource);
 
 #define PCI_ANY_ID (~0)
 
-#define PCI_GET_DRIVER_DATA snd_pci_compat_get_driver_data
-#define PCI_SET_DRIVER_DATA snd_pci_compat_set_driver_data
+#define pci_get_drvdata snd_pci_compat_get_driver_data
+#define pci_set_drvdata snd_pci_compat_set_driver_data
 
 #define pci_set_dma_mask snd_pci_compat_set_dma_mask
 
+#undef pci_enable_device
 #define pci_enable_device snd_pci_compat_enable_device
 #define pci_register_driver snd_pci_compat_register_driver
 #define pci_unregister_driver snd_pci_compat_unregister_driver
@@ -186,12 +233,23 @@ int snd_compat_release_resource(struct resource *resource);
 #define pci_for_each_dev(dev) \
 	for(dev = pci_devices; dev; dev = dev->next)
 
+#undef pci_resource_start
 #define pci_resource_start(dev,bar) \
 	(((dev)->base_address[(bar)] & PCI_BASE_ADDRESS_SPACE) ? \
 	 ((dev)->base_address[(bar)] & PCI_BASE_ADDRESS_IO_MASK) : \
 	 ((dev)->base_address[(bar)] & PCI_BASE_ADDRESS_MEM_MASK))
+#undef pci_resource_end
 #define pci_resource_end(dev,bar) \
 	(pci_resource_start(dev,bar) + snd_pci_compat_get_size((dev),(bar)))
+#undef pci_resource_len
+#define pci_resource_len(dev,bar) \
+	((pci_resource_start((dev),(bar)) == 0 &&	\
+	  pci_resource_end((dev),(bar)) ==		\
+	  pci_resource_start((dev),(bar))) ? 0 :	\
+							\
+	(pci_resource_end((dev),(bar)) -		\
+	 pci_resource_start((dev),(bar)) + 1))
+#undef pci_resource_flags
 #define pci_resource_flags(dev,bar) (snd_pci_compat_get_flags((dev),(bar)))
 
 struct pci_device_id {
@@ -200,6 +258,10 @@ struct pci_device_id {
 	unsigned int class, class_mask;		/* (class,subclass,prog-if) triplet */
 	unsigned long driver_data;		/* Data private to the driver */
 };
+
+#ifndef PCI_OLD_SUSPEND
+#define PCI_OLD_SUSPEND
+#endif
 
 struct pci_driver {
 	struct list_head node;
@@ -292,6 +354,8 @@ enum
 	PM_SYS_VGA =	 0x41d00900, /* VGA controller */
 	PM_SYS_PCMCIA =	 0x41d00e00, /* PCMCIA controller */
 };
+
+#define __LINUX_PM_H	/* <linux/pm.h> in 2.2.18 is a bit stripped */
 
 /*
  * Device identifier
