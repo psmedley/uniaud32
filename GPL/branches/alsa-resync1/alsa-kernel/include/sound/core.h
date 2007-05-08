@@ -321,6 +321,43 @@ int snd_verbose_printk(const char *file, int line, const char *format);
 
 /* --- */
 
+#ifdef TARGET_OS2
+
+#define snd_printk printk
+
+#ifdef CONFIG_SND_DEBUG
+
+#define snd_printd snd_printk
+#define snd_assert(expr, retval) \
+	if (!(expr)) {\
+		snd_printk("BUG? (%s)\n", __STRING(expr));\
+		##retval;\
+	}
+
+#define snd_runtime_check snd_assert
+#define snd_runtime_check_continue snd_assert_continue
+
+
+#else /* !CONFIG_SND_DEBUG */
+
+#define snd_printd  1 ? (void)0 : (void)((int (*)(char *, ...)) NULL)
+#define snd_assert(expr, retval) \
+	if (!(expr)) {\
+		##retval;\
+	}
+#define snd_runtime_check snd_assert
+
+#endif /* CONFIG_SND_DEBUG */
+
+#ifdef CONFIG_SND_DEBUG_DETECT
+#define snd_printdd snd_printk
+#else
+#define snd_printdd 1 ? (void)0 : (void)((int (*)(char *, ...)) NULL)
+#endif
+
+#else /* !TARGET_OS2 */
+
+#ifdef CONFIG_SND_VERBOSE_PRINTK
 #define snd_printk(format, args...) do { \
 	printk(snd_verbose_printk(__FILE__, __LINE__, format) ? format + 3 : format, ##args); \
 } while (0)
@@ -370,6 +407,8 @@ int snd_verbose_printk(const char *file, int line, const char *format);
 #else
 #define snd_BUG()
 #endif
+
+#endif /* TARGET_OS2 */
 
 static inline void snd_timestamp_now(struct timespec *tstamp, int timespec)
 {
