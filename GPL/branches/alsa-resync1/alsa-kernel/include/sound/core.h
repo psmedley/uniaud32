@@ -22,7 +22,8 @@
  *
  */
 
-#include <sound\config.h>
+#include <asm/semaphore.h>
+
 /* Typedef's */
 typedef struct timeval snd_timestamp_t;
 #ifndef TARGET_OS2

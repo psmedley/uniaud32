@@ -19,7 +19,12 @@
  *
  */
 
+#define __NO_VERSION__
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 
