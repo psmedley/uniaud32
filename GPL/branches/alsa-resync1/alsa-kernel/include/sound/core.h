@@ -22,6 +22,8 @@
  *
  */
 
+#include <sound/config.h>
+#include "compat_22.h"
 #include <asm/semaphore.h>
 
 /* Typedef's */

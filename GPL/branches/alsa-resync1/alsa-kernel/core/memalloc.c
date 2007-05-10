@@ -21,8 +21,9 @@
  *
  */
 
-#include <sound/driver.h>
+#include <sound/core.h>
 #include <sound/info.h>
+#include <linux/module.h>
 #include <sound/memalloc.h>
 
 
