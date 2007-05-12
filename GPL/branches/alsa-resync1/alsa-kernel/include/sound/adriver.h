@@ -52,6 +52,10 @@
 #include <linux/pci.h>
 #endif
 
+#ifndef __iomem
+#define __iomem
+#endif
+
 #ifdef LINUX_2_2
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 2, 18)
 #include <linux/init.h>
@@ -106,6 +110,15 @@ static inline struct proc_dir_entry *PDE(const struct inode *inode)
 {
 	return (struct proc_dir_entry *) inode->u.generic_ip;
 }
+#endif
+#ifndef cond_resched
+#define cond_resched() \
+	do { \
+		if (1) { \
+                        set_current_state(TASK_RUNNING); \
+                        schedule(); \
+                } \
+        } while (0)
 #endif
 #include <asm/io.h>
 #if !defined(isa_virt_to_bus)
@@ -164,5 +177,52 @@ static inline void dec_mod_count(struct module *module)
 #undef writeq
 #define writeq(v, a) do { __writeq((v),(a)); mb(); } while(0)
 #endif
+
+#define IRQ_NONE      (0)  /*void*/
+#define IRQ_HANDLED   (1)  /*void*/
+#define IRQ_RETVAL(x) ((x) != 0)  /*void*/
+typedef int irqreturn_t;
+
+struct work_struct {
+	unsigned long pending;
+	struct list_head entry;
+	void (*func)(void *);
+	void *data;
+	void *wq_data;
+	struct timer_list timer;
+};
+#define INIT_WORK(_work, _func, _data)			\
+	do {						\
+		(_work)->func = _func;			\
+		(_work)->data = _data;			\
+		init_timer(&(_work)->timer);		\
+        } while (0)
+#define __WORK_INITIALIZER(n, f, d) {			\
+		.func = (f),				\
+		.data = (d),				\
+	}
+#define DECLARE_WORK(n, f, d)				\
+        struct work_struct n = __WORK_INITIALIZER(n, f, d)
+int snd_compat_schedule_work(struct work_struct *work);
+#define schedule_work(w) snd_compat_schedule_work(w)
+
+#ifndef PCI_D0
+#define PCI_D0     0
+#define PCI_D1     1
+#define PCI_D2     2
+#define PCI_D3hot  3
+#define PCI_D3cold 4
+#define pci_choose_state(pci,state)     ((state) ? PCI_D3hot : PCI_D0)
+#endif
+
+/* wrapper for getnstimeofday()
+ * it's needed for recent 2.6 kernels, too, due to lack of EXPORT_SYMBOL
+ */
+#define getnstimeofday(x) do { \
+	struct timeval __x; \
+	do_gettimeofday(&__x); \
+	(x)->tv_sec = __x.tv_sec;	\
+	(x)->tv_nsec = __x.tv_usec * 1000; \
+} while (0)
 
 #endif /* __SOUND_LOCAL_DRIVER_H */
