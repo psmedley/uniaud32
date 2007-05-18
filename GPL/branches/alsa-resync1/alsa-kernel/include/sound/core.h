@@ -22,35 +22,8 @@
  *
  */
 
-#include <sound/config.h>
-#include "compat_22.h"
+#include <linux/sched.h>		/* wake_up() */
 #include <asm/semaphore.h>
-
-#if defined TARGET_OS2  && !defined __SOUND_LOCAL_DRIVER_H
-/* Missing <linux/workqueue.h>, so borrowing work_struct from adriver.h */
-struct work_struct {
-	unsigned long pending;
-	struct list_head entry;
-	void (*func)(void *);
-	void *data;
-	void *wq_data;
-	struct timer_list timer;
-};
-#define INIT_WORK(_work, _func, _data)			\
-	do {						\
-		(_work)->func = _func;			\
-		(_work)->data = _data;			\
-		init_timer(&(_work)->timer);		\
-        } while (0)
-#define __WORK_INITIALIZER(n, f, d) {			\
-		.func = (f),				\
-		.data = (d),				\
-	}
-#define DECLARE_WORK(n, f, d)				\
-        struct work_struct n = __WORK_INITIALIZER(n, f, d)
-int snd_compat_schedule_work(struct work_struct *work);
-#define schedule_work(w) snd_compat_schedule_work(w)
-#endif /* TARGET_OS2 */
 
 /* Typedef's */
 typedef struct timeval snd_timestamp_t;
