@@ -19,13 +19,18 @@
  *
  */
 
+#define __NO_VERSION__
 #include <sound/driver.h>
+#include <linux/mm.h>
+#include <linux/file.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/minors.h>
-#include <linux/file.h>
 
 /*
  *  Compatibility

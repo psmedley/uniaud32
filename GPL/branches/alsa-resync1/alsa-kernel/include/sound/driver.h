@@ -49,6 +49,11 @@
  *  ==========================================================================
  */
 
+#ifdef TARGET_OS2
+#include <linux/errno.h>
+#include <linux/mm.h> /* poll, pagemap, or vmalloc? */
+#endif /* TARGET_OS2 */
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0)
 #if defined(__i386__) || defined(__ppc__)
 /*
