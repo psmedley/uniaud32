@@ -96,6 +96,12 @@
 
 #define __SND_OSS_COMPAT__
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/mpu401.h>
 #include <sound/ac97_codec.h>
@@ -1910,7 +1916,7 @@ static void snd_es1968_update_pcm(es1968_t *chip, esschan_t *es)
     es->hwptr = hwptr;
     es->count += diff;
 
-    if (es->count > es->frag_size) {
+	while (es->count > es->frag_size) {
         spin_unlock(&chip->substream_lock);
         snd_pcm_period_elapsed(subs);
         spin_lock(&chip->substream_lock);

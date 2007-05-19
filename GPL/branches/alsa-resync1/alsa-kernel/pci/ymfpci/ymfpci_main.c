@@ -24,11 +24,21 @@
  *
  */
 
+#define __NO_VERSION__
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/ymfpci.h>
+#include <sound/asoundef.h>
+#include <sound/mpu401.h>
+#ifdef TARGET_OS2
 #include <sound/timer.h>
+#endif /* TARGET_OS2 */
 
 /*
  *  constants

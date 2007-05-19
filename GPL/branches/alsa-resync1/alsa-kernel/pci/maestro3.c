@@ -32,6 +32,13 @@
 #define DRIVER_NAME "Maestro3"
 
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <sound/core.h>
 #include <sound/info.h>
 #include <sound/control.h>
 #include <sound/pcm.h>
@@ -41,6 +48,7 @@
 
 MODULE_AUTHOR("Zach Brown <zab@zabbo.net>, Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("ESS Maestro3 PCI");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{ESS,Maestro3 PCI},"
                "{ESS,ES1988},"
@@ -2803,7 +2811,9 @@ snd_m3_create(snd_card_t *card, struct pci_dev *pci,
 #ifdef CONFIG_PM
     chip->suspend_mem = vmalloc(sizeof(u16) * (REV_B_CODE_MEMORY_LENGTH + REV_B_DATA_MEMORY_LENGTH));
     if (chip->suspend_mem == NULL)
-        snd_printk("can't allocate apm buffer\n");
+		snd_printk(KERN_WARNING "can't allocate apm buffer\n");
+	else
+		snd_card_set_pm_callback(card, m3_suspend, m3_resume, chip);
 #endif
 
     if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops)) < 0) {

@@ -759,7 +759,7 @@ static int __init snd_opl3sa2_probe(int dev)
 	cs4231_t *cs4231;
 	opl3_t *opl3;
 	static snd_device_ops_t ops = {
-		dev_free:	snd_opl3sa2_dev_free,
+		/* dev_free: */	snd_opl3sa2_dev_free,
 	};
 	int err;
 
@@ -852,22 +852,12 @@ static int __init snd_opl3sa2_probe(int dev)
 			goto __error;
 	}
 #ifdef CONFIG_PM
-	/* Power Management */
-	chip->pm_dev = pm_register(PM_ISA_DEV, 0, snd_opl3sa2_pm_callback);
-	if (chip->pm_dev) {
-		chip->pm_dev->data = chip;
-		/* remember callbacks for cs4231 - they are called inside
-		 * opl3sa2 pm callback
-		 */
 		chip->cs4231_suspend = chip->cs4231->suspend;
 		chip->cs4231_resume = chip->cs4231->resume;
 		/* now clear callbacks for cs4231 */
 		chip->cs4231->suspend = NULL;
 		chip->cs4231->resume = NULL;
-		/* set control api callback */
-		card->set_power_state = snd_opl3sa2_set_power_state;
-		card->pm_private_data = chip;
-	}
+	snd_card_set_isa_pm_callback(card, snd_opl3sa2_suspend, snd_opl3sa2_resume, chip);
 #endif
 
 	sprintf(card->longname, "%s at 0x%lx, irq %d, dma %d",

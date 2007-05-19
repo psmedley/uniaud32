@@ -25,11 +25,11 @@
 #include <sound/asound.h>
 
 typedef struct sndrv_aes_iec958 snd_aes_iec958_t;
-typedef struct sndrv_ctl_card_info snd_ctl_card_info_t;
-typedef struct sndrv_ctl_elem_id snd_ctl_elem_id_t;
-typedef struct sndrv_ctl_elem_list snd_ctl_elem_list_t;
-typedef struct sndrv_ctl_elem_info snd_ctl_elem_info_t;
-typedef struct sndrv_ctl_elem_value snd_ctl_elem_value_t;
+typedef struct snd_ctl_card_info snd_ctl_card_info_t;
+typedef struct snd_ctl_elem_id snd_ctl_elem_id_t;
+typedef struct snd_ctl_elem_list snd_ctl_elem_list_t;
+typedef struct snd_ctl_elem_info snd_ctl_elem_info_t;
+typedef struct snd_ctl_elem_value snd_ctl_elem_value_t;
 typedef enum sndrv_ctl_event_type snd_ctl_event_type_t;
 typedef struct sndrv_ctl_event snd_ctl_event_t;
 

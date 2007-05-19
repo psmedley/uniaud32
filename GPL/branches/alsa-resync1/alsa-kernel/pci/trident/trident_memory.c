@@ -23,8 +23,12 @@
  *
  */
 
+#define __NO_VERSION__
 #include <sound/driver.h>
+#include <asm/io.h>
 #include <linux/pci.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/trident.h>
 
 /* page arguments of these two macros are Trident page (4096 bytes), not like

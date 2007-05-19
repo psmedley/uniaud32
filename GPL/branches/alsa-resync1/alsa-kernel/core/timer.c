@@ -19,16 +19,18 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/timer.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/minors.h>
 #include <sound/initval.h>
-#ifdef CONFIG_KMOD
 #include <linux/kmod.h>
-#endif
 #ifdef CONFIG_KERNELD
 #include <linux/kerneld.h>
 #endif
@@ -83,6 +85,16 @@ static int snd_timer_dev_register(snd_device_t *device);
 static int snd_timer_dev_unregister(snd_device_t *device);
 
 static void snd_timer_reschedule(snd_timer_t * timer, unsigned long ticks_left);
+
+#ifndef TARGET_OS2
+static inline void dec_mod_count(struct module *module)
+{
+	if (module)
+		__MOD_DEC_USE_COUNT(module);
+}
+#else /* TARGET_OS2 */
+#define dec_mod_count(a)	(*(unsigned long *)a)--
+#endif /* TARGET_OS2 */
 
 /*
  * create a timer instance with the given owner string.

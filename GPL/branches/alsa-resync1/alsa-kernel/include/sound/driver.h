@@ -89,7 +89,6 @@ typedef struct snd_pcm_volume snd_pcm_volume_t;
 #ifdef TARGET_OS2
 #define snd_enter_user() 0
 #define snd_leave_user(a)
-#define dec_mod_count(a)	(*(unsigned long *)a)--
 #endif
 
 /*

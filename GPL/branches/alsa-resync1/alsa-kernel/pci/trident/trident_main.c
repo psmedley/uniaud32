@@ -27,11 +27,18 @@
  *  SiS7018 S/PDIF support by Thomas Winischhofer <thomas@winischhofer.net>
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
+#define __NO_VERSION__
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <sound/core.h>
 #include <sound/info.h>
 #include <sound/control.h>
 #include <sound/trident.h>
+#include <sound/asoundef.h>
 
 static int snd_trident_pcm_mixer_build(struct snd_trident *trident, struct snd_trident_voice* voice, snd_pcm_substream_t *substream);
 static int snd_trident_pcm_mixer_free(struct snd_trident *trident, struct snd_trident_voice* voice, snd_pcm_substream_t *substream);
