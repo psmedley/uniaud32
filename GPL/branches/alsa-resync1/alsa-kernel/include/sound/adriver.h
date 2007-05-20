@@ -206,6 +206,15 @@ struct work_struct {
 int snd_compat_schedule_work(struct work_struct *work);
 #define schedule_work(w) snd_compat_schedule_work(w)
 
+#ifndef CONFIG_HAVE_MSLEEP_INTERRUPTIBLE
+#include <linux/delay.h>
+unsigned long snd_compat_msleep_interruptible(unsigned int msecs);
+#define msleep_interruptible snd_compat_msleep_interruptible
+#ifndef ssleep
+#define ssleep(x) msleep((unsigned int)(x) * 1000)
+#endif
+#endif
+
 #ifndef PCI_D0
 #define PCI_D0     0
 #define PCI_D1     1

@@ -469,8 +469,8 @@ struct tasklet_struct {
 #define __user
 #endif
 
+#include <asm/atomic.h>
 #define ATOMIC_INIT(i)  { (i) }
-#if 0 /* Brendan: This is not ALSA code but something added. Fails compile?  */
 /**
  * atomic_dec_and_test - decrement and test
  * @v: pointer of type atomic_t
@@ -487,7 +487,6 @@ static inline int atomic_dec_and_test(volatile atomic_t *v)
         return 1;
     return 0;
 }
-#endif /* Brendan */
 
 /**
  * list_for_each_safe	-	iterate over a list safe against removal of list entry
