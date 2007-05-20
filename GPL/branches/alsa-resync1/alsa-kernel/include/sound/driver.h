@@ -51,6 +51,7 @@
 
 #ifdef TARGET_OS2
 #include <linux/errno.h>
+#include <linux/malloc.h>
 #include <linux/mm.h> /* poll, pagemap, or vmalloc? */
 #endif /* TARGET_OS2 */
 

@@ -403,14 +403,14 @@ int snd_verbose_printk(const char *file, int line, const char *format);
 
 #define snd_BUG() snd_assert(0, )
 
+#endif /* TARGET_OS2 */
+
 
 #ifdef DEBUG
 #define snd_BUG() _asm int 3;
 #else
 #define snd_BUG()
 #endif
-
-#endif /* TARGET_OS2 */
 
 static inline void snd_timestamp_now(struct timespec *tstamp, int timespec)
 {
