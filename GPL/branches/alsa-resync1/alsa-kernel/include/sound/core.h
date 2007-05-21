@@ -272,7 +272,10 @@ char *snd_hidden_kstrdup(const char *s, int flags);
 char *snd_hidden_kstrdup(const char *s, int flags);
 #define kstrdup(s, flags)  snd_hidden_kstrdup(s, flags)
 
+void *snd_kcalloc(size_t size, int flags);
 char *snd_kmalloc_strdup(const char *string, int flags);
+void *snd_malloc_pages(unsigned long size, unsigned int dma_flags);
+void *snd_malloc_pages_fallback(unsigned long size, unsigned int dma_flags, unsigned long *res_size);
 int copy_to_user_fromio(void __user *dst, const volatile void __iomem *src, size_t count);
 int copy_from_user_toio(volatile void __iomem *dst, const void __user *src, size_t count);
 

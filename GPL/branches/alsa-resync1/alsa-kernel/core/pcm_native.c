@@ -30,6 +30,7 @@
 #include <sound/info.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
+#include <sound/timer.h>
 #include <sound/minors.h>
 
 /*

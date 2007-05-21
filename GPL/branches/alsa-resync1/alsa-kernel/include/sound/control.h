@@ -33,6 +33,7 @@ typedef struct snd_ctl_elem_value snd_ctl_elem_value_t;
 typedef enum sndrv_ctl_event_type snd_ctl_event_type_t;
 typedef struct sndrv_ctl_event snd_ctl_event_t;
 
+#define _snd_kcontrol_chip(kcontrol) ((kcontrol)->private_data)
 #define snd_kcontrol_chip(kcontrol) ((kcontrol)->private_data)
 struct snd_kcontrol;
 typedef int (snd_kcontrol_info_t) (struct snd_kcontrol * kcontrol, struct snd_ctl_elem_info * uinfo);

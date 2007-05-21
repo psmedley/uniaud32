@@ -53,6 +53,7 @@
 #include <linux/errno.h>
 #include <linux/malloc.h>
 #include <linux/mm.h> /* poll, pagemap, or vmalloc? */
+#include <linux/fs.h>
 #endif /* TARGET_OS2 */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0)
