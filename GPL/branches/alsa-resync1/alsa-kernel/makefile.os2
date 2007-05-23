@@ -59,7 +59,7 @@ clean: .SYMBOLIC
     @echo CLEANING drivers
     @cd drivers
     @wmake $(NMAKEOPTS) clean
-    @cd .. 
+    @cd ..
     @echo CLEANING isa
     @cd isa
     @wmake $(NMAKEOPTS) clean
