@@ -96,7 +96,7 @@ $(LNKFILE): $(MAKEFILE)
     @for %f in ($(FILES)) do @%append $^@ file $(OBJDIR)\%f
     @for %f in ($(LIBS)) do @%append $^@ library %f
     @%write $^@ library $(%WATCOM)\lib386\os2\clib3r.lib
-    @%write $^@ library $(%WATCOM)\lib386\cplx3r.lib
+    @%write $^@ library $(%WATCOM)\lib386\os2386.lib
 !else
 $(LNKFILE): $(MAKEFILE)
     @%write $^@ /OUT:$(OBJDIR)\$(TARGET).sys
@@ -104,7 +104,7 @@ $(LNKFILE): $(MAKEFILE)
     @for %f in ($(FILES)) do @%append $^@ $(OBJDIR)\%f
     @for %f in ($(LIBS)) do @%append $^@ %f
     @%write $^@ $(%WATCOM)\lib386\os2\clib3r.lib
-    @%write $^@ $(%WATCOM)\lib386\cplx3r.lib
+    @%write $^@ $(%WATCOM)\lib386\os2\os2386.lib
     @%write $^@ $(DEFFILE)
 !endif
 

@@ -163,11 +163,13 @@ OSSRET OSS32_Initialize(void)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_via82xx_exit);
     }
+
     if((ForceCard == CARD_NONE || ForceCard == CARD_SBLIVE) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_emu10k1_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_emu10k1_exit);
     }
+
     if((ForceCard == CARD_NONE || ForceCard == CARD_CMEDIA) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cmipci_init) == 0)
     {

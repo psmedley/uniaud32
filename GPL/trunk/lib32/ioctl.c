@@ -243,7 +243,7 @@ void FillCaps(ULONG deviceid)
 
     pcms = pcm_instances(deviceid);
 
-//    printk("pcms = %i\n", pcms);
+    printk("pcms = %i\n", pcms); //uncommented
     if (!pcmcaps[deviceid])
     {
         pcmcaps[deviceid] = (POSS32_DEVCAPS)kmalloc(sizeof(OSS32_DEVCAPS)*pcms, GFP_KERNEL);
