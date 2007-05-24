@@ -1,4 +1,4 @@
-CINCLUDES = ..\include;..\runtime;..\alsa-kernel\include;$(%WATCOM)\H;
+CINCLUDES = ..\include;..\runtime;..\alsa-kernel\include;$(%WATCOM)\H;$(%WATCOM)\H\OS2;
 AINCLUDES = $(DDK_BASE)\H
 
 CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_

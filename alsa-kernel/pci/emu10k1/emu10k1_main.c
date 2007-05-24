@@ -38,7 +38,7 @@
 #include <linux/vmalloc.h>
 #include <sound/core.h>
 #include <sound/emu10k1.h>
-#include <sound/firmware.h>
+#include <linux/firmware.h>
 #include "p16v.h"
 #include "tina2.h"
 
