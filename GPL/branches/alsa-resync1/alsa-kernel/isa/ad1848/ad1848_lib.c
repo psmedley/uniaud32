@@ -25,6 +25,7 @@
 #include <asm/dma.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <linux/ioport.h>
 #include <sound/core.h>
 #include <sound/ad1848.h>
 
@@ -668,8 +669,15 @@ static int snd_ad1848_probe(ad1848_t * chip)
 			rev = snd_ad1848_in(chip, AD1848_MISC_INFO);
 			if (rev & 0x80) {
 				chip->hardware = AD1848_HW_CS4248;
-			} else if (rev & 0x0a) {
-				chip->hardware = AD1848_HW_CMI8330;
+			} else if ((rev & 0x0f) == 0x0a) {
+				snd_ad1848_out(chip, AD1848_MISC_INFO, 0x40);
+				for (i = 0; i < 16; ++i) {
+					if (snd_ad1848_in(chip, i) != snd_ad1848_in(chip, i + 16)) {
+						chip->hardware = AD1848_HW_CMI8330;
+						break;
+					}
+				}
+				snd_ad1848_out(chip, AD1848_MISC_INFO, 0x00);
 			}
 		}
 	}

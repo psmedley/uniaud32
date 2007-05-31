@@ -26,6 +26,7 @@
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/slab.h>
+#include <linux/ioport.h>
 #include <sound/core.h>
 #include <sound/sb.h>
 #include <sound/initval.h>
@@ -182,7 +183,7 @@ static int snd_sbdsp_free(struct snd_sb *chip)
         disable_dma(chip->dma8);
         free_dma(chip->dma8);
     }
-    if (chip->dma16 >= 0) {
+	if (chip->dma16 >= 0 && chip->dma16 != chip->dma8) {
         disable_dma(chip->dma16);
         free_dma(chip->dma16);
     }
@@ -254,9 +255,14 @@ int snd_sbdsp_create(snd_card_t *card,
         return -EBUSY;
     }
     chip->dma8 = dma8;
-    if (dma16 >= 0 && request_dma(dma16, "SoundBlaster - 16bit")) {
+	if (dma16 >= 0) {
+		if (hardware != SB_HW_ALS100 && (dma16 < 5 || dma16 > 7)) {
+			/* no duplex */
+			dma16 = -1;
+		} else if (request_dma(dma16, "SoundBlaster - 16bit")) {
         snd_sbdsp_free(chip);
         return -EBUSY;
+		}
     }
     chip->dma16 = dma16;
 #endif

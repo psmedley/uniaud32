@@ -588,7 +588,7 @@ static int __init snd_sb16_probe(int dev)
 
     static int __init snd_sb16_probe_legacy_port(unsigned long port)
     {
-        static int dev = 0;
+	static int dev;
         int res;
 
         for ( ; dev < SNDRV_CARDS; dev++) {
@@ -612,7 +612,7 @@ static int __init snd_sb16_probe(int dev)
     static int __init snd_sb16_isapnp_detect(struct isapnp_card *card,
                                              const struct isapnp_card_id *id)
     {
-        static int dev = 0;
+	static int dev;
         int res;
 
         for ( ; dev < SNDRV_CARDS; dev++) {

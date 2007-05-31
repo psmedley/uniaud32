@@ -93,12 +93,4 @@ typedef struct snd_pcm_volume snd_pcm_volume_t;
 #define snd_leave_user(a)
 #endif
 
-/*
- * Temporary hack, until linux/init.h is fixed.
- */
-#include <linux/init.h>
-#ifndef __devexit_p
-#define __devexit_p(x) x
-#endif
-
 #endif /* __SOUND_DRIVER_H */

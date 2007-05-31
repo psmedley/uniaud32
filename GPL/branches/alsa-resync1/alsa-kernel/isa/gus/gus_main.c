@@ -15,18 +15,33 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/slab.h>
+#include <linux/ioport.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #include <sound/control.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_DESCRIPTION("Routines for Gravis UltraSound soundcards");
+MODULE_LICENSE("GPL");
 
 #define chip_t snd_gus_card_t
 
 static int snd_gus_init_dma_irq(snd_gus_card_t * gus, int latches);
+
+static inline void dec_mod_count(struct module *module)
+{
+	if (module)
+		__MOD_DEC_USE_COUNT(module);
+}
 
 int snd_gus_use_inc(snd_gus_card_t * gus)
 {
@@ -109,7 +124,7 @@ static int snd_gus_free(snd_gus_card_t *gus)
 {
 	if (gus->gf1.res_port2 == NULL)
 		goto __hw_end;
-#ifdef CONFIG_SND_SEQUENCER
+#if defined(CONFIG_SND_SEQUENCER) || defined(CONFIG_SND_SEQUENCER_MODULE)
 	if (gus->seq_dev) {
 		snd_device_free(gus->card, gus->seq_dev);
 		gus->seq_dev = NULL;
@@ -118,10 +133,14 @@ static int snd_gus_free(snd_gus_card_t *gus)
 	snd_gf1_stop(gus);
 	snd_gus_init_dma_irq(gus, 0);
       __hw_end:
-	if (gus->gf1.res_port1)
+	if (gus->gf1.res_port1) {
 		release_resource(gus->gf1.res_port1);
-	if (gus->gf1.res_port2)
+		kfree_nocheck(gus->gf1.res_port1);
+	}
+	if (gus->gf1.res_port2) {
 		release_resource(gus->gf1.res_port2);
+		kfree_nocheck(gus->gf1.res_port2);
+	}
 	if (gus->gf1.irq >= 0)
 		free_irq(gus->gf1.irq, (void *) gus);
 	if (gus->gf1.dma1 >= 0) {
@@ -439,7 +458,7 @@ int snd_gus_initialize(snd_gus_card_t *gus)
 	}
 	if ((err = snd_gus_init_dma_irq(gus, 1)) < 0)
 		return err;
-#ifdef CONFIG_SND_SEQUENCER
+#if defined(CONFIG_SND_SEQUENCER) || defined(CONFIG_SND_SEQUENCER_MODULE)
 	if (snd_seq_device_new(gus->card, 1, SNDRV_SEQ_DEV_ID_GUS,
 			       sizeof(snd_gus_card_t*), &gus->seq_dev) >= 0) {
 		strcpy(gus->seq_dev->name, "GUS");
