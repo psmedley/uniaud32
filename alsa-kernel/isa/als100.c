@@ -17,11 +17,16 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 */
 
 #define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/wait.h>
+#include <linux/sched.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 #include <sound/mpu401.h>
@@ -30,11 +35,18 @@
 
 #define chip_t sb_t
 
+#define PFX "als100: "
+
 EXPORT_NO_SYMBOLS;
+
+MODULE_AUTHOR("Massimo Piccioni <dafastidio@libero.it>");
 MODULE_DESCRIPTION("Avance Logic ALS1X0");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Avance Logic,ALS100 - PRO16PNP},"
 	        "{Avance Logic,ALS110},"
+	        "{Avance Logic,ALS120},"
+	        "{Avance Logic,ALS200},"
 	        "{3D Melody,MF1000},"
 	        "{Digimate,3D Sound},"
 	        "{Avance Logic,ALS120},"
@@ -121,6 +133,8 @@ static struct isapnp_card_id snd_als100_pnpids[] __devinitdata = {
 	ISAPNP_ALS100('A','L','S',0x0110,0x1001,0x1001,0x1001),
 	/* ALS120 */
 	ISAPNP_ALS100('A','L','S',0x0120,0x2001,0x2001,0x2001),
+	/* ALS200 */
+	ISAPNP_ALS100('A','L','S',0x0200,0x0020,0x0020,0x0001),
 	/* RTL3000 */
 	ISAPNP_ALS100('R','T','L',0x3000,0x2001,0x2001,0x2001),
 	{ ISAPNP_CARD_END, }
@@ -172,7 +186,7 @@ static int __init snd_card_als100_isapnp(int dev, struct snd_card_als100 *acard)
 		isapnp_resource_change(&pdev->irq_resource[0], snd_irq[dev], 1);
 
 	if (pdev->activate(pdev)<0) {
-		snd_printk("AUDIO isapnp configure failure\n");
+		printk(KERN_ERR PFX "AUDIO isapnp configure failure\n");
 		return -EBUSY;
 	}
 
@@ -195,7 +209,7 @@ static int __init snd_card_als100_isapnp(int dev, struct snd_card_als100 *acard)
 			1);
 
 	if (pdev->activate(pdev)<0) {
-		snd_printk("MPU-401 isapnp configure failure\n");
+		printk(KERN_ERR PFX "MPU-401 isapnp configure failure\n");
 		snd_mpu_port[dev] = -1;
 		acard->devmpu = NULL;
 	} else {
@@ -213,7 +227,7 @@ static int __init snd_card_als100_isapnp(int dev, struct snd_card_als100 *acard)
 		isapnp_resource_change(&pdev->resource[0], snd_fm_port[dev], 4);
 
 	if (pdev->activate(pdev)<0) {
-		snd_printk("OPL isapnp configure failure\n");
+		printk(KERN_ERR PFX "OPL isapnp configure failure\n");
 		snd_fm_port[dev] = -1;
 		acard->devopl = NULL;
 	} else {
@@ -271,7 +285,7 @@ static int __init snd_card_als100_probe(int dev)
 		return error;
 	}
 #else
-	snd_printk("you have to enable PnP support ...\n");
+	printk(KERN_ERR PFX "you have to enable PnP support ...\n");
 	snd_card_free(card);
 	return -ENOSYS;
 #endif	/* __ISAPNP__ */
@@ -301,14 +315,14 @@ static int __init snd_card_als100_probe(int dev)
 					snd_mpu_port[dev], 0, 
 					snd_mpu_irq[dev], SA_INTERRUPT,
 					NULL) < 0)
-			snd_printk("no MPU-401 device at 0x%lx\n", snd_mpu_port[dev]);
+			printk(KERN_ERR PFX "no MPU-401 device at 0x%lx\n", snd_mpu_port[dev]);
 	}
 
 	if (snd_fm_port[dev] > 0) {
 		if (snd_opl3_create(card,
 				    snd_fm_port[dev], snd_fm_port[dev] + 2,
 				    OPL3_HW_AUTO, 0, &opl3) < 0) {
-			snd_printk("no OPL device at 0x%lx-0x%lx\n",
+			printk(KERN_ERR PFX "no OPL device at 0x%lx-0x%lx\n",
 				snd_fm_port[dev], snd_fm_port[dev] + 2);
 		} else {
 			if ((error = snd_opl3_timer_new(opl3, 0, 1)) < 0) {
@@ -364,11 +378,11 @@ static int __init alsa_card_als100_init(void)
 #ifdef __ISAPNP__
 	cards += isapnp_probe_cards(snd_als100_pnpids, snd_als100_isapnp_detect);
 #else
-	snd_printk("you have to enable ISA PnP support.\n");
+	printk(KERN_ERR PFX "you have to enable ISA PnP support.\n");
 #endif
 #ifdef MODULE
 	if (!cards)
-		snd_printk("no ALS100 based soundcards found\n");
+		printk(KERN_ERR "no ALS100 based soundcards found\n");
 #endif
 	return cards ? 0 : -ENODEV;
 }
@@ -386,7 +400,7 @@ module_exit(alsa_card_als100_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-als100=snd_enable,snd_index,snd_id,snd_port,
+/* format is: snd-als100=snd_enable,snd_index,snd_id,snd_port,
 			      snd_mpu_port,snd_fm_port,snd_irq,snd_mpu_irq,
 			      snd_dma8,snd_dma16 */
 
@@ -410,6 +424,6 @@ static int __init alsa_card_als100_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-als100=", alsa_card_als100_setup);
+__setup("snd-als100=", alsa_card_als100_setup);
 
 #endif /* ifndef MODULE */

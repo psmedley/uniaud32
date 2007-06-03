@@ -15,11 +15,15 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
+#define __NO_VERSION__
 #include <sound/driver.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 
 /**
  * snd_device_new - create an ALSA device component
@@ -83,11 +87,11 @@ int snd_device_free(struct snd_card *card, void *device_data)
 		if ((dev->state == SNDRV_DEV_REGISTERED || dev->state == SNDRV_DEV_DISCONNECTED) &&
 		    dev->ops->dev_unregister) {
 			if (dev->ops->dev_unregister(dev))
-				snd_printk("device unregister failure\n");
+				snd_printk(KERN_ERR "device unregister failure\n");
 		} else {
 			if (dev->ops->dev_free) {
 				if (dev->ops->dev_free(dev))
-					snd_printk("device free failure\n");
+					snd_printk(KERN_ERR "device free failure\n");
 			}
                 }
                 kfree(dev);

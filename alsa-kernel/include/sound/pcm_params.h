@@ -1,5 +1,5 @@
-#ifndef __PCM_PARAMS_H
-#define __PCM_PARAMS_H
+#ifndef __SOUND_PCM_PARAMS_H
+#define __SOUND_PCM_PARAMS_H
 
 /*
  *  PCM params helpers
@@ -18,9 +18,11 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
+
+#include <linux/bitops.h>
 
 extern int snd_pcm_hw_param_mask(snd_pcm_substream_t *pcm, snd_pcm_hw_params_t *params,
 				 snd_pcm_hw_param_t var, const snd_mask_t *val);
@@ -362,4 +364,5 @@ INLINE unsigned int sub(unsigned int a, unsigned int b)
 #undef INLINE
 #undef assert
 
-#endif
+#endif /* __SOUND_PCM_PARAMS_H */
+

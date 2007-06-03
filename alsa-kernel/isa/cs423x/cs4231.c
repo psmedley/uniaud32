@@ -16,12 +16,15 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/cs4231.h>
 #include <sound/mpu401.h>
 #define SNDRV_GET_ID
@@ -30,7 +33,10 @@
 #define chip_t cs4231_t
 
 EXPORT_NO_SYMBOLS;
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Generic CS4231");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Crystal Semiconductors,CS4231}}");
 
@@ -129,7 +135,7 @@ static int __init snd_card_cs4231_probe(int dev)
 					snd_mpu_port[dev], 0,
 					snd_mpu_irq[dev], SA_INTERRUPT,
 					NULL) < 0)
-			snd_printk("MPU401 not detected\n");
+			printk(KERN_ERR "cs4231: MPU401 not detected\n");
 	}
 	strcpy(card->driver, "CS4231");
 	strcpy(card->shortname, pcm->name);
@@ -155,7 +161,7 @@ static int __init alsa_card_cs4231_init(void)
 	}
 	if (!cards) {
 #ifdef MODULE
-		snd_printk("CS4231 soundcard not found or device busy\n");
+		printk(KERN_ERR "CS4231 soundcard not found or device busy\n");
 #endif
 		return -ENODEV;
 	}
@@ -175,7 +181,7 @@ module_exit(alsa_card_cs4231_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-cs4231=snd_enable,snd_index,snd_id,
+/* format is: snd-cs4231=snd_enable,snd_index,snd_id,
 			      snd_port,snd_mpu_port,snd_irq,snd_mpu_irq,
 			      snd_dma1,snd_dma2 */
 
@@ -200,6 +206,6 @@ static int __init alsa_card_cs4231_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-cs4231=", alsa_card_cs4231_setup);
+__setup("snd-cs4231=", alsa_card_cs4231_setup);
 
 #endif /* ifndef MODULE */

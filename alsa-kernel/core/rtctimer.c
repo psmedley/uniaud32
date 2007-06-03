@@ -16,7 +16,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  * 
  *================================================================
@@ -28,8 +28,10 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/timer.h>
 #include <sound/info.h>
 
@@ -123,9 +125,9 @@ static void rtctimer_interrupt(void *private_data)
 }
 
 #ifdef USE_TASKLET
-static void rtctimer_interrupt2(void *private_data)
+static void rtctimer_interrupt2(unsigned long private_data)
 {
-	snd_timer_t *timer = private_data;
+	snd_timer_t *timer = (snd_timer_t *)private_data;
 	snd_assert(timer != NULL, return);
 	do {
 		snd_timer_interrupt(timer, 1);
@@ -150,13 +152,13 @@ static int __init rtctimer_init(void)
 	snd_timer_t *timer;
 
 	if (rtctimer_freq < 2 || rtctimer_freq > 8192) {
-		snd_printk("rtctimer: invalid frequency %d\n", rtctimer_freq);
+		snd_printk(KERN_ERR "rtctimer: invalid frequency %d\n", rtctimer_freq);
 		return -EINVAL;
 	}
 	for (order = 1; rtctimer_freq > order; order <<= 1)
 		;
 	if (rtctimer_freq != order) {
-		snd_printk("rtctimer: invalid frequency %d\n", rtctimer_freq);
+		snd_printk(KERN_ERR "rtctimer: invalid frequency %d\n", rtctimer_freq);
 		return -EINVAL;
 	}
 
@@ -166,7 +168,7 @@ static int __init rtctimer_init(void)
 		return err;
 
 #ifdef USE_TASKLET
-	tasklet_init(&rtc_tq, rtctimer_interrupt2, timer);
+	tasklet_init(&rtc_tq, rtctimer_interrupt2, (unsigned long)timer);
 #endif /* USE_TASKLET */
 
 	strcpy(timer->name, "RTC timer");
@@ -211,5 +213,9 @@ module_exit(rtctimer_exit)
 
 MODULE_PARM(rtctimer_freq, "i");
 MODULE_PARM_DESC(rtctimer_freq, "timer frequency in Hz");
+
+MODULE_LICENSE("GPL");
+
+EXPORT_NO_SYMBOLS;
 
 #endif /* CONFIG_RTC || CONFIG_RTC_MODULE */

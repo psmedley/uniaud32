@@ -15,13 +15,22 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <asm/dma.h>
+#include <linux/delay.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/ad1848.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_DESCRIPTION("Routines for control of AD1848/AD1847/CS4248");
+MODULE_LICENSE("GPL");
 
 #define chip_t ad1848_t
 
@@ -113,7 +122,7 @@ void snd_ad1848_out(ad1848_t *chip,
 #endif
 }
 
-static void snd_ad1848_dout(ad1848_t *chip,
+void snd_ad1848_dout(ad1848_t *chip,
 			    unsigned char reg,
 			    unsigned char value)
 {
@@ -126,7 +135,7 @@ static void snd_ad1848_dout(ad1848_t *chip,
 	mb();
 }
 
-static unsigned char snd_ad1848_in(ad1848_t *chip, unsigned char reg)
+unsigned char snd_ad1848_in(ad1848_t *chip, unsigned char reg)
 {
 	int timeout;
 
@@ -171,7 +180,7 @@ void snd_ad1848_debug(ad1848_t *chip)
  *  AD1848 detection / MCE routines
  */
 
-static void snd_ad1848_mce_up(ad1848_t *chip)
+void snd_ad1848_mce_up(ad1848_t *chip)
 {
 	unsigned long flags;
 	int timeout;
@@ -192,7 +201,7 @@ static void snd_ad1848_mce_up(ad1848_t *chip)
 	spin_unlock_irqrestore(&chip->reg_lock, flags);
 }
 
-static void snd_ad1848_mce_down(ad1848_t *chip)
+void snd_ad1848_mce_down(ad1848_t *chip)
 {
 	unsigned long flags;
 	int timeout;
@@ -291,12 +300,14 @@ static int snd_ad1848_trigger(ad1848_t *chip, unsigned char what,
 			return 0;
 		}
 		snd_ad1848_out(chip, AD1848_IFACE_CTRL, chip->image[AD1848_IFACE_CTRL] |= what);
+		chip->mode |= AD1848_MODE_RUNNING;
 	} else if (cmd == SNDRV_PCM_TRIGGER_STOP) {
 		if (!(chip->image[AD1848_IFACE_CTRL] & what)) {
 			spin_unlock(&chip->reg_lock);
 			return 0;
 		}
 		snd_ad1848_out(chip, AD1848_IFACE_CTRL, chip->image[AD1848_IFACE_CTRL] &= ~what);
+		chip->mode &= ~AD1848_MODE_RUNNING;
 	} else {
 		result = -EINVAL;
 	}
@@ -523,7 +534,7 @@ static int snd_ad1848_playback_prepare(snd_pcm_substream_t * substream)
 
 	chip->dma_size = size;
 	chip->image[AD1848_IFACE_CTRL] &= ~(AD1848_PLAYBACK_ENABLE | AD1848_PLAYBACK_PIO);
-	snd_dma_program(chip->dma, runtime->dma_area, size, DMA_MODE_WRITE | DMA_AUTOINIT);
+	snd_dma_program(chip->dma, runtime->dma_addr, size, DMA_MODE_WRITE | DMA_AUTOINIT);
 	count = snd_ad1848_get_count(chip->image[AD1848_DATA_FORMAT], count) - 1;
 	spin_lock_irqsave(&chip->reg_lock, flags);
 	snd_ad1848_out(chip, AD1848_DATA_LWR_CNT, (unsigned char) count);
@@ -567,7 +578,7 @@ static int snd_ad1848_capture_prepare(snd_pcm_substream_t * substream)
 
 	chip->dma_size = size;
 	chip->image[AD1848_IFACE_CTRL] &= ~(AD1848_CAPTURE_ENABLE | AD1848_CAPTURE_PIO);
-	snd_dma_program(chip->dma, runtime->dma_area, size, DMA_MODE_READ | DMA_AUTOINIT);
+	snd_dma_program(chip->dma, runtime->dma_addr, size, DMA_MODE_READ | DMA_AUTOINIT);
 	count = snd_ad1848_get_count(chip->image[AD1848_DATA_FORMAT], count) - 1;
 	spin_lock_irqsave(&chip->reg_lock, flags);
 	snd_ad1848_out(chip, AD1848_DATA_LWR_CNT, (unsigned char) count);
@@ -580,9 +591,11 @@ void snd_ad1848_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
 	ad1848_t *chip = snd_magic_cast(ad1848_t, dev_id, return);
 
-	if ((chip->mode & AD1848_MODE_PLAY) && chip->playback_substream)
+	if ((chip->mode & AD1848_MODE_PLAY) && chip->playback_substream &&
+	    (chip->mode & AD1848_MODE_RUNNING))
 		snd_pcm_period_elapsed(chip->playback_substream);
-	if ((chip->mode & AD1848_MODE_CAPTURE) && chip->capture_substream)
+	if ((chip->mode & AD1848_MODE_CAPTURE) && chip->capture_substream &&
+	    (chip->mode & AD1848_MODE_RUNNING))
 		snd_pcm_period_elapsed(chip->capture_substream);
 	outb(0, AD1848P(chip, STATUS));	/* clear global interrupt bit */
 }
@@ -820,8 +833,10 @@ static int snd_ad1848_capture_close(snd_pcm_substream_t * substream)
 
 static int snd_ad1848_free(ad1848_t *chip)
 {
-	if (chip->res_port)
+	if (chip->res_port) {
 		release_resource(chip->res_port);
+		kfree_nocheck(chip->res_port);
+	}
 	if (chip->irq >= 0)
 		free_irq(chip->irq, (void *) chip);
 	if (chip->dma >= 0) {
@@ -979,7 +994,7 @@ int snd_ad1848_pcm(ad1848_t *chip, int device, snd_pcm_t **rpcm)
 	pcm->info_flags = SNDRV_PCM_INFO_HALF_DUPLEX;
 	strcpy(pcm->name, snd_ad1848_chip_id(chip));
 
-	snd_pcm_lib_preallocate_pages_for_all(pcm, 64*1024, chip->dma > 3 ? 128*1024 : 64*1024, GFP_KERNEL|GFP_DMA);
+	snd_pcm_lib_preallocate_isa_pages_for_all(pcm, 64*1024, chip->dma > 3 ? 128*1024 : 64*1024);
 
 	chip->pcm = pcm;
 	if (rpcm)
@@ -994,7 +1009,7 @@ int snd_ad1848_pcm(ad1848_t *chip, int device, snd_pcm_t **rpcm)
 static int snd_ad1848_info_mux(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
 	static char *texts[4] = {
-		"Line1", "Aux", "Line2", "Mix"
+		"Line", "Aux", "Mic", "Mix"
 	};
 
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
@@ -1171,7 +1186,7 @@ AD1848_DOUBLE("Aux Playback Switch", 0, AD1848_AUX1_LEFT_INPUT, AD1848_AUX1_RIGH
 AD1848_DOUBLE("Aux Playback Volume", 0, AD1848_AUX1_LEFT_INPUT, AD1848_AUX1_RIGHT_INPUT, 0, 0, 31, 1),
 AD1848_DOUBLE("Aux Playback Switch", 1, AD1848_AUX2_LEFT_INPUT, AD1848_AUX2_RIGHT_INPUT, 7, 7, 1, 1),
 AD1848_DOUBLE("Aux Playback Volume", 1, AD1848_AUX2_LEFT_INPUT, AD1848_AUX2_RIGHT_INPUT, 0, 0, 31, 1),
-AD1848_DOUBLE("Capture Volume", 0, AD1848_LEFT_INPUT, AD1848_LEFT_INPUT, 0, 0, 15, 0),
+AD1848_DOUBLE("Capture Volume", 0, AD1848_LEFT_INPUT, AD1848_RIGHT_INPUT, 0, 0, 15, 0),
 {
 #ifdef TARGET_OS2
 	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
@@ -1211,7 +1226,11 @@ int snd_ad1848_mixer(ad1848_t *chip)
 	return 0;
 }
 
+EXPORT_SYMBOL(snd_ad1848_in);
 EXPORT_SYMBOL(snd_ad1848_out);
+EXPORT_SYMBOL(snd_ad1848_dout);
+EXPORT_SYMBOL(snd_ad1848_mce_up);
+EXPORT_SYMBOL(snd_ad1848_mce_down);
 EXPORT_SYMBOL(snd_ad1848_interrupt);
 EXPORT_SYMBOL(snd_ad1848_create);
 EXPORT_SYMBOL(snd_ad1848_pcm);

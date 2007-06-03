@@ -1,5 +1,5 @@
-#ifndef __CS4231_H
-#define __CS4231_H
+#ifndef __SOUND_CS4231_H
+#define __SOUND_CS4231_H
 
 /*
  *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -336,4 +336,4 @@ int snd_cs4231_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucon
 void snd_cs4231_debug(cs4231_t *chip);
 #endif
 
-#endif				/* __CS4231_H */
+#endif /* __SOUND_CS4231_H */

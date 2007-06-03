@@ -17,12 +17,12 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#ifndef __AINSTR_SIMPLE_H
-#define __AINSTR_SIMPLE_H
+#ifndef __SOUND_AINSTR_SIMPLE_H
+#define __SOUND_AINSTR_SIMPLE_H
 
 #ifndef __KERNEL__
 #include <asm/types.h>
@@ -155,4 +155,4 @@ int snd_seq_simple_init(snd_simple_ops_t *ops,
 
 #endif
 
-#endif /* __SEQ_INSTR_SIMPLE_H */
+#endif /* __SOUND_AINSTR_SIMPLE_H */

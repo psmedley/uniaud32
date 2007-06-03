@@ -19,11 +19,22 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 */
 
-#define SNDRV_MAIN_OBJECT_FILE
+
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <asm/dma.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#ifndef LINUX_ISAPNP_H
+#include <linux/isapnp.h>
+#define isapnp_card pci_bus
+#define isapnp_dev pci_dev
+#endif
+#include <sound/core.h>
 #ifdef CS4231
 #include <sound/cs4231.h>
 #else
@@ -43,21 +54,22 @@
 #include <sound/initval.h>
 
 EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("Massimo Piccioni <dafastidio@libero.it>");
+MODULE_CLASSES("{sound}");
+MODULE_LICENSE("GPL");
 #ifdef OPTi93X
 MODULE_DESCRIPTION("OPTi93X");
-MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{OPTi,82C931/3}}");
 #else	/* OPTi93X */
 #ifdef CS4231
 MODULE_DESCRIPTION("OPTi92X - CS4231");
-MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{OPTi,82C924 (CS4231)},"
 		"{OPTi,82C925 (CS4231)}}");
 #else	/* CS4231 */
 MODULE_DESCRIPTION("OPTi92X - AD1848");
-MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{OPTi,82C924 (AD1848)},"
-		"{OPTi,82C925 (AD1848)}}");
+		"{OPTi,82C925 (AD1848)},"
+	        "{OAK,Mozart}}");
 #endif	/* CS4231 */
 #endif	/* OPTi93X */
 
@@ -1033,7 +1045,7 @@ static int snd_opti93x_playback_prepare(snd_pcm_substream_t * substream)
 		OPTi93X_PLAYBACK_ENABLE | OPTi93X_PLAYBACK_PIO,
 		~(OPTi93X_PLAYBACK_ENABLE | OPTi93X_PLAYBACK_PIO));
 
-	snd_dma_program(chip->dma1, runtime->dma_area, size,
+	snd_dma_program(chip->dma1, runtime->dma_addr, size,
 		DMA_MODE_WRITE | DMA_AUTOINIT);
 
 	format = snd_opti93x_get_freq(runtime->rate);
@@ -1066,7 +1078,7 @@ static int snd_opti93x_capture_prepare(snd_pcm_substream_t *substream)
 		OPTi93X_CAPTURE_ENABLE | OPTi93X_CAPTURE_PIO,
 		(unsigned char)~(OPTi93X_CAPTURE_ENABLE | OPTi93X_CAPTURE_PIO));
 
-	snd_dma_program(chip->dma2, runtime->dma_area, size,
+	snd_dma_program(chip->dma2, runtime->dma_addr, size,
 		DMA_MODE_READ | DMA_AUTOINIT);
 
 	format = snd_opti93x_get_freq(runtime->rate);
@@ -1291,8 +1303,10 @@ static int snd_opti93x_probe(opti93x_t *chip)
 
 static int snd_opti93x_free(opti93x_t *chip)
 {
-	if (chip->res_port)
+	if (chip->res_port) {
 		release_resource(chip->res_port);
+		kfree_nocheck(chip->res_port);
+	}
 	if (chip->dma1 >= 0) {
 		disable_dma(chip->dma1);
 		free_dma(chip->dma1);
@@ -1457,7 +1471,7 @@ int snd_opti93x_pcm(opti93x_t *codec, int device, snd_pcm_t **rpcm)
 
 	strcpy(pcm->name, snd_opti93x_chip_id(codec));
 
-	snd_pcm_lib_preallocate_pages_for_all(pcm, 64*1024, codec->dma1 > 3 || codec->dma2 > 3 ? 128*1024 : 64*1024, GFP_KERNEL|GFP_DMA);
+	snd_pcm_lib_preallocate_isa_pages_for_all(pcm, 64*1024, codec->dma1 > 3 || codec->dma2 > 3 ? 128*1024 : 64*1024);
 
 	codec->pcm = pcm;
 	if (rpcm)
@@ -1715,6 +1729,7 @@ int snd_opti93x_mixer(opti93x_t *chip)
 	int err, idx;
 
 	snd_assert(chip != NULL && chip->card != NULL, return -EINVAL);
+
 	card = chip->card;
 
 	strcpy(card->mixername, snd_opti93x_chip_id(chip));
@@ -1990,8 +2005,10 @@ static void snd_card_opti9xx_free(snd_card_t *card)
 #ifdef __ISAPNP__
 		snd_card_opti9xx_deactivate(chip);
 #endif	/* __ISAPNP__ */
-		if (chip->res_mc_base)
+		if (chip->res_mc_base) {
 			release_resource(chip->res_mc_base);
+			kfree_nocheck(chip->res_mc_base);
+		}
 	}
 }
 
@@ -2248,9 +2265,9 @@ static int __init alsa_card_opti9xx_init(void)
 	if ((error = snd_card_opti9xx_probe())) {
 #ifdef MODULE
 #ifdef OPTi93X
-		snd_printk("no OPTi 82C93x soundcard found\n");
+		printk(KERN_ERR "no OPTi 82C93x soundcard found\n");
 #else
-		snd_printk("no OPTi 82C92x soundcard found\n");
+		printk(KERN_ERR "no OPTi 82C92x soundcard found\n");
 #endif	/* OPTi93X */
 #endif
 		return error;
@@ -2269,7 +2286,7 @@ module_exit(alsa_card_opti9xx_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-opti9xx=snd_enable,snd_index,snd_id,snd_isapnp,
+/* format is: snd-opti9xx=snd_enable,snd_index,snd_id,snd_isapnp,
 			       snd_port,snd_mpu_port,snd_fm_port,
 			       snd_irq,snd_mpu_irq,
 			       snd_dma1,[snd_dma2] */
@@ -2302,11 +2319,11 @@ static int __init alsa_card_opti9xx_setup(char *str)
 }
 
 #if defined(OPTi93X)
-__setup("snd-card-opti93x=", alsa_card_opti9xx_setup);
+__setup("snd-opti93x=", alsa_card_opti9xx_setup);
 #elif defined(CS4231)
-__setup("snd-card-opti92x-cs4231=", alsa_card_opti9xx_setup);
+__setup("snd-opti92x-cs4231=", alsa_card_opti9xx_setup);
 #else
-__setup("snd-card-opti92x-ad1848=", alsa_card_opti9xx_setup);
+__setup("snd-opti92x-ad1848=", alsa_card_opti9xx_setup);
 #endif
 
 #endif /* ifndef MODULE */

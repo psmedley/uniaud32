@@ -19,16 +19,17 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/minors.h>
 #include <sound/info.h>
 #include <sound/version.h>
 #include <sound/control.h>
 #include <sound/initval.h>
-#ifdef CONFIG_KMOD
 #include <linux/kmod.h>
-#endif
 #ifdef CONFIG_DEVFS_FS
 #include <linux/devfs_fs_kernel.h>
 #endif
@@ -125,7 +126,7 @@ static struct snd_minor *snd_minor_search(int minor)
 
 static int snd_open(struct inode *inode, struct file *file)
 {
-    int minor = MINOR(inode->i_rdev);
+	int minor = minor(inode->i_rdev);
     int card = SNDRV_MINOR_CARD(minor);
     int dev = SNDRV_MINOR_DEVICE(minor);
     snd_minor_t *mptr = NULL;
@@ -170,7 +171,7 @@ struct file_operations snd_fops =
 #else
 struct file_operations snd_fops =
 {
-#ifdef LINUX_2_3
+#ifndef LINUX_2_2
 owner:		THIS_MODULE,
 #endif
     open:		snd_open
