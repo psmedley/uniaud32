@@ -1,0 +1,1 @@
+diff.exe -Nuwr z:\ua2\GPL\alsa-kernel\pci\au88x0\%1 E:\DEV\alsa\alsa-driver\pci\au88x0\%1 >%1.diff
