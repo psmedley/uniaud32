@@ -1,0 +1,78 @@
+Open Watcom Make Version 1.2
+Portions Copyright (c) 1988-2002 Sybase, Inc. All Rights Reserved.
+Source code is available under the Sybase Open Watcom Public License.
+See http://www.openwatcom.org/ for details.
+	WCC386 -bt=os2v2 -e60 -5r -omlinear -s -w4 -ze -zdp -zl -zq -nt=CODE32 -zff -zgf -zp4 -mf -DKEE -DFLATSTACK -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_ -dCONFIG_SND_CS46XX_NEW_DSP -i..\..\..\include;..\..\include;e:\owatcom\H -fobin\Release.KEE\cs46xx.obj cs46xx.c
+..\..\include\sound\pcm.h(248): Warning! W202: Symbol 'constrs_interval' has been defined, but not referenced
+..\..\include\sound\pcm.h(242): Warning! W202: Symbol 'constrs_mask' has been defined, but not referenced
+..\..\include\sound\pcm.h(738): Warning! W202: Symbol 'hw_param_interval_c' has been defined, but not referenced
+..\..\include\sound\pcm.h(732): Warning! W202: Symbol 'hw_param_mask_c' has been defined, but not referenced
+..\..\include\sound\control.h(135): Warning! W202: Symbol 'snd_ctl_build_ioff' has been defined, but not referenced
+	WCC386 -bt=os2v2 -e60 -5r -omlinear -s -w4 -ze -zdp -zl -zq -nt=CODE32 -zff -zgf -zp4 -mf -DKEE -DFLATSTACK -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_ -dCONFIG_SND_CS46XX_NEW_DSP -i..\..\..\include;..\..\include;e:\owatcom\H -fobin\Release.KEE\cs46xx_lib.obj cs46xx_lib.c
+..\..\include\sound/pcm_params.h(25): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(26): Error! E1116: An id list not allowed except for function definition
+..\..\include\sound/pcm_params.h(27): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(27): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(27): Error! E1127: Type required in parameter list
+..\..\include\sound/pcm_params.h(28): Error! E1127: Type required in parameter list
+..\..\include\sound/pcm_params.h(28): Error! E1022: Missing or misspelled data type near 'snd_pcm_hw_param_t'
+..\..\include\sound/pcm_params.h(29): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(29): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(29): Error! E1127: Type required in parameter list
+..\..\include\sound/pcm_params.h(30): Error! E1127: Type required in parameter list
+..\..\include\sound/pcm_params.h(30): Error! E1022: Missing or misspelled data type near 'snd_pcm_hw_param_t'
+..\..\include\sound/pcm_params.h(31): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(32): Error! E1116: An id list not allowed except for function definition
+..\..\include\sound/pcm_params.h(33): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(34): Error! E1116: An id list not allowed except for function definition
+..\..\include\sound/pcm_params.h(35): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(36): Error! E1116: An id list not allowed except for function definition
+..\..\include\sound/pcm_params.h(46): Error! E1009: Expecting ';' but found 'unsigned'
+..\..\include\sound/pcm_params.h(46): Error! E1009: Expecting ',' but found 'v'
+..\..\include\sound/pcm_params.h(50): Error! E1011: Symbol 'v' has not been declared
+..\..\include\sound/pcm_params.h(71): Error! E1022: Missing or misspelled data type near 'inline'
+..\..\include\sound/pcm_params.h(71): Error! E1022: Missing or misspelled data type near 'size_t'
+..\..\include\sound/pcm_params.h(73): Error! E1011: Symbol 'snd_mask_t' has not been declared
+..\..\include\sound/pcm_params.h(76): Error! E1009: Expecting ';' but found 'void'
+..\..\include\sound/pcm_params.h(76): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(78): Error! E1011: Symbol 'mask' has not been declared
+..\..\include\sound/pcm_params.h(78): Error! E1029: Expression must be 'pointer to ...'
+..\..\include\sound/pcm_params.h(81): Error! E1009: Expecting ';' but found 'void'
+..\..\include\sound/pcm_params.h(81): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(83): Error! E1011: Symbol 'mask' has not been declared
+..\..\include\sound/pcm_params.h(83): Error! E1011: Symbol 'u_int32_t' has not been declared
+..\..\include\sound/pcm_params.h(86): Error! E1009: Expecting ';' but found 'int'
+..\..\include\sound/pcm_params.h(86): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(86): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(86): Error! E1127: Type required in parameter list
+..\..\include\sound/pcm_params.h(90): Error! E1033: Expression for '->' must be 'pointer to struct or union'
+..\..\include\sound/pcm_params.h(90): Error! E1009: Expecting ')' but found ']'
+..\..\include\sound/pcm_params.h(90): Error! E1063: Missing operand
+..\..\include\sound/pcm_params.h(90): Warning! W111: Meaningless use of an expression
+..\..\include\sound/pcm_params.h(90): Error! E1009: Expecting ';' but found ')'
+..\..\include\sound/pcm_params.h(95): Error! E1009: Expecting ';' but found 'unsigned'
+..\..\include\sound/pcm_params.h(95): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(95): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(95): Error! E1127: Type required in parameter list
+..\..\include\sound/pcm_params.h(100): Error! E1033: Expression for '->' must be 'pointer to struct or union'
+..\..\include\sound/pcm_params.h(100): Error! E1009: Expecting ')' but found ']'
+..\..\include\sound/pcm_params.h(100): Error! E1063: Missing operand
+..\..\include\sound/pcm_params.h(100): Warning! W111: Meaningless use of an expression
+..\..\include\sound/pcm_params.h(100): Error! E1009: Expecting ';' but found ')'
+..\..\include\sound/pcm_params.h(101): Error! E1033: Expression for '->' must be 'pointer to struct or union'
+..\..\include\sound/pcm_params.h(101): Error! E1009: Expecting ')' but found ']'
+..\..\include\sound/pcm_params.h(101): Error! E1009: Expecting ';' but found ')'
+..\..\include\sound/pcm_params.h(101): Warning! W201: Unreachable code
+..\..\include\sound/pcm_params.h(101): Error! E1063: Missing operand
+..\..\include\sound/pcm_params.h(101): Warning! W111: Meaningless use of an expression
+..\..\include\sound/pcm_params.h(101): Error! E1009: Expecting ';' but found ')'
+..\..\include\sound/pcm_params.h(101): Warning! W111: Meaningless use of an expression
+..\..\include\sound/pcm_params.h(106): Error! E1009: Expecting ';' but found 'unsigned'
+..\..\include\sound/pcm_params.h(106): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(106): Error! E1009: Expecting ',' but found '*'
+..\..\include\sound/pcm_params.h(106): Error! E1127: Type required in parameter list
+..\..\include\sound/pcm_params.h(111): Error! E1033: Expression for '->' must be 'pointer to struct or union'
+..\..\include\sound/pcm_params.h(111): Error! E1009: Expecting ')' but found ']'
+..\..\include\sound/pcm_params.h(111): Error! E1063: Missing operand
+..\..\include\sound/pcm_params.h(111): Warning! W111: Meaningless use of an expression
+..\..\include\sound/pcm_params.h(111): Error! E1147: Too many errors: compilation aborted

@@ -1,0 +1,61 @@
+LOGO=-h
+
+NMAKEOPTS=-f makefile.os2 $(LOGO)
+
+!if "$(DEBUG)" == "1"
+NMAKEOPTS += DEBUG=1
+!endif
+
+!if "$(KEE)" == "0"
+NMAKEOPTS += KEE=0
+KEE=0
+!else
+NMAKEOPTS += KEE=1
+KEE=1
+!endif
+
+!if "$(IBM_BUILD)" == "1"
+NMAKEOPTS += IBM_BUILD=1
+!endif
+
+!if "$(DEBUG)" == "1"
+!Message BUILDING DEBUG VERSION
+!else
+!Message BUILDING RELEASE VERSION
+!endif
+
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: subdirs
+
+subdirs: .SYMBOLIC
+    @echo BUILDING alsa-kernel
+    @cd alsa-kernel
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING lib32
+    @cd lib32
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING drv32
+    @cd drv32
+    @wmake $(NMAKEOPTS)
+    @cd ..
+
+clean: .SYMBOLIC
+    @echo CLEANING alsa
+    @cd alsa-kernel
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING lib32
+    @cd lib32
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING drv32
+    @cd drv32
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
