@@ -1,0 +1,1 @@
+diff.exe -Nuwr z:\ua2\GPL\alsa-kernel\pci\ali5451\%1 E:\DEV\alsa\alsa-kernel\pci\ali5451\%1 >%1.diff
