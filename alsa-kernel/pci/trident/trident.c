@@ -21,13 +21,14 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/trident.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>, <audio@tridentmicro.com>");
 MODULE_DESCRIPTION("Trident 4D-WaveDX/NX & SiS SI7018");
 MODULE_LICENSE("GPL");
@@ -194,7 +195,7 @@ static int __init alsa_card_trident_init(void)
 
 	if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-//		snd_printk("Trident 4DWave PCI soundcard not found or device busy\n");
+//		snd_printk(KERN_ERR "Trident 4DWave PCI soundcard not found or device busy\n");
 #endif
 		return err;
 	}
@@ -211,7 +212,7 @@ module_exit(alsa_card_trident_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-trident=snd_enable,snd_index,snd_id,
+/* format is: snd-trident=snd_enable,snd_index,snd_id,
 			       snd_pcm_channels,snd_wavetable_size */
 
 static int __init alsa_card_trident_setup(char *str)

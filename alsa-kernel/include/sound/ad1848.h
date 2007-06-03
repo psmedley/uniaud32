@@ -1,5 +1,5 @@
-#ifndef __AD1848_H
-#define __AD1848_H
+#ifndef __SOUND_AD1848_H
+#define __SOUND_AD1848_H
 
 /*
  *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -111,6 +111,7 @@
 #define AD1848_MODE_CAPTURE	0x0002
 #define AD1848_MODE_TIMER	0x0004
 #define AD1848_MODE_OPEN	(AD1848_MODE_PLAY|AD1848_MODE_CAPTURE|AD1848_MODE_TIMER)
+#define AD1848_MODE_RUNNING	0x0010
 
 /* defines for codec.hardware */
 
@@ -150,6 +151,10 @@ typedef struct _snd_ad1848 ad1848_t;
 /* exported functions */
 
 void snd_ad1848_out(ad1848_t *chip, unsigned char reg, unsigned char value);
+void snd_ad1848_dout(ad1848_t *chip, unsigned char reg, unsigned char value);
+unsigned char snd_ad1848_in(ad1848_t *chip, unsigned char reg);
+void snd_ad1848_mce_up(ad1848_t *chip);
+void snd_ad1848_mce_down(ad1848_t *chip);
 
 int snd_ad1848_create(snd_card_t * card,
 		      unsigned long port,
@@ -201,4 +206,4 @@ int snd_ad1848_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucon
 void snd_ad1848_debug(ad1848_t *chip);
 #endif
 
-#endif				/* __AD1848_H */
+#endif /* __SOUND_AD1848_H */

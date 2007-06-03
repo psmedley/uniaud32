@@ -15,13 +15,25 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <asm/dma.h>
+#include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/slab.h>
+#include <linux/ioport.h>
+#include <sound/core.h>
 #include <sound/es1688.h>
+#include <sound/initval.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_DESCRIPTION("ESS ESx688 lowlevel module");
+MODULE_CLASSES("{sound}");
+MODULE_LICENSE("GPL");
 
 #define chip_t es1688_t
 
@@ -418,7 +430,7 @@ static int snd_es1688_playback_prepare(snd_pcm_substream_t * substream)
 	spin_unlock_irqrestore(&chip->reg_lock, flags);
 	/* --- */
 	count = -count;
-	snd_dma_program(chip->dma8, runtime->dma_area, size, DMA_MODE_WRITE | DMA_AUTOINIT);
+	snd_dma_program(chip->dma8, runtime->dma_addr, size, DMA_MODE_WRITE | DMA_AUTOINIT);
 	spin_lock_irqsave(&chip->reg_lock, flags);
 	snd_es1688_write(chip, 0xa4, (unsigned char) count);
 	snd_es1688_write(chip, 0xa5, (unsigned char) (count >> 8));
@@ -475,7 +487,7 @@ static int snd_es1688_capture_prepare(snd_pcm_substream_t * substream)
 	spin_unlock_irqrestore(&chip->reg_lock, flags);
 	/* --- */
 	count = -count;
-	snd_dma_program(chip->dma8, runtime->dma_area, size, DMA_MODE_READ | DMA_AUTOINIT);
+	snd_dma_program(chip->dma8, runtime->dma_addr, size, DMA_MODE_READ | DMA_AUTOINIT);
 	spin_lock_irqsave(&chip->reg_lock, flags);
 	snd_es1688_write(chip, 0xa4, (unsigned char) count);
 	snd_es1688_write(chip, 0xa5, (unsigned char) (count >> 8));
@@ -655,6 +667,7 @@ static int snd_es1688_free(es1688_t *chip)
 	if (chip->res_port) {
 		snd_es1688_init(chip, 0);
 		release_resource(chip->res_port);
+		kfree_nocheck(chip->res_port);
 	}
 	if (chip->irq >= 0)
 		free_irq(chip->irq, (void *) chip);
@@ -822,10 +835,10 @@ int snd_es1688_pcm(es1688_t * chip, int device, snd_pcm_t ** rpcm)
 	sprintf(pcm->name, snd_es1688_chip_id(chip));
 	chip->pcm = pcm;
 
-	snd_pcm_lib_preallocate_pages_for_all(pcm, 64*1024, 64*1024, GFP_KERNEL|GFP_DMA);
+	snd_pcm_lib_preallocate_isa_pages_for_all(pcm, 64*1024, 64*1024);
 
 	if (rpcm)
-		*rpcm = NULL;
+		*rpcm = pcm;
 	return 0;
 }
 

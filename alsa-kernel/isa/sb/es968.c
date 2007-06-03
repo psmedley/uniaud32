@@ -17,23 +17,35 @@
 
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
- Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#ifndef LINUX_ISAPNP_H
+#include <linux/isapnp.h>
+#define isapnp_card pci_bus
+#define isapnp_dev pci_dev
+#endif
+#include <sound/core.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 #include <sound/sb.h>
 
+#define chip_t sb_t
+
 EXPORT_NO_SYMBOLS;
+
+MODULE_AUTHOR("Massimo Piccioni <dafastidio@libero.it>");
 MODULE_DESCRIPTION("ESS AudioDrive ES968");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{ESS,AudioDrive ES968}}");
 
 static int snd_index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *snd_id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
 static long snd_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
 static int snd_irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;	/* Pnp setup */
 static int snd_dma8[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;	/* PnP setup */
@@ -92,7 +104,7 @@ ISAPNP_CARD_TABLE(snd_es968_pnpids);
 static void snd_card_es968_interrupt(int irq, void *dev_id,
                                      struct pt_regs *regs)
 {
-    sb_t *chip = dev_id;
+	sb_t *chip = snd_magic_cast(sb_t, dev_id, return);
 
     if (chip->open & SB_OPEN_PCM) {
         snd_sb8dsp_interrupt(chip);
@@ -224,7 +236,7 @@ static int __init snd_card_es968_probe(int dev)
 static int __init snd_es968_isapnp_detect(struct isapnp_card *card,
                                           const struct isapnp_card_id *id)
 {
-    static int dev = 0;
+	static int dev;
     int res;
 
     for ( ; dev < SNDRV_CARDS; dev++) {
@@ -271,7 +283,7 @@ module_exit(alsa_card_es968_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-es968=snd_enable,snd_index,snd_id,
+/* format is: snd-es968=snd_enable,snd_index,snd_id,
  snd_port,snd_irq,snd_dma1 */
 
 static int __init alsa_card_es968_setup(char *str)
@@ -290,6 +302,6 @@ static int __init alsa_card_es968_setup(char *str)
     return 1;
 }
 
-__setup("snd-card-es968=", alsa_card_es968_setup);
+__setup("snd-es968=", alsa_card_es968_setup);
 
 #endif /* ifndef MODULE */

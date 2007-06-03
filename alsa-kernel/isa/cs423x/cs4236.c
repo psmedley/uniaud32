@@ -15,12 +15,19 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#ifndef LINUX_ISAPNP_H
+#include <linux/isapnp.h>
+#define isapnp_card pci_bus
+#define isapnp_dev pci_dev
+#endif
+#include <sound/core.h>
 #include <sound/cs4231.h>
 #include <sound/mpu401.h>
 #include <sound/opl3.h>
@@ -30,42 +37,46 @@
 #define chip_t cs4231_t
 
 EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_LICENSE("GPL");
+MODULE_CLASSES("{sound}");
 #ifdef CS4232
 MODULE_DESCRIPTION("Cirrus Logic CS4232");
-MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Turtle Beach,TBS-2000},"
 		"{Turtle Beach,Tropez Plus},"
 		"{SIC CrystalWave 32},"
-		"{HP,Omnibook 5500}},"
-		"{TerraTec,Maestro 32/96}");
+		"{Hewlett Packard,Omnibook 5500},"
+		"{TerraTec,Maestro 32/96},"
+		"{Philips,PCA70PS}}");
 #else
 MODULE_DESCRIPTION("Cirrus Logic CS4235-9");
-MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Crystal Semiconductors,CS4235},"
 		"{Crystal Semiconductors,CS4236},"
 		"{Crystal Semiconductors,CS4237},"
 		"{Crystal Semiconductors,CS4238},"
 		"{Crystal Semiconductors,CS4239},"
-		"{Genius,Sound Maker 3DJ},"
-		"{Hewlett Packard,HP6330 sound},"
-		"{Crystal Computer,TidalWave128},"
 		"{Acer,AW37},"
-		"{EliteGroup,P5TX-LA sound},"
+		"{Acer,AW35/Pro},"
 		"{Crystal,3D},"
-		"{Typhoon Soundsystem,CS4236B},"
-		"{TerraTec, AudioSystem EWS64XL},"
-		"{NewClear,3D},"
+		"{Crystal Computer,TidalWave128},"
 		"{Dell,Optiplex GX1},"
 		"{Dell,Workstation 400 sound},"
-		"{Turtle Beach,Malibu},"
-		"{Crystal Semiconductors,CS4235},"
-		"{IBM,Adaptiva 2137 E24},"
-		"{Maxi Sound,16 PnP},"
+		"{EliteGroup,P5TX-LA sound},"
 		"{Gallant,SC-70P},"
-		"{Acer,AW37/Pro},"
-		"{Acer,AW35/Pro},"
-		"{Intel, Marlin Spike Mobo CS4235},"
-		"{IBM,IntelliStation M Pro}}");
+		"{Gateway,E1000 Onboard CS4236B},"
+		"{Genius,Sound Maker 3DJ},"
+		"{Hewlett Packard,HP6330 sound},"
+		"{IBM,PC 300PL sound},"
+		"{IBM,Aptiva 2137 E24},"
+		"{IBM,IntelliStation M Pro},"
+		"{Intel,Marlin Spike Mobo CS4235},"
+		"{Intel PR440FX Onboard},"
+		"{Guillemot,MaxiSound 16 PnP},"
+		"{NewClear,3D},"
+		"{TerraTec,AudioSystem EWS64L/XL},"
+		"{Typhoon Soundsystem,CS4236B},"
+		"{Turtle Beach,Malibu},"
+		"{Unknown,Digital PC 5000 Onboard}}");
 #endif
 
 #ifdef CS4232
@@ -76,7 +87,7 @@ MODULE_DEVICES("{{Crystal Semiconductors,CS4235},"
 
 static int snd_index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *snd_id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
 #ifdef __ISAPNP__
 #ifdef TARGET_OS2
 static int snd_isapnp[SNDRV_CARDS] = {1,1,1,1,1,1,1,1};
@@ -199,6 +210,10 @@ static const struct isapnp_card_id *snd_cs4236_isapnp_id[SNDRV_CARDS] __devinitd
 
 #ifdef CS4232
 static struct isapnp_card_id snd_card_pnpids[] __devinitdata = {
+	/* Philips PCA70PS */
+	ISAPNP_CS4232_1('C','S','C',0x0d32,0x0000,0x0010,0xb006),
+	/* TerraTec Maestro 32/96 (CS4232) */
+	ISAPNP_CS4232('C','S','C',0x1a32,0x0000,0x0010,0x0003),
 	/* HP Omnibook 5500 onboard */
 	ISAPNP_CS4232('C','S','C',0x4232,0x0000,0x0002,0x0003),
 	/* Turtle Beach TBS-2000 (CS4232) */
@@ -207,8 +222,6 @@ static struct isapnp_card_id snd_card_pnpids[] __devinitdata = {
 	ISAPNP_CS4232_1('C','S','C',0x7632,0x0000,0x0010,0xb006),
 	/* SIC CrystalWave 32 (CS4232) */
 	ISAPNP_CS4232('C','S','C',0xf032,0x0000,0x0010,0x0003),
-	/* TerraTec Maestro 32/96 (CS4232) */
-	ISAPNP_CS4232('C','S','C',0x1a32,0x0000,0x0010,0x0003),
 	/* --- */
 	{ ISAPNP_CARD_END, }	/* end */
 };
@@ -220,10 +233,16 @@ static struct isapnp_card_id snd_card_pnpids[] __devinitdata = {
 	ISAPNP_CS4232('C','S','C',0x0225,0x0100,0x0110,0x0103),
 	/* Genius Sound Maker 3DJ - CS4237B */
 	ISAPNP_CS4232('C','S','C',0x0437,0x0000,0x0010,0x0003),
+	/* Digital PC 5000 Onboard - CS4236B */
+	ISAPNP_CS4232_WOMPU('C','S','C',0x0735,0x0000,0x0010),
 	/* some uknown CS4236B */
 	ISAPNP_CS4232('C','S','C',0x0b35,0x0000,0x0010,0x0003),
+	/* Intel PR440FX Onboard sound */
+	ISAPNP_CS4232('C','S','C',0x0b36,0x0000,0x0010,0x0003),
 	/* CS4235 on mainboard without MPU */
 	ISAPNP_CS4232_WOMPU('C','S','C',0x1425,0x0100,0x0110),
+	/* Gateway E1000 Onboard CS4236B */
+	ISAPNP_CS4232('C','S','C',0x1335,0x0000,0x0010,0x0003),
 	/* HP 6330 Onboard sound */
 	ISAPNP_CS4232('C','S','C',0x1525,0x0100,0x0110,0x0103),
 	/* Crystal Computer TidalWave128 */
@@ -252,14 +271,16 @@ static struct isapnp_card_id snd_card_pnpids[] __devinitdata = {
 	ISAPNP_CS4232('C','S','C',0x7537,0x0000,0x0010,0x0003),
 	/* CS4235 - onboard */
 	ISAPNP_CS4232('C','S','C',0x8025,0x0100,0x0110,0x0103),
+	/* IBM PC 300PL Onboard - CS4236B */
+	ISAPNP_CS4232_WOMPU('C','S','C',0xe836,0x0000,0x0010),
 	/* IBM Aptiva 2137 E24 Onboard - CS4237B */
 	ISAPNP_CS4232('C','S','C',0x8037,0x0000,0x0010,0x0003),
-	/* Maxi Sound 16 PnP - CS4236B */
+	/* IBM IntelliStation M Pro motherboard */
+	ISAPNP_CS4232_WOMPU('C','S','C',0xc835,0x0000,0x0010),
+	/* Guillemot MaxiSound 16 PnP - CS4236B */
 	ISAPNP_CS4232('C','S','C',0x9836,0x0000,0x0010,0x0003),
 	/* Gallant SC-70P */
 	ISAPNP_CS4232('C','S','C',0x9837,0x0000,0x0010,0x0003),
-	/* IBM IntelliStation M Pro motherboard */
-	ISAPNP_CS4232_WOMPU('C','S','C',0xc835,0x0000,0x0010),
 	/* ACER AW37/Pro - CS4235 */
 	ISAPNP_CS4232('C','S','C',0xd925,0x0000,0x0010,0x0003),
 	/* ACER AW35/Pro - CS4237B */
@@ -307,7 +328,7 @@ static int __init snd_card_cs4236_isapnp(int dev, struct snd_card_cs4236 *acard)
 		return -EAGAIN;
 	if (snd_port[dev] != SNDRV_AUTO_PORT)
 		isapnp_resource_change(&pdev->resource[0], snd_port[dev], 4);
-	if (snd_fm_port[dev] != SNDRV_AUTO_PORT)
+	if (snd_fm_port[dev] != SNDRV_AUTO_PORT && snd_fm_port[dev] >= 0)
 		isapnp_resource_change(&pdev->resource[1], snd_fm_port[dev], 4);
 	if (snd_sb_port[dev] != SNDRV_AUTO_PORT)
 		isapnp_resource_change(&pdev->resource[2], snd_sb_port[dev], 16);
@@ -318,11 +339,12 @@ static int __init snd_card_cs4236_isapnp(int dev, struct snd_card_cs4236 *acard)
 	if (snd_dma2[dev] != SNDRV_AUTO_DMA)
 		isapnp_resource_change(&pdev->dma_resource[1], snd_dma2[dev] < 0 ? 4 : snd_dma2[dev], 1);
 	if (pdev->activate(pdev)<0) {
-		snd_printk(IDENT " isapnp configure failed for WSS (out of resources?)\n");
+		printk(KERN_ERR IDENT " isapnp configure failed for WSS (out of resources?)\n");
 		return -EBUSY;
 	}
 	snd_port[dev] = pdev->resource[0].start;
-	snd_fm_port[dev] = pdev->resource[1].start;
+	if (snd_fm_port[dev] >= 0)
+		snd_fm_port[dev] = pdev->resource[1].start;
 	snd_sb_port[dev] = pdev->resource[2].start;
 	snd_irq[dev] = pdev->irq_resource[0].start;
 	snd_dma1[dev] = pdev->dma_resource[0].start;
@@ -340,14 +362,14 @@ static int __init snd_card_cs4236_isapnp(int dev, struct snd_card_cs4236 *acard)
 	if (snd_cport[dev] != SNDRV_AUTO_PORT)
 		isapnp_resource_change(&pdev->resource[0], snd_cport[dev], 8);
 	if (pdev->activate(pdev)<0) {
-		snd_printk(IDENT " isapnp configure failed for control (out of resources?)\n");
+		printk(KERN_ERR IDENT " isapnp configure failed for control (out of resources?)\n");
 		acard->wss->deactivate(acard->wss);
 		return -EBUSY;
 	}
 	snd_cport[dev] = pdev->resource[0].start;
 	snd_printdd("isapnp CTRL: control port=0x%lx\n", snd_cport[dev]);
 	/* MPU initialization */
-	if (acard->mpu) {
+	if (acard->mpu && snd_mpu_port[dev] >= 0) {
 		pdev = acard->mpu;
 		if (pdev->prepare(pdev) < 0) {
 			acard->wss->deactivate(acard->wss);
@@ -356,14 +378,20 @@ static int __init snd_card_cs4236_isapnp(int dev, struct snd_card_cs4236 *acard)
 		}
 		if (snd_mpu_port[dev] != SNDRV_AUTO_PORT)
 			isapnp_resource_change(&pdev->resource[0], snd_mpu_port[dev], 2);
-		if (snd_mpu_irq[dev] != SNDRV_AUTO_IRQ)
+		if (snd_mpu_irq[dev] != SNDRV_AUTO_IRQ && snd_mpu_irq[dev] >= 0)
 			isapnp_resource_change(&pdev->irq_resource[0], snd_mpu_irq[dev], 1);
 		if (pdev->activate(pdev)<0) {
 			snd_mpu_port[dev] = SNDRV_AUTO_PORT;
-			snd_printk(IDENT " isapnp configure failed for MPU (out of resources?)\n");
+			snd_mpu_irq[dev] = SNDRV_AUTO_IRQ;
+			printk(KERN_ERR IDENT " isapnp configure failed for MPU (out of resources?)\n");
 		} else {
 			snd_mpu_port[dev] = pdev->resource[0].start;
-			snd_mpu_irq[dev] = pdev->irq_resource[0].start;
+			if ((pdev->irq_resource[0].flags & IORESOURCE_IRQ) &&
+			    snd_mpu_irq[dev] >= 0) {
+				snd_mpu_irq[dev] = pdev->irq_resource[0].start;
+			} else {
+				snd_mpu_irq[dev] = -1;	/* disable interrupt */
+			}
 		}
 		snd_printdd("isapnp MPU: port=0x%lx, irq=%i\n", snd_mpu_port[dev], snd_mpu_irq[dev]);
 	}
@@ -395,8 +423,10 @@ static void snd_card_cs4236_free(snd_card_t *card)
 #ifdef __ISAPNP__
 		snd_card_cs4236_deactivate(acard);
 #endif
-		if (acard->res_sb_port)
+		if (acard->res_sb_port) {
 			release_resource(acard->res_sb_port);
+			kfree_nocheck(acard->res_sb_port);
+		}
 	}
 }
 
@@ -431,7 +461,7 @@ static int __init snd_card_cs4236_probe(int dev)
 	card->private_free = snd_card_cs4236_free;
 #ifdef __ISAPNP__
 	if (snd_isapnp[dev] && (err = snd_card_cs4236_isapnp(dev, acard))<0) {
-		snd_printk("isapnp detection failed and probing for " IDENT " is not supported\n");
+		printk(KERN_ERR "isapnp detection failed and probing for " IDENT " is not supported\n");
 		snd_card_free(card);
 		return -ENXIO;
 	}
@@ -444,7 +474,7 @@ static int __init snd_card_cs4236_probe(int dev)
 		snd_sb_port[dev] = SNDRV_AUTO_PORT;
 	if (snd_sb_port[dev] != SNDRV_AUTO_PORT)
 		if ((acard->res_sb_port = request_region(snd_sb_port[dev], 16, IDENT " SB")) == NULL) {
-			snd_printk("unable to register SB port at 0x%lx\n", snd_sb_port[dev]);
+			printk(KERN_ERR IDENT ": unable to register SB port at 0x%lx\n", snd_sb_port[dev]);
 			snd_card_free(card);
 			return -ENOMEM;
 		}
@@ -503,7 +533,7 @@ static int __init snd_card_cs4236_probe(int dev)
 		if (snd_opl3_create(card,
 				    snd_fm_port[dev], snd_fm_port[dev] + 2,
 				    OPL3_HW_OPL3_CS, 0, &opl3) < 0) {
-			snd_printk(IDENT ": OPL3 not detected\n");
+			printk(KERN_ERR IDENT ": OPL3 not detected\n");
 		} else {
 			if ((err = snd_opl3_hwdep_new(opl3, 0, 1, NULL)) < 0) {
 				snd_card_free(card);
@@ -512,11 +542,12 @@ static int __init snd_card_cs4236_probe(int dev)
 		}
 	}
 
-	if (snd_mpu_irq[dev] >= 0 && snd_mpu_irq[dev] != SNDRV_AUTO_IRQ) {
+	if (snd_mpu_port[dev] != SNDRV_AUTO_PORT) {
 		if (snd_mpu401_uart_new(card, 0, MPU401_HW_CS4232,
 					snd_mpu_port[dev], 0,
-					snd_mpu_irq[dev], SA_INTERRUPT, NULL) < 0)
-			snd_printk(IDENT ": MPU401 not detected\n");
+					snd_mpu_irq[dev],
+					snd_mpu_irq[dev] >= 0 ? SA_INTERRUPT : 0, NULL) < 0)
+			printk(KERN_ERR IDENT ": MPU401 not detected\n");
 	}
 	strcpy(card->driver, pcm->name);
 	strcpy(card->shortname, pcm->name);
@@ -539,7 +570,7 @@ static int __init snd_card_cs4236_probe(int dev)
 static int __init snd_cs4236_isapnp_detect(struct isapnp_card *card,
                                            const struct isapnp_card_id *id)
 {
-	static int dev = 0;
+	static int dev;
 	int res;
 
 	for ( ; dev < SNDRV_CARDS; dev++) {
@@ -576,7 +607,7 @@ static int __init alsa_card_cs423x_init(void)
 #endif
 	if (!cards) {
 #ifdef MODULE
-		snd_printk(IDENT " soundcard not found or device busy\n");
+		printk(KERN_ERR IDENT " soundcard not found or device busy\n");
 #endif
 		return -ENODEV;
 	}
@@ -596,11 +627,11 @@ module_exit(alsa_card_cs423x_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-cs4232=snd_enable,snd_index,snd_id,snd_isapnp,snd_port,
+/* format is: snd-cs4232=snd_enable,snd_index,snd_id,snd_isapnp,snd_port,
 			      snd_cport,snd_mpu_port,snd_fm_port,snd_sb_port,
 			      snd_irq,snd_mpu_irq,snd_dma1,snd_dma1_size,
 			      snd_dma2,snd_dma2_size */
-/* format is: snd-card-cs4236=snd_enable,snd_index,snd_id,snd_isapnp,snd_port,
+/* format is: snd-cs4236=snd_enable,snd_index,snd_id,snd_isapnp,snd_port,
 			      snd_cport,snd_mpu_port,snd_fm_port,snd_sb_port,
 			      snd_irq,snd_mpu_irq,snd_dma1,snd_dma1_size,
 			      snd_dma2,snd_dma2_size */
@@ -634,9 +665,9 @@ static int __init alsa_card_cs423x_setup(char *str)
 }
 
 #ifdef CS4232
-__setup("snd-card-cs4232=", alsa_card_cs423x_setup);
+__setup("snd-cs4232=", alsa_card_cs423x_setup);
 #else /* CS4236 */
-__setup("snd-card-cs4236=", alsa_card_cs423x_setup);
+__setup("snd-cs4236=", alsa_card_cs423x_setup);
 #endif
 
 #endif /* ifndef MODULE */

@@ -15,12 +15,16 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/es1688.h>
 #include <sound/mpu401.h>
 #include <sound/opl3.h>
@@ -33,7 +37,10 @@
 #define chip_t es1688_t
 
 EXPORT_NO_SYMBOLS;
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("ESS ESx688 AudioDrive");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{ESS,ES688 PnP AudioDrive,pnp:ESS0100},"
 	        "{ESS,ES1688 PnP AudioDrive,pnp:ESS0102},"
@@ -130,7 +137,7 @@ static int __init snd_audiodrive_probe(int dev)
 	}
 
 	if ((snd_opl3_create(card, chip->port, chip->port + 2, OPL3_HW_OPL3, 0, &opl3)) < 0) {
-		snd_printk("opl3 not detected at 0x%lx\n", chip->port);
+		printk(KERN_ERR "es1688: opl3 not detected at 0x%lx\n", chip->port);
 	} else {
 		if ((err = snd_opl3_hwdep_new(opl3, 0, 1, NULL)) < 0) {
 			snd_card_free(card);
@@ -162,7 +169,7 @@ static int __init snd_audiodrive_probe(int dev)
 
 static int __init snd_audiodrive_legacy_auto_probe(unsigned long port)
 {
-	static int dev = 0;
+	static int dev;
 	int res;
 	
 	for ( ; dev < SNDRV_CARDS; dev++) {
@@ -211,7 +218,7 @@ module_exit(alsa_card_es1688_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-es1688=snd_enable,snd_index,snd_id,
+/* format is: snd-es1688=snd_enable,snd_index,snd_id,
 			      snd_port,snd_mpu_port,
 			      snd_irq,snd_mpu_irq,
 			      snd_dma8 */
@@ -234,6 +241,6 @@ static int __init alsa_card_es1688_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-es1688=", alsa_card_es1688_setup);
+__setup("snd-es1688=", alsa_card_es1688_setup);
 
 #endif /* ifndef MODULE */

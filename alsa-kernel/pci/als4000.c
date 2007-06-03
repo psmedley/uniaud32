@@ -730,7 +730,7 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
                                    gcr+0x30, 1, pci->irq, 0,
                                    &chip->rmidi)) < 0) {
         snd_card_free(card);
-        snd_printk("no MPU-401device at 0x%lx ?\n", gcr+0x30);
+		printk(KERN_ERR "als4000: no MPU-401device at 0x%lx ?\n", gcr+0x30);
         return err;
     }
 
@@ -745,7 +745,7 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
 
     if (snd_opl3_create(card, gcr+0x10, gcr+0x12,
                         OPL3_HW_AUTO, 1, &opl3) < 0) {
-        snd_printk("no OPL device at 0x%lx-0x%lx ?\n",
+		printk(KERN_ERR "als4000: no OPL device at 0x%lx-0x%lx ?\n",
                    gcr+0x10, gcr+0x12 );
     } else {
         if ((err = snd_opl3_hwdep_new(opl3, 0, 1, NULL)) < 0) {
@@ -796,7 +796,7 @@ static int __init alsa_card_als4000_init(void)
 
     if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-        //		snd_printk("no ALS4000 based soundcards found or device busy\n");
+//		snd_printk(KERN_ERR "no ALS4000 based soundcards found or device busy\n");
 #endif
         return err;
     }

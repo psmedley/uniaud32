@@ -19,8 +19,11 @@
  *
  */
 
+#ifdef TARGET_OS2
 #include <sound/driver.h>
+#include <sound/core.h>
 #include <sound/info.h>
+#endif /* TARGET_OS2 */
 #include <sound/memalloc.h>
 
 /* table entries are align to 32 */

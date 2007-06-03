@@ -16,7 +16,7 @@
  *
  *      You should have received a copy of the GNU General Public License
  *      along with this program; if not, write to the Free Software
- *      Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *      Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  *
  *      This driver is for the 'Mark Of The Unicorn' (MOTU)
@@ -50,17 +50,24 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 #include <sound/rawmidi.h>
+#include <linux/delay.h>
 
 /*
  *      globals
  */
 EXPORT_NO_SYMBOLS;
+
+MODULE_AUTHOR("Michael T. Mayers");
 MODULE_DESCRIPTION("MOTU MidiTimePiece AV multiport MIDI");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{MOTU,MidiTimePiece AV multiport MIDI}}");
 
@@ -83,13 +90,13 @@ MODULE_PARM_DESC(snd_id, "ID string for MotuMTPAV MIDI.");
 MODULE_PARM_SYNTAX(snd_id, SNDRV_ID_DESC);
 MODULE_PARM(snd_port, "l");
 MODULE_PARM_DESC(snd_port, "Parallel port # for MotuMTPAV MIDI.");
-MODULE_PARM_SYNTAX(snd_port, "allows:{{0x378},{0x278}},dialog:list");
+MODULE_PARM_SYNTAX(snd_port, SNDRV_ENABLED ",allows:{{0x378},{0x278}},dialog:list");
 MODULE_PARM(snd_irq, "i");
 MODULE_PARM_DESC(snd_irq, "Parallel IRQ # for MotuMTPAV MIDI.");
-MODULE_PARM_SYNTAX(snd_irq,  "allows:{{7},{5}},dialog:list");
+MODULE_PARM_SYNTAX(snd_irq,  SNDRV_ENABLED ",allows:{{7},{5}},dialog:list");
 MODULE_PARM(snd_hwports, "i");
 MODULE_PARM_DESC(snd_hwports, "Hardware ports # for MotuMTPAV MIDI.");
-MODULE_PARM_SYNTAX(snd_hwports, "allows:{{1,8}},dialog:list");
+MODULE_PARM_SYNTAX(snd_hwports, SNDRV_ENABLED ",allows:{{1,8}},dialog:list");
 
 /*
  *      defines
@@ -720,8 +727,10 @@ static void free_mtpav(mtpav_t * crd)
 	spin_unlock_irqrestore(&crd->spinlock, flags);
 	if (crd->irq >= 0)
 		free_irq(crd->irq, (void *)crd);
-	if (crd->res_port)
+	if (crd->res_port) {
 		release_resource(crd->res_port);
+		kfree_nocheck(crd->res_port);
+	}
 	if (crd != NULL)
 		kfree(crd);
 }
@@ -768,7 +777,7 @@ static int __init alsa_card_mtpav_init(void)
 
 	snd_mtpav_portscan(mtp_card);
 
-	snd_printk("Motu MidiTimePiece on parallel port irq: %d ioport: 0x%lx\n", snd_irq, snd_port);
+	printk(KERN_INFO "Motu MidiTimePiece on parallel port irq: %d ioport: 0x%lx\n", snd_irq, snd_port);
 
 	return 0;
 
@@ -798,7 +807,7 @@ module_exit(alsa_card_mtpav_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-mtpav=snd_enable,snd_index,snd_id,
+/* format is: snd-mtpav=snd_enable,snd_index,snd_id,
 			     snd_port,snd_irq,snd_hwports */
 
 static int __init alsa_card_mtpav_setup(char *str)
@@ -814,6 +823,6 @@ static int __init alsa_card_mtpav_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-mtpav=", alsa_card_mtpav_setup);
+__setup("snd-mtpav=", alsa_card_mtpav_setup);
 
 #endif /* ifndef MODULE */
