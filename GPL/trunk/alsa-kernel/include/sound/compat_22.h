@@ -405,25 +405,6 @@ struct tasklet_struct {
 #define __user
 #endif
 
-#define ATOMIC_INIT(i)  { (i) }
-
-/**
- * atomic_dec_and_test - decrement and test
- * @v: pointer of type atomic_t
- *
- * Atomically decrements @v by 1 and
- * returns true if the result is 0, or false for all other
- * cases.  Note that the guaranteed
- * useful range of an atomic_t is only 24 bits.
- */
-static inline int atomic_dec_and_test(volatile atomic_t *v)
-{
-    atomic_dec(v);
-    if (v->counter == 0)
-        return 1;
-    return 0;
-}
-
 /**
  * list_for_each_safe	-	iterate over a list safe against removal of list entry
  * @pos:	the &struct list_head to use as a loop counter.

@@ -189,8 +189,12 @@ static ssize_t snd_info_entry_read(struct file *file, char *buffer,
     data = file->private_data;
     snd_assert(data != NULL, return -ENXIO);
     pos = *offset;
+#ifndef TARGET_OS2
+/* MKG: pos is loff_t (see include/linux/types.h) which is
+   typedef unsigned long - check later */
     if (pos < 0 || (long) pos != pos || (ssize_t) count < 0)
         return -EIO;
+#endif /* TARGET_OS2 */
     if ((unsigned long) pos + (unsigned long) count < (unsigned long) pos)
         return -EIO;
     entry = data->entry;
@@ -231,8 +235,12 @@ static ssize_t snd_info_entry_write(struct file *file, const char *buffer,
     snd_assert(data != NULL, return -ENXIO);
     entry = data->entry;
     pos = *offset;
+#ifndef TARGET_OS2
+/* MKG: pos is loff_t (see include/linux/types.h) which is
+   typedef unsigned long - check later */
     if (pos < 0 || (long) pos != pos || (ssize_t) count < 0)
         return -EIO;
+#endif /* TARGET_OS2 */
     if ((unsigned long) pos + (unsigned long) count < (unsigned long) pos)
         return -EIO;
     switch (entry->content) {
