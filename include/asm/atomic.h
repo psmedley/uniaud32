@@ -23,7 +23,23 @@ void atomic_dec(volatile atomic_t *v);
   "lock dec dword ptr [eax]"                  \
   parm [eax];
 
-int atomic_dec_and_test(volatile atomic_t *v);
+/**
+ * atomic_dec_and_test - decrement and test
+ * @v: pointer of type atomic_t
+ *
+ * Atomically decrements @v by 1 and
+ * returns true if the result is 0, or false for all other
+ * cases.  Note that the guaranteed
+ * useful range of an atomic_t is only 24 bits.
+ */
+static inline int atomic_dec_and_test(volatile atomic_t *v)
+{
+    atomic_dec(v);
+    if (v->counter == 0)
+        return 1;
+    return 0;
+}
+
 extern int atomic_add_negative(int i, volatile atomic_t *v);
 
 /* These are x86-specific, used by some header files */

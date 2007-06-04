@@ -127,10 +127,16 @@ static int snd_hwdep_open(struct inode *inode, struct file * file)
         up(&hw->open_mutex);
         schedule();
         down(&hw->open_mutex);
+#ifndef TARGET_OS2
+/* MKG quiet OW:
+   see include/linux/signal.h
+   #define signal_pending(p) 0
+   Never returns true */
         if (signal_pending(current)) {
             err = -ERESTARTSYS;
             break;
         }
+#endif /* TARGET_OS2 */
     }
     remove_wait_queue(&hw->open_wait, &wait);
     if (err >= 0) {
