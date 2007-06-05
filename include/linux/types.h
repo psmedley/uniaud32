@@ -23,7 +23,7 @@ typedef __kernel_daddr_t	daddr_t;
 typedef __kernel_key_t		key_t;
 typedef __kernel_suseconds_t	suseconds_t;
 
-typedef unsigned long		loff_t;
+typedef __kernel_loff_t		loff_t;
 
 /*
  * The following typedefs are also protected by individual ifdefs for

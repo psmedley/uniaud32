@@ -27,7 +27,7 @@ typedef long		__kernel_clock_t;
 typedef int		__kernel_daddr_t;
 typedef char *		__kernel_caddr_t;
 
-#ifdef __GNUC__
+#if defined __GNUC__ || (__WATCOMC__ > 1220)
 typedef long long	__kernel_loff_t;
 #endif
 
