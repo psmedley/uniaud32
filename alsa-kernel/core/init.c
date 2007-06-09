@@ -20,6 +20,7 @@
  */
 
 #include <sound/driver.h>
+#include <linux/ctype.h>
 #include <sound/control.h>
 #include <sound/info.h>
 
@@ -370,12 +371,12 @@ static void choose_default_id(struct snd_card * card)
 		id++;
 	}
 	id = card->id;
-	while (*spos != '\0' && !isalnum1(*spos))
+	while (*spos != '\0' && !isalnum(*spos))
 		spos++;
-	if (isdigit1(*spos))
-		*id++ = isalpha1(card->shortname[0]) ? card->shortname[0] : 'D';
+	if (isdigit(*spos))
+		*id++ = isalpha(card->shortname[0]) ? card->shortname[0] : 'D';
 	while (*spos != '\0' && (size_t)(id - card->id) < sizeof(card->id) - 1) {
-		if (isalnum1(*spos))
+		if (isalnum(*spos))
 			*id++ = *spos;
 		spos++;
 	}
