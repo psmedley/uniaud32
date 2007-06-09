@@ -28,8 +28,6 @@
 #include <linux/devfs_fs_kernel.h>
 #endif
 
-#define min(x,y) (x < y ? x : y )
-
 /*
  *
  */

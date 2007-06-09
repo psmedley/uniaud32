@@ -9,6 +9,7 @@
 
 #ifdef __KERNEL__
 
+#include <stdlib.h>
 #include <stdarg.h>
 //#include <linux/linkage.h>
 
