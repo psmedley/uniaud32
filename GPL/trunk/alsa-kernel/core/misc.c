@@ -574,23 +574,6 @@ void destroy_workqueue(struct workqueue_struct *wq)
 	kfree(wq);
 }
 
-static int xworker_thread(void *data)
-{
-	struct workqueue_struct *wq = data;
-
-	strcpy(current->comm, wq->name); /* FIXME: different names? */
-
-	do {
-            run_workqueue(wq);
-#if 0
-            wait_event_interruptible(wq->more_work, !list_empty(&wq->worklist));
-#endif
-	} while (!signal_pending(current));
-#if 0
-        complete_and_exit(&wq->thread_exited, 0);
-#endif
-}
-
 struct workqueue_struct *create_workqueue(const char *name)
 {
 	struct workqueue_struct *wq;
