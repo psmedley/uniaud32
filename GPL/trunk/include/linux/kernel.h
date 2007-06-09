@@ -46,7 +46,7 @@ NORET_TYPE void panic(const char * fmt, ...);
 
 NORET_TYPE void do_exit(long error_code);
 
-extern unsigned long simple_strtoul(const char *,char **,unsigned int);
+#define simple_strtoul strtoul
 extern long simple_strtol(const char *,char **,unsigned int);
 extern int sprintf(char * buf, const char * fmt, ...);
 extern int vsprintf(char *buf, const char *, va_list);

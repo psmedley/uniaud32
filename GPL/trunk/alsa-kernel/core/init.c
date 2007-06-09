@@ -600,7 +600,7 @@ int snd_component_add(struct snd_card *card, const char *component)
 	char *ptr;
 	int len = strlen(component);
 
-	ptr = strstr1(card->components, component);
+	ptr = strstr(card->components, component);
 	if (ptr != NULL) {
 		if (ptr[len] == '\0' || ptr[len] == ' ')	/* already there */
 			return 1;
