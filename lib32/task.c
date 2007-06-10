@@ -26,17 +26,27 @@
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <linux/tqueue.h>
+#include <linux/interrupt.h>
 #define LINUX
 #include <ossdefos2.h>
 
 struct task_struct current_task = {0};
 struct task_struct *current = &current_task;
 
-void tasklet_hi_schedule(struct tq_struct *t)
+void tasklet_hi_schedule(struct tasklet_struct *t)
 {
-  if(t && t->routine) {
-	t->routine(t->data);
+  if(t && t->func) {
+	t->func(t->data);
   }
+}
+
+void tasklet_init(struct tasklet_struct *t,
+		  void (*func)(unsigned long), unsigned long data)
+{
+	t->next = NULL;
+	t->state = 0;
+	t->func = func;
+	t->data = data;
 }
 
 //Not pretty, but sblive driver compares pointers
