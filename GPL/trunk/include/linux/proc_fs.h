@@ -190,9 +190,18 @@ extern void proc_tty_unregister_driver(struct tty_driver *driver);
  */
 extern void proc_device_tree_init(void);
 
-struct proc_dir_entry *create_proc_read_entry(const char *name,
-	mode_t mode, struct proc_dir_entry *base, 
-	read_proc_t *read_proc, void * data);
+static inline struct proc_dir_entry *create_proc_read_entry(const char *name,
+        mode_t mode, struct proc_dir_entry *base,
+        read_proc_t *read_proc, void * data)
+{
+        struct proc_dir_entry *res=create_proc_entry(name,mode,base);
+        if (res) {
+                res->read_proc=read_proc;
+                res->data=data;
+        }
+        return res;
+}
+
 struct proc_dir_entry *create_proc_info_entry(const char *name,
 	mode_t mode, struct proc_dir_entry *base, get_info_t *get_info);
 struct proc_dir_entry *proc_net_create(const char *name);
@@ -214,9 +223,9 @@ extern inline void remove_proc_entry(const char *name, struct proc_dir_entry *pa
 extern inline void proc_tty_register_driver(struct tty_driver *driver) {};
 extern inline void proc_tty_unregister_driver(struct tty_driver *driver) {};
 
-struct proc_dir_entry *create_proc_read_entry(const char *name,
+static inline struct proc_dir_entry *create_proc_read_entry(const char *name,
 	mode_t mode, struct proc_dir_entry *base, 
-	read_proc_t *read_proc, void * data);
+	read_proc_t *read_proc, void * data) { return NULL; }
 struct proc_dir_entry *create_proc_info_entry(const char *name,
 	mode_t mode, struct proc_dir_entry *base, get_info_t *get_info);
 struct proc_dir_entry *proc_net_create(const char *name);

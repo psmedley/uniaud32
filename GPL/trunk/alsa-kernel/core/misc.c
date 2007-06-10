@@ -519,50 +519,6 @@ int pm_send(struct pm_dev *dev, pm_request_t rqst, void *data)
 
 #endif /* kernel version < 2.3.0 && CONFIG_APM */
 
-static void run_workqueue(struct workqueue_struct *wq)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&wq->lock, flags);
-	while (!list_empty(&wq->worklist)) {
-		struct work_struct *work = list_entry(wq->worklist.next,
-						      struct work_struct, entry);
-		void (*f) (void *) = work->func;
-		void *data = work->data;
-
-		list_del_init(wq->worklist.next);
-		spin_unlock_irqrestore(&wq->lock, flags);
-		clear_bit(0, &work->pending);
-		f(data);
-		spin_lock_irqsave(&wq->lock, flags);
-		wake_up(&wq->work_done);
-	}
-	spin_unlock_irqrestore(&wq->lock, flags);
-}
-
-#if 0
-void flush_workqueue(struct workqueue_struct *wq)
-{
-	if (0 /* wq->task == current */) {
-		run_workqueue(wq);
-	} else {
-		wait_queue_t wait;
-
-		init_waitqueue_entry(&wait, current);
-		set_current_state(TASK_UNINTERRUPTIBLE);
-		spin_lock_irq(&wq->lock);
-		add_wait_queue(&wq->work_done, &wait);
-		while (!list_empty(&wq->worklist)) {
-			spin_unlock_irq(&wq->lock);
-			schedule();
-			spin_lock_irq(&wq->lock);
-		}
-		remove_wait_queue(&wq->work_done, &wait);
-		spin_unlock_irq(&wq->lock);
-	}
-}
-#endif 
-
 void destroy_workqueue(struct workqueue_struct *wq)
 {
 #if 0
