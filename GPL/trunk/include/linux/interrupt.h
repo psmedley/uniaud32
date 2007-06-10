@@ -49,6 +49,39 @@ enum {
 	MACSERIAL_BH,
 	ISICOM_BH
 };
+/* Tasklets --- multithreaded analogue of BHs.
+
+   Main feature differing them of generic softirqs: tasklet
+   is running only on one CPU simultaneously.
+
+   Main feature differing them of BHs: different tasklets
+   may be run simultaneously on different CPUs.
+
+   Properties:
+   * If tasklet_schedule() is called, then tasklet is guaranteed
+     to be executed on some cpu at least once after this.
+   * If the tasklet is already scheduled, but its excecution is still not
+     started, it will be executed only once.
+   * If this tasklet is already running on another CPU (or schedule is called
+     from tasklet itself), it is rescheduled for later.
+   * Tasklet is strictly serialized wrt itself, but not
+     wrt another tasklets. If client needs some intertask synchronization,
+     he makes it with spinlocks.
+ */
+
+struct tasklet_struct
+{
+	struct tasklet_struct *next;
+	unsigned long state;
+	atomic_t count;
+	void (*func)(unsigned long);
+	unsigned long data;
+};
+
+extern void tasklet_hi_schedule(struct tasklet_struct *t);
+
+extern void tasklet_init(struct tasklet_struct *t,
+			 void (*func)(unsigned long), unsigned long data);
 
 /*
  * Autoprobing for irqs:
