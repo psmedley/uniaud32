@@ -164,8 +164,7 @@ static int snd_open(struct inode *inode, struct file *file)
 #ifdef TARGET_OS2
 struct file_operations snd_fops =
 {
-    0,0,0,0,0,0,0,
-    snd_open,0,0,0,0,0,0,0
+	.open=	snd_open
 };
 #else
 struct file_operations snd_fops =
