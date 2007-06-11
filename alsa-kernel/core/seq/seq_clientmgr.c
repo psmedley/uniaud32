@@ -2518,10 +2518,8 @@ static struct file_operations snd_seq_f_ops =
 	.open =		snd_seq_open,
 	.release =	snd_seq_release,
 	.poll =		snd_seq_poll,
-        .ioctl =	snd_seq_ioctl,
-#ifndef TARGET_OS2
-        .compat_ioctl =	snd_seq_ioctl_compat,
-#endif
+	.unlocked_ioctl =	snd_seq_ioctl,
+	.compat_ioctl =	snd_seq_ioctl_compat,
 };
 
 static struct snd_minor snd_seq_reg =
