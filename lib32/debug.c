@@ -547,7 +547,7 @@ static unsigned _strnlen(const char *psz, unsigned cchMax)
 
 void StringOut(char *DbgStr)
 {
-   int len, i;
+   int len;
    
    len= _strnlen( DbgStr, 1024 );
 /*   
@@ -555,6 +555,7 @@ void StringOut(char *DbgStr)
       CharOut(*DbgStr++);
       */
 #ifdef DEBUG
+   int i;
    for( i= 0; i < len; i++ )
       CharOut( DbgStr[i] );
 

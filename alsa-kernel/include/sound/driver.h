@@ -553,6 +553,7 @@ extern int (*snd_mixer_oss_notify_callback)(struct snd_card *card, int free_flag
 
 struct snd_card *snd_card_new(int idx, const char *id,
 			 struct module *module, int extra_size);
+int snd_card_disconnect(struct snd_card *card);
 int snd_card_free(struct snd_card *card);
 int snd_card_register(struct snd_card *card);
 int snd_card_info_init(void);
