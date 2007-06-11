@@ -28,6 +28,7 @@
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/ymfpci.h>
+#include <sound/mpu401.h>
 #include <sound/timer.h>
 
 /*

@@ -101,8 +101,6 @@ void FillCaps(ULONG deviceid);
 //******************************************************************************
 OSSRET OSS32_Initialize(void)
 {
-    int i;
-
     fStrategyInit = TRUE;
 
     if(DevSetTimer(TimerHandler16) != 0) {
@@ -127,6 +125,8 @@ OSSRET OSS32_Initialize(void)
 
     if(call_module_init(alsa_mpu401_uart_init) != 0) return OSSERR_INIT_FAILED;
 #if 0
+    int i;
+
     if (ForceCard != CARD_NONE)
     {
         if (cardcalls[ForceCard].cinitcall() == 0)
@@ -323,8 +323,6 @@ int OSS32_CloseUNI16(void)
 }
 //******************************************************************************
 //******************************************************************************
-extern "C" int MyDevBlock(ULONG id, ULONG tout, char flag);
-
 int MyDevBlock(ULONG id, ULONG tout, char flag)
 {
     return DevBlock(id,tout, flag);

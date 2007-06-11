@@ -75,5 +75,8 @@ OSSRET UNIXToOSSError(int unixerror);
 
 OSSRET OSS32_FMMidiLoadInstruments(OSSSTREAMID streamid);
 
+extern int ALSAToOSSDataType(ULONG ALSADataType);
+OSSRET ALSAToOSSRateFlags(ULONG fuRates);
+
 #endif //__SOUNDOSS_H__
 
