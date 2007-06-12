@@ -5,8 +5,6 @@
 
 #include <asm/signal.h>
 
-#define signal_pending(p) 0
-
 #ifdef __KERNEL__
 
 /*
