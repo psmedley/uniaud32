@@ -2322,6 +2322,7 @@ static void snd_ac97_powerdown(struct snd_ac97 *ac97)
 	udelay(100);
         power |= AC97_PD_PR2 | AC97_PD_PR3;	/* Analog Mixer powerdown */
         snd_ac97_write(ac97, AC97_POWERDOWN, power);
+#ifdef CONFIG_SND_AC97_POWER_SAVE
         if (ac97_is_power_save_mode(ac97)) {
             udelay(100);
             /* AC-link powerdown, internal Clk disable */
@@ -2329,6 +2330,7 @@ static void snd_ac97_powerdown(struct snd_ac97 *ac97)
             power |= AC97_PD_PR4 | AC97_PD_PR5;
             snd_ac97_write(ac97, AC97_POWERDOWN, power);
 	}
+#endif // CONFIG_SND_AC97_POWER_SAVE
 }
 
 
