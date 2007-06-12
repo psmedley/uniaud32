@@ -397,7 +397,7 @@ static char *driver_short_names[] __devinitdata = {
 /* Get the upper 32bit of the given dma_addr_t
  * Compiler should optimize and eliminate the code if dma_addr_t is 32bit
  */
-#define upper_32bit(addr) (sizeof(addr) > 4 ? (u32)((addr) >> 32) : (u32)0)
+#define upper_32bit(addr) (sizeof(addr) > 4 ? (u32)(((unsigned long long)addr) >> 32) : (u32)0)
 
 static int azx_acquire_irq(struct azx *chip, int do_disconnect);
 

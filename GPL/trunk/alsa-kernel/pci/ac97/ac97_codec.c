@@ -1930,15 +1930,17 @@ int snd_ac97_bus(struct snd_card *card, int num, struct snd_ac97_bus_ops *ops,
 	return 0;
 }
 
+#if 0 // fixme to be gone?
 /* stop no dev release warning */
 static void ac97_device_release(struct device * dev)
 {
 }
+#endif // fixme to be gone?
 
 /* register ac97 codec to bus */
 static int snd_ac97_dev_register(struct snd_device *device)
 {
-#if 0
+#if 0 // fixme to be gone?
     struct snd_ac97 *ac97 = device->device_data;
 	int err;
 
@@ -1953,7 +1955,7 @@ static int snd_ac97_dev_register(struct snd_device *device)
 		ac97->dev.bus = NULL;
 		return err;
         }
-#endif
+#endif // fixme to be gone?
 	return 0;
 }
 

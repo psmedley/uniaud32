@@ -56,7 +56,7 @@ int pcm_instances = 0;
 OpenedHandles opened_handles[8 * 256] = {0};
 
 //OSS32 to ALSA datatype conversion table
-static OSSToALSADataType[OSS32_PCM_MAX_FORMATS] = {
+static int OSSToALSADataType[OSS32_PCM_MAX_FORMATS] = {
 /* OSS32_PCM_FORMAT_S8     */ SNDRV_PCM_FORMAT_S8,          //signed 8 bits sample
 /* OSS32_PCM_FORMAT_U8     */ SNDRV_PCM_FORMAT_U8,          //unsigned 8 bits sample
 /* OSS32_PCM_FORMAT_S16_LE */ SNDRV_PCM_FORMAT_S16_LE,      //signed 16 bits sample (little endian/Intel)
@@ -591,6 +591,7 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 }
 //******************************************************************************
 //******************************************************************************
+
 OSSRET OSS32_WaveClose(OSSSTREAMID streamid)
 {
     soundhandle *pHandle = (soundhandle *)streamid;

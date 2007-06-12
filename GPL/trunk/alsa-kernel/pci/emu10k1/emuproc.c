@@ -175,7 +175,7 @@ static void snd_emu10k1_proc_read(snd_info_entry_t *entry,
     };
 
     struct snd_emu10k1 *emu = entry->private_data;
-    unsigned int val;
+    unsigned int val = 0;		// 11 Jun 07 SHL fixme to know why not used
     int nefx = emu->audigy ? 64 : 32;
     char **outputs = emu->audigy ? audigy_outs : creative_outs;
     int idx;

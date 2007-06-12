@@ -31,11 +31,15 @@
 extern "C" {
 #endif
 
-//32 bits IDC procedures
 //16 bits pdd calls this during init. OSS_InitDriver calls init_module
-extern int MyDevBlock(ULONG id, ULONG tout, char flag);
+int MyDevBlock(ULONG id, ULONG tout, char flag);
+
+//32 bits IDC procedures
 OSSRET OSS32_Initialize();
 OSSRET OSS32_Shutdown();
+
+int OSS32_CloseUNI16(void);	// 12 Jun 07 SHL
+
 OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps);
 OSSRET OSS32_QueryNames(ULONG deviceid, char *pszDeviceName, ULONG cbDeviceName,
                         char *pszMixerName, ULONG cbMixerName, BOOL fLongName);
