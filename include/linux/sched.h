@@ -53,4 +53,12 @@ extern unsigned long volatile jiffies;
 
 extern signed long schedule_timeout(signed long timeout);
 
-#endif
+static inline int signal_pending(struct task_struct *p)
+{
+#ifdef DEBUG
+	dprintf(("signal_pending always returns 0"));
+#endif /* DEBUG */
+	return 0;
+}
+
+#endif /* _LINUX_SCHED_H */
