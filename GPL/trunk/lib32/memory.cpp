@@ -195,8 +195,8 @@ __again:
     if (rc == 0) {
         *pAddr = (LINEAR)addr;
         if (flags & VMDHA_USEHIGHMEM)
-            dprintf(("allocated %X in HIGH memory"), size);
-        else dprintf(("allocated %X in LOW memory"), size);
+            dprintf((("allocated %X in HIGH memory"), size));
+        else dprintf((("allocated %X in LOW memory"), size));
     }
     if ((rc == 87) &&
         (flags & VMDHA_USEHIGHMEM))
@@ -498,7 +498,8 @@ void iounmap(void *addr)
 LINEAR ad;
 
     ad=(LINEAR)addr;
-    *ad &= ~(0xfff);
+    // *ad &= ~(0xfff);			// 12 Jun 07 SHL this looks wrong
+    ad = (LINEAR)((ULONG)ad & ~0xfff);	// 12 Jun 07 SHL Round down to 4KiB
     if(VMFree((LINEAR)ad)) {
         DebugInt3();
     }
