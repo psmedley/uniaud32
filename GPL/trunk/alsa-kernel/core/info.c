@@ -504,16 +504,20 @@ static int snd_info_entry_mmap(struct file *file, struct vm_area_struct *vma)
 static struct file_operations snd_info_entry_operations =
 {
 #ifdef LINUX_2_3
-.owner=		THIS_MODULE,
+    THIS_MODULE,
 #endif
-	.llseek=	snd_info_entry_llseek,
-	.read=		snd_info_entry_read,
-	.write=		snd_info_entry_write,
-	.poll=		snd_info_entry_poll,
-	.ioctl=		snd_info_entry_ioctl,
-	.mmap=		snd_info_entry_mmap,
-//	.open=		snd_info_entry_open,
-	.release=	snd_info_entry_release,
+    snd_info_entry_llseek,
+    snd_info_entry_read,
+    snd_info_entry_write,
+    0,
+    snd_info_entry_poll,
+    snd_info_entry_ioctl,
+    snd_info_entry_mmap,
+    0,
+    //	snd_info_entry_open,
+    0,
+    snd_info_entry_release,
+    0,0,0,0,0
 };
 #else
 static struct file_operations snd_info_entry_operations =

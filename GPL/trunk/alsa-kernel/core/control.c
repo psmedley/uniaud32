@@ -1292,14 +1292,19 @@ static int snd_ctl_fasync(int fd, struct file * file, int on)
 static struct file_operations snd_ctl_f_ops =
 {
 #ifdef LINUX_2_3
- .owner=   THIS_MODULE,
+    THIS_MODULE,
 #endif
-	.read=		snd_ctl_read,
-	.poll=		snd_ctl_poll,
-	.ioctl=		snd_ctl_ioctl,
-	.open=		snd_ctl_open,
-	.release=	snd_ctl_release,
-	.fasync=	snd_ctl_fasync,
+    0,
+    snd_ctl_read,
+    0,0,
+    snd_ctl_poll,
+    snd_ctl_ioctl,
+    0,
+    snd_ctl_open,0,
+    snd_ctl_release,
+    0,
+    snd_ctl_fasync,
+    0,0,0
 };
 
 static struct snd_minor snd_ctl_reg =
