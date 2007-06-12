@@ -31,7 +31,7 @@
 #include <sound/core.h>
 #include <sound/emu10k1.h>
 
-irqreturn_t snd_emu10k1_interrupt(int irq, void *dev_id)
+irqreturn_t snd_emu10k1_interrupt(int irq, void *dev_id, struct pt_regs *notused)
 {
     struct snd_emu10k1 *emu = dev_id;
     unsigned int status, status2, orig_status, orig_status2;

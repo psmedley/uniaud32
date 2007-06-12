@@ -2080,8 +2080,9 @@ static int snd_ac97_ad1985_vrefout_put(struct snd_kcontrol *kcontrol,
 	struct snd_ac97 *ac97 = snd_kcontrol_chip(kcontrol);
 	unsigned short val;
 
-	if (ucontrol->value.enumerated.item[0] > 3
-	    || ucontrol->value.enumerated.item[0] < 0)
+	// if (ucontrol->value.enumerated.item[0] > 3	// 12 Jun 07 SHL
+	//    || ucontrol->value.enumerated.item[0] < 0)	// 12 Jun 07 SHL
+	if (ucontrol->value.enumerated.item[0] > 3)
 		return -EINVAL;
 	val = ctrl2reg[ucontrol->value.enumerated.item[0]]
 	      << AC97_AD198X_VREF_SHIFT;

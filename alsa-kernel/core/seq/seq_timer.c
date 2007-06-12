@@ -54,7 +54,7 @@ static void snd_seq_timer_set_tick_resolution(struct snd_seq_timer_tick *tick,
 		tick->resolution = (tempo / ppq) * 1000;
 		tick->resolution += s;
 	}
-	if (tick->resolution <= 0)
+	if (tick->resolution == 0)
 		tick->resolution = 1;
 	snd_seq_timer_update_tick(tick, 0);
 }
