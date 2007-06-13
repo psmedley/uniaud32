@@ -1799,7 +1799,7 @@ static int __devinit snd_ali_pcm(ali_t * codec, int device, snd_pcm_t ** rpcm)
 #define ALI5451_SPDIF(xname, xindex, value) \
     { SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex,\
     0, 0, snd_ali5451_spdif_info, snd_ali5451_spdif_get, \
-    snd_ali5451_spdif_put, value}
+    snd_ali5451_spdif_put, 0, value}
 #else
 #define ALI5451_SPDIF(xname, xindex, value) \
     { iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex,\
@@ -1924,7 +1924,8 @@ static int __devinit snd_ali_mixer(ali_t * codec)
     unsigned int idx;
     int err;
     static ac97_bus_ops_t ops = {
-        0,snd_ali_codec_write,
+        0,0,
+	snd_ali_codec_write,
         snd_ali_codec_read,0,0
     };
 
@@ -2032,10 +2033,10 @@ static int snd_ali_free(ali_t * codec)
 {
     if (codec->hw_initialized)
         snd_ali_disable_address_interrupt(codec);
-    if (codec->irq >= 0) {
+    // if (codec->irq >= 0) {	// 12 Jun 07 SHL avoid warning
         synchronize_irq(codec->irq);
         free_irq(codec->irq, (void *)codec);
-    }
+    // }	// 12 Jun 07 SHL
     if (codec->port)
         pci_release_regions(codec->pci);
 #ifdef CONFIG_PM

@@ -3237,6 +3237,7 @@ static int __devinit snd_intel8x0_joystick_probe(struct pci_dev *pci,
     return 0;
 }
 
+#if 0 // fixme to be gone?
 static void __devexit snd_intel8x0_joystick_remove(struct pci_dev *pci)
 {
     u16 val;
@@ -3252,6 +3253,7 @@ static void __devexit snd_intel8x0_joystick_remove(struct pci_dev *pci)
     val &= ~0x120;
     pci_write_config_word(pci, 0xe6, val);
 }
+#endif // fixme to be gone
 
 static struct pci_device_id snd_intel8x0_joystick_ids[] = {
     { 0x8086, 0x2410, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* 82801AA */

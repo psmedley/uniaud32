@@ -77,6 +77,9 @@ static struct pci_device_id snd_trident_ids[] __devinitdata = {
 
 MODULE_DEVICE_TABLE(pci, snd_trident_ids);
 
+// 12 Jun 07 SHL fixme to be in some .h
+void __devinit snd_trident_gameport(struct snd_trident *chip);
+
 static int __devinit snd_trident_probe(struct pci_dev *pci,
 				       const struct pci_device_id *pci_id)
 {

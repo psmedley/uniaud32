@@ -20,6 +20,12 @@
  */
 
 #define SNDRV_MAIN_OBJECT_FILE
+
+#define INCL_NOPMAPI
+#include <os2.h>
+#include <ossdefos2.h>
+#include <ossidc32.h>
+
 #include <sound/driver.h>
 #include <sound/rawmidi.h>
 #include <sound/info.h>
@@ -836,6 +842,7 @@ int snd_rawmidi_control_ioctl(snd_card_t * card, snd_ctl_file_t * control,
  *
  * Returns the size of read data, or a negative error code on failure.
  */
+
 int snd_rawmidi_receive(snd_rawmidi_substream_t * substream, const unsigned char *buffer, int count)
 {
     unsigned long flags;

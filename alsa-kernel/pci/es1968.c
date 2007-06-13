@@ -2040,7 +2040,7 @@ snd_es1968_mixer(es1968_t *chip)
     snd_ctl_elem_id_t id;
     int err;
     static ac97_bus_ops_t ops = {
-        0, snd_es1968_ac97_write,
+        0, 0, snd_es1968_ac97_write,
         snd_es1968_ac97_read,0,0
     };
 
