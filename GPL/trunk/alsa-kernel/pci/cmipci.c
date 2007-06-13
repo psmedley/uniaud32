@@ -1841,6 +1841,7 @@ struct cmipci_sb_reg {
     { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
     0, 0, snd_cmipci_info_volume, \
     snd_cmipci_get_volume, snd_cmipci_put_volume, \
+    0,\
     COMPOSE_SB_REG(left_reg, right_reg, left_shift, right_shift, mask, invert, stereo), \
     }
 
@@ -1942,6 +1943,7 @@ static int snd_cmipci_put_volume(struct snd_kcontrol *kcontrol,
     { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
     0, 0, snd_cmipci_info_input_sw, \
     snd_cmipci_get_input_sw, snd_cmipci_put_input_sw, \
+    0, \
     COMPOSE_SB_REG(SB_DSP4_INPUT_LEFT, SB_DSP4_INPUT_RIGHT, left_shift, right_shift, 1, 0, 1), \
     }
 static int snd_cmipci_info_input_sw(struct snd_kcontrol *kcontrol,
@@ -2006,6 +2008,7 @@ static int snd_cmipci_put_input_sw(struct snd_kcontrol *kcontrol,
     { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
     0, 0, snd_cmipci_info_native_mixer, \
     snd_cmipci_get_native_mixer, snd_cmipci_put_native_mixer, \
+    0, \
     COMPOSE_SB_REG(reg, reg, lshift, rshift, 1, invert, 1), \
     }
 
@@ -2013,6 +2016,7 @@ static int snd_cmipci_put_input_sw(struct snd_kcontrol *kcontrol,
     { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
     0, 0, snd_cmipci_info_native_mixer, \
     snd_cmipci_get_native_mixer, snd_cmipci_put_native_mixer, \
+    0, \
     COMPOSE_SB_REG(reg, reg, shift, shift, 1, invert, 0), \
     }
 
@@ -2020,6 +2024,7 @@ static int snd_cmipci_put_input_sw(struct snd_kcontrol *kcontrol,
     { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
     0, 0, snd_cmipci_info_native_mixer, \
     snd_cmipci_get_native_mixer, snd_cmipci_put_native_mixer, \
+    0, \
     COMPOSE_SB_REG(reg, reg, lshift, rshift, mask, 0, 1), \
     }
 
@@ -2027,6 +2032,7 @@ static int snd_cmipci_put_input_sw(struct snd_kcontrol *kcontrol,
     { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
     0, 0, snd_cmipci_info_native_mixer, \
     snd_cmipci_get_native_mixer, snd_cmipci_put_native_mixer, \
+    0, \
     COMPOSE_SB_REG(reg, reg, shift, shift, mask, 0, 0), \
     }
 
@@ -2127,6 +2133,7 @@ static struct snd_kcontrol_new snd_cmipci_mixers[] __devinitdata = {
         snd_cmipci_info_native_mixer,
         snd_cmipci_get_native_mixer_sensitive,
         snd_cmipci_put_native_mixer_sensitive,
+	0,
         COMPOSE_SB_REG(CM_REG_MIXER1, CM_REG_MIXER1, CM_WSMUTE_SHIFT, CM_WSMUTE_SHIFT, 1, 1, 0),
     },
     CMIPCI_MIXER_SW_STEREO("PCM Capture Switch", CM_REG_MIXER1, CM_WAVEINL_SHIFT, CM_WAVEINR_SHIFT, 0),
@@ -2302,6 +2309,7 @@ DEFINE_SWITCH_ARG(modem, CM_REG_MISC_CTRL, CM_FLINKON|CM_FLINKOFF, CM_FLINKON, 0
     snd_cmipci_uswitch_info, \
     snd_cmipci_uswitch_get, \
     snd_cmipci_uswitch_put, \
+    0, \
     (unsigned long)&cmipci_switch_arg_##sarg,\
     }
 

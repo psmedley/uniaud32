@@ -75,6 +75,8 @@ OSSRET OSS32_MidiRead(OSSSTREAMID streamid, char *buffer, ULONG bufsize, ULONG *
 OSSRET OSS32_MidiQueryCaps(OSSSTREAMID streamid, POSS32_MIDICAPS pCaps);
 OSSRET OSS32_MidiCommand(OSSSTREAMID streamid, ULONG Cmd, BYTE channel, BYTE param1, BYTE param2);
 
+int OSS32_ProcessMIDIIRQ(int bytes);	// 12 Jun 07 SHL
+
 //Sets file id in current task structure
 ULONG OSS32_SetFileId(ULONG fileid);
 

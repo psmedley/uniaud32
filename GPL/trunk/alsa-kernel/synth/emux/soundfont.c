@@ -141,7 +141,7 @@ snd_soundfont_load(struct snd_sf_list *sflist, const void __user *data,
 		return -EFAULT;
 
 	count -= sizeof(patch);
-	(char*)data += sizeof(patch);
+	data = (char*)data + sizeof(patch);
 
 	if (patch.key != SNDRV_OSS_SOUNDFONT_PATCH) {
 		snd_printk("'The wrong kind of patch' %x\n", patch.key);
@@ -538,10 +538,10 @@ load_info(struct snd_sf_list *sflist, const void __user *data, long count)
 	if (copy_from_user((char*)&hdr, data, sizeof(hdr)))
 		return -EFAULT;
 	
-	(char*)data += sizeof(hdr);
+	data = (char*)data + sizeof(hdr);
 	count -= sizeof(hdr);
 
-	if (hdr.nvoices <= 0 || hdr.nvoices >= 100) {
+	if ((signed char)hdr.nvoices <= 0 || hdr.nvoices >= 100) {
 		printk("Soundfont error: Illegal voice number %d\n", hdr.nvoices);
 		return -EINVAL;
 	}
@@ -577,7 +577,7 @@ load_info(struct snd_sf_list *sflist, const void __user *data, long count)
 			return -EFAULT;
 		}
 
-		(char*)data += sizeof(tmpzone.v);
+		data = (char*)data + sizeof(tmpzone.v);
 		count -= sizeof(tmpzone.v);
 
 		tmpzone.bank = hdr.bank;

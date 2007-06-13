@@ -160,10 +160,10 @@ ISAPNP_CARD_TABLE(snd_opl3sa2_pnpids);
 
 static unsigned char snd_opl3sa_read(unsigned long port, unsigned char reg)
 {
-	unsigned long flags;
+	u32 flags;
 	unsigned char result;
 
-	save_flags(flags);
+	save_flags(&flags);	// 12 Jun 07 SHL
 	cli();
 #if 0
 	outb(0x1d, port);	/* password */
@@ -181,9 +181,9 @@ static unsigned char snd_opl3sa_read(unsigned long port, unsigned char reg)
 static void snd_opl3sa_write(unsigned long port,
 			     unsigned char reg, unsigned char value)
 {
-	unsigned long flags;
+	u32 flags;
 
-	save_flags(flags);
+	save_flags(&flags);
 	cli();
 #if 0
 	outb(0x1d, port);	/* password */
@@ -260,13 +260,13 @@ static int __init snd_opl3sa_detect(struct snd_opl3sa *oplcard)
 	return 0;
 }
 
-static void snd_opl3sa_interrupt(int irq, void *dev_id, struct pt_regs *regs)
+static int snd_opl3sa_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
 	unsigned short status;
 	struct snd_opl3sa *oplcard = (struct snd_opl3sa *) dev_id;
 
 	if (oplcard == NULL || oplcard->card == NULL)
-		return;
+		return 0;
 
 	spin_lock(&oplcard->reg_lock);
 	outb(0x04, oplcard->port);	/* register - Interrupt IRQ-A status */
@@ -289,6 +289,7 @@ static void snd_opl3sa_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 		snd_ctl_notify(oplcard->card, SNDRV_CTL_EVENT_MASK_VALUE, &oplcard->master_switch->id);
 		snd_ctl_notify(oplcard->card, SNDRV_CTL_EVENT_MASK_VALUE, &oplcard->master_volume->id);
 	}
+	return 0;
 }
 
 #ifdef TARGET_OS2
@@ -296,6 +297,7 @@ static void snd_opl3sa_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
   0, 0, snd_opl3sa_info_single, \
   snd_opl3sa_get_single, snd_opl3sa_put_single, \
+  0, \
   reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 #else
@@ -363,6 +365,7 @@ int snd_opl3sa_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucon
 { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
   0, 0, snd_opl3sa_info_double, \
   snd_opl3sa_get_double, snd_opl3sa_put_double, \
+  0, \
   left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
 
 #else

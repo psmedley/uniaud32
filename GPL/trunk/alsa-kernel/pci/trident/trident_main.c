@@ -144,7 +144,7 @@ static unsigned short snd_trident_codec_read(ac97_t *ac97, unsigned short reg)
 }
 
 /*---------------------------------------------------------------------------
- void snd_trident_codec_write(ac97_t *ac97, unsigned short reg, unsigned short wdata)
+ void snd_trident_codec_write(ac97_t *ac97, unsigned short reg, unsigned short wdata unsigned short unused)
 
  Description: This routine will do all of the writing to the external
  CODEC (AC97).
@@ -2354,6 +2354,7 @@ static snd_kcontrol_new_t snd_trident_spdif_control __devinitdata =
     snd_trident_spdif_control_info,
     snd_trident_spdif_control_get,
     snd_trident_spdif_control_put,
+    0,
     0x28,
 };
 
@@ -2566,6 +2567,7 @@ static snd_kcontrol_new_t snd_trident_ac97_rear_control __devinitdata =
     snd_trident_ac97_control_info,
     snd_trident_ac97_control_get,
     snd_trident_ac97_control_put,
+    0,
     4,
 };
 
@@ -2622,7 +2624,8 @@ static snd_kcontrol_new_t snd_trident_vol_music_control __devinitdata =
     snd_trident_vol_control_info,
     snd_trident_vol_control_get,
     snd_trident_vol_control_put,
-    16,
+    0,			// tlv
+    16			// private
 };
 
 
@@ -2939,8 +2942,12 @@ static int __devinit snd_trident_mixer(struct snd_trident * trident, int pcm_spd
     snd_ctl_elem_value_t *uctl;
     int idx, err, retries = 2;
     static ac97_bus_ops_t ops = {
-        0,snd_trident_codec_write,
-        snd_trident_codec_read,0,0
+        0,		// reset
+	0,		// warm_reset
+	snd_trident_codec_write,
+        snd_trident_codec_read,
+	0,		// wait
+	0		// init
     };
     uctl = kcalloc(1, sizeof(*uctl), GFP_KERNEL);
     if (!uctl)

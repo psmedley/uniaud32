@@ -268,8 +268,8 @@ int copy_to_user_fromio(void __user *dst, const volatile void __iomem *src, size
         if (copy_to_user(dst, buf, c))
             return -EFAULT;
         count -= c;
-        (char*)dst += c;
-        (char*)src += c;
+        dst = (char*)dst + c;
+        src = (char*)src + c;
     }
     return 0;
 #endif
@@ -299,8 +299,8 @@ int copy_from_user_toio(volatile void __iomem *dst, const void __user *src, size
             return -EFAULT;
         memcpy_toio((void*)dst, buf, c);
         count -= c;
-        (char*)dst += c;
-        (char*)src += c;
+        dst = (char*)dst + c;
+        src = (char*)src + c;
     }
     return 0;
 #endif

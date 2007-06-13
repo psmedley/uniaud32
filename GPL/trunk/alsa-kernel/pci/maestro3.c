@@ -2125,8 +2125,8 @@ static int __devinit snd_m3_mixer(m3_t *chip)
     snd_ctl_elem_id_t id;
     int err;
     static ac97_bus_ops_t ops = {
-        0,snd_m3_ac97_write,
-        snd_m3_ac97_read,0,0
+        .write = snd_m3_ac97_write,
+        .read = snd_m3_ac97_read
     };
 
     if ((err = snd_ac97_bus(chip->card, 0, &ops, NULL, &pbus)) < 0)
