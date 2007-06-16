@@ -1001,7 +1001,7 @@ static struct snd_tea575x_ops snd_fm801_tea_ops[3] = {
 #define FM801_SINGLE(xname, reg, shift, mask, invert) \
 { SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, 0,0,0, snd_fm801_info_single, \
   snd_fm801_get_single, snd_fm801_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
+  0, reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 static int snd_fm801_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -1046,7 +1046,7 @@ static int snd_fm801_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t 
 #define FM801_DOUBLE(xname, reg, shift_left, shift_right, mask, invert) \
 { SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, 0,0,0, snd_fm801_info_double, \
   snd_fm801_get_double, snd_fm801_put_double, \
-  reg | (shift_left << 8) | (shift_right << 12) | (mask << 16) | (invert << 24) }
+  0, reg | (shift_left << 8) | (shift_right << 12) | (mask << 16) | (invert << 24) }
 
 static int snd_fm801_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -1188,7 +1188,7 @@ static int __devinit snd_fm801_mixer(fm801_t *chip)
 	unsigned int i;
 	int err;
         static ac97_bus_ops_t ops = {
-            0, snd_fm801_codec_write,
+            0, 0, snd_fm801_codec_write,
             snd_fm801_codec_read, 0,0
 	};
 

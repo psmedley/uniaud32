@@ -37,16 +37,9 @@
 #endif
 #include <stdarg.h>
 
-#define min(x,y) (x < y ? x : y )
-
 /*
  *
  */
-static inline void dec_mod_count(struct module *module)
-{
-	if (module)
-		__MOD_DEC_USE_COUNT(module);
-}
 
 int snd_info_check_reserved_words(const char *str)
 {

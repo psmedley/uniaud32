@@ -30,35 +30,6 @@
 #define SGBUF_TBL_ALIGN		32
 #define sgbuf_align_table(tbl)	((((tbl) + SGBUF_TBL_ALIGN - 1) / SGBUF_TBL_ALIGN) * SGBUF_TBL_ALIGN)
 
-/* set up the page table from the given vmalloc'ed buffer pointer.
- * return a negative error if the page is out of the pci address mask.
- */
-static int store_page_tables(struct snd_sg_buf *sgbuf, void *vmaddr, unsigned int pages)
-{
-	unsigned int i;
-
-	sgbuf->pages = 0;
-        DebugInt3();
-	for (i = 0; i < pages; i++) {
-		struct page *page;
-		void *ptr;
-		dma_addr_t addr;
-                ptr = (void*)virt_to_phys((void*)((char*)vmaddr + (i << PAGE_SHIFT)));
-//		ptr = get_vmalloc_addr(vmaddr + (i << PAGE_SHIFT));
-		addr = virt_to_bus(ptr);
-		page = virt_to_page((int)ptr);
-#ifdef DEBUG
-                dprintf(("virt mem: %x, phys: %x, addr: %x, page: %x",(char*)vmaddr, (char*)ptr, addr, page));
-#endif
-		sgbuf->table[i].buf = ptr;
-		sgbuf->table[i].addr = addr;
-		sgbuf->page_table[i] = page;
-		SetPageReserved(page);
-		sgbuf->pages++;
-	}
-	return 0;
-}
-
 /*
  * shrink to the given pages.
  * free the unused pages

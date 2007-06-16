@@ -24,6 +24,7 @@
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/info.h>
+#include <linux/proc_fs.h>
 #include <sound/memalloc.h>
 
 
@@ -57,19 +58,6 @@ struct snd_mem_list {
     unsigned int id;
     struct list_head list;
 };
-
-#include <linux/proc_fs.h>
-static inline struct proc_dir_entry *create_proc_read_entry(const char *name,
-        mode_t mode, struct proc_dir_entry *base,
-        read_proc_t *read_proc, void * data)
-{
-        struct proc_dir_entry *res=create_proc_entry(name,mode,base);
-        if (res) {
-                res->read_proc=read_proc;
-                res->data=data;
-        }
-        return res;
-}
 
 /* id for pre-allocated buffers */
 #define SNDRV_DMA_DEVICE_UNUSED (unsigned int)-1

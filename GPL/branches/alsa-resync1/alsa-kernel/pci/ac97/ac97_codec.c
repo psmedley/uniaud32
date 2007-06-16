@@ -1930,15 +1930,17 @@ int snd_ac97_bus(struct snd_card *card, int num, struct snd_ac97_bus_ops *ops,
 	return 0;
 }
 
+#if 0 // fixme to be gone?
 /* stop no dev release warning */
 static void ac97_device_release(struct device * dev)
 {
 }
+#endif // fixme to be gone?
 
 /* register ac97 codec to bus */
 static int snd_ac97_dev_register(struct snd_device *device)
 {
-#if 0
+#if 0 // fixme to be gone?
     struct snd_ac97 *ac97 = device->device_data;
 	int err;
 
@@ -1953,7 +1955,7 @@ static int snd_ac97_dev_register(struct snd_device *device)
 		ac97->dev.bus = NULL;
 		return err;
         }
-#endif
+#endif // fixme to be gone?
 	return 0;
 }
 
@@ -2320,6 +2322,7 @@ static void snd_ac97_powerdown(struct snd_ac97 *ac97)
 	udelay(100);
         power |= AC97_PD_PR2 | AC97_PD_PR3;	/* Analog Mixer powerdown */
         snd_ac97_write(ac97, AC97_POWERDOWN, power);
+#ifdef CONFIG_SND_AC97_POWER_SAVE
         if (ac97_is_power_save_mode(ac97)) {
             udelay(100);
             /* AC-link powerdown, internal Clk disable */
@@ -2327,6 +2330,7 @@ static void snd_ac97_powerdown(struct snd_ac97 *ac97)
             power |= AC97_PD_PR4 | AC97_PD_PR5;
             snd_ac97_write(ac97, AC97_POWERDOWN, power);
 	}
+#endif // CONFIG_SND_AC97_POWER_SAVE
 }
 
 

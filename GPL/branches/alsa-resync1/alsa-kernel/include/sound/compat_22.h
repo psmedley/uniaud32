@@ -443,21 +443,6 @@ extern inline int pm_send(struct pm_dev *dev, pm_request_t rqst, void *data)
 #define up_read(x) up(x)
 #define up_write(x) up(x)
 
-/* this is identical with tq_struct but the "routine" field is renamed to "func" */
-struct tasklet_struct {
-	struct tasklet_struct *next;	/* linked list of active bh's */
-	unsigned long sync;		/* must be initialized to zero */
-	void (*func)(void *);		/* function to call */
-	void *data;			/* argument to function */
-};
-
-#define tasklet_init(t,f,d)	do { \
-	(t)->next = NULL; \
-	(t)->sync = 0; \
-	(t)->func = (void (*)(void *))(f); \
-	(t)->data = (void *)(d); \
-} while (0)
-
 #define tasklet_unlock_wait(t)	while (test_bit(0, &(t)->sync)) { }
 #define tasklet_kill(t)		tasklet_unlock_wait(t) /* FIXME: world is not perfect... */
 
@@ -468,25 +453,6 @@ struct tasklet_struct {
 #ifndef __user
 #define __user
 #endif
-
-#include <asm/atomic.h>
-#define ATOMIC_INIT(i)  { (i) }
-/**
- * atomic_dec_and_test - decrement and test
- * @v: pointer of type atomic_t
- *
- * Atomically decrements @v by 1 and
- * returns true if the result is 0, or false for all other
- * cases.  Note that the guaranteed
- * useful range of an atomic_t is only 24 bits.
- */
-static inline int atomic_dec_and_test(volatile atomic_t *v)
-{
-    atomic_dec(v);
-    if (v->counter == 0)
-        return 1;
-    return 0;
-}
 
 /**
  * list_for_each_safe	-	iterate over a list safe against removal of list entry

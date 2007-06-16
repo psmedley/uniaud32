@@ -617,7 +617,7 @@ static void snd_via82xx_channel_reset(struct via82xx *chip, struct viadev *viade
  *  Interrupt handler
  *  Used for 686 and 8233A
  */
-static irqreturn_t snd_via686_interrupt(int irq, void *dev_id)
+static irqreturn_t snd_via686_interrupt(int irq, void *dev_id, struct pt_regs *unused)
 {
 	struct via82xx *chip = dev_id;
 	unsigned int status;
@@ -663,7 +663,7 @@ static irqreturn_t snd_via686_interrupt(int irq, void *dev_id)
 /*
  *  Interrupt handler
  */
-static irqreturn_t snd_via8233_interrupt(int irq, void *dev_id)
+static irqreturn_t snd_via8233_interrupt(int irq, void *dev_id,struct pt_regs *unused)
 {
 	struct via82xx *chip = dev_id;
 	unsigned int status;
@@ -2310,7 +2310,7 @@ static int __devinit snd_via82xx_create(struct snd_card *card,
 	chip->port = pci_resource_start(pci, 0);
 	if (request_irq(pci->irq,
 			chip_type == TYPE_VIA8233 ?
-			snd_via8233_interrupt :	snd_via686_interrupt,
+			  snd_via8233_interrupt : snd_via686_interrupt,
 			SA_INTERRUPT|SA_SHIRQ,
 			card->driver, chip)) {
 		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);

@@ -24,6 +24,7 @@
 
 #include <linux/sched.h>		/* wake_up() */
 #include <asm/semaphore.h>
+#include <sound/typedefs.h>
 
 /* Typedef's */
 typedef struct timeval snd_timestamp_t;
@@ -137,9 +138,9 @@ struct snd_card {
         struct work_struct free_workq;	/* for free in workqueue */
         struct device *dev;
 #ifdef CONFIG_PM
-        int (*pm_suspend)(struct snd_card *card, unsigned int state);
-        int (*pm_resume)(struct snd_card *card, unsigned int state);
-        struct pm_dev *pm_dev;          /* for ISA */
+	int (*pm_suspend)(struct snd_card *card, unsigned int state);
+	int (*pm_resume)(struct snd_card *card, unsigned int state);
+	struct pm_dev *pm_dev;		/* for ISA */
         void *pm_private_data;
 	unsigned int power_state;	/* power state */
 	struct semaphore power_lock;	/* power lock */
@@ -175,9 +176,9 @@ static inline void snd_power_change_state(struct snd_card *card, unsigned int st
 	card->power_state = state;
 	wake_up(&card->power_sleep);
 }
-int snd_card_set_pm_callback(struct snd_card *card,
-                             int (*suspend)(struct snd_card *, unsigned int),
-                             int (*resume)(struct snd_card *, unsigned int),
+int snd_card_set_pm_callback(snd_card_t *card,
+			     int (*suspend)(snd_card_t *, unsigned int),
+			     int (*resume)(snd_card_t *, unsigned int),
                              void *private_data);
 int snd_card_set_isa_pm_callback(struct snd_card *card,
                                  int (*suspend)(struct snd_card *, unsigned int),
@@ -292,6 +293,7 @@ extern int (*snd_mixer_oss_notify_callback)(struct snd_card *card, int free_flag
 
 struct snd_card *snd_card_new(int idx, const char *id,
 			 struct module *module, int extra_size);
+int snd_card_disconnect(struct snd_card *card);
 int snd_card_free(struct snd_card *card);
 int snd_card_register(struct snd_card *card);
 int snd_card_info_init(void);
@@ -306,6 +308,7 @@ int snd_device_new(struct snd_card *card, snd_device_type_t type,
 		   void *device_data, struct snd_device_ops *ops);
 int snd_device_register(struct snd_card *card, void *device_data);
 int snd_device_register_all(struct snd_card *card);
+int snd_device_disconnect_all(struct snd_card *card);
 int snd_device_free(struct snd_card *card, void *device_data);
 int snd_device_free_all(struct snd_card *card, snd_device_cmd_t cmd);
 
@@ -313,7 +316,7 @@ int snd_device_free_all(struct snd_card *card, snd_device_cmd_t cmd);
 
 #define DMA_MODE_NO_ENABLE	0x0100
 
-void snd_dma_program(unsigned long dma, unsigned long addr, unsigned int size, unsigned short mode);
+void snd_dma_program(unsigned long dma, const void *buf, unsigned int size, unsigned short mode);
 void snd_dma_disable(unsigned long dma);
 unsigned int snd_dma_residue(unsigned long dma);
 

@@ -1101,22 +1101,22 @@ static int snd_cs4281_put_volume(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t
 
 static snd_kcontrol_new_t snd_cs4281_fm_vol =
 {
-    /*	.iface = */SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-    /*	.name = */"Synth Playback Volume",0,0,0,
-    /*	.info = */snd_cs4281_info_volume,
-    /*	.get = */snd_cs4281_get_volume,
-    /*	.put = */snd_cs4281_put_volume,
-    /*	.private_value = */((BA0_FMLVC << 16) | BA0_FMRVC),
+    .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+    .name = "Synth Playback Volume",
+    .info = snd_cs4281_info_volume,
+    .get = snd_cs4281_get_volume,
+    .put = snd_cs4281_put_volume,
+    .private_value = ((BA0_FMLVC << 16) | BA0_FMRVC)
 };
 
 static snd_kcontrol_new_t snd_cs4281_pcm_vol =
 {
-    /*	.iface = */SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-    /*	.name = */"PCM Stream Playback Volume",0,0,0,
-    /*	.info = */snd_cs4281_info_volume,
-    /*	.get = */snd_cs4281_get_volume,
-    /*	.put = */snd_cs4281_put_volume,
-    /*	.private_value = */ ((BA0_PPLVC << 16) | BA0_PPRVC),
+    .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+    .name = "PCM Stream Playback Volume",
+    .info = snd_cs4281_info_volume,
+    .get = snd_cs4281_get_volume,
+    .put = snd_cs4281_put_volume,
+    .private_value = ((BA0_PPLVC << 16) | BA0_PPRVC)
 };
 
 static void snd_cs4281_mixer_free_ac97_bus(ac97_bus_t *bus)
@@ -1141,7 +1141,7 @@ static int __devinit snd_cs4281_mixer(cs4281_t * chip)
     ac97_template_t ac97;
     int err;
     static ac97_bus_ops_t ops = {
-        0,
+        0,0,
         snd_cs4281_ac97_write,
         snd_cs4281_ac97_read,
         0,0
@@ -1934,9 +1934,9 @@ static void snd_cs4281_opl3_command(opl3_t * opl3, unsigned short cmd, unsigned 
     void __iomem *port;
 
     if (cmd & OPL3_RIGHT)
-        port = (unsigned long)chip->ba0 + BA0_B1AP; /* right port */
+        port = (void *)chip->ba0 + BA0_B1AP; /* right port */
     else
-        port = (unsigned long)chip->ba0 + BA0_B0AP; /* left port */
+        port = (void *)chip->ba0 + BA0_B0AP; /* left port */
 
     spin_lock_irqsave(&opl3->reg_lock, flags);
 

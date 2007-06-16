@@ -233,7 +233,7 @@ static int snd_card_dummy_pcm_prepare(snd_pcm_substream_t * substream)
     bps = runtime->rate * runtime->channels;
     bps *= snd_pcm_format_width(runtime->format);
     bps /= 8;
-    if (bps <= 0)
+    if (bps == 0)
         return -EINVAL;
     dpcm->pcm_bps = bps;
     dpcm->pcm_jiffie = bps / HZ;
@@ -337,7 +337,7 @@ static int snd_card_dummy_playback_open(snd_pcm_substream_t * substream)
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
         return -ENOMEM;
-    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, &runtime->dma_bytes)) == NULL) {
+    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, (unsigned long *) &runtime->dma_bytes)) == NULL) {
         kfree(dpcm);
         return -ENOMEM;
     }
@@ -366,7 +366,7 @@ static int snd_card_dummy_capture_open(snd_pcm_substream_t * substream)
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
         return -ENOMEM;
-    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, &runtime->dma_bytes)) == NULL) {
+    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, (unsigned long *) &runtime->dma_bytes)) == NULL) {
         kfree(dpcm);
         return -ENOMEM;
     }
@@ -444,6 +444,7 @@ static int __init snd_card_dummy_pcm(snd_card_dummy_t *dummy, int device, int su
     { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
     0, 0, snd_dummy_volume_info, \
     snd_dummy_volume_get, snd_dummy_volume_put, \
+    0, \
     addr }
 
 static int snd_dummy_volume_info(snd_kcontrol_t * kcontrol, snd_ctl_elem_info_t * uinfo)

@@ -225,7 +225,7 @@ static unsigned char __snd_opl3sa2_read(opl3sa2_t *chip, unsigned char reg)
 /* read control port (with spinlock) */
 static unsigned char snd_opl3sa2_read(opl3sa2_t *chip, unsigned char reg)
 {
-	unsigned long flags;
+	u32 flags;
 	unsigned char result;
 
 	spin_lock_irqsave(&chip->reg_lock, flags);
@@ -324,13 +324,13 @@ static int __init snd_opl3sa2_detect(opl3sa2_t *chip)
 	return 0;
 }
 
-static void snd_opl3sa2_interrupt(int irq, void *dev_id, struct pt_regs *regs)
+static int snd_opl3sa2_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
 	unsigned short status;
 	opl3sa2_t *chip = dev_id;
 
 	if (chip == NULL || chip->card == NULL)
-		return;
+		return 0;
 
 	status = snd_opl3sa2_read(chip, OPL3SA2_IRQ_STATUS);
 
@@ -352,6 +352,7 @@ static void snd_opl3sa2_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 			snd_ctl_notify(chip->card, SNDRV_CTL_EVENT_MASK_VALUE, &chip->master_volume->id);
 		}
 	}
+	return 0;
 }
 
 #ifdef TARGET_OS2
@@ -359,6 +360,7 @@ static void snd_opl3sa2_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
   0, 0, snd_opl3sa2_info_single, \
   snd_opl3sa2_get_single, snd_opl3sa2_put_single, \
+  0, \
   reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 #else
@@ -426,6 +428,7 @@ int snd_opl3sa2_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * uco
 { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
   0, 0, snd_opl3sa2_info_double, \
   snd_opl3sa2_get_double, snd_opl3sa2_put_double, \
+  0, \
   left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
 
 #else
@@ -580,34 +583,24 @@ static int __init snd_opl3sa2_mixer(opl3sa2_t *chip)
 
 /* Power Management support functions */
 #ifdef CONFIG_PM
-static void snd_opl3sa2_suspend(opl3sa2_t *chip)
+static int snd_opl3sa2_suspend(snd_card_t *card, unsigned int state)
 {
-	snd_card_t *card = chip->card;
+	opl3sa2_t *chip = snd_magic_cast(opl3sa2_t, card->pm_private_data, return -EINVAL);
 
-	snd_power_lock(card);
-	if (card->power_state == SNDRV_CTL_POWER_D3hot)
-		goto __skip;
-
-	/* FIXME: is this order ok? */
+	snd_pcm_suspend_all(chip->cs4231->pcm); /* stop before saving regs */
 	chip->cs4231_suspend(chip->cs4231);
-	snd_pcm_suspend_all(chip->cs4231->pcm);
 
 	/* power down */
 	snd_opl3sa2_write(chip, OPL3SA2_PM_CTRL, OPL3SA2_PM_D3);
 
 	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
-      __skip:
-      	snd_power_unlock(card);
+	return 0;
 }
 
-static void snd_opl3sa2_resume(opl3sa2_t *chip)
+static int snd_opl3sa2_resume(snd_card_t *card, unsigned int state)
 {
-	snd_card_t *card = chip->card;
+	opl3sa2_t *chip = snd_magic_cast(opl3sa2_t, card->pm_private_data, return -EINVAL);
 	int i;
-
-	snd_power_lock(card);
-	if (card->power_state == SNDRV_CTL_POWER_D0)
-		goto __skip;
 
 	/* power up */
 	snd_opl3sa2_write(chip, OPL3SA2_PM_CTRL, OPL3SA2_PM_D0);
@@ -625,45 +618,8 @@ static void snd_opl3sa2_resume(opl3sa2_t *chip)
 	chip->cs4231_resume(chip->cs4231);
 
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
-      __skip:
-      	snd_power_unlock(card);
-}
-
-/* callback for control API */
-static int snd_opl3sa2_set_power_state(snd_card_t *card, unsigned int power_state)
-{
-	opl3sa2_t *chip = (opl3sa2_t *) card->pm_private_data;
-	switch (power_state) {
-	case SNDRV_CTL_POWER_D0:
-	case SNDRV_CTL_POWER_D1:
-	case SNDRV_CTL_POWER_D2:
-		snd_opl3sa2_resume(chip);
-		break;
-	case SNDRV_CTL_POWER_D3hot:
-	case SNDRV_CTL_POWER_D3cold:
-		snd_opl3sa2_suspend(chip);
-		break;
-	default:
-		return -EINVAL;
-	}
 	return 0;
 }
-
-static int snd_opl3sa2_pm_callback(struct pm_dev *dev, pm_request_t rqst, void *data)
-{
-	opl3sa2_t *chip = snd_magic_cast(opl3sa2_t, dev->data, return 0);
-
-	switch (rqst) {
-	case PM_SUSPEND:
-		snd_opl3sa2_suspend(chip);
-		break;
-	case PM_RESUME:
-		snd_opl3sa2_resume(chip);
-		break;
-	}
-	return 0;
-}
-
 #endif /* CONFIG_PM */
 
 #ifdef __ISAPNP__
