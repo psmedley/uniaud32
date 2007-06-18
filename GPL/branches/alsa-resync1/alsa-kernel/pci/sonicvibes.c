@@ -26,6 +26,7 @@
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/init.h>
+#include <linux/pci.h>
 #include <linux/slab.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -38,8 +39,6 @@
 #ifndef LINUX_2_2
 #include <linux/gameport.h>
 #endif
-
-EXPORT_NO_SYMBOLS;
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("S3 SonicVibes PCI");

@@ -35,8 +35,6 @@
 
 #define chip_t sb_t
 
-EXPORT_NO_SYMBOLS;
-
 MODULE_AUTHOR("Massimo Piccioni <dafastidio@libero.it>");
 MODULE_DESCRIPTION("ESS AudioDrive ES968");
 MODULE_LICENSE("GPL");
@@ -159,7 +157,7 @@ static void snd_card_es968_deactivate(struct snd_card_es968 *acard)
 }
 #endif	/* __ISAPNP__ */
 
-static void __exit snd_card_es968_free(snd_card_t *card)
+static void snd_card_es968_free(snd_card_t *card)
 {
     struct snd_card_es968 *acard = (struct snd_card_es968 *)card->private_data;
 

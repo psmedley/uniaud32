@@ -100,6 +100,7 @@
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
+#include <linux/pci.h>
 #include <linux/slab.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -111,7 +112,6 @@
 #define CARD_NAME "ESS Maestro1/2"
 #define DRIVER_NAME "ES1968"
 
-EXPORT_NO_SYMBOLS;
 MODULE_DESCRIPTION("ESS Maestro");
 MODULE_CLASSES("{sound}");
 MODULE_LICENSE("GPL");

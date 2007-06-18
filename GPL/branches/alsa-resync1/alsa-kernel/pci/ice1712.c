@@ -30,6 +30,7 @@
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
+#include <linux/pci.h>
 #include <linux/slab.h>
 #include <sound/core.h>
 #include <sound/control.h>
@@ -47,8 +48,6 @@
 #define SND_CS8403
 #define SND_CS8404
 #include <sound/cs8403.h>
-
-EXPORT_NO_SYMBOLS;
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("ICEnsemble ICE1712 (Envy24)");
@@ -1234,6 +1233,7 @@ static void snd_ice1712_set_pro_rate(ice1712_t *ice, snd_pcm_substream_t *substr
 	outb(val, ICEMT(ice, RATE));
 	switch (ice->eeprom.subvendor) {
 	case ICE1712_SUBDEVICE_DELTA1010:
+	case ICE1712_SUBDEVICE_DELTA1010LT:	// check it --jk
 	case ICE1712_SUBDEVICE_DELTADIO2496:
 	case ICE1712_SUBDEVICE_DELTA66:
 	case ICE1712_SUBDEVICE_DELTA44:
@@ -4100,6 +4100,7 @@ static int __devinit snd_ice1712_chip_init(ice1712_t *ice)
 		has_i2c = 1;
 		/* follow thru */
 	case ICE1712_SUBDEVICE_DELTA1010:
+	case ICE1712_SUBDEVICE_STDSP24:
 		ice->num_adcs = ice->num_dacs = ice->num_total_dacs = 8;
 		break;
 	case ICE1712_SUBDEVICE_EWS88D:

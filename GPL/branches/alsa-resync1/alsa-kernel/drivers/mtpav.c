@@ -63,8 +63,6 @@
 /*
  *      globals
  */
-EXPORT_NO_SYMBOLS;
-
 MODULE_AUTHOR("Michael T. Mayers");
 MODULE_DESCRIPTION("MOTU MidiTimePiece AV multiport MIDI");
 MODULE_LICENSE("GPL");

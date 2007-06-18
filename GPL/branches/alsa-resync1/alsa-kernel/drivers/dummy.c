@@ -20,7 +20,11 @@
 
 #include <sound/driver.h>
 #include <linux/init.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 0)
+#include <linux/jiffies.h>
+#else
 #include <linux/sched.h>
+#endif
 #include <linux/slab.h>
 #include <linux/time.h>
 #include <linux/wait.h>
@@ -30,8 +34,6 @@
 #include <sound/rawmidi.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
-
-EXPORT_NO_SYMBOLS;
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Dummy soundcard (/dev/null)");

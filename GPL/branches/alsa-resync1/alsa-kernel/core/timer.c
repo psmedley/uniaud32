@@ -1930,6 +1930,7 @@ EXPORT_SYMBOL(snd_timer_close);
 EXPORT_SYMBOL(snd_timer_resolution);
 EXPORT_SYMBOL(snd_timer_start);
 EXPORT_SYMBOL(snd_timer_stop);
+EXPORT_SYMBOL(snd_timer_del);
 EXPORT_SYMBOL(snd_timer_continue);
 EXPORT_SYMBOL(snd_timer_pause);
 EXPORT_SYMBOL(snd_timer_new);

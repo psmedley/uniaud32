@@ -59,6 +59,11 @@
  */
 
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/init.h>
+#include <linux/pci.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/rawmidi.h>
 #include <sound/mpu401.h>
@@ -67,8 +72,9 @@
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("Bart Hartgers <bart@etpmod.phys.tue.nl>");
 MODULE_DESCRIPTION("Avance Logic ALS4000");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Avance Logic,ALS4000}}");
 

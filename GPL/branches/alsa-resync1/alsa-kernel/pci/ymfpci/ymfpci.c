@@ -21,6 +21,7 @@
 
 #include <sound/driver.h>
 #include <linux/init.h>
+#include <linux/pci.h>
 #include <linux/time.h>
 #include <sound/core.h>
 #include <sound/ymfpci.h>
@@ -28,8 +29,6 @@
 #include <sound/opl3.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
-
-EXPORT_NO_SYMBOLS;
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Yamaha DS-XG PCI");

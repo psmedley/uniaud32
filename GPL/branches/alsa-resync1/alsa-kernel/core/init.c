@@ -46,7 +46,7 @@ rwlock_t snd_card_rwlock = RW_LOCK_UNLOCKED;
 static unsigned int pci_saved_config[SNDRV_CARDS][16];
 
 #if defined(CONFIG_SND_MIXER_OSS) || defined(CONFIG_SND_MIXER_OSS_MODULE)
-int (*snd_mixer_oss_notify_callback)(struct snd_card *card, int free_flag);
+int (*snd_mixer_oss_notify_callback)(snd_card_t *card, int free_flag);
 #endif
 
 static void snd_card_id_read(snd_info_entry_t *entry, struct snd_info_buffer * buffer)
@@ -455,7 +455,7 @@ int snd_card_register(struct snd_card * card)
 		/* already registered */
 		write_unlock(&snd_card_rwlock);
 		return 0;
-        }
+	}
 
 	if (card->id[0] == '\0')
 		choose_default_id(card);
