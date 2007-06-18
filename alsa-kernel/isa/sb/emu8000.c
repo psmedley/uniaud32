@@ -17,17 +17,23 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
+#define __NO_VERSION__
+#include <sound/driver.h>
+#include <linux/wait.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <linux/ioport.h>
+#include <sound/core.h>
 #include <sound/emu8000.h>
 #include <sound/emu8000_reg.h>
+#include <asm/io.h>
+#include <asm/uaccess.h>
+#include <linux/init.h>
 #include <sound/control.h>
 #include <sound/initval.h>
-
-MODULE_CLASSES("{sound}");
-MODULE_AUTHOR("Takashi Iwai, Steve Ratcliffe");
 
 /*
  * emu8000 register controls
@@ -103,6 +109,8 @@ unsigned int snd_emu8000_peek_dw(emu8000_t *emu, unsigned int port, unsigned int
 /*exported*/ void
 snd_emu8000_dma_chan(emu8000_t *emu, int ch, int mode)
 {
+	unsigned right_bit = (mode & EMU8000_RAM_RIGHT) ? 0x01000000 : 0;
+	mode &= EMU8000_RAM_MODE_MASK;
 	if (mode == EMU8000_RAM_CLOSE) {
 		EMU8000_CCCA_WRITE(emu, ch, 0);
 		EMU8000_DCYSUSV_WRITE(emu, ch, 0x807F);
@@ -116,14 +124,14 @@ snd_emu8000_dma_chan(emu8000_t *emu, int ch, int mode)
 	EMU8000_PSST_WRITE(emu, ch, 0);
 	EMU8000_CSL_WRITE(emu, ch, 0);
 	if (mode == EMU8000_RAM_WRITE) /* DMA write */
-		EMU8000_CCCA_WRITE(emu, ch, 0x06000000);
+		EMU8000_CCCA_WRITE(emu, ch, 0x06000000 | right_bit);
 	else	   /* DMA read */
-		EMU8000_CCCA_WRITE(emu, ch, 0x04000000);
+		EMU8000_CCCA_WRITE(emu, ch, 0x04000000 | right_bit);
 }
 
 /*
  */
-static void /*__init*/
+static void __init
 snd_emu8000_read_wait(emu8000_t *emu)
 {
 	while ((EMU8000_SMALR_READ(emu) & 0x80000000) != 0) {
@@ -136,7 +144,7 @@ snd_emu8000_read_wait(emu8000_t *emu)
 
 /*
  */
-static void /*__init*/
+static void __init
 snd_emu8000_write_wait(emu8000_t *emu)
 {
 	while ((EMU8000_SMALW_READ(emu) & 0x80000000) != 0) {
@@ -150,7 +158,7 @@ snd_emu8000_write_wait(emu8000_t *emu)
 /*
  * detect a card at the given port
  */
-static int /*__init*/
+static int __init
 snd_emu8000_detect(emu8000_t *emu)
 {
 	/* Initialise */
@@ -176,7 +184,7 @@ snd_emu8000_detect(emu8000_t *emu)
 /*
  * intiailize audio channels
  */
-static void /*__init*/
+static void __init
 init_audio(emu8000_t *emu)
 {
 	int ch;
@@ -217,7 +225,7 @@ init_audio(emu8000_t *emu)
 /*
  * initialize DMA address
  */
-static void /*__init*/
+static void __init
 init_dma(emu8000_t *emu)
 {
 	EMU8000_SMALR_WRITE(emu, 0);
@@ -321,7 +329,7 @@ static unsigned short init4[128] /*__devinitdata*/ = {
  * Taken from the oss driver, not obvious from the doc how this
  * is meant to work
  */
-static void /*__init*/
+static void __init
 send_array(emu8000_t *emu, unsigned short *data, int size)
 {
 	int i;
@@ -345,7 +353,7 @@ send_array(emu8000_t *emu, unsigned short *data, int size)
  * Send initialization arrays to start up, this just follows the
  * initialisation sequence in the adip.
  */
-static void /*__init*/
+static void __init
 init_arrays(emu8000_t *emu)
 {
 	send_array(emu, init1, NELEM(init1)/4);
@@ -372,7 +380,7 @@ init_arrays(emu8000_t *emu)
  * seems that the only way to do this is to use the one channel and keep
  * reallocating between read and write.
  */
-static void /*__init*/
+static void __init
 size_dram(emu8000_t *emu)
 {
 	int i, size;
@@ -498,7 +506,7 @@ snd_emu8000_init_fm(emu8000_t *emu)
 /*
  * The main initialization routine.
  */
-static void /*__init*/
+static void __init
 snd_emu8000_init_hw(emu8000_t *emu)
 {
 	int i;
@@ -652,7 +660,7 @@ snd_emu8000_load_chorus_fx(emu8000_t *emu, int mode, const void *buf, long len)
 {
 	soundfont_chorus_fx_t rec;
 	if (mode < SNDRV_EMU8000_CHORUS_PREDEFINED || mode >= SNDRV_EMU8000_CHORUS_NUMBERS) {
-		snd_printk("illegal chorus mode %d for uploading\n", mode);
+		snd_printk(KERN_WARNING "illegal chorus mode %d for uploading\n", mode);
 		return -EINVAL;
 	}
 	if (len < sizeof(rec) || copy_from_user(&rec, buf, sizeof(rec)))
@@ -780,7 +788,7 @@ snd_emu8000_load_reverb_fx(emu8000_t *emu, int mode, const void *buf, long len)
 	soundfont_reverb_fx_t rec;
 
 	if (mode < SNDRV_EMU8000_REVERB_PREDEFINED || mode >= SNDRV_EMU8000_REVERB_NUMBERS) {
-		snd_printk("illegal reverb mode %d for uploading\n", mode);
+		snd_printk(KERN_WARNING "illegal reverb mode %d for uploading\n", mode);
 		return -EINVAL;
 	}
 	if (len < sizeof(rec) || copy_from_user(&rec, buf, sizeof(rec)))
@@ -1084,7 +1092,7 @@ static snd_kcontrol_new_t *mixer_defs[EMU8000_NUM_CONTROLS] = {
 /*
  * create and attach mixer elements for WaveTable treble/bass controls
  */
-static int /*__init*/
+static int __init
 snd_emu8000_create_mixer(snd_card_t *card, emu8000_t *emu)
 {
 	int i, err = 0;
@@ -1114,12 +1122,18 @@ __error:
  */
 static int snd_emu8000_free(emu8000_t *hw)
 {
-	if (hw->res_port1)
+	if (hw->res_port1) {
 		release_resource(hw->res_port1);
-	if (hw->res_port2)
+		kfree_nocheck(hw->res_port1);
+	}
+	if (hw->res_port2) {
 		release_resource(hw->res_port2);
-	if (hw->res_port3)
+		kfree_nocheck(hw->res_port2);
+	}
+	if (hw->res_port3) {
 		release_resource(hw->res_port3);
+		kfree_nocheck(hw->res_port3);
+	}
 	snd_magic_kfree(hw);
 	return 0;
 }
@@ -1135,7 +1149,7 @@ static int snd_emu8000_dev_free(snd_device_t *device)
 /*
  * initialize and register emu8000 synth device.
  */
-/*exported*/ int
+int __init
 snd_emu8000_new(snd_card_t *card, int index, long port, int seq_ports, snd_seq_device_t **awe_ret)
 {
 	snd_seq_device_t *awe;
@@ -1212,7 +1226,6 @@ snd_emu8000_new(snd_card_t *card, int index, long port, int seq_ports, snd_seq_d
  * exported stuff
  */
 
-EXPORT_SYMBOL(snd_emu8000_new);
 EXPORT_SYMBOL(snd_emu8000_poke);
 EXPORT_SYMBOL(snd_emu8000_peek);
 EXPORT_SYMBOL(snd_emu8000_poke_dw);
@@ -1224,19 +1237,3 @@ EXPORT_SYMBOL(snd_emu8000_load_reverb_fx);
 EXPORT_SYMBOL(snd_emu8000_update_chorus_mode);
 EXPORT_SYMBOL(snd_emu8000_update_reverb_mode);
 EXPORT_SYMBOL(snd_emu8000_update_equalizer);
-
-/*
- *  INIT part
- */
-
-static int __init alsa_emu8000_init(void)
-{
-	return 0;
-}
-
-static void __exit alsa_emu8000_exit(void)
-{
-}
-
-module_init(alsa_emu8000_init)
-module_exit(alsa_emu8000_exit)

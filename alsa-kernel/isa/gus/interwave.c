@@ -15,15 +15,24 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  *   1999/07/22		Erik Inge Bolso <knan@mo.himolde.no>
  *			* mixer group handlers
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#ifndef LINUX_ISAPNP_H
+#include <linux/isapnp.h>
+#define isapnp_card pci_bus
+#define isapnp_dev pci_dev
+#endif
+#include <sound/core.h>
 #include <sound/gus.h>
 #include <sound/cs4231.h>
 #ifdef SNDRV_STB
@@ -35,10 +44,11 @@
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_CLASSES("{sound}");
+MODULE_LICENSE("GPL");
 #ifndef SNDRV_STB
 MODULE_DESCRIPTION("AMD InterWave");
-MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Gravis,UltraSound Plug & Play},"
 		"{STB,SoundRage32},"
 		"{MED,MED3210},"
@@ -46,13 +56,12 @@ MODULE_DEVICES("{{Gravis,UltraSound Plug & Play},"
 		"{Panasonic,PCA761AW}}");
 #else
 MODULE_DESCRIPTION("AMD InterWave STB with TEA6330T");
-MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{AMD,InterWave STB with TEA6330T}}");
 #endif
 
 static int snd_index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *snd_id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
 #ifdef __ISAPNP__
 #ifdef TARGET_OS2
 static int snd_isapnp[SNDRV_CARDS] = {1,1,1,1,1,1,1,1};
@@ -211,17 +220,37 @@ static void snd_interwave_i2c_setlines(snd_i2c_bus_t *bus, int ctrl, int data)
 	udelay(10);
 }
 
-static int snd_interwave_i2c_getdataline(snd_i2c_bus_t *bus)
+static int snd_interwave_i2c_getclockline(snd_i2c_bus_t *bus)
 {
 	unsigned long port = bus->private_value;
 	unsigned char res;
 
+	res = inb(port) & 1;
+#if 0
+	printk("i2c_getclockline - 0x%lx -> %i\n", port, res);
+#endif
+	return res;
+}
+
+static int snd_interwave_i2c_getdataline(snd_i2c_bus_t *bus, int ack)
+{
+	unsigned long port = bus->private_value;
+	unsigned char res;
+
+	if (ack)
+		udelay(10);
 	res = (inb(port) & 2) >> 1;
 #if 0
 	printk("i2c_getdataline - 0x%lx -> %i\n", port, res);
 #endif
 	return res;
 }
+
+static snd_i2c_bit_ops_t snd_interwave_i2c_bit_ops = {
+	setlines: snd_interwave_i2c_setlines,
+	getclock: snd_interwave_i2c_getclockline,
+	getdata:  snd_interwave_i2c_getdataline,
+};
 
 static int __init snd_interwave_detect_stb(struct snd_interwave *iwcard,
 					   snd_gus_card_t * gus, int dev,
@@ -230,7 +259,6 @@ static int __init snd_interwave_detect_stb(struct snd_interwave *iwcard,
 	unsigned long port;
 	snd_i2c_bus_t *bus;
 	snd_card_t *card = iwcard->card;
-	unsigned long flags;
 	char name[32];
 	int err;
 
@@ -253,28 +281,10 @@ static int __init snd_interwave_detect_stb(struct snd_interwave *iwcard,
 			return -ENODEV;
 	}
 	sprintf(name, "InterWave-%i", card->number);
-	if ((err = snd_i2c_bus_create(card, name, &bus)) < 0)
+	if ((err = snd_i2c_bus_create(card, name, NULL, &bus)) < 0)
 		return err;
 	bus->private_value = port;
-	bus->i2c_setlines = snd_interwave_i2c_setlines;
-	bus->i2c_getdataline = snd_interwave_i2c_getdataline;
-	SNDRV_LOCK_I2C_BUS(bus);
-	snd_i2c_reset(bus);
-#if 0
-	{
-		int idx, ack;
-		for (idx = 0; idx < 256; idx += 2) {
-			snd_i2c_start(bus);
-			ack = snd_i2c_sendbyte(bus, idx, 0);
-			snd_i2c_stop(bus);
-			if (!ack) {
-				printk("i2c: scanning bus %s: found device at addr=0x%x\n",
-				       bus->name, idx);
-			}
-		}
-	}
-#endif
-	SNDRV_UNLOCK_I2C_BUS(bus);
+	bus->hw_ops.bit = &snd_interwave_i2c_bit_ops;
 	if ((err = snd_tea6330t_detect(bus, 0)) < 0)
 		return err;
 	*rbus = bus;
@@ -706,8 +716,10 @@ static void snd_interwave_free(snd_card_t *card)
 	snd_interwave_deactivate(iwcard);
 #endif
 #ifdef SNDRV_STB
-	if (iwcard->i2c_res)
+	if (iwcard->i2c_res) {
 		release_resource(iwcard->i2c_res);
+		kfree_nocheck(iwcard->i2c_res);
+	}
 #endif
 	if (iwcard->irq >= 0)
 		free_irq(iwcard->irq, (void *)iwcard);
@@ -817,7 +829,7 @@ static int __init snd_interwave_probe(int dev)
 		return err;
 	}
 	sprintf(pcm->name + strlen(pcm->name), " rev %c", gus->revision + 'A');
-	strcat(pcm->name, " (chip)");
+	strcat(pcm->name, " (codec)");
 	if ((err = snd_cs4231_timer(cs4231, 2, NULL)) < 0) {
 		snd_card_free(card);
 		return err;
@@ -898,7 +910,7 @@ static int __init snd_interwave_probe(int dev)
 
 static int __init snd_interwave_probe_legacy_port(unsigned long port)
 {
-	static int dev = 0;
+	static int dev;
 	int res;
 
 	for ( ; dev < SNDRV_CARDS; dev++) {
@@ -922,7 +934,7 @@ static int __init snd_interwave_probe_legacy_port(unsigned long port)
 static int __init snd_interwave_isapnp_detect(struct isapnp_card *card,
 					      const struct isapnp_card_id *id)
 {
-	static int dev = 0;
+	static int dev;
 	int res;
 
 	for ( ; dev < SNDRV_CARDS; dev++) {
@@ -960,7 +972,7 @@ static int __init alsa_card_interwave_init(void)
 			continue;
 		}
 #ifdef MODULE
-		snd_printk("InterWave soundcard #%i not found at 0x%lx or device busy\n", dev, snd_port[dev]);
+		printk(KERN_ERR "InterWave soundcard #%i not found at 0x%lx or device busy\n", dev, snd_port[dev]);
 #endif
 	}
 	/* legacy auto configured cards */
@@ -972,7 +984,7 @@ static int __init alsa_card_interwave_init(void)
 
 	if (!cards) {
 #ifdef MODULE
-		snd_printk("InterWave soundcard not found or device busy\n");
+		printk(KERN_ERR "InterWave soundcard not found or device busy\n");
 #endif
 		return -ENODEV;
 	}
@@ -992,7 +1004,7 @@ module_exit(alsa_card_interwave_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-interwave=snd_enable,snd_index,snd_id,snd_isapnp,
+/* format is: snd-interwave=snd_enable,snd_index,snd_id,snd_isapnp,
 				 snd_port[,snd_port_tc],snd_irq,
 				 snd_dma1,snd_dma2,
 				 snd_joystick_dac,snd_midi,
@@ -1029,9 +1041,9 @@ static int __init alsa_card_interwave_setup(char *str)
 }
 
 #ifndef SNDRV_STB
-__setup("snd-card-interwave=", alsa_card_interwave_setup);
+__setup("snd-interwave=", alsa_card_interwave_setup);
 #else
-__setup("snd-card-interwave-stb=", alsa_card_interwave_setup);
+__setup("snd-interwave-stb=", alsa_card_interwave_setup);
 #endif
 
 #endif /* ifndef MODULE */

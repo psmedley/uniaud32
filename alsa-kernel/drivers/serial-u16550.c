@@ -7,12 +7,12 @@
  *
  *   This code is based on the code from ALSA 0.5.9, but heavily rewritten.
  *
- * Sat Mar 31 17:27:57 PST 2001 tim.mann@compaq.com
+ * Sat Mar 31 17:27:57 PST 2001 tim.mann@compaq.com 
  *      Added support for the Midiator MS-124T and for the MS-124W in
  *      Single Addressed (S/A) or Multiple Burst (M/B) mode, with
  *      power derived either parasitically from the serial port or
  *      from a separate power supply.
- *
+ * 
  *      The new snd_adaptor module parameter allows you to select
  *      either the default Roland Soundcanvas support (0), which was
  *      previously included in this driver but was not documented,
@@ -20,7 +20,7 @@
  *      support (2), or MS-124W M/B mode support (3).  For the
  *      Midiator MS-124W, you must set the physical M-S and A-B
  *      switches on the Midiator to match the driver mode you select.
- *
+ *  
  *      - In Roland Soundcanvas mode, multiple ALSA raw MIDI
  *      substreams are supported (midiCnD0-midiCnD15).  Whenever you
  *      write to a different substream, the driver sends the
@@ -98,22 +98,23 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-
-#define SNDRV_MAIN_OBJECT_FILE
-
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/rawmidi.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
 #include <linux/serial_reg.h>
 
-EXPORT_NO_SYMBOLS;
 MODULE_DESCRIPTION("MIDI serial");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{ALSA, MIDI serial}}");
 
@@ -768,9 +769,11 @@ static int snd_uart16550_free(snd_uart16550_t *uart)
 {
     if (uart->irq >= 0)
         free_irq(uart->irq, (void *)uart);
-    if (uart->res_base)
+	if (uart->res_base) {
         release_resource(uart->res_base);
-    kfree(uart);
+		kfree_nocheck(uart->res_base);
+	}
+	snd_magic_kfree(uart);
     return 0;
 };
 
@@ -917,7 +920,7 @@ static int __init snd_serial_probe(int dev)
 
     if ((err = snd_uart16550_detect(snd_port[dev])) <= 0) {
         snd_card_free(card);
-        snd_printk("no UART detected at 0x%lx\n", (long)snd_port[dev]);
+		printk(KERN_ERR "no UART detected at 0x%lx\n", (long)snd_port[dev]);
         return err;
     }
 
@@ -966,7 +969,7 @@ static int __init alsa_card_serial_init(void)
 
     if (cards == 0) {
 #ifdef MODULE
-        snd_printk("serial midi soundcard not found or device busy\n");
+		printk(KERN_ERR "serial midi soundcard not found or device busy\n");
 #endif
         return -ENODEV;
     }
@@ -988,7 +991,7 @@ module_exit(alsa_card_serial_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-serial=snd_enable,snd_index,snd_id,
+/* format is: snd-serial=snd_enable,snd_index,snd_id,
  snd_port,snd_irq,snd_speed,snd_base,snd_outs */
 
 static int __init alsa_card_serial_setup(char *str)
@@ -1010,6 +1013,6 @@ static int __init alsa_card_serial_setup(char *str)
     return 1;
 }
 
-__setup("snd-card-serial=", alsa_card_serial_setup);
+__setup("snd-serial=", alsa_card_serial_setup);
 
 #endif /* ifndef MODULE */

@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  * --
  *
@@ -30,9 +30,19 @@
  *   Cleaned up and rewrote lowlevel routines.
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <asm/dma.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/sb.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>, Uros Bizjak <uros@kss-loka.si>");
+MODULE_DESCRIPTION("Routines for control of 8-bit SoundBlaster cards and clones");
+MODULE_LICENSE("GPL");
+
+#define chip_t sb_t
 
 #define SB8_CLOCK	1000000
 #define SB8_DEN(v)	((SB8_CLOCK + (v) / 2) / (v))
@@ -171,7 +181,7 @@ static int snd_sb8_playback_prepare(snd_pcm_substream_t * substream)
         /* Soundblaster hardware programming reference guide, 3-23 */
         snd_sbdsp_command(chip, SB_DSP_DMA8_EXIT);
         runtime->dma_area[0] = 0x80;
-        snd_dma_program(chip->dma8, runtime->dma_area, 1, DMA_MODE_WRITE);
+		snd_dma_program(chip->dma8, runtime->dma_addr, 1, DMA_MODE_WRITE);
         /* force interrupt */
         chip->mode = SB_MODE_HALT;
         snd_sbdsp_command(chip, SB_DSP_OUTPUT);
@@ -198,7 +208,7 @@ static int snd_sb8_playback_prepare(snd_pcm_substream_t * substream)
         snd_sbdsp_command(chip, count >> 8);
     }
     spin_unlock_irqrestore(&chip->reg_lock, flags);
-    snd_dma_program(chip->dma8, runtime->dma_area,
+	snd_dma_program(chip->dma8, runtime->dma_addr,
                     size, DMA_MODE_WRITE | DMA_AUTOINIT);
     return 0;
 }
@@ -310,7 +320,7 @@ static int snd_sb8_capture_prepare(snd_pcm_substream_t * substream)
         snd_sbdsp_command(chip, count >> 8);
     }
     spin_unlock_irqrestore(&chip->reg_lock, flags);
-    snd_dma_program(chip->dma8, runtime->dma_area,
+	snd_dma_program(chip->dma8, runtime->dma_addr,
                     size, DMA_MODE_READ | DMA_AUTOINIT);
     return 0;
 }
@@ -621,7 +631,7 @@ int snd_sb8dsp_pcm(sb_t *chip, int device, snd_pcm_t ** rpcm)
     snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &snd_sb8_playback_ops);
     snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &snd_sb8_capture_ops);
 
-    snd_pcm_lib_preallocate_pages_for_all(pcm, 64*1024, 64*1024, GFP_KERNEL|GFP_DMA);
+	snd_pcm_lib_preallocate_isa_pages_for_all(pcm, 64*1024, 64*1024);
 
     if (rpcm)
         *rpcm = pcm;

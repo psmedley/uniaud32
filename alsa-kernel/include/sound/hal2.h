@@ -1,5 +1,5 @@
-#ifndef __HAL2_H
-#define __HAL2_H
+#ifndef __SOUND_HAL2_H
+#define __SOUND_HAL2_H
 
 /*
  *  Global structures used for HAL2 part of ALSA driver
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -402,4 +402,4 @@ extern void snd_hal2_interrupt(snd_hal2_card_t * hal2);
 
 extern snd_pcm_t *snd_hal2_pcm(snd_hal2_card_t *hal2);
 
-#endif				/* __HAL2_H */
+#endif /* __SOUND_HAL2_H */

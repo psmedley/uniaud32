@@ -15,7 +15,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -43,16 +43,18 @@
  *  full control over both mixers.
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
-
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/ad1848.h>
 #include <sound/sb.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("George Talusan <gstalusan@uwaterloo.ca>");
 MODULE_DESCRIPTION("C-Media CMI8330");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{C-Media,CMI8330,isapnp:{CMI0001,@@@0001,@X@0001}}}");
 
@@ -74,7 +76,6 @@ static long snd_wssport[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;
 static int snd_wssirq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;
 static int snd_wssdma[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;
 
-MODULE_AUTHOR("George Talusan <gstalusan@uwaterloo.ca>");
 MODULE_PARM(snd_index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(snd_index, "Index value for CMI8330 soundcard.");
 MODULE_PARM_SYNTAX(snd_index, SNDRV_INDEX_DESC);
@@ -186,7 +187,7 @@ static snd_kcontrol_new_t snd_cmi8330_controls[] __devinitdata = {
 AD1848_DOUBLE("Master Playback Volume", 0, CMI8330_MASTVOL, CMI8330_MASTVOL, 4, 0, 15, 0),
 AD1848_SINGLE("Loud Playback Switch", 0, CMI8330_MUTEMUX, 6, 1, 1),
 AD1848_DOUBLE("PCM Playback Switch", 0, AD1848_LEFT_OUTPUT, AD1848_RIGHT_OUTPUT, 7, 7, 1, 1),
-AD1848_DOUBLE("PCM Playback Volume", 0, AD1848_LEFT_OUTPUT, AD1848_RIGHT_OUTPUT, 0, 0, 63, 0),
+AD1848_DOUBLE("PCM Playback Volume", 0, AD1848_LEFT_OUTPUT, AD1848_RIGHT_OUTPUT, 0, 0, 63, 1),
 AD1848_DOUBLE("Line Playback Switch", 0, CMI8330_MUTEMUX, CMI8330_MUTEMUX, 4, 3, 1, 0),
 AD1848_DOUBLE("Line Playback Volume", 0, CMI8330_LINVOL, CMI8330_LINVOL, 4, 0, 15, 0),
 AD1848_DOUBLE("Line Capture Switch", 0, CMI8330_RMUX3D, CMI8330_RMUX3D, 2, 1, 1, 0),
@@ -460,7 +461,7 @@ static void __exit alsa_card_cmi8330_exit(void)
 static int __init snd_cmi8330_isapnp_detect(struct isapnp_card *card,
                                             const struct isapnp_card_id *id)
 {
-	static int dev = 0;
+	static int dev;
 	int res;
 
 	for ( ; dev < SNDRV_CARDS; dev++) {
@@ -498,7 +499,7 @@ static int __init alsa_card_cmi8330_init(void)
 
 	if (!cards) {
 #ifdef MODULE
-		snd_printk("CMI8330 not found or device busy\n");
+		printk(KERN_ERR "CMI8330 not found or device busy\n");
 #endif
 		return -ENODEV;
 	}
@@ -510,7 +511,7 @@ module_exit(alsa_card_cmi8330_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-cmi8330=snd_enable,snd_index,snd_id,snd_isapnp,
+/* format is: snd-cmi8330=snd_enable,snd_index,snd_id,snd_isapnp,
 			       snd_sbport,snd_sbirq,
 			       snd_sbdma8,snd_sbdma16,
 			       snd_wssport,snd_wssirq,
@@ -531,7 +532,7 @@ static int __init alsa_card_cmi8330_setup(char *str)
 	       get_option(&str,&snd_sbirq[nr_dev]) == 2 &&
 	       get_option(&str,&snd_sbdma8[nr_dev]) == 2 &&
 	       get_option(&str,&snd_sbdma16[nr_dev]) == 2 &&
-	       get_option(&str,&snd_wssport[nr_dev]) == 2 &&
+	       get_option(&str,(int *)&snd_wssport[nr_dev]) == 2 &&
 	       get_option(&str,&snd_wssirq[nr_dev]) == 2 &&
 	       get_option(&str,&snd_wssdma[nr_dev]) == 2);
 #ifdef __ISAPNP__
@@ -542,6 +543,6 @@ static int __init alsa_card_cmi8330_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-cmi8330=", alsa_card_cmi8330_setup);
+__setup("snd-cmi8330=", alsa_card_cmi8330_setup);
 
 #endif /* ifndef MODULE */

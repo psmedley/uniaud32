@@ -21,11 +21,15 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
+#define __NO_VERSION__
 #include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/gus.h>
 #include "gus_tables.h"
@@ -90,6 +94,7 @@ static int snd_gf1_pcm_block_change(snd_pcm_substream_t * substream,
 		block.cmd |= SNDRV_GF1_DMA_16BIT;
 	block.addr = addr & ~31;
 	block.buffer = runtime->dma_area + offset;
+	block.buf_addr = runtime->dma_addr + offset;
 	block.count = count;
 	block.private_data = pcmp;
 	block.ack = snd_gf1_pcm_block_change_ack;
@@ -581,7 +586,7 @@ static int snd_gf1_pcm_capture_prepare(snd_pcm_substream_t * substream)
 	snd_gf1_i_write8(gus, SNDRV_GF1_GB_RECORD_RATE, runtime->rate_den - 2);
 	snd_gf1_i_write8(gus, SNDRV_GF1_GB_REC_DMA_CONTROL, 0);	/* disable sampling */
 	snd_gf1_i_look8(gus, SNDRV_GF1_GB_REC_DMA_CONTROL);	/* Sampling Control Register */
-	snd_dma_program(gus->gf1.dma2, &runtime->dma_area, gus->c_period_size, DMA_MODE_READ);
+	snd_dma_program(gus->gf1.dma2, runtime->dma_addr, gus->c_period_size, DMA_MODE_READ);
 	return 0;
 }
 
@@ -668,7 +673,7 @@ static snd_pcm_hardware_t snd_gf1_pcm_playback =
 	info:			SNDRV_PCM_INFO_NONINTERLEAVED,
 	formats:		(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
 				 SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE),
-	rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
+	rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
 	rate_min:		5510,
 	rate_max:		48000,
 	channels_min:		1,
@@ -924,16 +929,17 @@ int snd_gf1_pcm_new(snd_gus_card_t * gus, int pcm_dev, int control_index, snd_pc
 	snd_kcontrol_t *kctl;
 	snd_pcm_t *pcm;
 	snd_pcm_substream_t *substream;
-	int err;
+	int capture, err;
 
 	if (rpcm)
 		*rpcm = NULL;
 	card = gus->card;
+	capture = !gus->interwave && !gus->ess_flag && !gus->ace_flag ? 1 : 0;
 	err = snd_pcm_new(card,
 			  gus->interwave ? "AMD InterWave" : "GF1",
 			  pcm_dev,
 			  gus->gf1.pcm_channels / 2,
-			  !gus->interwave && !gus->ess_flag ? 1 : 0,
+			  capture,
 			  &pcm);
 	if (err < 0)
 		return err;
@@ -943,16 +949,15 @@ int snd_gf1_pcm_new(snd_gus_card_t * gus, int pcm_dev, int control_index, snd_pc
 	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &snd_gf1_pcm_playback_ops);
 
 	for (substream = pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream; substream; substream = substream->next)
-		snd_pcm_lib_preallocate_pages(substream, 64*1024, gus->gf1.dma1 > 3 ? 128*1024 : 64*1024, GFP_KERNEL|GFP_DMA);
+		snd_pcm_lib_preallocate_isa_pages(substream, 64*1024, gus->gf1.dma1 > 3 ? 128*1024 : 64*1024);
 	
 	pcm->info_flags = 0;
 	pcm->dev_subclass = SNDRV_PCM_SUBCLASS_GENERIC_MIX;
-	if (gus->interwave && !gus->ess_flag && !gus->ace_flag) {
-		/* capture setup */
+	if (capture) {
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &snd_gf1_pcm_capture_ops);
 		if (gus->gf1.dma2 == gus->gf1.dma1)
 			pcm->info_flags |= SNDRV_PCM_INFO_HALF_DUPLEX;
-		snd_pcm_lib_preallocate_pages(pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream, 64*1024, gus->gf1.dma2 > 3 ? 128*1024 : 64*1024, GFP_KERNEL|GFP_DMA);
+		snd_pcm_lib_preallocate_isa_pages(pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream, 64*1024, gus->gf1.dma2 > 3 ? 128*1024 : 64*1024);
 	}
 	strcpy(pcm->name, pcm->id);
 	if (gus->interwave) {

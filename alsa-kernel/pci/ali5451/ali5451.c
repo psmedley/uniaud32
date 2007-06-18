@@ -26,15 +26,21 @@
  */
 
 #define __SNDRV_OSS_COMPAT__
-#define SNDRV_MAIN_OBJECT_FILE
 
-#include "sound/driver.h"
-#include "sound/pcm.h"
-#include "sound/info.h"
-#include "sound/ac97_codec.h"
-#include "sound/mpu401.h"
+#include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
+#include <linux/pci.h>
+#include <linux/slab.h>
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/info.h>
+#include <sound/ac97_codec.h>
+#include <sound/mpu401.h>
 #define SNDRV_GET_ID
-#include "sound/initval.h"
+#include <sound/initval.h>
 
 MODULE_AUTHOR("Matt Wu <Matt_Wu@acersoftech.com.cn>");
 MODULE_DESCRIPTION("ALI M5451");
@@ -2323,7 +2329,7 @@ static int __init alsa_card_ali_init(void)
 
     if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-        //		snd_printk("ALi pci audio not found or device busy.\n");
+//		snd_printk(KERN_ERR "ALi pci audio not found or device busy.\n");
 #endif
         return err;
     }

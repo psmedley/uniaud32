@@ -15,7 +15,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -29,8 +29,8 @@
  * Also, multiple access is allowed to a single rawmidi device.
  *
  * Typical usage is like following:
- * - Load snd-card-virmidi module.
- *	# modprobe snd-card-virmidi snd_index=2
+ * - Load snd-virmidi module.
+ *	# modprobe snd-virmidi snd_index=2
  *   Then, sequencer clients 72:0 to 75:0 will be created, which are
  *   mapped from /dev/snd/midiC1D0 to /dev/snd/midiC1D3, respectively.
  *
@@ -41,15 +41,19 @@
  * - Run application using a midi device (eg. /dev/snd/midiC1D0)
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/wait.h>
+#include <linux/sched.h>
+#include <sound/core.h>
 #include <sound/seq_kernel.h>
 #include <sound/seq_virmidi.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("Dummy soundcard for virtual rawmidi devices");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{ALSA,Virtual rawmidi device}}");
 
@@ -135,7 +139,7 @@ static int __init alsa_card_virmidi_init(void)
     for (dev = cards = 0; dev < SNDRV_CARDS && snd_enable[dev]; dev++) {
         if (snd_card_virmidi_probe(dev) < 0) {
 #ifdef MODULE
-            snd_printk("Card-VirMIDI #%i not found or device busy\n", dev + 1);
+			printk(KERN_ERR "Card-VirMIDI #%i not found or device busy\n", dev + 1);
 #endif
             break;
         }
@@ -143,7 +147,7 @@ static int __init alsa_card_virmidi_init(void)
     }
     if (!cards) {
 #ifdef MODULE
-        snd_printk("Card-VirMIDI soundcard not found or device busy\n");
+		printk(KERN_ERR "Card-VirMIDI soundcard not found or device busy\n");
 #endif
         return -ENODEV;
     }
@@ -163,7 +167,7 @@ module_exit(alsa_card_virmidi_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-virmidi=snd_enable,snd_index,snd_id,snd_midi_devs */
+/* format is: snd-virmidi=snd_enable,snd_index,snd_id,snd_midi_devs */
 
 static int __init alsa_card_virmidi_setup(char *str)
 {
@@ -179,6 +183,6 @@ static int __init alsa_card_virmidi_setup(char *str)
     return 1;
 }
 
-__setup("snd-card-virmidi=", alsa_card_virmidi_setup);
+__setup("snd-virmidi=", alsa_card_virmidi_setup);
 
 #endif /* ifndef MODULE */
