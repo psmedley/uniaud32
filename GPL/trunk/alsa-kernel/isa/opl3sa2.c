@@ -321,7 +321,7 @@ static int snd_opl3sa_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t 
 
 int snd_opl3sa_get_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
 {
-	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)_snd_kcontrol_chip(kcontrol);
+	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)snd_kcontrol_chip(kcontrol);
 	unsigned long flags;
 	int reg = kcontrol->private_value & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0xff;
@@ -338,7 +338,7 @@ int snd_opl3sa_get_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucon
 
 int snd_opl3sa_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
 {
-	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)_snd_kcontrol_chip(kcontrol);
+	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)snd_kcontrol_chip(kcontrol);
 	unsigned long flags;
 	int reg = kcontrol->private_value & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0xff;
@@ -389,7 +389,7 @@ int snd_opl3sa_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo
 
 int snd_opl3sa_get_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
 {
-	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)_snd_kcontrol_chip(kcontrol);
+	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)snd_kcontrol_chip(kcontrol);
 	unsigned long flags;
 	int left_reg = kcontrol->private_value & 0xff;
 	int right_reg = (kcontrol->private_value >> 8) & 0xff;
@@ -411,7 +411,7 @@ int snd_opl3sa_get_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucon
 
 int snd_opl3sa_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
 {
-	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)_snd_kcontrol_chip(kcontrol);
+	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)snd_kcontrol_chip(kcontrol);
 	unsigned long flags;
 	int left_reg = kcontrol->private_value & 0xff;
 	int right_reg = (kcontrol->private_value >> 8) & 0xff;
@@ -468,7 +468,7 @@ OPL3SA_DOUBLE("Tone Control - Treble", 0, 0x16, 0x16, 4, 0, 7, 0)
 
 static void snd_opl3sa_master_free(snd_kcontrol_t *kcontrol)
 {
-	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)_snd_kcontrol_chip(kcontrol);
+	struct snd_opl3sa *oplcard = (struct snd_opl3sa *)snd_kcontrol_chip(kcontrol);
 	
 	oplcard->master_switch = NULL;
 	oplcard->master_volume = NULL;
