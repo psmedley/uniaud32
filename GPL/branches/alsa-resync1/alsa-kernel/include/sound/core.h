@@ -372,11 +372,11 @@ void snd_printd(const char *format, ...);
 #else /* !TARGET_OS2 */
 
 #ifdef CONFIG_SND_VERBOSE_PRINTK
-#define snd_printk(format, args...) \
-	snd_verbose_printk(__FILE__, __LINE__, format, ##args)
+#define snd_printk(fmt, args...) \
+	snd_verbose_printk(__FILE__, __LINE__, fmt ,##args)
 #else
-#define snd_printk(format, args...) \
-	printk(format, ##args)
+#define snd_printk(fmt, args...) \
+	printk(fmt ,##args)
 #endif
 
 #ifdef CONFIG_SND_DEBUG
@@ -384,8 +384,8 @@ void snd_printd(const char *format, ...);
 #define __ASTRING__(x) #x
 
 #ifdef CONFIG_SND_VERBOSE_PRINTK
-#define snd_printd(format, args...) \
-	snd_verbose_printd(__FILE__, __LINE__, format, ##args)
+#define snd_printd(fmt, args...) \
+	snd_verbose_printd(__FILE__, __LINE__, fmt ,##args)
 #endif
 #define snd_assert(expr, args...) do {\
 	if (!(expr)) {\
@@ -402,8 +402,8 @@ void snd_printd(const char *format, ...);
 
 #else /* !CONFIG_SND_DEBUG */
 
-#define snd_printd(format, args...)	/* nothing */
-#define snd_assert(expr, args...)	/* nothing */
+#define snd_printd(fmt, args...)	/* nothing */
+#define snd_assert(expr, args...)	(void)(expr)
 #define snd_runtime_check(expr, args...) do { if (!(expr)) { args; } } while (0)
 
 #endif /* CONFIG_SND_DEBUG */

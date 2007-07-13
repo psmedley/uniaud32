@@ -71,8 +71,8 @@ MODULE_PARM_DESC(snd_isapnp, "ISA PnP detection for WaveFront soundcards.");
 MODULE_PARM_SYNTAX(snd_isapnp, SNDRV_ISAPNP_DESC);
 #endif
 MODULE_PARM(snd_cs4232_pcm_port, "1-" __MODULE_STRING(SNDRV_CARDS) "l");
-MODULE_PARM_DESC(snd_4232_port, "Port # for CS4232 PCM interface.");
-MODULE_PARM_SYNTAX(snd_cs4232_port, SNDRV_PORT12_DESC);
+MODULE_PARM_DESC(snd_cs4232_pcm_port, "Port # for CS4232 PCM interface.");
+MODULE_PARM_SYNTAX(snd_cs4232_pcm_port, SNDRV_PORT12_DESC);
 MODULE_PARM(snd_cs4232_pcm_irq, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(snd_cs4232_pcm_irq, "IRQ # for CS4232 PCM interface.");
 MODULE_PARM_SYNTAX(snd_cs4232_pcm_irq, SNDRV_ENABLED ",allows:{{5},{7},{9},{11},{12},{15}},dialog:list");
@@ -111,14 +111,14 @@ static const struct isapnp_card_id *snd_wavefront_isapnp_id[SNDRV_CARDS] = SNDRV
 static struct isapnp_card_id snd_wavefront_pnpids[] __devinitdata = {
 	{
 		ISAPNP_CARD_ID('C','S','C',0x7532),	/* Tropez */
-		devs: { ISAPNP_DEVICE_ID('C','S','C',0x0000),	/* WSS */
+		.devs = { ISAPNP_DEVICE_ID('C','S','C',0x0000),	/* WSS */
 			ISAPNP_DEVICE_ID('C','S','C',0x0010),	/* CTRL */
 			ISAPNP_DEVICE_ID('P','n','P',0xb006),	/* MPU */
 			ISAPNP_DEVICE_ID('C','S','C',000004), }, /* SYNTH */
 	},
 	{
 		ISAPNP_CARD_ID('C','S','C',0x7632),	/* Tropez+ */
-		devs: { ISAPNP_DEVICE_ID('C','S','C',0x0000),	/* WSS */
+		.devs = { ISAPNP_DEVICE_ID('C','S','C',0x0000),	/* WSS */
 			ISAPNP_DEVICE_ID('C','S','C',0x0010),	/* CTRL */
 			ISAPNP_DEVICE_ID('P','n','P',0xb006),	/* MPU */
 			ISAPNP_DEVICE_ID('C','S','C',000004), }, /* SYNTH */

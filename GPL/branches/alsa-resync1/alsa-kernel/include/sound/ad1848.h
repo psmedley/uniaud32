@@ -166,37 +166,21 @@ int snd_ad1848_pcm(ad1848_t * chip, int device, snd_pcm_t **rpcm);
 int snd_ad1848_mixer(ad1848_t * chip);
 void snd_ad1848_interrupt(int irq, void *dev_id, struct pt_regs *regs);
 
-#ifdef TARGET_OS2
 #define AD1848_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
-  0, 0, snd_ad1848_info_single, \
-  snd_ad1848_get_single, snd_ad1848_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#else
-#define AD1848_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_ad1848_info_single, \
-  get: snd_ad1848_get_single, put: snd_ad1848_put_single, \
-  private_value: reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_ad1848_info_single, \
+  .get = snd_ad1848_get_single, .put = snd_ad1848_put_single, \
+  .private_value = reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 int snd_ad1848_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo);
 int snd_ad1848_get_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
 int snd_ad1848_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
 
-#ifdef TARGET_OS2
 #define AD1848_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
-  0, 0, snd_ad1848_info_double, \
-  snd_ad1848_get_double, snd_ad1848_put_double, \
-  left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#else
-#define AD1848_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_ad1848_info_double, \
-  get: snd_ad1848_get_double, put: snd_ad1848_put_double, \
-  private_value: left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_ad1848_info_double, \
+  .get = snd_ad1848_get_double, .put = snd_ad1848_put_double, \
+  .private_value = left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
 
 int snd_ad1848_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo);
 int snd_ad1848_get_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);

@@ -81,13 +81,8 @@ static const struct isapnp_card_id *snd_es968_isapnp_id[SNDRV_CARDS] __devinitda
 
 static struct isapnp_card_id snd_es968_pnpids[] __devinitdata = {
     {
-#ifdef TARGET_OS2
-        0, ISAPNP_CARD_ID('E','S','S',0x0968),
-        { ISAPNP_DEVICE_ID('E','S','S',0x0968), }
-#else
         ISAPNP_CARD_ID('E','S','S',0x0968),
-    devs: { ISAPNP_DEVICE_ID('E','S','S',0x0968), }
-#endif
+                .devs = { ISAPNP_DEVICE_ID('E','S','S',0x0968), }
     },
     { ISAPNP_CARD_END, }
 };

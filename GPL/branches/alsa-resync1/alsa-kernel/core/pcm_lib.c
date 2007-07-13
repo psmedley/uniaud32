@@ -20,7 +20,6 @@
  *
  */
 
-#define __NO_VERSION__
 #include <sound/driver.h>
 #include <linux/slab.h>
 #include <linux/time.h>
@@ -2692,4 +2691,8 @@ EXPORT_SYMBOL(snd_pcm_lib_preallocate_pci_pages_for_all);
 EXPORT_SYMBOL(snd_pcm_lib_preallocate_sg_pages);
 EXPORT_SYMBOL(snd_pcm_lib_preallocate_sg_pages_for_all);
 EXPORT_SYMBOL(snd_pcm_sgbuf_ops_page);
+#endif
+#ifdef CONFIG_SBUS
+EXPORT_SYMBOL(snd_pcm_lib_preallocate_sbus_pages);
+EXPORT_SYMBOL(snd_pcm_lib_preallocate_sbus_pages_for_all);
 #endif

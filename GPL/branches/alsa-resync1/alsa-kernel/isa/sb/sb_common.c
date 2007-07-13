@@ -164,6 +164,9 @@ static int snd_sbdsp_probe(struct snd_sb * chip)
     case SB_HW_ALS4000:
         str = "16 (ALS-4000)";
         break;
+	case SB_HW_DT019X:
+		str = "(DT019X/ALS007)";
+		break;
     default:
         return -ENODEV;
     }
@@ -209,15 +212,9 @@ int snd_sbdsp_create(snd_card_t *card,
 {
     struct snd_sb *chip;
     int err;
-#ifdef TARGET_OS2
     static snd_device_ops_t ops = {
-        snd_sbdsp_dev_free,0,0
+		.dev_free =	snd_sbdsp_dev_free,
     };
-#else
-    static snd_device_ops_t ops = {
-    dev_free:       snd_sbdsp_dev_free,
-    };
-#endif
 
     snd_assert(r_chip != NULL, return -EINVAL);
     *r_chip = NULL;

@@ -15,11 +15,15 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 
 static void snd_gf1_interrupt_midi_in(snd_gus_card_t * gus)
@@ -220,35 +224,19 @@ static void snd_gf1_uart_output_trigger(snd_rawmidi_substream_t * substream, int
 	spin_unlock_irqrestore(&gus->uart_cmd_lock, flags);
 }
 
-#ifdef TARGET_OS2
 static snd_rawmidi_ops_t snd_gf1_uart_output =
 {
-	snd_gf1_uart_output_open,
-	snd_gf1_uart_output_close,
-	snd_gf1_uart_output_trigger,0
+	.open =		snd_gf1_uart_output_open,
+	.close =	snd_gf1_uart_output_close,
+	.trigger =	snd_gf1_uart_output_trigger,
 };
 
 static snd_rawmidi_ops_t snd_gf1_uart_input =
 {
-	snd_gf1_uart_input_open,
-	snd_gf1_uart_input_close,
-	snd_gf1_uart_input_trigger,0
+	.open =		snd_gf1_uart_input_open,
+	.close =	snd_gf1_uart_input_close,
+	.trigger =	snd_gf1_uart_input_trigger,
 };
-#else
-static snd_rawmidi_ops_t snd_gf1_uart_output =
-{
-	open:		snd_gf1_uart_output_open,
-	close:		snd_gf1_uart_output_close,
-	trigger:	snd_gf1_uart_output_trigger,
-};
-
-static snd_rawmidi_ops_t snd_gf1_uart_input =
-{
-	open:           snd_gf1_uart_input_open,
-	close:          snd_gf1_uart_input_close,
-	trigger:        snd_gf1_uart_input_trigger,
-};
-#endif
 
 int snd_gf1_rawmidi_new(snd_gus_card_t * gus, int device, snd_rawmidi_t ** rrawmidi)
 {

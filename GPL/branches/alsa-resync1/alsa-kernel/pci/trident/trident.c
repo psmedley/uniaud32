@@ -186,12 +186,15 @@ static void __devexit snd_trident_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-	0, 0, 0, "Trident4DWaveAudio",
-	snd_trident_ids,
-	snd_trident_probe,
-        snd_trident_remove,
-        SND_PCI_PM_CALLBACKS
-};                                
+	.name = "Trident4DWaveAudio",
+	.id_table = snd_trident_ids,
+	.probe = snd_trident_probe,
+	.remove = __devexit_p(snd_trident_remove),
+#ifdef CONFIG_PM
+	.suspend = snd_trident_suspend,
+	.resume = snd_trident_resume,
+#endif
+};
 
 static int __init alsa_card_trident_init(void)
 {

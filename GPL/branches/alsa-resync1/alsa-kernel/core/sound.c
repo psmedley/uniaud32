@@ -172,9 +172,9 @@ struct file_operations snd_fops =
 struct file_operations snd_fops =
 {
 #ifndef LINUX_2_2
-owner:		THIS_MODULE,
+	.owner =	THIS_MODULE,
 #endif
-    open:		snd_open
+	.open =		snd_open
 };
 #endif
 

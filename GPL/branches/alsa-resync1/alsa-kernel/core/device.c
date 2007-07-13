@@ -19,10 +19,10 @@
  *
  */
 
-#define __NO_VERSION__
 #include <sound/driver.h>
 #include <linux/slab.h>
 #include <linux/time.h>
+#include <linux/errno.h>
 #include <sound/core.h>
 
 /**

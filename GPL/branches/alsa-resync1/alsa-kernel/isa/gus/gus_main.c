@@ -92,23 +92,13 @@ static int snd_gus_joystick_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t 
 	return change;
 }
 
-#ifdef TARGET_OS2
 static snd_kcontrol_new_t snd_gus_joystick_control = {
-	SNDRV_CTL_ELEM_IFACE_CARD,0,0,
-	"Joystick Speed",0,0, 0,
-	snd_gus_joystick_info,
-	snd_gus_joystick_get,
-	snd_gus_joystick_put,0
+	.iface = SNDRV_CTL_ELEM_IFACE_CARD,
+	.name = "Joystick Speed",
+	.info = snd_gus_joystick_info,
+	.get = snd_gus_joystick_get,
+	.put = snd_gus_joystick_put
 };
-#else
-static snd_kcontrol_new_t snd_gus_joystick_control = {
-	iface: SNDRV_CTL_ELEM_IFACE_CARD,
-	name: "Joystick Speed",
-	info: snd_gus_joystick_info,
-	get: snd_gus_joystick_get,
-	put: snd_gus_joystick_put
-};
-#endif
 
 static void snd_gus_init_control(snd_gus_card_t *gus)
 {
@@ -172,15 +162,9 @@ int snd_gus_create(snd_card_t * card,
 {
 	snd_gus_card_t *gus;
 	int err;
-#ifdef TARGET_OS2
 	static snd_device_ops_t ops = {
-		snd_gus_dev_free,0,0
+		.dev_free =	snd_gus_dev_free,
 	};
-#else
-	static snd_device_ops_t ops = {
-		dev_free:	snd_gus_dev_free,
-	};
-#endif
 
 	*rgus = NULL;
 	gus = snd_magic_kcalloc(snd_gus_card_t, 0, GFP_KERNEL);

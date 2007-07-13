@@ -1726,28 +1726,25 @@ static int snd_es1968_capture_close(snd_pcm_substream_t * substream)
 }
 
 static snd_pcm_ops_t snd_es1968_playback_ops = {
-    /*	open:	  */	snd_es1968_playback_open,
-    /*	close:	  */	snd_es1968_playback_close,
-    /*	ioctl:	  */	snd_pcm_lib_ioctl,
-    /*	hw_params:*/	snd_es1968_hw_params,
-    /*	hw_free:  */	snd_es1968_hw_free,
-    /*	prepare:  */	snd_es1968_pcm_prepare,
-    /*	trigger:  */	snd_es1968_pcm_trigger,
-    /*	pointer:  */	snd_es1968_pcm_pointer,
-    0,0
+	.open =		snd_es1968_playback_open,
+	.close =	snd_es1968_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_es1968_hw_params,
+	.hw_free =	snd_es1968_hw_free,
+	.prepare =	snd_es1968_pcm_prepare,
+	.trigger =	snd_es1968_pcm_trigger,
+	.pointer =	snd_es1968_pcm_pointer,
 };
 
 static snd_pcm_ops_t snd_es1968_capture_ops = {
-    /*	open:	  */	snd_es1968_capture_open,
-    /*	close:	  */	snd_es1968_capture_close,
-    /*	ioctl:	  */	snd_pcm_lib_ioctl,
-    /*	hw_params:*/	snd_es1968_hw_params,
-    /*	hw_free:  */	snd_es1968_hw_free,
-    /*	prepare:  */	snd_es1968_pcm_prepare,
-    /*	trigger:  */	snd_es1968_pcm_trigger,
-    /*	pointer:  */	snd_es1968_pcm_pointer,
-    /*	copy:	  */	0,
-    0
+	.open =		snd_es1968_capture_open,
+	.close =	snd_es1968_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_es1968_hw_params,
+	.hw_free =	snd_es1968_hw_free,
+	.prepare =	snd_es1968_pcm_prepare,
+	.trigger =	snd_es1968_pcm_trigger,
+	.pointer =	snd_es1968_pcm_pointer,
 };
 
 
@@ -2547,7 +2544,7 @@ static int __devinit snd_es1968_create(snd_card_t * card,
 {
 #ifdef TARGET_OS2
     static snd_device_ops_t ops = {
-        snd_es1968_dev_free,0,0,0
+		.dev_free =	snd_es1968_dev_free,
     };
 #else
     static snd_device_ops_t ops = {
@@ -2691,11 +2688,11 @@ static int snd_es1968_joystick_put(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_
 
 static snd_kcontrol_new_t snd_es1968_control_switches[] __devinitdata = {
     {
-        /* .iface = */SNDRV_CTL_ELEM_IFACE_CARD,0,0,
-        /* .name =  */"Joystick",0,0,0,
-        /* .info =  */snd_es1968_joystick_info,
-        /* .get =   */snd_es1968_joystick_get,
-        /* .put =   */snd_es1968_joystick_put,
+		.name = "Joystick",
+		.iface = SNDRV_CTL_ELEM_IFACE_CARD,
+		.info = snd_es1968_joystick_info,
+		.get = snd_es1968_joystick_get,
+		.put = snd_es1968_joystick_put,
     }
 };
 
@@ -2838,12 +2835,11 @@ static void __devexit snd_es1968_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-    0, 0, 0,
-    "ES1968 (ESS Maestro)",
-    snd_es1968_ids,
-    snd_es1968_probe,
-    snd_es1968_remove,
-    SND_PCI_PM_CALLBACKS
+	.name = "ES1968 (ESS Maestro)",
+	.id_table = snd_es1968_ids,
+	.probe = snd_es1968_probe,
+	.remove = __devexit_p(snd_es1968_remove),
+	SND_PCI_PM_CALLBACKS
 };
 
 static int __init alsa_card_es1968_init(void)

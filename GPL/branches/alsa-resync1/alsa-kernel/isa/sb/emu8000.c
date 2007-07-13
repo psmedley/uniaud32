@@ -20,7 +20,6 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#define __NO_VERSION__
 #include <sound/driver.h>
 #include <linux/wait.h>
 #include <linux/sched.h>
@@ -865,47 +864,25 @@ static int mixer_bass_treble_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t
 	return change;
 }
 
-#ifdef TARGET_OS2
 static snd_kcontrol_new_t mixer_bass_control =
 {
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"Synth Tone Control - Bass",0,0, 0,
-	mixer_bass_treble_info,
-	mixer_bass_treble_get,
-	mixer_bass_treble_put,
-	0,
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Synth Tone Control - Bass",
+	.info = mixer_bass_treble_info,
+	.get = mixer_bass_treble_get,
+	.put = mixer_bass_treble_put,
+	.private_value = 0,
 };
 
 static snd_kcontrol_new_t mixer_treble_control =
 {
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"Synth Tone Control - Treble",0,0, 0,
-	mixer_bass_treble_info,
-	mixer_bass_treble_get,
-	mixer_bass_treble_put,
-	1,
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Synth Tone Control - Treble",
+	.info = mixer_bass_treble_info,
+	.get = mixer_bass_treble_get,
+	.put = mixer_bass_treble_put,
+	.private_value = 1,
 };
-#else
-static snd_kcontrol_new_t mixer_bass_control =
-{
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "Synth Tone Control - Bass",
-	info: mixer_bass_treble_info,
-	get: mixer_bass_treble_get,
-	put: mixer_bass_treble_put,
-	private_value: 0,
-};
-
-static snd_kcontrol_new_t mixer_treble_control =
-{
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "Synth Tone Control - Treble",
-	info: mixer_bass_treble_info,
-	get: mixer_bass_treble_get,
-	put: mixer_bass_treble_put,
-	private_value: 1,
-};
-#endif
 
 /*
  * chorus/reverb mode
@@ -954,47 +931,25 @@ static int mixer_chorus_reverb_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value
 	return change;
 }
 
-#ifdef TARGET_OS2
 static snd_kcontrol_new_t mixer_chorus_mode_control =
 {
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"Chorus Mode",0,0, 0,
-	mixer_chorus_reverb_info,
-	mixer_chorus_reverb_get,
-	mixer_chorus_reverb_put,
-	1,
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Chorus Mode",
+	.info = mixer_chorus_reverb_info,
+	.get = mixer_chorus_reverb_get,
+	.put = mixer_chorus_reverb_put,
+	.private_value = 1,
 };
 
 static snd_kcontrol_new_t mixer_reverb_mode_control =
 {
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"Reverb Mode",0,0,0,
-	mixer_chorus_reverb_info,
-	mixer_chorus_reverb_get,
-	mixer_chorus_reverb_put,
-	0,
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Reverb Mode",
+	.info = mixer_chorus_reverb_info,
+	.get = mixer_chorus_reverb_get,
+	.put = mixer_chorus_reverb_put,
+	.private_value = 0,
 };
-#else
-static snd_kcontrol_new_t mixer_chorus_mode_control =
-{
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "Chorus Mode",
-	info: mixer_chorus_reverb_info,
-	get: mixer_chorus_reverb_get,
-	put: mixer_chorus_reverb_put,
-	private_value: 1,
-};
-
-static snd_kcontrol_new_t mixer_reverb_mode_control =
-{
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "Reverb Mode",
-	info: mixer_chorus_reverb_info,
-	get: mixer_chorus_reverb_get,
-	put: mixer_chorus_reverb_put,
-	private_value: 0,
-};
-#endif
 
 /*
  * FM OPL3 chorus/reverb depth
@@ -1038,47 +993,26 @@ static int mixer_fm_depth_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * 
 	return change;
 }
 
-#ifdef TARGET_OS2
 static snd_kcontrol_new_t mixer_fm_chorus_depth_control =
 {
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"FM Chorus Depth",0,0,0,
-	mixer_fm_depth_info,
-	mixer_fm_depth_get,
-	mixer_fm_depth_put,
-	1,
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "FM Chorus Depth",
+	.info = mixer_fm_depth_info,
+	.get = mixer_fm_depth_get,
+	.put = mixer_fm_depth_put,
+	.private_value = 1,
 };
 
 static snd_kcontrol_new_t mixer_fm_reverb_depth_control =
 {
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"FM Reverb Depth",0,0,0,
-	mixer_fm_depth_info,
-	mixer_fm_depth_get,
-	mixer_fm_depth_put,
-	0,
-};
-#else
-static snd_kcontrol_new_t mixer_fm_chorus_depth_control =
-{
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "FM Chorus Depth",
-	info: mixer_fm_depth_info,
-	get: mixer_fm_depth_get,
-	put: mixer_fm_depth_put,
-	private_value: 1,
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "FM Reverb Depth",
+	.info = mixer_fm_depth_info,
+	.get = mixer_fm_depth_get,
+	.put = mixer_fm_depth_put,
+	.private_value = 0,
 };
 
-static snd_kcontrol_new_t mixer_fm_reverb_depth_control =
-{
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "FM Reverb Depth",
-	info: mixer_fm_depth_info,
-	get: mixer_fm_depth_get,
-	put: mixer_fm_depth_put,
-	private_value: 0,
-};
-#endif
 
 static snd_kcontrol_new_t *mixer_defs[EMU8000_NUM_CONTROLS] = {
 	&mixer_bass_control,
@@ -1155,15 +1089,9 @@ snd_emu8000_new(snd_card_t *card, int index, long port, int seq_ports, snd_seq_d
 	snd_seq_device_t *awe;
 	emu8000_t *hw;
 	int err;
-#ifdef TARGET_OS2
 	static snd_device_ops_t ops = {
-		snd_emu8000_dev_free,0,0
+		.dev_free = snd_emu8000_dev_free,
 	};
-#else
-	static snd_device_ops_t ops = {
-		dev_free: snd_emu8000_dev_free,
-	};
-#endif
 
 	if (awe_ret)
 		*awe_ret = NULL;

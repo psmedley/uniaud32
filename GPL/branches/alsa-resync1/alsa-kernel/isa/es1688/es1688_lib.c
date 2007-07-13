@@ -284,47 +284,25 @@ static int snd_es1688_init(es1688_t * chip, int enable)
 
  */
 
-#ifdef TARGET_OS2
 static ratnum_t clocks[2] = {
 	{
-		795444,
-		1,
-		128,
-		1,
+		.num = 795444,
+		.den_min = 1,
+		.den_max = 128,
+		.den_step = 1,
 	},
 	{
-		397722,
-		1,
-		128,
-		1,
+		.num = 397722,
+		.den_min = 1,
+		.den_max = 128,
+		.den_step = 1,
 	}
 };
 
 static snd_pcm_hw_constraint_ratnums_t hw_constraints_clocks  = {
-	2,
-	clocks,
+	.nrats = 2,
+	.rats = clocks,
 };
-#else
-static ratnum_t clocks[2] = {
-	{
-		num: 795444,
-		den_min: 1,
-		den_max: 128,
-		den_step: 1,
-	},
-	{
-		num: 397722,
-		den_min: 1,
-		den_max: 128,
-		den_step: 1,
-	}
-};
-
-static snd_pcm_hw_constraint_ratnums_t hw_constraints_clocks  = {
-	nrats: 2,
-	rats: clocks,
-};
-#endif
 
 static void snd_es1688_set_rate(es1688_t *chip, snd_pcm_substream_t *substream)
 {
@@ -540,79 +518,41 @@ static snd_pcm_uframes_t snd_es1688_capture_pointer(snd_pcm_substream_t * substr
 
  */
 
-#ifdef TARGET_OS2
 static snd_pcm_hardware_t snd_es1688_playback =
 {
-/*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_MMAP_VALID),
-/*	formats:	  */	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-/*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-/*	rate_min:	  */	4000,
-/*	rate_max:	  */	48000,
-/*	channels_min:	  */	1,
-/*	channels_max:	  */	2,
-/*	buffer_bytes_max:  */	65536,
-/*	period_bytes_min:  */	64,
-/*	period_bytes_max:  */	65536,
-/*	periods_min:	  */	1,
-/*	periods_max:	  */	1024,
-/*	fifo_size:	  */	0,
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	65536,
+	.period_bytes_min =	64,
+	.period_bytes_max =	65536,
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static snd_pcm_hardware_t snd_es1688_capture =
 {
-/*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_MMAP_VALID),
-/*	formats:	  */	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-/*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-/*	rate_min:	  */	4000,
-/*	rate_max:	  */	48000,
-/*	channels_min:	  */	1,
-/*	channels_max:	  */	2,
-/*	buffer_bytes_max:  */	65536,
-/*	period_bytes_min:  */	64,
-/*	period_bytes_max:  */	65536,
-/*	periods_min:	  */	1,
-/*	periods_max:	  */	1024,
-/*	fifo_size:	  */	0,
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	65536,
+	.period_bytes_min =	64,
+	.period_bytes_max =	65536,
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
-#else
-static snd_pcm_hardware_t snd_es1688_playback =
-{
-	info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-				 SNDRV_PCM_INFO_MMAP_VALID),
-	formats:		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-	rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-	rate_min:		4000,
-	rate_max:		48000,
-	channels_min:		1,
-	channels_max:		2,
-	buffer_bytes_max:	65536,
-	period_bytes_min:	64,
-	period_bytes_max:	65536,
-	periods_min:		1,
-	periods_max:		1024,
-	fifo_size:		0,
-};
-
-static snd_pcm_hardware_t snd_es1688_capture =
-{
-	info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-				 SNDRV_PCM_INFO_MMAP_VALID),
-	formats:		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-	rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-	rate_min:		4000,
-	rate_max:		48000,
-	channels_min:		1,
-	channels_max:		2,
-	buffer_bytes_max:	65536,
-	period_bytes_min:	64,
-	period_bytes_max:	65536,
-	periods_min:		1,
-	periods_max:		1024,
-	fifo_size:		0,
-};
-#endif
 
 /*
 
@@ -701,15 +641,10 @@ int snd_es1688_create(snd_card_t * card,
 		      unsigned short hardware,
 		      es1688_t **rchip)
 {
-#ifdef TARGET_OS2
 	static snd_device_ops_t ops = {
-		snd_es1688_dev_free,0,0
+		.dev_free =	snd_es1688_dev_free,
 	};
-#else
-	static snd_device_ops_t ops = {
-		dev_free:	snd_es1688_dev_free,
-	};
-#endif                                
+                                
 	es1688_t *chip;
 	int err;
 
@@ -765,51 +700,27 @@ int snd_es1688_create(snd_card_t * card,
 	return 0;
 }
 
-#ifdef TARGET_OS2
 static snd_pcm_ops_t snd_es1688_playback_ops = {
-	snd_es1688_playback_open,
-	snd_es1688_playback_close,
-	snd_es1688_ioctl,
-	snd_es1688_hw_params,
-	snd_es1688_hw_free,
-	snd_es1688_playback_prepare,
-	snd_es1688_playback_trigger,
-	snd_es1688_playback_pointer,0,0
+	.open =			snd_es1688_playback_open,
+	.close =		snd_es1688_playback_close,
+	.ioctl =		snd_es1688_ioctl,
+	.hw_params =		snd_es1688_hw_params,
+	.hw_free =		snd_es1688_hw_free,
+	.prepare =		snd_es1688_playback_prepare,
+	.trigger =		snd_es1688_playback_trigger,
+	.pointer =		snd_es1688_playback_pointer,
 };
 
 static snd_pcm_ops_t snd_es1688_capture_ops = {
-	snd_es1688_capture_open,
-	snd_es1688_capture_close,
-	snd_es1688_ioctl,
-	snd_es1688_hw_params,
-	snd_es1688_hw_free,
-	snd_es1688_capture_prepare,
-	snd_es1688_capture_trigger,
-	snd_es1688_capture_pointer,
+	.open =			snd_es1688_capture_open,
+	.close =		snd_es1688_capture_close,
+	.ioctl =		snd_es1688_ioctl,
+	.hw_params =		snd_es1688_hw_params,
+	.hw_free =		snd_es1688_hw_free,
+	.prepare =		snd_es1688_capture_prepare,
+	.trigger =		snd_es1688_capture_trigger,
+	.pointer =		snd_es1688_capture_pointer,
 };
-#else
-static snd_pcm_ops_t snd_es1688_playback_ops = {
-	open:			snd_es1688_playback_open,
-	close:			snd_es1688_playback_close,
-	ioctl:			snd_es1688_ioctl,
-	hw_params:		snd_es1688_hw_params,
-	hw_free:		snd_es1688_hw_free,
-	prepare:		snd_es1688_playback_prepare,
-	trigger:		snd_es1688_playback_trigger,
-	pointer:		snd_es1688_playback_pointer,
-};
-
-static snd_pcm_ops_t snd_es1688_capture_ops = {
-	open:			snd_es1688_capture_open,
-	close:			snd_es1688_capture_close,
-	ioctl:			snd_es1688_ioctl,
-	hw_params:		snd_es1688_hw_params,
-	hw_free:		snd_es1688_hw_free,
-	prepare:		snd_es1688_capture_prepare,
-	trigger:		snd_es1688_capture_trigger,
-	pointer:		snd_es1688_capture_pointer,
-};
-#endif
 
 static void snd_es1688_pcm_free(snd_pcm_t *pcm)
 {
@@ -888,19 +799,11 @@ static int snd_es1688_put_mux(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * 
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define ES1688_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0,xname, xindex, \
-  0, 0, snd_es1688_info_single, \
-  snd_es1688_get_single, snd_es1688_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#else
-#define ES1688_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_es1688_info_single, \
-  get: snd_es1688_get_single, put: snd_es1688_put_single, \
-  private_value: reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_es1688_info_single, \
+  .get = snd_es1688_get_single, .put = snd_es1688_put_single, \
+  .private_value = reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 static int snd_es1688_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -955,19 +858,11 @@ static int snd_es1688_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define ES1688_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0,xname, xindex, \
-  0, 0, snd_es1688_info_double, \
-  snd_es1688_get_double, snd_es1688_put_double, \
-  left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#else
-#define ES1688_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_es1688_info_double, \
-  get: snd_es1688_get_double, put: snd_es1688_put_double, \
-  private_value: left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_es1688_info_double, \
+  .get = snd_es1688_get_double, .put = snd_es1688_put_double, \
+  .private_value = left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
 
 static int snd_es1688_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -1091,19 +986,11 @@ ES1688_SINGLE("PC Speaker Playback Volume", 0, ES1688_SPEAKER_DEV, 0, 7, 0),
 ES1688_DOUBLE("Capture Volume", 0, ES1688_RECLEV_DEV, ES1688_RECLEV_DEV, 4, 0, 15, 0),
 ES1688_SINGLE("Capture Switch", 0, ES1688_REC_DEV, 4, 1, 1),
 {
-#ifdef TARGET_OS2
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"Capture Source",0,0, 0,
-	snd_es1688_info_mux,
-	snd_es1688_get_mux,
-	snd_es1688_put_mux,0
-#else
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "Capture Source",
-	info: snd_es1688_info_mux,
-	get: snd_es1688_get_mux,
-	put: snd_es1688_put_mux,
-#endif
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Capture Source",
+	.info = snd_es1688_info_mux,
+	.get = snd_es1688_get_mux,
+	.put = snd_es1688_put_mux,
 },
 };
 

@@ -251,6 +251,8 @@ static struct isapnp_card_id snd_sb16_pnpids[] __devinitdata = {
     /* Sound Blaster AWE 32 PnP */
     /* Note: This card has also a CTL0051:StereoEnhance device!!! */
     ISAPNP_SBAWE('C','T','L',0x0045,0x0031,0x0021),
+	/* Sound Blaster AWE 32 PnP */
+	ISAPNP_SBAWE('C','T','L',0x0046,0x0031,0x0021),
     /* Sound Blaster AWE 32 PnP */
     ISAPNP_SBAWE('C','T','L',0x0047,0x0031,0x0021),
     /* Sound Blaster AWE 32 PnP */

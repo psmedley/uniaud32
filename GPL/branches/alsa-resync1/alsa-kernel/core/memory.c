@@ -20,7 +20,6 @@
  *
  */
 
-#define __NO_VERSION__
 #include <sound/driver.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
@@ -30,6 +29,9 @@
 #include <linux/pci.h>
 #include <sound/core.h>
 #include <sound/info.h>
+#ifdef CONFIG_SBUS
+#include <asm/sbus.h>
+#endif
 #include <sound/memalloc.h>
 
 /*

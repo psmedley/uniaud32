@@ -1010,37 +1010,20 @@ static int snd_sb_qsound_space_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value
 }
 #ifdef TARGET_OS2
 static snd_kcontrol_new_t snd_sb_qsound_switch = {
-    SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-    "3D Control - Switch",0,0, 0,
-    snd_sb_qsound_switch_info,
-    snd_sb_qsound_switch_get,
-    snd_sb_qsound_switch_put,0
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "3D Control - Switch",
+	.info = snd_sb_qsound_switch_info,
+	.get = snd_sb_qsound_switch_get,
+	.put = snd_sb_qsound_switch_put
 };
 
 static snd_kcontrol_new_t snd_sb_qsound_space = {
-    SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-    "3D Control - Space",0,0, 0,
-    snd_sb_qsound_space_info,
-    snd_sb_qsound_space_get,
-    snd_sb_qsound_space_put,0
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "3D Control - Space",
+	.info = snd_sb_qsound_space_info,
+	.get = snd_sb_qsound_space_get,
+	.put = snd_sb_qsound_space_put
 };
-#else
-static snd_kcontrol_new_t snd_sb_qsound_switch = {
-iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-    name: "3D Control - Switch",
-    info: snd_sb_qsound_switch_info,
-    get: snd_sb_qsound_switch_get,
-    put: snd_sb_qsound_switch_put
-};
-
-static snd_kcontrol_new_t snd_sb_qsound_space = {
-iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-    name: "3D Control - Space",
-    info: snd_sb_qsound_space_info,
-    get: snd_sb_qsound_space_get,
-    put: snd_sb_qsound_space_put
-};
-#endif
 
 static int snd_sb_qsound_build(snd_sb_csp_t * p)
 {

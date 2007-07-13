@@ -23,6 +23,7 @@
 #include <sound/driver.h>
 #include <linux/init.h>
 #include <linux/time.h>
+#include <linux/threads.h>
 #include <linux/interrupt.h>
 #include <sound/core.h>
 #include <sound/timer.h>
@@ -51,12 +52,12 @@ static int rtctimer_stop(snd_timer_t *t);
  * The hardware dependent description for this timer.
  */
 static struct _snd_timer_hardware rtc_hw = {
-	flags:		SNDRV_TIMER_HW_FIRST|SNDRV_TIMER_HW_AUTO,
-	ticks:		100000000L,		/* FIXME: XXX */
-	open:		rtctimer_open,
-	close:		rtctimer_close,
-	start:		rtctimer_start,
-	stop:		rtctimer_stop,
+	.flags =	SNDRV_TIMER_HW_FIRST|SNDRV_TIMER_HW_AUTO,
+	.ticks =	100000000L,		/* FIXME: XXX */
+	.open =		rtctimer_open,
+	.close =	rtctimer_close,
+	.start =	rtctimer_start,
+	.stop =		rtctimer_stop,
 };
 
 int rtctimer_freq = RTC_FREQ;		/* frequency */
