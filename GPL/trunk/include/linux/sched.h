@@ -1,6 +1,8 @@
 #ifndef _LINUX_SCHED_H
 #define _LINUX_SCHED_H
 
+#include <dbgos2.h>
+
 #include <asm/param.h>	/* for HZ */
 
 #define TASK_RUNNING		0

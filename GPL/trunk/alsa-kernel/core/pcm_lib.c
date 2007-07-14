@@ -896,7 +896,7 @@ int snd_pcm_hw_rule_add(snd_pcm_runtime_t *runtime, unsigned int cond,
     va_start(args, dep);
 
 #ifdef DEBUG
-    //        dprintf(("snd_pcm_hw_rule_add. func() = %x, var = %d",func, var));
+            dprintf(("snd_pcm_hw_rule_add. func() = %x, var = %d",func, var));
 #endif
     if (constrs->rules_num >= constrs->rules_all) {
         snd_pcm_hw_rule_t *new;
