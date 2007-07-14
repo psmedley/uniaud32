@@ -17,11 +17,13 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 
 #define chip_t snd_gus_card_t
@@ -124,45 +126,23 @@ static void snd_gf1_interrupt_timer2(snd_gus_card_t * gus)
 
  */
 
-#ifdef TARGET_OS2
 static struct _snd_timer_hardware snd_gf1_timer1 =
 {
-	SNDRV_TIMER_HW_STOP,
-	80000,
-	256,
-        0,0,0,
-	snd_gf1_timer1_start,
-	snd_gf1_timer1_stop,
+	.flags =	SNDRV_TIMER_HW_STOP,
+	.resolution =	80000,
+	.ticks =	256,
+	.start =	snd_gf1_timer1_start,
+	.stop =		snd_gf1_timer1_stop,
 };
 
 static struct _snd_timer_hardware snd_gf1_timer2 =
 {
-	SNDRV_TIMER_HW_STOP,
-	320000,
-	256,
-        0,0,0,
-	snd_gf1_timer2_start,
-	snd_gf1_timer2_stop,
+	.flags =	SNDRV_TIMER_HW_STOP,
+	.resolution =	320000,
+	.ticks =	256,
+	.start =	snd_gf1_timer2_start,
+	.stop =		snd_gf1_timer2_stop,
 };
-#else
-static struct _snd_timer_hardware snd_gf1_timer1 =
-{
-	flags:          SNDRV_TIMER_HW_STOP,
-	resolution:     80000,
-	ticks:          256,
-	start:          snd_gf1_timer1_start,
-	stop:           snd_gf1_timer1_stop,
-};
-
-static struct _snd_timer_hardware snd_gf1_timer2 =
-{
-	flags:          SNDRV_TIMER_HW_STOP,
-	resolution:     320000,
-	ticks:          256,
-	start:          snd_gf1_timer2_start,
-	stop:           snd_gf1_timer2_stop,
-};
-#endif
 
 static void snd_gf1_timer1_free(snd_timer_t *timer)
 {

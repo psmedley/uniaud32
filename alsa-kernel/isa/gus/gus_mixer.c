@@ -15,11 +15,14 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/gus.h>
 
@@ -29,19 +32,11 @@
  *
  */
 
-#ifdef TARGET_OS2
 #define GF1_SINGLE(xname, xindex, shift, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_gf1_info_single, \
-  snd_gf1_get_single, snd_gf1_put_single, \
-  shift | (invert << 8) }
-#else
-#define GF1_SINGLE(xname, xindex, shift, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_gf1_info_single, \
-  get: snd_gf1_get_single, put: snd_gf1_put_single, \
-  private_value: shift | (invert << 8) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_gf1_info_single, \
+  .get = snd_gf1_get_single, .put = snd_gf1_put_single, \
+  .private_value = shift | (invert << 8) }
 
 static int snd_gf1_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -87,19 +82,11 @@ static int snd_gf1_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * 
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define ICS_DOUBLE(xname, xindex, addr) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_ics_info_double, \
-  snd_ics_get_double, snd_ics_put_double, \
-  addr }
-#else
-#define ICS_DOUBLE(xname, xindex, addr) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_ics_info_double, \
-  get: snd_ics_get_double, put: snd_ics_put_double, \
-  private_value: addr }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_ics_info_double, \
+  .get = snd_ics_get_double, .put = snd_ics_put_double, \
+  .private_value = addr }
 
 static int snd_ics_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {

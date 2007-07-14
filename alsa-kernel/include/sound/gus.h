@@ -1,5 +1,5 @@
-#ifndef __GUS_H
-#define __GUS_H
+#ifndef __SOUND_GUS_H
+#define __SOUND_GUS_H
 
 /*
  *  Global structures used for GUS part of ALSA driver
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -30,8 +30,9 @@
 #include "ainstr_iw.h"
 #include "ainstr_gf1.h"
 #include "ainstr_simple.h"
+#include <asm/io.h>
 
-#define SNDRV_SEQ_DEV_ID_GUS			"synth-gus"
+#define SNDRV_SEQ_DEV_ID_GUS			"gus-synth"
 
 /* IO ports */
 
@@ -215,6 +216,7 @@ typedef struct _snd_gf1_mem {
 
 typedef struct snd_gf1_dma_block {
 	void *buffer;		/* buffer in computer's RAM */
+	unsigned long buf_addr;	/* buffer address */
 	unsigned int addr;	/* address in onboard memory */
 	unsigned int count;	/* count in bytes */
 	unsigned int cmd;	/* DMA command (format) */
@@ -604,7 +606,7 @@ int snd_gf1_mem_proc_done(snd_gus_card_t * gus);
 /* gus_dma.c */
 
 void snd_gf1_dma_program(snd_gus_card_t * gus, unsigned int addr,
-			 const void *buf, unsigned int count,
+			 unsigned long buf_addr, unsigned int count,
 			 unsigned int cmd);
 void snd_gf1_dma_ack(snd_gus_card_t * gus);
 int snd_gf1_dma_init(snd_gus_card_t * gus);
@@ -695,7 +697,7 @@ int snd_gus_dram_write(snd_gus_card_t *gus, char *ptr,
 int snd_gus_dram_read(snd_gus_card_t *gus, char *ptr,
 		      unsigned int addr, unsigned int size, int rom);
 
-#ifdef CONFIG_SND_SEQUENCER
+#if defined(CONFIG_SND_SEQUENCER) || defined(CONFIG_SND_SEQUENCER_MODULE)
 
 /* gus_sample.c */
 void snd_gus_sample_event(snd_seq_event_t *ev, snd_gus_port_t *p);
@@ -723,6 +725,6 @@ int snd_gus_simple_get_sample(void *private_data, simple_instrument_t *instr,
 int snd_gus_simple_remove_sample(void *private_data, simple_instrument_t *instr,
 				 int atomic);
 
-#endif				/* CONFIG_SND_SEQUENCER */
+#endif /* CONFIG_SND_SEQUENCER */
 
-#endif				/* __GUS_H */
+#endif /* __SOUND_GUS_H */

@@ -16,20 +16,16 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * 
- *================================================================
- * For enabling this timer, apply the patch file to your kernel.
- * The configure script checks the patch automatically.
- * The patches, rtc-xxx.dif, are found under utils/patches, where
- * xxx is the kernel version.
- *================================================================
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <linux/threads.h>
+#include <linux/interrupt.h>
+#include <sound/core.h>
 #include <sound/timer.h>
 #include <sound/info.h>
 
@@ -53,20 +49,20 @@ static int rtctimer_stop(snd_timer_t *t);
 
 
 /*
- * The harware depenant description for this timer.
+ * The hardware dependent description for this timer.
  */
 static struct _snd_timer_hardware rtc_hw = {
-	flags:		SNDRV_TIMER_HW_FIRST|SNDRV_TIMER_HW_AUTO,
-	ticks:		100000000L,		/* FIXME: XXX */
-	open:		rtctimer_open,
-	close:		rtctimer_close,
-	start:		rtctimer_start,
-	stop:		rtctimer_stop,
+	.flags =	SNDRV_TIMER_HW_FIRST|SNDRV_TIMER_HW_AUTO,
+	.ticks =	100000000L,		/* FIXME: XXX */
+	.open =		rtctimer_open,
+	.close =	rtctimer_close,
+	.start =	rtctimer_start,
+	.stop =		rtctimer_stop,
 };
 
 int rtctimer_freq = RTC_FREQ;		/* frequency */
 static snd_timer_t *rtctimer;
-static volatile int rtc_inc = 0;
+static atomic_t rtc_inc = ATOMIC_INIT(0);
 static rtc_task_t rtc_task;
 
 /* tasklet */
@@ -77,6 +73,12 @@ static struct tasklet_struct rtc_tq;
 static int
 rtctimer_open(snd_timer_t *t)
 {
+	int err;
+
+	err = rtc_register(&rtc_task);
+	if (err < 0)
+		return err;
+	t->private_data = &rtc_task;
 	MOD_INC_USE_COUNT;
 	return 0;
 }
@@ -84,6 +86,11 @@ rtctimer_open(snd_timer_t *t)
 static int
 rtctimer_close(snd_timer_t *t)
 {
+	rtc_task_t *rtc = t->private_data;
+	if (rtc) {
+		rtc_unregister(rtc);
+		t->private_data = NULL;
+	}
 	MOD_DEC_USE_COUNT;
 	return 0;
 }
@@ -95,7 +102,7 @@ rtctimer_start(snd_timer_t *timer)
 	snd_assert(rtc != NULL, return -EINVAL);
 	rtc_control(rtc, RTC_IRQP_SET, rtctimer_freq);
 	rtc_control(rtc, RTC_PIE_ON, 0);
-	rtc_inc = 0;
+	atomic_set(&rtc_inc, 0);
 	return 0;
 }
 
@@ -113,32 +120,31 @@ rtctimer_stop(snd_timer_t *timer)
  */
 static void rtctimer_interrupt(void *private_data)
 {
-	rtc_inc++;
+	atomic_inc(&rtc_inc);
 #ifdef USE_TASKLET
 	tasklet_hi_schedule(&rtc_tq);
 #else
-	snd_timer_interrupt((snd_timer_t*)private_data, rtc_inc);
-	rtc_inc = 0;
+	{
+		int ticks = atomic_read(&rtc_inc);
+		snd_timer_interrupt((snd_timer_t*)private_data, ticks);
+		atomic_sub(ticks, &rtc_inc);
+	}
 #endif /* USE_TASKLET */
 }
 
 #ifdef USE_TASKLET
-static void rtctimer_interrupt2(void *private_data)
+static void rtctimer_interrupt2(unsigned long private_data)
 {
-	snd_timer_t *timer = private_data;
+	snd_timer_t *timer = (snd_timer_t *)private_data;
+	int ticks;
+
 	snd_assert(timer != NULL, return);
 	do {
-		snd_timer_interrupt(timer, 1);
-	} while (--rtc_inc > 0);
+		ticks = atomic_read(&rtc_inc);
+		snd_timer_interrupt(timer, ticks);
+	} while (!atomic_sub_and_test(ticks, &rtc_inc));
 }
 #endif /* USE_TASKLET */
-
-static void rtctimer_private_free(snd_timer_t *timer)
-{
-	rtc_task_t *rtc = timer->private_data;
-	if (rtc)
-		rtc_unregister(rtc);
-}
 
 
 /*
@@ -150,13 +156,13 @@ static int __init rtctimer_init(void)
 	snd_timer_t *timer;
 
 	if (rtctimer_freq < 2 || rtctimer_freq > 8192) {
-		snd_printk("rtctimer: invalid frequency %d\n", rtctimer_freq);
+		snd_printk(KERN_ERR "rtctimer: invalid frequency %d\n", rtctimer_freq);
 		return -EINVAL;
 	}
 	for (order = 1; rtctimer_freq > order; order <<= 1)
 		;
 	if (rtctimer_freq != order) {
-		snd_printk("rtctimer: invalid frequency %d\n", rtctimer_freq);
+		snd_printk(KERN_ERR "rtctimer: invalid frequency %d\n", rtctimer_freq);
 		return -EINVAL;
 	}
 
@@ -166,30 +172,23 @@ static int __init rtctimer_init(void)
 		return err;
 
 #ifdef USE_TASKLET
-	tasklet_init(&rtc_tq, rtctimer_interrupt2, timer);
+	tasklet_init(&rtc_tq, rtctimer_interrupt2, (unsigned long)timer);
 #endif /* USE_TASKLET */
 
 	strcpy(timer->name, "RTC timer");
 	timer->hw = rtc_hw;
 	timer->hw.resolution = NANO_SEC / rtctimer_freq;
 
-	/* register RTC callback */
+	/* set up RTC callback */
 	rtc_task.func = rtctimer_interrupt;
 	rtc_task.private_data = timer;
-	err = rtc_register(&rtc_task);
-	if (err < 0) {
-		snd_timer_global_free(timer);
-		return err;
-	}
-	timer->private_data = &rtc_task;
-	timer->private_free = rtctimer_private_free;
 
 	err = snd_timer_global_register(timer);
 	if (err < 0) {
 		snd_timer_global_free(timer);
 		return err;
 	}
-	rtctimer = timer;
+	rtctimer = timer; /* remember this */
 
 	return 0;
 }
@@ -204,12 +203,14 @@ static void __exit rtctimer_exit(void)
 
 
 /*
- * exported stuffs
+ * exported stuff
  */
 module_init(rtctimer_init)
 module_exit(rtctimer_exit)
 
 MODULE_PARM(rtctimer_freq, "i");
 MODULE_PARM_DESC(rtctimer_freq, "timer frequency in Hz");
+
+MODULE_LICENSE("GPL");
 
 #endif /* CONFIG_RTC || CONFIG_RTC_MODULE */

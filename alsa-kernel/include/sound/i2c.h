@@ -1,5 +1,5 @@
-#ifndef __SND_I2C_H
-#define __SND_I2C_H
+#ifndef __SOUND_I2C_H
+#define __SOUND_I2C_H
 
 /*
  *
@@ -16,16 +16,16 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  *
  */
 
-#define SNDRV_LOCK_I2C_BUS(bus) spin_lock_irqsave(&bus->lock, flags)
-#define SNDRV_UNLOCK_I2C_BUS(bus) spin_unlock_irqrestore(&bus->lock, flags)
-
 typedef struct _snd_i2c_device snd_i2c_device_t;
 typedef struct _snd_i2c_bus snd_i2c_bus_t;
+
+typedef struct _snd_i2c_device snd_i2c_device_t;
+#define SND_I2C_DEVICE_ADDRTEN	(1<<0)	/* 10-bit I2C address */
 
 struct _snd_i2c_device {
 	struct list_head list;
@@ -60,6 +60,7 @@ struct _snd_i2c_bus {
 	void (*private_free)(snd_i2c_bus_t *bus);
 };
 
+#define snd_i2c_slave_bus(n) list_entry(n, snd_i2c_bus_t, buses)
 
 int snd_i2c_bus_create(snd_card_t *card, const char *name, snd_i2c_bus_t **ri2c);
 int snd_i2c_device_create(snd_i2c_bus_t *bus, const char *name, unsigned char addr, snd_i2c_device_t **rdevice);
@@ -82,4 +83,4 @@ int snd_i2c_write(snd_i2c_bus_t *bus, unsigned char addr, unsigned char b1, unsi
 int snd_i2c_dev_read(snd_i2c_device_t *device);
 int snd_i2c_dev_write(snd_i2c_device_t *device, unsigned char b1, unsigned char b2, int both);
 
-#endif				/* __SND_I2C_H */
+#endif /* __SOUND_I2C_H */

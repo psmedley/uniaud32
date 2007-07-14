@@ -20,6 +20,9 @@
  */
 
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/info.h>
 #include <sound/initval.h>

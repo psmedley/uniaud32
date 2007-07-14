@@ -1,5 +1,5 @@
-#ifndef __AD1848_H
-#define __AD1848_H
+#ifndef __SOUND_AD1848_H
+#define __SOUND_AD1848_H
 
 /*
  *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -111,6 +111,7 @@
 #define AD1848_MODE_CAPTURE	0x0002
 #define AD1848_MODE_TIMER	0x0004
 #define AD1848_MODE_OPEN	(AD1848_MODE_PLAY|AD1848_MODE_CAPTURE|AD1848_MODE_TIMER)
+#define AD1848_MODE_RUNNING	0x0010
 
 /* defines for codec.hardware */
 
@@ -150,6 +151,10 @@ typedef struct _snd_ad1848 ad1848_t;
 /* exported functions */
 
 void snd_ad1848_out(ad1848_t *chip, unsigned char reg, unsigned char value);
+void snd_ad1848_dout(ad1848_t *chip, unsigned char reg, unsigned char value);
+unsigned char snd_ad1848_in(ad1848_t *chip, unsigned char reg);
+void snd_ad1848_mce_up(ad1848_t *chip);
+void snd_ad1848_mce_down(ad1848_t *chip);
 
 int snd_ad1848_create(snd_card_t * card,
 		      unsigned long port,
@@ -161,37 +166,21 @@ int snd_ad1848_pcm(ad1848_t * chip, int device, snd_pcm_t **rpcm);
 int snd_ad1848_mixer(ad1848_t * chip);
 void snd_ad1848_interrupt(int irq, void *dev_id, struct pt_regs *regs);
 
-#ifdef TARGET_OS2
 #define AD1848_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
-  0, 0, snd_ad1848_info_single, \
-  snd_ad1848_get_single, snd_ad1848_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#else
-#define AD1848_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_ad1848_info_single, \
-  get: snd_ad1848_get_single, put: snd_ad1848_put_single, \
-  private_value: reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_ad1848_info_single, \
+  .get = snd_ad1848_get_single, .put = snd_ad1848_put_single, \
+  .private_value = reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 int snd_ad1848_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo);
 int snd_ad1848_get_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
 int snd_ad1848_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
 
-#ifdef TARGET_OS2
 #define AD1848_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
-  0, 0, snd_ad1848_info_double, \
-  snd_ad1848_get_double, snd_ad1848_put_double, \
-  left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#else
-#define AD1848_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_ad1848_info_double, \
-  get: snd_ad1848_get_double, put: snd_ad1848_put_double, \
-  private_value: left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_ad1848_info_double, \
+  .get = snd_ad1848_get_double, .put = snd_ad1848_put_double, \
+  .private_value = left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
 
 int snd_ad1848_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo);
 int snd_ad1848_get_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
@@ -201,4 +190,4 @@ int snd_ad1848_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucon
 void snd_ad1848_debug(ad1848_t *chip);
 #endif
 
-#endif				/* __AD1848_H */
+#endif /* __SOUND_AD1848_H */

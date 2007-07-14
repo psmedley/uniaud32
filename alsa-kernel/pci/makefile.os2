@@ -34,7 +34,7 @@ KEE=1
 FILE1    = cmipci.obj ens1370.obj ens1371.obj cs4281.obj  es1938.obj
 FILE2    = es1968.obj intel8x0.obj maestro3.obj via82xx.obj als4000.obj
 FILE3    = fm801.obj atiixp.obj bt87x.obj
-#ice1712.obj fm801.obj  rme96.obj sonicvibes.obj 
+# rme96.obj sonicvibes.obj 
 FILE4    = 
 FILE5    = 
 FILE6    = 
@@ -90,6 +90,10 @@ subdirs: .SYMBOLIC
     @cd ca0106
     @wmake $(NMAKEOPTS)
     @cd ..
+#    @echo BUILDING ice1712
+#    @cd ice1712
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
 ##    @echo BUILDING korg1212
 ##    @cd korg1212
 ##    @wmake $(NMAKEOPTS)

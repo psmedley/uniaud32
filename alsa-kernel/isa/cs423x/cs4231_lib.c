@@ -20,13 +20,26 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <asm/dma.h>
+#include <asm/irq.h>
+#include <linux/delay.h>
+#include <linux/pm.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/ioport.h>
+#include <sound/core.h>
 #include <sound/cs4231.h>
+#include <sound/pcm_params.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_DESCRIPTION("Routines for control of CS4231(A)/CS4232/InterWave & compatible chips");
+MODULE_LICENSE("GPL");
 
 #define chip_t cs4231_t
 
@@ -60,19 +73,11 @@ static unsigned int rates[14] = {
 	27042, 32000, 33075, 37800, 44100, 48000
 };
 
-#ifdef TARGET_OS2
 static snd_pcm_hw_constraint_list_t hw_constraints_rates = {
-	14,
-	rates,
-	0,
+	.count = 14,
+	.list = rates,
+	.mask = 0,
 };
-#else
-static snd_pcm_hw_constraint_list_t hw_constraints_rates = {
-	count: 14,
-	list: rates,
-	mask: 0,
-};
-#endif
 
 static int snd_cs4231_xrate(snd_pcm_runtime_t *runtime)
 {
@@ -742,11 +747,9 @@ static void snd_cs4231_close(cs4231_t *chip, unsigned int mode)
 	outb(0, CS4231P(chip, STATUS));	/* clear IRQ */
 	chip->image[CS4231_PIN_CTRL] &= ~CS4231_IRQ_ENABLE;
 	snd_cs4231_out(chip, CS4231_PIN_CTRL, chip->image[CS4231_PIN_CTRL]);
-	spin_unlock_irqrestore(&chip->reg_lock, flags);
 
 	/* now disable record & playback */
 
-	spin_lock_irqsave(&chip->reg_lock, flags);
 	if (chip->image[CS4231_IFACE_CTRL] & (CS4231_PLAYBACK_ENABLE | CS4231_PLAYBACK_PIO |
 					       CS4231_RECORD_ENABLE | CS4231_RECORD_PIO)) {
 		spin_unlock_irqrestore(&chip->reg_lock, flags);
@@ -790,31 +793,17 @@ static int snd_cs4231_timer_close(snd_timer_t * timer)
 	return 0;
 }
 
-#ifdef TARGET_OS2
 static struct _snd_timer_hardware snd_cs4231_timer_table =
 {
-	SNDRV_TIMER_HW_AUTO,
-	9945,
-	65535,
-	snd_cs4231_timer_open,
-	snd_cs4231_timer_close,
-	snd_cs4231_timer_resolution,
-	snd_cs4231_timer_start,
-	snd_cs4231_timer_stop,
+	.flags =	SNDRV_TIMER_HW_AUTO,
+	.resolution =	9945,
+	.ticks =	65535,
+	.open =		snd_cs4231_timer_open,
+	.close =	snd_cs4231_timer_close,
+	.c_resolution = snd_cs4231_timer_resolution,
+	.start =	snd_cs4231_timer_start,
+	.stop =		snd_cs4231_timer_stop,
 };
-#else
-static struct _snd_timer_hardware snd_cs4231_timer_table =
-{
-	flags:		SNDRV_TIMER_HW_AUTO,
-	resolution:	9945,
-	ticks:		65535,
-	open:		snd_cs4231_timer_open,
-	close:		snd_cs4231_timer_close,
-	c_resolution:	snd_cs4231_timer_resolution,
-	start:		snd_cs4231_timer_start,
-	stop:		snd_cs4231_timer_stop,
-};
-#endif
 
 /*
  *  ok.. exported functions..
@@ -848,11 +837,11 @@ static int snd_cs4231_playback_prepare(snd_pcm_substream_t * substream)
 	unsigned int size = snd_pcm_lib_buffer_bytes(substream);
 	unsigned int count = snd_pcm_lib_period_bytes(substream);
 
+	spin_lock_irqsave(&chip->reg_lock, flags);
 	chip->p_dma_size = size;
 	chip->image[CS4231_IFACE_CTRL] &= ~(CS4231_PLAYBACK_ENABLE | CS4231_PLAYBACK_PIO);
-	snd_dma_program(chip->dma1, runtime->dma_area, size, DMA_MODE_WRITE | DMA_AUTOINIT);
+	snd_dma_program(chip->dma1, runtime->dma_addr, size, DMA_MODE_WRITE | DMA_AUTOINIT);
 	count = snd_cs4231_get_count(chip->image[CS4231_PLAYBK_FORMAT], count) - 1;
-	spin_lock_irqsave(&chip->reg_lock, flags);
 	snd_cs4231_out(chip, CS4231_PLY_LWR_CNT, (unsigned char) count);
 	snd_cs4231_out(chip, CS4231_PLY_UPR_CNT, (unsigned char) (count >> 8));
 	spin_unlock_irqrestore(&chip->reg_lock, flags);
@@ -890,11 +879,11 @@ static int snd_cs4231_capture_prepare(snd_pcm_substream_t * substream)
 	unsigned int size = snd_pcm_lib_buffer_bytes(substream);
 	unsigned int count = snd_pcm_lib_period_bytes(substream);
 
+	spin_lock_irqsave(&chip->reg_lock, flags);
 	chip->c_dma_size = size;
 	chip->image[CS4231_IFACE_CTRL] &= ~(CS4231_RECORD_ENABLE | CS4231_RECORD_PIO);
-	snd_dma_program(chip->dma2, runtime->dma_area, size, DMA_MODE_READ | DMA_AUTOINIT);
+	snd_dma_program(chip->dma2, runtime->dma_addr, size, DMA_MODE_READ | DMA_AUTOINIT);
 	count = snd_cs4231_get_count(chip->image[CS4231_REC_FORMAT], count) - 1;
-	spin_lock_irqsave(&chip->reg_lock, flags);
 	if (chip->single_dma && chip->hardware != CS4231_HW_INTERWAVE) {
 		snd_cs4231_out(chip, CS4231_PLY_LWR_CNT, (unsigned char) count);
 		snd_cs4231_out(chip, CS4231_PLY_UPR_CNT, (unsigned char) (count >> 8));
@@ -1009,6 +998,11 @@ static int snd_cs4231_probe(cs4231_t *chip)
 		rev = snd_cs4231_in(chip, CS4231_VERSION) & 0xe7;
 		snd_printdd("CS4231: VERSION (I25) = 0x%x\n", rev);
 		if (rev == 0x80) {
+			unsigned char tmp = snd_cs4231_in(chip, 23);
+			snd_cs4231_out(chip, 23, ~tmp);
+			if (snd_cs4231_in(chip, 23) != tmp)
+				chip->hardware = CS4231_HW_AD1845;
+			else
 			chip->hardware = CS4231_HW_CS4231;
 		} else if (rev == 0xa0) {
 			chip->hardware = CS4231_HW_CS4231A;
@@ -1136,83 +1130,43 @@ static int snd_cs4231_probe(cs4231_t *chip)
 
  */
 
-#ifdef TARGET_OS2
 static snd_pcm_hardware_t snd_cs4231_playback =
 {
-/*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_SYNC_START),
-/*	formats:	  */	(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW | SNDRV_PCM_FMTBIT_IMA_ADPCM |
+	.formats =		(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW | SNDRV_PCM_FMTBIT_IMA_ADPCM |
 			  	 SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S16_BE),
-/*	rates:		  */	SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_48000,
-/*	rate_min:	  */	5510,
-/*	rate_max:	  */	48000,
-/*	channels_min:	  */	1,
-/*	channels_max:	  */	2,
-/*	buffer_bytes_max:  */	(128*1024),
-/*	period_bytes_min:  */	64,
-/*	period_bytes_max:  */	(128*1024),
-/*	periods_min:	  */	1,
-/*	periods_max:	  */	1024,
-/*	fifo_size:	  */	0,
+	.rates =		SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		5510,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static snd_pcm_hardware_t snd_cs4231_capture =
 {
-/*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_SYNC_START),
-/*	formats:	  */	(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW | SNDRV_PCM_FMTBIT_IMA_ADPCM |
+	.formats =		(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW | SNDRV_PCM_FMTBIT_IMA_ADPCM |
 				 SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S16_BE),
-/*	rates:		  */	SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_48000,
-/*	rate_min:	  */	5510,
-/*	rate_max:	  */	48000,
-/*	channels_min:	  */	1,
-/*	channels_max:	  */	2,
-/*	buffer_bytes_max:  */	(128*1024),
-/*	period_bytes_min:  */	64,
-/*	period_bytes_max:  */	(128*1024),
-/*	periods_min:	  */	1,
-/*	periods_max:	  */	1024,
-/*	fifo_size:	  */	0,
+	.rates =		SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		5510,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
-#else
-static snd_pcm_hardware_t snd_cs4231_playback =
-{
-	info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-				 SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_SYNC_START),
-	formats:		(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW | SNDRV_PCM_FMTBIT_IMA_ADPCM |
-				 SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S16_BE),
-	rates:			SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_48000,
-	rate_min:		5510,
-	rate_max:		48000,
-	channels_min:		1,
-	channels_max:		2,
-	buffer_bytes_max:	(128*1024),
-	period_bytes_min:	64,
-	period_bytes_max:	(128*1024),
-	periods_min:		1,
-	periods_max:		1024,
-	fifo_size:		0,
-};
-
-static snd_pcm_hardware_t snd_cs4231_capture =
-{
-	info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-				 SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_SYNC_START),
-	formats:		(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW | SNDRV_PCM_FMTBIT_IMA_ADPCM |
-				 SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S16_BE),
-	rates:			SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_48000,
-	rate_min:		5510,
-	rate_max:		48000,
-	channels_min:		1,
-	channels_max:		2,
-	buffer_bytes_max:	(128*1024),
-	period_bytes_min:	64,
-	period_bytes_max:	(128*1024),
-	periods_min:		1,
-	periods_max:		1024,
-	fifo_size:		0,
-};
-#endif
 
 /*
 
@@ -1357,7 +1311,7 @@ static void snd_cs4231_resume(cs4231_t *chip)
 		return;
 	}
 	snd_cs4231_busy_wait(chip);
-	return;
+	spin_unlock_irqrestore(&chip->reg_lock, flags);
 #endif
 }
 
@@ -1382,10 +1336,14 @@ static int snd_cs4231_pm_callback(struct pm_dev *dev, pm_request_t rqst, void *d
 
 static int snd_cs4231_free(cs4231_t *chip)
 {
-	if (chip->res_port)
+	if (chip->res_port) {
 		release_resource(chip->res_port);
-	if (chip->res_cport)
+		kfree_nocheck(chip->res_port);
+	}
+	if (chip->res_cport) {
 		release_resource(chip->res_cport);
+		kfree_nocheck(chip->res_cport);
+	}
 	if (chip->irq >= 0) {
 		disable_irq(chip->irq);
 		if (!(chip->hwshare & CS4231_HWSHARE_IRQ))
@@ -1429,6 +1387,7 @@ const char *snd_cs4231_chip_id(cs4231_t *chip)
 	case CS4231_HW_CS4239:	return "CS4239";
 	case CS4231_HW_INTERWAVE: return "AMD InterWave";
 	case CS4231_HW_OPL3SA2: return chip->card->shortname;
+	case CS4231_HW_AD1845: return "AD1845";
 	default: return "???";
 	}
 }
@@ -1441,15 +1400,9 @@ int snd_cs4231_create(snd_card_t * card,
 		      unsigned short hwshare,
 		      cs4231_t ** rchip)
 {
-#ifdef TARGET_OS2
 	static snd_device_ops_t ops = {
-		snd_cs4231_dev_free,0,0
-	};                                
-#else
-	static snd_device_ops_t ops = {
-		dev_free:       snd_cs4231_dev_free,
-	};                                
-#endif
+		.dev_free =	snd_cs4231_dev_free,
+	};
 	cs4231_t *chip;
 	int err;
 
@@ -1533,51 +1486,27 @@ int snd_cs4231_create(snd_card_t * card,
 	return 0;
 }
 
-#ifdef TARGET_OS2
 static snd_pcm_ops_t snd_cs4231_playback_ops = {
-	snd_cs4231_playback_open,
-	snd_cs4231_playback_close,
-	snd_pcm_lib_ioctl,
-	snd_cs4231_playback_hw_params,
-	snd_cs4231_playback_hw_free,
-	snd_cs4231_playback_prepare,
-	snd_cs4231_trigger,
-	snd_cs4231_playback_pointer,0,0
+	.open =		snd_cs4231_playback_open,
+	.close =	snd_cs4231_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_cs4231_playback_hw_params,
+	.hw_free =	snd_cs4231_playback_hw_free,
+	.prepare =	snd_cs4231_playback_prepare,
+	.trigger =	snd_cs4231_trigger,
+	.pointer =	snd_cs4231_playback_pointer,
 };
 
 static snd_pcm_ops_t snd_cs4231_capture_ops = {
-	snd_cs4231_capture_open,
-	snd_cs4231_capture_close,
-	snd_pcm_lib_ioctl,
-	snd_cs4231_capture_hw_params,
-	snd_cs4231_capture_hw_free,
-	snd_cs4231_capture_prepare,
-	snd_cs4231_trigger,
-	snd_cs4231_capture_pointer,0,0
+	.open =		snd_cs4231_capture_open,
+	.close =	snd_cs4231_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_cs4231_capture_hw_params,
+	.hw_free =	snd_cs4231_capture_hw_free,
+	.prepare =	snd_cs4231_capture_prepare,
+	.trigger =	snd_cs4231_trigger,
+	.pointer =	snd_cs4231_capture_pointer,
 };
-#else
-static snd_pcm_ops_t snd_cs4231_playback_ops = {
-	open:		snd_cs4231_playback_open,
-	close:		snd_cs4231_playback_close,
-	ioctl:		snd_pcm_lib_ioctl,
-	hw_params:	snd_cs4231_playback_hw_params,
-	hw_free:	snd_cs4231_playback_hw_free,
-	prepare:	snd_cs4231_playback_prepare,
-	trigger:	snd_cs4231_trigger,
-	pointer:	snd_cs4231_playback_pointer,
-};
-
-static snd_pcm_ops_t snd_cs4231_capture_ops = {
-	open:		snd_cs4231_capture_open,
-	close:		snd_cs4231_capture_close,
-	ioctl:		snd_pcm_lib_ioctl,
-	hw_params:	snd_cs4231_capture_hw_params,
-	hw_free:	snd_cs4231_capture_hw_free,
-	prepare:	snd_cs4231_capture_prepare,
-	trigger:	snd_cs4231_trigger,
-	pointer:	snd_cs4231_capture_pointer,
-};
-#endif
 
 static void snd_cs4231_pcm_free(snd_pcm_t *pcm)
 {
@@ -1611,7 +1540,7 @@ int snd_cs4231_pcm(cs4231_t *chip, int device, snd_pcm_t **rpcm)
 		pcm->info_flags |= SNDRV_PCM_INFO_JOINT_DUPLEX;
 	strcpy(pcm->name, snd_cs4231_chip_id(chip));
 
-	snd_pcm_lib_preallocate_pages_for_all(pcm, 64*1024, chip->dma1 > 3 || chip->dma2 > 3 ? 128*1024 : 64*1024, GFP_KERNEL|GFP_DMA);
+	snd_pcm_lib_preallocate_isa_pages_for_all(pcm, 64*1024, chip->dma1 > 3 || chip->dma2 > 3 ? 128*1024 : 64*1024);
 
 	chip->pcm = pcm;
 	if (rpcm)
@@ -1850,19 +1779,11 @@ CS4231_SINGLE("Mono Output Playback Switch", 0, CS4231_MONO_CTRL, 6, 1, 1),
 CS4231_SINGLE("Mono Output Playback Bypass", 0, CS4231_MONO_CTRL, 5, 1, 0),
 CS4231_DOUBLE("Capture Volume", 0, CS4231_LEFT_INPUT, CS4231_RIGHT_INPUT, 0, 0, 15, 0),
 {
-#ifdef TARGET_OS2
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"Capture Source",0,0, 0,
-	snd_cs4231_info_mux,
-	snd_cs4231_get_mux,
-	snd_cs4231_put_mux,0
-#else
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "Capture Source",
-	info: snd_cs4231_info_mux,
-	get: snd_cs4231_get_mux,
-	put: snd_cs4231_put_mux,
-#endif
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Capture Source",
+	.info = snd_cs4231_info_mux,
+	.get = snd_cs4231_get_mux,
+	.put = snd_cs4231_put_mux,
 },
 CS4231_DOUBLE("Mic Boost", 0, CS4231_LEFT_INPUT, CS4231_RIGHT_INPUT, 5, 5, 1, 0),
 CS4231_SINGLE("Loopback Capture Switch", 0, CS4231_LOOPBACK, 0, 1, 0),
