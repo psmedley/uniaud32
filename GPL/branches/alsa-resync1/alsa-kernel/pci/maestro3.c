@@ -1767,46 +1767,44 @@ snd_m3_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 
 static snd_pcm_hardware_t snd_m3_playback =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                  SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP_VALID |
                                  SNDRV_PCM_INFO_BLOCK_TRANSFER |
                                  /*SNDRV_PCM_INFO_PAUSE |*/
                                  SNDRV_PCM_INFO_RESUME),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	8000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	(512*1024),
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	(512*1024),
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 0
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		8000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(512*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(512*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
 };
 
 static snd_pcm_hardware_t snd_m3_capture =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                  SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP_VALID |
                                  SNDRV_PCM_INFO_BLOCK_TRANSFER |
                                  /*SNDRV_PCM_INFO_PAUSE |*/
                                  SNDRV_PCM_INFO_RESUME),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	8000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	(512*1024),
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	(512*1024),
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 0
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		8000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(512*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(512*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
 };
 
 /*
@@ -1922,25 +1920,25 @@ snd_m3_capture_close(snd_pcm_substream_t *subs)
  */
 
 static snd_pcm_ops_t snd_m3_playback_ops = {
-    snd_m3_playback_open,
-    snd_m3_playback_close,
-    snd_pcm_lib_ioctl,
-    snd_m3_pcm_hw_params,
-    snd_m3_pcm_hw_free,
-    snd_m3_pcm_prepare,
-    snd_m3_pcm_trigger,
-    snd_m3_pcm_pointer,0,0
+	.open =		snd_m3_playback_open,
+	.close =	snd_m3_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_m3_pcm_hw_params,
+	.hw_free =	snd_m3_pcm_hw_free,
+	.prepare =	snd_m3_pcm_prepare,
+	.trigger =	snd_m3_pcm_trigger,
+	.pointer =	snd_m3_pcm_pointer,
 };
 
 static snd_pcm_ops_t snd_m3_capture_ops = {
-    snd_m3_capture_open,
-    snd_m3_capture_close,
-    snd_pcm_lib_ioctl,
-    snd_m3_pcm_hw_params,
-    snd_m3_pcm_hw_free,
-    snd_m3_pcm_prepare,
-    snd_m3_pcm_trigger,
-    snd_m3_pcm_pointer,0,0
+	.open =		snd_m3_capture_open,
+	.close =	snd_m3_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_m3_pcm_hw_params,
+	.hw_free =	snd_m3_pcm_hw_free,
+	.prepare =	snd_m3_pcm_prepare,
+	.trigger =	snd_m3_pcm_trigger,
+	.pointer =	snd_m3_pcm_pointer,
 };
 
 static int __devinit

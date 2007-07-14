@@ -217,9 +217,9 @@ struct _snd_minor {
 /* sound.c */
 
 extern int snd_ecards_limit;
-extern int snd_device_mode;
-extern int snd_device_gid;
-extern int snd_device_uid;
+extern int device_mode;
+extern int device_gid;
+extern int device_uid;
 
 void snd_request_card(int card);
 
@@ -242,7 +242,6 @@ int snd_minor_info_oss_init(void);
 int snd_minor_info_oss_done(void);
 
 int snd_oss_init_module(void);
-void snd_oss_cleanup_module(void);
 
 #endif
 

@@ -15,34 +15,17 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#ifdef ALSA_BUILD
-#include <sound/config.h>
-#endif
-
 #include <linux/version.h>
 #include <linux/config.h>
-#ifdef ALSA_BUILD
-#if defined(CONFIG_MODVERSIONS) && !defined(__GENKSYMS__) && !defined(__DEPEND__)
-#define MODVERSIONS
-#include <linux/modversions.h>
-#include <sound/sndversions.h>
-#endif
-#endif
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/ioport.h>
 #include <linux/vmalloc.h>
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
-void snd_wrapper_request_region(unsigned long from, unsigned long extent, const char *name)
-{
-	return request_region(from, extent, name);
-}
-#endif
+#include <linux/fs.h>
 
 #ifdef CONFIG_SND_DEBUG_MEMORY
 void *snd_wrapper_kmalloc(size_t size, int flags)
@@ -64,4 +47,61 @@ void snd_wrapper_vfree(void *obj)
 {
 	vfree(obj);
 }
+#endif
+
+
+/* check the condition in <sound/core.h> !! */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0)
+#if defined(__i386__) || defined(__ppc__) || defined(__x86_64__)
+
+#include <linux/pci.h>
+
+/* to be sure... */
+#ifdef HACK_PCI_ALLOC_CONSISTENT
+#error pci_alloc_consistent hack is already defined!!
+#endif
+
+/*
+ * A dirty hack... when the kernel code is fixed this should be removed.
+ *
+ * since pci_alloc_consistent always tries GFP_DMA when the requested
+ * pci memory region is below 32bit, it happens quite often that even
+ * 2 order of pages cannot be allocated.
+ *
+ * so in the following, we allocate at first without dma_mask, so that
+ * allocation will be done without GFP_DMA.  if the area doesn't match
+ * with the requested region, then realloate with the original dma_mask
+ * again.
+ */
+
+void *snd_pci_hack_alloc_consistent(struct pci_dev *hwdev, size_t size,
+				    dma_addr_t *dma_handle)
+{
+	void *ret;
+	u64 dma_mask;
+	unsigned long rmask;
+
+	if (hwdev == NULL)
+		return pci_alloc_consistent(hwdev, size, dma_handle);
+	dma_mask = hwdev->dma_mask;
+	rmask = ~((unsigned long)dma_mask);
+	hwdev->dma_mask = 0xffffffff; /* do without masking */
+	ret = pci_alloc_consistent(hwdev, size, dma_handle);
+	hwdev->dma_mask = dma_mask; /* restore */
+	if (ret) {
+		/* obtained address is out of range? */
+		if (((unsigned long)*dma_handle + size - 1) & rmask) {
+			/* reallocate with the proper mask */
+			pci_free_consistent(hwdev, size, ret, *dma_handle);
+			ret = pci_alloc_consistent(hwdev, size, dma_handle);
+		}
+	} else {
+		/* wish to success now with the proper mask... */
+		if (dma_mask != 0xffffffff)
+			ret = pci_alloc_consistent(hwdev, size, dma_handle);
+	}
+	return ret;
+}
+
+#endif
 #endif

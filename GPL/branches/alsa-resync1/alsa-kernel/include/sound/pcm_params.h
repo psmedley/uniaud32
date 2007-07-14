@@ -36,7 +36,7 @@ extern int _snd_pcm_hw_param_set(snd_pcm_hw_params_t *params,
 				 snd_pcm_hw_param_t var, unsigned int val, int dir);
 
 #define INLINE static inline
-#define assert(a)
+#define assert(a) (void)(a)
 
 #define SNDRV_MASK_BITS	64	/* we use so far 64bits only */
 #define SNDRV_MASK_SIZE	(SNDRV_MASK_BITS / 32)

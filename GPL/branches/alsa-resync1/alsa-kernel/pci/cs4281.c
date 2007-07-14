@@ -2151,7 +2151,7 @@ module_exit(alsa_card_cs4281_exit)
 
 #ifndef MODULE
 
-/* format is: snd-cs4281=snd_enable,snd_index,snd_id */
+/* format is: snd-cs4281=enable,index,id */
 
 static int __init alsa_card_cs4281_setup(char *str)
 {

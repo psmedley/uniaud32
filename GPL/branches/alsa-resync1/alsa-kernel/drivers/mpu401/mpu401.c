@@ -143,7 +143,7 @@ module_exit(alsa_card_mpu401_exit)
 
 #ifndef MODULE
 
-/* format is: snd-mpu401=snd_enable,snd_index,snd_id,snd_port,snd_irq */
+/* format is: snd-mpu401=enable,index,id,port,irq */
 
 static int __init alsa_card_mpu401_setup(char *str)
 {

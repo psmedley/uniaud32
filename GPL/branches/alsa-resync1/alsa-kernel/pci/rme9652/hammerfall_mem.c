@@ -25,7 +25,7 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 
-    hammerfall_mem.c,v 1.2 2002/06/19 08:52:11 perex Exp
+    hammerfall_mem.c,v 1.4 2002/10/21 18:28:25 perex Exp
 
 
     Tue Oct 17 2000  Jaroslav Kysela <perex@suse.cz>
@@ -51,9 +51,9 @@
 
 /* export */
 
-static int snd_enable[8] = {1,1,1,1,1,1,1,1};
-MODULE_PARM(snd_enable, "1-" __MODULE_STRING(HAMMERFALL_CARDS) "i");
-MODULE_PARM_DESC(snd_enable, "Enable cards to allocate buffers for.");
+static int enable[8] = {1,1,1,1,1,1,1,1};
+MODULE_PARM(enable, "1-" __MODULE_STRING(HAMMERFALL_CARDS) "i");
+MODULE_PARM_DESC(enable, "Enable cards to allocate buffers for.");
 
 MODULE_AUTHOR("Winfried Ritsch, Paul Barton-Davis <pbd@op.net>");
 MODULE_DESCRIPTION("Memory allocator for RME Hammerfall");
@@ -95,11 +95,6 @@ static hammerfall_buf_t hammerfall_buffers[NBUFS];
    memory after starting things running, that would be very
    undesirable.  
 */
-
-/* remove hack for pci_alloc_consistent to avoid dependecy on snd module */
-#ifdef HACK_PCI_ALLOC_CONSISTENT
-#undef pci_alloc_consistent
-#endif
 
 static void *hammerfall_malloc_pages(struct pci_dev *pci,
 				  unsigned long size,
@@ -244,7 +239,7 @@ static int __init alsa_hammerfall_mem_init(void)
 		if (pci->vendor != 0x10ee || (pci->device != 0x3fc4 && pci->device != 0x3fc5)) 
 			continue;
 
-		if (!snd_enable[i])
+		if (!enable[i])
 			continue;
 
 		for (k = 0; k < 2; ++k) {

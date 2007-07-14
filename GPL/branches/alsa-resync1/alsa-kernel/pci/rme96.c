@@ -51,20 +51,19 @@ MODULE_DEVICES("{{RME,Digi96},"
 		"{RME,Digi96/8 PST},"
 		"{RME,Digi96/8 PAD}}");
 
-static int snd_index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
-static char *snd_id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
+static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
 
-MODULE_PARM(snd_index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_index, "Index value for RME Digi96 soundcard.");
-MODULE_PARM_SYNTAX(snd_index, SNDRV_INDEX_DESC);
-MODULE_PARM(snd_id, "1-" __MODULE_STRING(SNDRV_CARDS) "s");
-MODULE_PARM_DESC(snd_id, "ID string for RME Digi96 soundcard.");
-MODULE_PARM_SYNTAX(snd_id, SNDRV_ID_DESC);
-MODULE_PARM(snd_enable, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_enable, "Enable RME Digi96 soundcard.");
-MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
-MODULE_AUTHOR("Anders Torger <torger@ludd.luth.se>");
+MODULE_PARM(index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
+MODULE_PARM_DESC(index, "Index value for RME Digi96 soundcard.");
+MODULE_PARM_SYNTAX(index, SNDRV_INDEX_DESC);
+MODULE_PARM(id, "1-" __MODULE_STRING(SNDRV_CARDS) "s");
+MODULE_PARM_DESC(id, "ID string for RME Digi96 soundcard.");
+MODULE_PARM_SYNTAX(id, SNDRV_ID_DESC);
+MODULE_PARM(enable, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
+MODULE_PARM_DESC(enable, "Enable RME Digi96 soundcard.");
+MODULE_PARM_SYNTAX(enable, SNDRV_ENABLE_DESC);
 
 /*
  * Defines for RME Digi96 series, from internal RME reference documents
@@ -1612,7 +1611,7 @@ snd_rme96_create(rme96_t *rme96)
 	rme96->irq = pci->irq;
 
 	spin_lock_init(&rme96->lock);
-	if ((rme96->iobase = (unsigned long) ioremap(rme96->port, RME96_IO_SIZE)) == 0) {
+	if ((rme96->iobase = (unsigned long) ioremap_nocache(rme96->port, RME96_IO_SIZE)) == 0) {
 		snd_printk("unable to remap memory region 0x%lx-0x%lx\n", rme96->port, rme96->port + RME96_IO_SIZE - 1);
 		return -ENOMEM;
 	}
@@ -2418,7 +2417,7 @@ static void snd_rme96_card_free(snd_card_t *card)
 
 static int __devinit
 snd_rme96_probe(struct pci_dev *pci,
-		const struct pci_device_id *id)
+		const struct pci_device_id *pci_id)
 {
 	static int dev;
 	rme96_t *rme96;
@@ -2429,11 +2428,11 @@ snd_rme96_probe(struct pci_dev *pci,
 	if (dev >= SNDRV_CARDS) {
 		return -ENODEV;
 	}
-		if (!snd_enable[dev]) {
+	if (!enable[dev]) {
 			dev++;
 			return -ENOENT;
 	}
-	if ((card = snd_card_new(snd_index[dev], snd_id[dev], THIS_MODULE,
+	if ((card = snd_card_new(index[dev], id[dev], THIS_MODULE,
 				 sizeof(rme96_t))) == NULL)
 		return -ENOMEM;
 	card->private_free = snd_rme96_card_free;
@@ -2496,7 +2495,7 @@ static int __init alsa_card_rme96_init(void)
 
 	if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-//		snd_printk(KERN_ERR "No RME Digi96 cards found\n");
+		printk(KERN_ERR "No RME Digi96 cards found\n");
 #endif
 		return err;
 	}
@@ -2513,7 +2512,7 @@ module_exit(alsa_card_rme96_exit)
 
 #ifndef MODULE
 
-/* format is: snd-rme96=snd_enable,snd_index,snd_id */
+/* format is: snd-rme96=enable,index,id */
 
 static int __init alsa_card_rme96_setup(char *str)
 {
@@ -2521,9 +2520,9 @@ static int __init alsa_card_rme96_setup(char *str)
 
 	if (nr_dev >= SNDRV_CARDS)
 		return 0;
-	(void)(get_option(&str,&snd_enable[nr_dev]) == 2 &&
-	       get_option(&str,&snd_index[nr_dev]) == 2 &&
-	       get_id(&str,&snd_id[nr_dev]) == 2);
+	(void)(get_option(&str,&enable[nr_dev]) == 2 &&
+	       get_option(&str,&index[nr_dev]) == 2 &&
+	       get_id(&str,&id[nr_dev]) == 2);
 	nr_dev++;
 	return 1;
 }

@@ -219,8 +219,8 @@ module_exit(alsa_card_trident_exit)
 
 #ifndef MODULE
 
-/* format is: snd-trident=snd_enable,snd_index,snd_id,
-			       snd_pcm_channels,snd_wavetable_size */
+/* format is: snd-trident=enable,index,id,
+			  pcm_channels,wavetable_size */
 
 static int __init alsa_card_trident_setup(char *str)
 {

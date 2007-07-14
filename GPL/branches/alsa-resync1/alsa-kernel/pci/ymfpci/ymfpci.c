@@ -308,8 +308,8 @@ module_exit(alsa_card_ymfpci_exit)
 
 #ifndef MODULE
 
-/* format is: snd-ymfpci=snd_enable,snd_index,snd_id,
-			 snd_fm_port,snd_mpu_port */
+/* format is: snd-ymfpci=enable,index,id,
+			 fm_port,mpu_port */
 
 static int __init alsa_card_ymfpci_setup(char *str)
 {
