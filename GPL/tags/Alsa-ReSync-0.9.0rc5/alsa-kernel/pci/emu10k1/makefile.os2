@@ -1,0 +1,51 @@
+CINCLUDES = ..\..\..\include;..\..\include;$(%WATCOM)\H
+AINCLUDES = $(DDK_BASE)\H
+
+CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
+
+32BIT=1
+!include ..\..\..\..\makefile.inc
+
+
+#===================================================================
+#
+#   List of source files
+#
+#===================================================================
+FILE1    = emu10k1.obj emu10k1_main.obj 
+FILE2    = irq.obj memory.obj voice.obj emumpu401.obj emupcm.obj io.obj
+FILE3    = emuproc.obj emumixer.obj emufx.obj
+FILE4    = emu10k1_synth.obj emu10k1_callback.obj emu10k1_patch.obj
+FILE5    = timer.obj emu10k1x.obj p16v.obj
+FILE6    = 
+FILE7    = 
+FILE8    = 
+FILELAST =
+FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10) $(FILE11) $(FILE12)
+
+TARGET   = emu10k1
+
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
+
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: $(OBJDIR)\$(TARGET).lib 
+
+
+$(LNKFILE): makefile.os2
+    @%create $(LNKFILE)
+    @for %f in ($(FILES)) do @%append $(LNKFILE) -+$(OBJDIR)\%f
+
+$(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
+    $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
+    copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB) 
+
+clean: .SYMBOLIC
+    -@rm  *.err 2>nul
+    @cd $(OBJDIR)
+    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+    @cd ..\..
