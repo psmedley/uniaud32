@@ -15,20 +15,26 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/ioport.h>
+#include <sound/core.h>
 #include <sound/sb.h>
 #include <sound/opl3.h>
 #define SNDRV_LEGACY_AUTO_PROBE
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
+#define chip_t sb_t
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Sound Blaster 1.0/2.0/Pro");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Creative Labs,SB 1.0/SB 2.0/SB Pro}}");
 
@@ -81,8 +87,10 @@ static void snd_sb8_free(snd_card_t *card)
 
     if (acard == NULL)
         return;
-    if (acard->fm_res)
+	if (acard->fm_res) {
         release_resource(acard->fm_res);
+		kfree_nocheck(acard->fm_res);
+	}
 }
 
 static int __init snd_sb8_probe(int dev)
@@ -135,13 +143,13 @@ static int __init snd_sb8_probe(int dev)
         if ((err = snd_opl3_create(card, chip->port + 8, 0,
                                    OPL3_HW_AUTO, 1,
                                    &opl3)) < 0) {
-            snd_printk("no OPL device at 0x%lx\n", chip->port + 8);
+			printk(KERN_ERR "sb8: no OPL device at 0x%lx\n", chip->port + 8);
         }
     } else {
         if ((err = snd_opl3_create(card, chip->port, chip->port + 2,
                                    OPL3_HW_AUTO, 1,
                                    &opl3)) < 0) {
-            snd_printk("no OPL device at 0x%lx-0x%lx\n",
+			printk(KERN_ERR "sb8: no OPL device at 0x%lx-0x%lx\n",
                        chip->port, chip->port + 2);
         }
     }
@@ -173,7 +181,7 @@ static int __init snd_sb8_probe(int dev)
 
 static int __init snd_card_sb8_legacy_auto_probe(unsigned long port)
 {
-    static int dev = 0;
+        static int dev;
     int res;
 
     for ( ; dev < SNDRV_CARDS; dev++) {
@@ -202,7 +210,7 @@ static int __init alsa_card_sb8_init(void)
     cards += snd_legacy_auto_probe(possible_ports, snd_card_sb8_legacy_auto_probe);
     if (!cards) {
 #ifdef MODULE
-        snd_printk("Sound Blaster soundcard not found or device busy\n");
+		printk(KERN_ERR "Sound Blaster soundcard not found or device busy\n");
 #endif
         return -ENODEV;
     }
@@ -222,7 +230,7 @@ module_exit(alsa_card_sb8_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-sb8=snd_enable,snd_index,snd_id,
+/* format is: snd-sb8=snd_enable,snd_index,snd_id,
  snd_port,snd_irq,snd_dma8 */
 
 static int __init alsa_card_sb8_setup(char *str)
@@ -241,6 +249,6 @@ static int __init alsa_card_sb8_setup(char *str)
     return 1;
 }
 
-__setup("snd-card-sb8=", alsa_card_sb8_setup);
+__setup("snd-sb8=", alsa_card_sb8_setup);
 
 #endif /* ifndef MODULE */

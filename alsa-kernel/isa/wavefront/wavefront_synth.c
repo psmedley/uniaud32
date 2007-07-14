@@ -20,8 +20,14 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/snd_wavefront.h>
 #include <sound/initval.h>
 
@@ -77,9 +83,6 @@ int ramcheck_time = 20;    /* time in seconds to wait while ROM code
 int osrun_time = 10;       /* time in seconds we wait for the OS to
 			      start running.
 			   */
-MODULE_AUTHOR("Paul Barton-Davis <pbd@op.net>");
-MODULE_DESCRIPTION("ALSA driver for Turtle Beach WaveFront ICS2215 Synth");
-MODULE_CLASSES("{sound}");
 MODULE_PARM(wf_raw,"i");
 MODULE_PARM_DESC(wf_raw, "if non-zero, assume that we need to boot the OS");
 MODULE_PARM(fx_raw,"i");
@@ -100,30 +103,6 @@ MODULE_PARM(ramcheck_time,"i");
 MODULE_PARM_DESC(ramcheck_time, "how many seconds to wait for the RAM test");
 MODULE_PARM(osrun_time,"i");
 MODULE_PARM_DESC(osrun_time, "how many seconds to wait for the ICS2115 OS");
-
-/*
- *	This sucks, hopefully it'll get standardised
- */
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,2,18) && LINUX_VERSION_CODE < KERNEL_VERSION(2,3,0)
-#define loops_per_sec loops_per_jiffy*HZ
-#elif LINUX_VERSION_CODE == KERNEL_VERSION(2,4,0) && defined(I_DIRTY_PAGES) /* linux/fs.h */
-#define loops_per_sec loops_per_jiffy*HZ
-#elif LINUX_VERSION_CODE > KERNEL_VERSION(2,4,0)
-#define loops_per_sec loops_per_jiffy*HZ
-#endif
- 
-#if defined(__alpha__) || defined(__powerpc__)
-#ifdef __SMP__
-#define LOOPS_PER_SEC	(cpu_data[smp_processor_id()].loops_per_sec)
-#else
-#define LOOPS_PER_SEC	(loops_per_sec)
-#endif
-#endif
-
-#if defined(__i386__)
-#define LOOPS_PER_SEC	(current_cpu_data.loops_per_sec)
-#endif
  
 /* if WF_DEBUG not defined, no run-time debugging messages will
    be available via the debug flag setting. Given the current
@@ -254,6 +233,13 @@ static wavefront_command wavefront_commands[] = {
 	{ 0x00 }
 };
 
+static inline void
+dec_mod_count(struct module *module)
+{
+	if (module)
+		__MOD_DEC_USE_COUNT(module);
+}
+
 static const char *
 wavefront_errorstr (int errnum)
 
@@ -306,26 +292,16 @@ wavefront_wait (snd_wavefront_t *dev, int mask)
 
 {
 	int             i;
-	static int      short_loop_cnt = 0;
-
-	/* Compute the loop count that lets us sleep for about the
-	   right amount of time, cache issues, bus speeds and all
-	   other issues being unequal but largely irrelevant.
-	*/
-
-	if (short_loop_cnt == 0) {
-		short_loop_cnt = wait_usecs *
-			(LOOPS_PER_SEC / 1000000);
-	}
 
 	/* Spin for a short period of time, because >99% of all
 	   requests to the WaveFront can be serviced inline like this.
 	*/
 
-	for (i = 0; i < short_loop_cnt; i++) {
+	for (i = 0; i < wait_usecs; i += 5) {
 		if (wavefront_status (dev) & mask) {
 			return 1;
 		}
+		udelay(5);
 	}
 
 	for (i = 0; i < sleep_tries; i++) {
@@ -891,7 +867,7 @@ wavefront_freemem (snd_wavefront_t *dev)
 static int
 wavefront_send_sample (snd_wavefront_t *dev, 
 		       wavefront_patch_info *header,
-		       UINT16 *dataptr,
+		       u16 *dataptr,
 		       int data_is_unsigned)
 
 {
@@ -904,9 +880,9 @@ wavefront_send_sample (snd_wavefront_t *dev,
 	   divided by 2.
         */
 
-	UINT16 sample_short;
-	UINT32 length;
-	UINT16 *data_end = 0;
+	u16 sample_short;
+	u32 length;
+	u16 *data_end = 0;
 	unsigned int i;
 	const int max_blksize = 4096/2;
 	unsigned int written;
@@ -1056,13 +1032,13 @@ wavefront_send_sample (snd_wavefront_t *dev,
 	   but the offset only uses 24 bits.
 	*/
 
-	shptr = munge_int32 (*((UINT32 *) &header->hdr.s.sampleStartOffset),
+	shptr = munge_int32 (*((u32 *) &header->hdr.s.sampleStartOffset),
 			     shptr, 4);
-	shptr = munge_int32 (*((UINT32 *) &header->hdr.s.loopStartOffset),
+	shptr = munge_int32 (*((u32 *) &header->hdr.s.loopStartOffset),
 			     shptr, 4);
-	shptr = munge_int32 (*((UINT32 *) &header->hdr.s.loopEndOffset),
+	shptr = munge_int32 (*((u32 *) &header->hdr.s.loopEndOffset),
 			     shptr, 4);
-	shptr = munge_int32 (*((UINT32 *) &header->hdr.s.sampleEndOffset),
+	shptr = munge_int32 (*((u32 *) &header->hdr.s.sampleEndOffset),
 			     shptr, 4);
 	
 	/* This one is truly wierd. What kind of wierdo decided that in
@@ -1299,18 +1275,21 @@ wavefront_fetch_multisample (snd_wavefront_t *dev,
     
 	for (i = 0; i < num_samples; i++) {
 		char d[2];
+		int val;
 	
-		if ((d[0] = wavefront_read (dev)) == -1) {
+		if ((val = wavefront_read (dev)) == -1) {
 			snd_printk ("upload multisample failed "
 				    "during sample loop.\n");
 			return -(EIO);
 		}
+		d[0] = val;
 
-		if ((d[1] = wavefront_read (dev)) == -1) {
+		if ((val = wavefront_read (dev)) == -1) {
 			snd_printk ("upload multisample failed "
 				    "during sample loop.\n");
 			return -(EIO);
 		}
+		d[1] = val;
 	
 		header->hdr.ms.SampleNumber[i] =
 			demunge_int32 ((unsigned char *) d, 2);
@@ -1468,11 +1447,11 @@ WaveFront: hardware-dependent interface
 ***********************************************************************/
 
 static void
-process_sample_hdr (UCHAR8 *buf)
+process_sample_hdr (u8 *buf)
 
 {
 	wavefront_sample s;
-	UCHAR8 *ptr;
+	u8 *ptr;
 
 	ptr = buf;
 
@@ -1483,11 +1462,11 @@ process_sample_hdr (UCHAR8 *buf)
 	   something very similar in the reverse direction.
 	*/
 
-	*((UINT32 *) &s.sampleStartOffset) = demunge_int32 (ptr, 4); ptr += 4;
-	*((UINT32 *) &s.loopStartOffset) = demunge_int32 (ptr, 4); ptr += 4;
-	*((UINT32 *) &s.loopEndOffset) = demunge_int32 (ptr, 4); ptr += 4;
-	*((UINT32 *) &s.sampleEndOffset) = demunge_int32 (ptr, 4); ptr += 4;
-	*((UINT32 *) &s.FrequencyBias) = demunge_int32 (ptr, 3); ptr += 3;
+	*((u32 *) &s.sampleStartOffset) = demunge_int32 (ptr, 4); ptr += 4;
+	*((u32 *) &s.loopStartOffset) = demunge_int32 (ptr, 4); ptr += 4;
+	*((u32 *) &s.loopEndOffset) = demunge_int32 (ptr, 4); ptr += 4;
+	*((u32 *) &s.sampleEndOffset) = demunge_int32 (ptr, 4); ptr += 4;
+	*((u32 *) &s.FrequencyBias) = demunge_int32 (ptr, 3); ptr += 3;
 
 	s.SampleResolution = *ptr & 0x3;
 	s.Loop = *ptr & 0x8;
@@ -1554,7 +1533,7 @@ wavefront_synth_control (snd_wavefront_card_t *acard,
 		return 0;
 
 	case WFC_UPLOAD_PATCH:
-		munge_int32 (*((UINT32 *) wc->wbuf), patchnumbuf, 2);
+		munge_int32 (*((u32 *) wc->wbuf), patchnumbuf, 2);
 		memcpy (wc->wbuf, patchnumbuf, 2);
 		break;
 
@@ -1743,7 +1722,7 @@ snd_wavefront_internal_interrupt (snd_wavefront_card_t *card)
 7 Unused
 */
 
-int
+int __init
 snd_wavefront_interrupt_bits (int irq)
 
 {
@@ -1771,7 +1750,7 @@ snd_wavefront_interrupt_bits (int irq)
 	return bits;
 }
 
-static void
+static void __init
 wavefront_should_cause_interrupt (snd_wavefront_t *dev, 
 				  int val, int port, int timeout)
 
@@ -1786,66 +1765,7 @@ wavefront_should_cause_interrupt (snd_wavefront_t *dev,
 	restore_flags (flags);
 }
 
-int
-snd_wavefront_detect_irq (snd_wavefront_t *dev) 
-
-{
-	int i;
-	int possible_irqs[] = { 5, 9, 12, 15, -1 };
-
-	/* Note: according to the PnP dump, 7 and 11 are possible too, but the
-	   WaveFront SDK doesn't tell us how to set the card to use them.  
-	*/
-
-	snd_printk ("autodetecting WaveFront IRQ\n");
-
-	for (i = 0; possible_irqs[i] > 0; i++) {
-		if (snd_wavefront_check_irq (dev, possible_irqs[i]) == 0) {
-			snd_printk ("autodetected IRQ %d\n", 
-				    possible_irqs[i]);
-			return possible_irqs[i];
-		}
-	}
-
-	return -1;
-}
-
-int
-snd_wavefront_check_irq (snd_wavefront_t *dev, int irq)
-
-{
-	int bits;
-	unsigned long irq_mask;
-	short reported_irq;
-
-	bits = snd_wavefront_interrupt_bits (irq);
-
-	irq_mask = probe_irq_on ();
-
-	outb (0x0, dev->control_port); 
-	outb (0x80 | 0x40 | bits, dev->data_port);	
-	wavefront_should_cause_interrupt(dev, 0x80|0x40|0x10|0x1,
-					 dev->control_port,
-					 (reset_time*HZ)/100);
-
-	reported_irq = probe_irq_off (irq_mask);
-
-	if (reported_irq == 0) {
-		snd_printk ("No unassigned interrupts detected "
-			    "after h/w reset\n");
-		return -1;
-	} else if (reported_irq < 0) {
-		snd_printk ("Multiple unassigned interrupts detected "
-			    "after h/w reset\n");
-		return -1;
-	} else if (reported_irq != irq) {
-		return -1;
-	}
-
-	return 0; /* OK */
-}
-
-static int
+static int __init
 wavefront_reset_to_cleanliness (snd_wavefront_t *dev)
 
 {
@@ -1999,13 +1919,13 @@ wavefront_reset_to_cleanliness (snd_wavefront_t *dev)
 #define __KERNEL_SYSCALLS__
 #include <linux/fs.h>
 #include <linux/mm.h>
-#include <linux/malloc.h>
+#include <linux/slab.h>
 #include <linux/unistd.h>
 #include <asm/uaccess.h>
 
 static int errno;
 
-static int
+static int __init
 wavefront_download_firmware (snd_wavefront_t *dev, char *path)
 
 {
@@ -2100,7 +2020,7 @@ wavefront_download_firmware (snd_wavefront_t *dev, char *path)
 }
 
 
-static int
+static int __init
 wavefront_do_reset (snd_wavefront_t *dev)
 
 {
@@ -2189,7 +2109,7 @@ wavefront_do_reset (snd_wavefront_t *dev)
 	return 1;
 }
 
-int 
+int __init
 snd_wavefront_start (snd_wavefront_t *dev)
 
 {
@@ -2231,7 +2151,7 @@ snd_wavefront_start (snd_wavefront_t *dev)
 	return (0);
 }
 
-int
+int __init
 snd_wavefront_detect (snd_wavefront_card_t *card)
 
 {
@@ -2285,33 +2205,3 @@ snd_wavefront_detect (snd_wavefront_card_t *card)
 
 	return 0;
 }
-
-EXPORT_SYMBOL(snd_wavefront_synth_ioctl);
-EXPORT_SYMBOL(snd_wavefront_synth_open);
-EXPORT_SYMBOL(snd_wavefront_synth_release);
-EXPORT_SYMBOL(snd_wavefront_internal_interrupt);
-EXPORT_SYMBOL(snd_wavefront_interrupt_bits);
-EXPORT_SYMBOL(snd_wavefront_detect_irq);
-EXPORT_SYMBOL(snd_wavefront_check_irq);
-EXPORT_SYMBOL(snd_wavefront_start);
-EXPORT_SYMBOL(snd_wavefront_detect);
-EXPORT_SYMBOL(snd_wavefront_cmd);
-  /* wavefront_midi.c */
-EXPORT_SYMBOL(snd_wavefront_midi_interrupt);
-EXPORT_SYMBOL(snd_wavefront_midi_enable_virtual);
-EXPORT_SYMBOL(snd_wavefront_midi_disable_virtual);
-EXPORT_SYMBOL(snd_wavefront_midi_start);
-EXPORT_SYMBOL(snd_wavefront_midi_input);
-EXPORT_SYMBOL(snd_wavefront_midi_output);
-
-static int __init alsa_wavefront_init(void)
-{
-	return 0;
-}
-
-static void __exit alsa_wavefront_exit(void)
-{
-}
-
-module_init(alsa_wavefront_init)
-module_exit(alsa_wavefront_exit)

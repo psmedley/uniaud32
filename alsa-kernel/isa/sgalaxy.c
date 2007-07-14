@@ -17,12 +17,16 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/sb.h>
 #include <sound/ad1848.h>
 #define SNDRV_LEGACY_FIND_FREE_IRQ
@@ -30,8 +34,9 @@
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("Christopher Butler <chrisb@sandy.force9.co.uk>");
 MODULE_DESCRIPTION("Aztech Sound Galaxy");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Aztech Systems,Sound Galaxy}}");
 
@@ -112,11 +117,11 @@ static int __init snd_sgalaxy_setup_wss(unsigned long port, int irq, int dma)
 	static int dma_bits[] = {1, 2, 0, 3};
 	int tmp, tmp1;
 
-	unsigned int flags;
+	unsigned long flags;
 
 	if ((tmp = inb(port + 3)) == 0xff)
 	{
-		snd_printdd("I/O address dead (0x%lx)\n", tmp);
+		snd_printdd("I/O address dead (0x%lx)\n", port);
 		return 0;
 	}
 #if 0
@@ -298,7 +303,7 @@ static int __init alsa_card_sgalaxy_init(void)
 	}
 	if (!cards) {
 #ifdef MODULE
-		snd_printk("Sound Galaxy soundcard not found or device busy\n");
+		printk(KERN_ERR "Sound Galaxy soundcard not found or device busy\n");
 #endif
 		return -ENODEV;
 	}
@@ -319,7 +324,7 @@ module_exit(alsa_card_sgalaxy_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-sgalaxy=snd_enable,snd_index,snd_id,
+/* format is: snd-sgalaxy=snd_enable,snd_index,snd_id,
 			       snd_sbport,snd_wssport,
 			       snd_irq,snd_dma1 */
 
@@ -340,6 +345,6 @@ static int __init alsa_card_sgalaxy_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-sgalaxy=", alsa_card_sgalaxy_setup);
+__setup("snd-sgalaxy=", alsa_card_sgalaxy_setup);
 
 #endif /* ifndef MODULE */

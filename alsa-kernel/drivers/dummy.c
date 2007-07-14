@@ -14,12 +14,21 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 0)
+#include <linux/jiffies.h>
+#else
+#include <linux/sched.h>
+#endif
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/pcm.h>
 #include <sound/rawmidi.h>
@@ -322,9 +331,6 @@ static void snd_card_dummy_runtime_free(snd_pcm_runtime_t *runtime)
     kfree(dpcm);
 }
 
-// 12 Jun 07 SHL fixme to be in some .h
-extern void * snd_malloc_pages_fallback(size_t size, unsigned int flags, size_t *res_size);
-
 static int snd_card_dummy_playback_open(snd_pcm_substream_t * substream)
 {
     snd_pcm_runtime_t *runtime = substream->runtime;
@@ -333,7 +339,7 @@ static int snd_card_dummy_playback_open(snd_pcm_substream_t * substream)
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
         return -ENOMEM;
-    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, &runtime->dma_bytes)) == NULL) {
+    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, (unsigned long *) &runtime->dma_bytes)) == NULL) {
         kfree(dpcm);
         return -ENOMEM;
     }
@@ -362,7 +368,7 @@ static int snd_card_dummy_capture_open(snd_pcm_substream_t * substream)
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
         return -ENOMEM;
-    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, &runtime->dma_bytes)) == NULL) {
+    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, (unsigned long *) &runtime->dma_bytes)) == NULL) {
         kfree(dpcm);
         return -ENOMEM;
     }
@@ -612,7 +618,7 @@ static int __init alsa_card_dummy_init(void)
     for (dev = cards = 0; dev < SNDRV_CARDS && enable[dev]; dev++) {
         if (snd_card_dummy_probe(dev) < 0) {
 #ifdef MODULE
-            snd_printk("Dummy soundcard #%i not found or device busy\n", dev + 1);
+			printk(KERN_ERR "Dummy soundcard #%i not found or device busy\n", dev + 1);
 #endif
             break;
         }
@@ -620,7 +626,7 @@ static int __init alsa_card_dummy_init(void)
     }
     if (!cards) {
 #ifdef MODULE
-        snd_printk("Dummy soundcard not found or device busy\n");
+		printk(KERN_ERR "Dummy soundcard not found or device busy\n");
 #endif
         return -ENODEV;
     }
@@ -640,7 +646,7 @@ module_exit(alsa_card_dummy_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-dummy=snd_enable,snd_index,snd_id,
+/* format is: snd-dummy=snd_enable,snd_index,snd_id,
  snd_pcm_devs,snd_pcm_substreams */
 
 static int __init alsa_card_dummy_setup(char *str)

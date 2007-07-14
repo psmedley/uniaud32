@@ -19,15 +19,17 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/pci.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/ymfpci.h>
 #include <sound/mpu401.h>
 #include <sound/opl3.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Yamaha DS-XG PCI");
 MODULE_LICENSE("GPL");
@@ -289,7 +291,7 @@ static int __init alsa_card_ymfpci_init(void)
 
 	if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-//		snd_printk("Yamaha DS-XG PCI soundcard not found or device busy\n");
+//		snd_printk(KERN_ERR "Yamaha DS-XG PCI soundcard not found or device busy\n");
 #endif
 		return err;
 	}
@@ -306,8 +308,8 @@ module_exit(alsa_card_ymfpci_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-ymfpci=snd_enable,snd_index,snd_id,
-			      snd_fm_port,snd_mpu_port,snd_mpu_irq */
+/* format is: snd-ymfpci=snd_enable,snd_index,snd_id,
+			 snd_fm_port,snd_mpu_port */
 
 static int __init alsa_card_ymfpci_setup(char *str)
 {

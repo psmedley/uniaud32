@@ -15,12 +15,16 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #include <sound/cs4231.h>
 #define SNDRV_LEGACY_AUTO_PROBE
@@ -29,8 +33,9 @@
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Gravis UltraSound MAX");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Gravis,UltraSound MAX}}");
 
@@ -292,13 +297,13 @@ static int __init snd_gusmax_probe(int dev)
 	}
 	if (!gus->max_flag) {
 		snd_card_free(card);
-		snd_printk("GUS MAX soundcard was not detected at 0x%lx\n", gus->gf1.port);
+		printk(KERN_ERR "GUS MAX soundcard was not detected at 0x%lx\n", gus->gf1.port);
 		return -ENODEV;
 	}
 
 	if (request_irq(irq, snd_gusmax_interrupt, SA_INTERRUPT, "GUS MAX", (void *)maxcard)) {
 		snd_card_free(card);
-		snd_printk("unable to grab IRQ %d\n", irq);
+		printk(KERN_ERR "gusmax: unable to grab IRQ %d\n", irq);
 		return -EBUSY;
 	}
 	maxcard->irq = irq;
@@ -358,7 +363,7 @@ static int __init snd_gusmax_probe(int dev)
 
 static int __init snd_gusmax_legacy_auto_probe(unsigned long port)
 {
-	static int dev = 0;
+	static int dev;
 	int res;
 
 	for ( ; dev < SNDRV_CARDS; dev++) {
@@ -387,7 +392,7 @@ static int __init alsa_card_gusmax_init(void)
 	cards += snd_legacy_auto_probe(possible_ports, snd_gusmax_legacy_auto_probe);
 	if (!cards) {
 #ifdef MODULE
-		snd_printk("GUS MAX soundcard not found or device busy\n");
+		printk(KERN_ERR "GUS MAX soundcard not found or device busy\n");
 #endif
 		return -ENODEV;
 	}
@@ -407,7 +412,7 @@ module_exit(alsa_card_gusmax_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-gusmax=snd_enable,snd_index,snd_id,
+/* format is: snd-gusmax=snd_enable,snd_index,snd_id,
 			      snd_port,snd_irq,
 			      snd_dma1,snd_dma2,
 			      snd_joystick_dac,
@@ -433,6 +438,6 @@ static int __init alsa_card_gusmax_setup(char *str)
 	return 1;
 }
 
-__setup("snd-card-gusmax=", alsa_card_gusmax_setup);
+__setup("snd-gusmax=", alsa_card_gusmax_setup);
 
 #endif /* ifndef MODULE */

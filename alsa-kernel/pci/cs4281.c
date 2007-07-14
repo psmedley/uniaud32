@@ -881,54 +881,54 @@ static snd_pcm_uframes_t snd_cs4281_pointer(snd_pcm_substream_t * substream)
 
 static snd_pcm_hardware_t snd_cs4281_playback =
 {
-    /*	info:			*/	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                          SNDRV_PCM_INFO_INTERLEAVED |
                                          SNDRV_PCM_INFO_MMAP_VALID |
                                          SNDRV_PCM_INFO_PAUSE |
                                          SNDRV_PCM_INFO_RESUME |
                                          SNDRV_PCM_INFO_SYNC_START),
-                                         /*	formats:		*/	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S8 |
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S8 |
                                          SNDRV_PCM_FMTBIT_U16_LE | SNDRV_PCM_FMTBIT_S16_LE |
                                          SNDRV_PCM_FMTBIT_U16_BE | SNDRV_PCM_FMTBIT_S16_BE |
                                          SNDRV_PCM_FMTBIT_U32_LE | SNDRV_PCM_FMTBIT_S32_LE |
                                          SNDRV_PCM_FMTBIT_U32_BE | SNDRV_PCM_FMTBIT_S32_BE,
-                                         /*	rates:			*/	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                         /*	rate_min:		*/	4000,
-                                         /*	rate_max:		*/	48000,
-                                         /*	channels_min:		*/	1,
-                                         /*	channels_max:		*/	2,
-                                         /*	buffer_bytes_max:	*/	(512*1024),
-                                         /*	period_bytes_min:	*/	64,
-                                         /*	period_bytes_max:	*/	(512*1024),
-                                         /*	periods_min:		*/	1,
-                                         /*	periods_max:		*/	2,
-                                         /*	fifo_size:		*/	CS4281_FIFO_SIZE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(512*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(512*1024),
+	.periods_min =		1,
+	.periods_max =		2,
+	.fifo_size =		CS4281_FIFO_SIZE,
 };
 
 static snd_pcm_hardware_t snd_cs4281_capture =
 {
-    /*	info:			*/	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                          SNDRV_PCM_INFO_INTERLEAVED |
                                          SNDRV_PCM_INFO_MMAP_VALID |
                                          SNDRV_PCM_INFO_PAUSE |
                                          SNDRV_PCM_INFO_RESUME |
                                          SNDRV_PCM_INFO_SYNC_START),
-                                         /*	formats:		*/	//SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S8 |
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S8 |
                                          SNDRV_PCM_FMTBIT_U16_LE | SNDRV_PCM_FMTBIT_S16_LE |
                                          SNDRV_PCM_FMTBIT_U16_BE | SNDRV_PCM_FMTBIT_S16_BE |
                                          SNDRV_PCM_FMTBIT_U32_LE | SNDRV_PCM_FMTBIT_S32_LE |
                                          SNDRV_PCM_FMTBIT_U32_BE | SNDRV_PCM_FMTBIT_S32_BE,
-                                         /*	rates:			*/	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                         /*	rate_min:		*/	4000,
-                                         /*	rate_max:		*/	48000,
-                                         /*	channels_min:		*/	1,
-                                         /*	channels_max:		*/	2,
-                                         /*	buffer_bytes_max:	*/	(512*1024),
-                                         /*	period_bytes_min:	*/	64,
-                                         /*	period_bytes_max:	*/	(512*1024),
-                                         /*	periods_min:		*/	1,
-                                         /*	periods_max:		*/	2,
-                                         /*	fifo_size:		*/	CS4281_FIFO_SIZE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(512*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(512*1024),
+	.periods_min =		1,
+	.periods_max =		2,
+	.fifo_size =		CS4281_FIFO_SIZE,
 };
 
 static int snd_cs4281_playback_open(snd_pcm_substream_t * substream)
@@ -988,27 +988,25 @@ static int snd_cs4281_capture_close(snd_pcm_substream_t * substream)
 }
 
 static snd_pcm_ops_t snd_cs4281_playback_ops = {
-    /*	.open =	      */  snd_cs4281_playback_open,
-    /*	.close =      */  snd_cs4281_playback_close,
-    /*	.ioctl =      */  snd_pcm_lib_ioctl,
-    /*	.hw_params =  */  snd_cs4281_hw_params,
-    /*	.hw_free =    */  snd_cs4281_hw_free,
-    /*	.prepare =    */  snd_cs4281_playback_prepare,
-    /*	.trigger =    */  snd_cs4281_trigger,
-    /*	.pointer =    */  snd_cs4281_pointer,
-    0,0,0,0
+	.open =		snd_cs4281_playback_open,
+	.close =	snd_cs4281_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_cs4281_hw_params,
+	.hw_free =	snd_cs4281_hw_free,
+	.prepare =	snd_cs4281_playback_prepare,
+	.trigger =	snd_cs4281_trigger,
+	.pointer =	snd_cs4281_pointer,
 };
 
 static snd_pcm_ops_t snd_cs4281_capture_ops = {
-    /*	.open =	      */  snd_cs4281_capture_open,
-    /*	.close =      */  snd_cs4281_capture_close,
-    /*	.ioctl =      */  snd_pcm_lib_ioctl,
-    /*	.hw_params =  */  snd_cs4281_hw_params,
-    /*	.hw_free =    */  snd_cs4281_hw_free,
-    /*	.prepare =    */  snd_cs4281_capture_prepare,
-    /*	.trigger =    */  snd_cs4281_trigger,
-    /*	.pointer =    */  snd_cs4281_pointer,
-    0,0,0,0
+	.open =		snd_cs4281_capture_open,
+	.close =	snd_cs4281_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_cs4281_hw_params,
+	.hw_free =	snd_cs4281_hw_free,
+	.prepare =	snd_cs4281_capture_prepare,
+	.trigger =	snd_cs4281_trigger,
+	.pointer =	snd_cs4281_pointer,
 };
 
 static void snd_cs4281_pcm_free(snd_pcm_t *pcm)
@@ -1392,15 +1390,9 @@ static int __devinit snd_cs4281_create(snd_card_t * card,
     cs4281_t *chip;
     unsigned int tmp;
     int err;
-#ifdef TARGET_OS2
     static snd_device_ops_t ops = {
-        snd_cs4281_dev_free,0,0,0
+		.dev_free =	snd_cs4281_dev_free,
     };
-#else
-    static snd_device_ops_t ops = {
-    dev_free:	snd_cs4281_dev_free,
-    };
-#endif
 
     *rchip = NULL;
     if ((err = pci_enable_device(pci)) < 0)

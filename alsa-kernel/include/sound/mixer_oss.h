@@ -1,5 +1,5 @@
-#ifndef __MIXER_OSS_H
-#define __MIXER_OSS_H
+#ifndef __SOUND_MIXER_OSS_H
+#define __SOUND_MIXER_OSS_H
 
 /*
  *  OSS MIXER API
@@ -18,11 +18,11 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#ifdef CONFIG_SND_OSSEMUL
+#if defined(CONFIG_SND_MIXER_OSS) || defined(CONFIG_SND_MIXER_OSS_MODULE)
 
 typedef struct _snd_oss_mixer_slot snd_mixer_oss_slot_t;
 typedef struct _snd_oss_file snd_mixer_oss_file_t;
@@ -66,6 +66,6 @@ struct _snd_oss_file {
 	snd_mixer_oss_t *mixer;
 };
 
-#endif				/* CONFIG_SND_OSSEMUL */
+#endif /* CONFIG_SND_MIXER_OSS */
 
-#endif				/* __MIXER_OSS_H */
+#endif /* __SOUND_MIXER_OSS_H */
