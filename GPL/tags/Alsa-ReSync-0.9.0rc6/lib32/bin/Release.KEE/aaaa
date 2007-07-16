@@ -1,0 +1,2976 @@
+Module: E:\DEV\USS\ua2\GPL\lib32\sound.c
+GROUP: 'DGROUP' CONST,CONST2,_DATA
+
+Segment: CODE32 BYTE USE32 00001BAC bytes
+0000                          __list_add_:
+0000    89 43 04                  mov         0x4[ebx],eax
+0003    89 18                     mov         [eax],ebx
+0005    89 50 04                  mov         0x4[eax],edx
+0008    89 02                     mov         [edx],eax
+000A    C3                        ret         
+000B                          __list_del_:
+000B    89 42 04                  mov         0x4[edx],eax
+000E    89 10                     mov         [eax],edx
+0010    C3                        ret         
+0011                          partial_name_hash_:
+0011    51                        push        ecx
+0012    89 D1                     mov         ecx,edx
+0014    C1 E1 04                  shl         ecx,0x00000004
+0017    C1 EA 1C                  shr         edx,0x0000001c
+001A    09 CA                     or          edx,ecx
+001C    31 D0                     xor         eax,edx
+001E    59                        pop         ecx
+001F    C3                        ret         
+0020                          end_name_hash_:
+0020    C3                        ret         
+0021    8D 40 00                  lea         eax,[eax]
+0024                          L$1:
+0024    55 00 00 00                                     DD	L$2
+0028    5D 00 00 00                                     DD	L$3
+002C    65 00 00 00                                     DD	L$4
+0030    6D 00 00 00                                     DD	L$5
+0034    91 00 00 00                                     DD	L$9
+0038    75 00 00 00                                     DD	L$6
+003C    7F 00 00 00                                     DD	L$7
+0040    89 00 00 00                                     DD	L$8
+0044                          set_dma_page_:
+0044    51                        push        ecx
+0045    89 C1                     mov         ecx,eax
+0047    88 D0                     mov         al,dl
+0049    83 F9 07                  cmp         ecx,0x00000007
+004C    77 43                     ja          L$9
+004E    FF 24 8D 24 00 00 00      jmp         dword ptr L$1[ecx*4]
+0055                          L$2:
+0055    BA 87 00 00 00            mov         edx,0x00000087
+005A    EE                        out         dx,al
+005B    59                        pop         ecx
+005C    C3                        ret         
+005D                          L$3:
+005D    BA 83 00 00 00            mov         edx,0x00000083
+0062    EE                        out         dx,al
+0063    59                        pop         ecx
+0064    C3                        ret         
+0065                          L$4:
+0065    BA 81 00 00 00            mov         edx,0x00000081
+006A    EE                        out         dx,al
+006B    59                        pop         ecx
+006C    C3                        ret         
+006D                          L$5:
+006D    BA 82 00 00 00            mov         edx,0x00000082
+0072    EE                        out         dx,al
+0073    59                        pop         ecx
+0074    C3                        ret         
+0075                          L$6:
+0075    BA 8B 00 00 00            mov         edx,0x0000008b
+007A    24 FE                     and         al,0xfe
+007C    EE                        out         dx,al
+007D    59                        pop         ecx
+007E    C3                        ret         
+007F                          L$7:
+007F    BA 89 00 00 00            mov         edx,0x00000089
+0084    24 FE                     and         al,0xfe
+0086    EE                        out         dx,al
+0087    59                        pop         ecx
+0088    C3                        ret         
+0089                          L$8:
+0089    BA 8A 00 00 00            mov         edx,0x0000008a
+008E    24 FE                     and         al,0xfe
+0090    EE                        out         dx,al
+0091                          L$9:
+0091    59                        pop         ecx
+0092    C3                        ret         
+0093                          snd_ctl_get_ioffnum_:
+0093    51                        push        ecx
+0094    89 C1                     mov         ecx,eax
+0096    8B 02                     mov         eax,[edx]
+0098    2B 41 08                  sub         eax,0x8[ecx]
+009B    59                        pop         ecx
+009C    C3                        ret         
+009D                          snd_ctl_get_ioffidx_:
+009D    51                        push        ecx
+009E    89 C1                     mov         ecx,eax
+00A0    8B 42 3C                  mov         eax,0x3c[edx]
+00A3    2B 41 44                  sub         eax,0x44[ecx]
+00A6    59                        pop         ecx
+00A7    C3                        ret         
+00A8                          constrs_mask_:
+00A8    0F BE D2                  movsx       edx,dl
+00AB    C1 E2 05                  shl         edx,0x00000005
+00AE    01 D0                     add         eax,edx
+00B0    C3                        ret         
+00B1                          constrs_interval_:
+00B1    51                        push        ecx
+00B2    89 C1                     mov         ecx,eax
+00B4    0F BE D2                  movsx       edx,dl
+00B7    83 EA 08                  sub         edx,0x00000008
+00BA    89 D0                     mov         eax,edx
+00BC    C1 E0 02                  shl         eax,0x00000002
+00BF    29 D0                     sub         eax,edx
+00C1    89 C2                     mov         edx,eax
+00C3    C1 E2 02                  shl         edx,0x00000002
+00C6    8D 81 80 00 00 00         lea         eax,0x80[ecx]
+00CC    01 D0                     add         eax,edx
+00CE    59                        pop         ecx
+00CF    C3                        ret         
+00D0                          divl_:
+00D0    56                        push        esi
+00D1    57                        push        edi
+00D2    55                        push        ebp
+00D3    83 EC 0C                  sub         esp,0x0000000c
+00D6    89 D7                     mov         edi,edx
+00D8    89 5C 24 04               mov         0x4[esp],ebx
+00DC    89 0C 24                  mov         [esp],ecx
+00DF    BB 20 00 00 00            mov         ebx,0x00000020
+00E4    31 D2                     xor         edx,edx
+00E6    31 C9                     xor         ecx,ecx
+00E8    E8 00 00 00 00            call        __U8LS
+00ED    BB 1F 00 00 00            mov         ebx,0x0000001f
+00F2    89 D6                     mov         esi,edx
+00F4    31 C9                     xor         ecx,ecx
+00F6    09 C7                     or          edi,eax
+00F8    8B 44 24 04               mov         eax,0x4[esp]
+00FC    31 D2                     xor         edx,edx
+00FE    E8 00 00 00 00            call        __U8LS
+0103    B9 20 00 00 00            mov         ecx,0x00000020
+0108    31 ED                     xor         ebp,ebp
+010A    89 4C 24 08               mov         0x8[esp],ecx
+010E                          L$10:
+010E    85 F6                     test        esi,esi
+0110    76 25                     jbe         L$13
+0112    01 ED                     add         ebp,ebp
+0114    39 D6                     cmp         esi,edx
+0116    77 06                     ja          L$11
+0118    75 0B                     jne         L$12
+011A    39 C7                     cmp         edi,eax
+011C    72 07                     jb          L$12
+011E                          L$11:
+011E    29 C7                     sub         edi,eax
+0120    19 D6                     sbb         esi,edx
+0122    83 CD 01                  or          ebp,0x00000001
+0125                          L$12:
+0125    BB 01 00 00 00            mov         ebx,0x00000001
+012A    31 C9                     xor         ecx,ecx
+012C    E8 00 00 00 00            call        __U8RS
+0131    FF 4C 24 08               dec         dword ptr 0x8[esp]
+0135    EB D7                     jmp         L$10
+0137                          L$13:
+0137    8A 4C 24 08               mov         cl,0x8[esp]
+013B    D3 E5                     shl         ebp,cl
+013D    85 F6                     test        esi,esi
+013F    75 04                     jne         L$14
+0141    85 FF                     test        edi,edi
+0143    74 1F                     je          L$15
+0145                          L$14:
+0145    8B 5C 24 04               mov         ebx,0x4[esp]
+0149    89 F8                     mov         eax,edi
+014B    31 D2                     xor         edx,edx
+014D    F7 F3                     div         ebx
+014F    09 C5                     or          ebp,eax
+0151    8B 04 24                  mov         eax,[esp]
+0154    31 D2                     xor         edx,edx
+0156    89 28                     mov         [eax],ebp
+0158    89 F8                     mov         eax,edi
+015A    F7 F3                     div         ebx
+015C    8B 44 24 1C               mov         eax,0x1c[esp]
+0160    89 10                     mov         [eax],edx
+0162    EB 0F                     jmp         L$16
+0164                          L$15:
+0164    8B 44 24 1C               mov         eax,0x1c[esp]
+0168    C7 00 00 00 00 00         mov         dword ptr [eax],0x00000000
+016E    8B 04 24                  mov         eax,[esp]
+0171    89 28                     mov         [eax],ebp
+0173                          L$16:
+0173    83 C4 0C                  add         esp,0x0000000c
+0176    5D                        pop         ebp
+0177    5F                        pop         edi
+0178    5E                        pop         esi
+0179    C2 04 00                  ret         0x00000004
+017C                          frames_to_bytes_:
+017C    8B 40 40                  mov         eax,0x40[eax]
+017F    0F AF C2                  imul        eax,edx
+0182    C1 E8 03                  shr         eax,0x00000003
+0185    C3                        ret         
+0186                          snd_pcm_playback_avail_:
+0186    53                        push        ebx
+0187    51                        push        ecx
+0188    52                        push        edx
+0189    56                        push        esi
+018A    8B 90 94 00 00 00         mov         edx,0x94[eax]
+0190    8B 52 08                  mov         edx,0x8[edx]
+0193    8B 48 30                  mov         ecx,0x30[eax]
+0196    01 D1                     add         ecx,edx
+0198    8B 90 98 00 00 00         mov         edx,0x98[eax]
+019E    8B 1A                     mov         ebx,[edx]
+01A0    89 CA                     mov         edx,ecx
+01A2    29 DA                     sub         edx,ebx
+01A4    85 D2                     test        edx,edx
+01A6    7D 05                     jge         L$17
+01A8    03 50 78                  add         edx,0x78[eax]
+01AB    EB 09                     jmp         L$18
+01AD                          L$17:
+01AD    8B 70 78                  mov         esi,0x78[eax]
+01B0    39 F2                     cmp         edx,esi
+01B2    72 02                     jb          L$18
+01B4    29 F2                     sub         edx,esi
+01B6                          L$18:
+01B6    89 D0                     mov         eax,edx
+01B8    5E                        pop         esi
+01B9    5A                        pop         edx
+01BA    59                        pop         ecx
+01BB    5B                        pop         ebx
+01BC    C3                        ret         
+01BD                          snd_pcm_capture_avail_:
+01BD    51                        push        ecx
+01BE    52                        push        edx
+01BF    8B 90 94 00 00 00         mov         edx,0x94[eax]
+01C5    8B 88 98 00 00 00         mov         ecx,0x98[eax]
+01CB    8B 52 08                  mov         edx,0x8[edx]
+01CE    2B 11                     sub         edx,[ecx]
+01D0    85 D2                     test        edx,edx
+01D2    7D 03                     jge         L$19
+01D4    03 50 78                  add         edx,0x78[eax]
+01D7                          L$19:
+01D7    89 D0                     mov         eax,edx
+01D9    5A                        pop         edx
+01DA    59                        pop         ecx
+01DB    C3                        ret         
+01DC                          hw_param_mask_:
+01DC    0F BE D2                  movsx       edx,dl
+01DF    83 C0 04                  add         eax,0x00000004
+01E2    C1 E2 05                  shl         edx,0x00000005
+01E5    01 D0                     add         eax,edx
+01E7    C3                        ret         
+01E8                          hw_param_interval_:
+01E8    51                        push        ecx
+01E9    89 C1                     mov         ecx,eax
+01EB    0F BE D2                  movsx       edx,dl
+01EE    83 EA 08                  sub         edx,0x00000008
+01F1    89 D0                     mov         eax,edx
+01F3    C1 E0 02                  shl         eax,0x00000002
+01F6    29 D0                     sub         eax,edx
+01F8    89 C2                     mov         edx,eax
+01FA    C1 E2 02                  shl         edx,0x00000002
+01FD    8D 81 24 01 00 00         lea         eax,0x124[ecx]
+0203    01 D0                     add         eax,edx
+0205    59                        pop         ecx
+0206    C3                        ret         
+0207                          hw_param_mask_c_:
+0207    0F BE D2                  movsx       edx,dl
+020A    83 C0 04                  add         eax,0x00000004
+020D    C1 E2 05                  shl         edx,0x00000005
+0210    01 D0                     add         eax,edx
+0212    C3                        ret         
+0213                          hw_param_interval_c_:
+0213    51                        push        ecx
+0214    89 C1                     mov         ecx,eax
+0216    0F BE D2                  movsx       edx,dl
+0219    83 EA 08                  sub         edx,0x00000008
+021C    89 D0                     mov         eax,edx
+021E    C1 E0 02                  shl         eax,0x00000002
+0221    29 D0                     sub         eax,edx
+0223    89 C2                     mov         edx,eax
+0225    C1 E2 02                  shl         edx,0x00000002
+0228    8D 81 24 01 00 00         lea         eax,0x124[ecx]
+022E    01 D0                     add         eax,edx
+0230    59                        pop         ecx
+0231    C3                        ret         
+0232                          ld2_:
+0232    52                        push        edx
+0233    31 D2                     xor         edx,edx
+0235    3D 00 00 01 00            cmp         eax,0x00010000
+023A    72 08                     jb          L$20
+023C    BA 10 00 00 00            mov         edx,0x00000010
+0241    C1 E8 10                  shr         eax,0x00000010
+0244                          L$20:
+0244    3D 00 01 00 00            cmp         eax,0x00000100
+0249    72 06                     jb          L$21
+024B    C1 E8 08                  shr         eax,0x00000008
+024E    83 C2 08                  add         edx,0x00000008
+0251                          L$21:
+0251    83 F8 10                  cmp         eax,0x00000010
+0254    72 06                     jb          L$22
+0256    C1 E8 04                  shr         eax,0x00000004
+0259    83 C2 04                  add         edx,0x00000004
+025C                          L$22:
+025C    83 F8 04                  cmp         eax,0x00000004
+025F    72 06                     jb          L$23
+0261    C1 E8 02                  shr         eax,0x00000002
+0264    83 C2 02                  add         edx,0x00000002
+0267                          L$23:
+0267    83 F8 02                  cmp         eax,0x00000002
+026A    72 01                     jb          L$24
+026C    42                        inc         edx
+026D                          L$24:
+026D    89 D0                     mov         eax,edx
+026F    5A                        pop         edx
+0270    C3                        ret         
+0271                          snd_mask_none_:
+0271    53                        push        ebx
+0272    52                        push        edx
+0273    BB 20 00 00 00            mov         ebx,0x00000020
+0278    31 D2                     xor         edx,edx
+027A    E8 00 00 00 00            call        memset_
+027F    5A                        pop         edx
+0280    5B                        pop         ebx
+0281    C3                        ret         
+0282                          snd_mask_empty_:
+0282    52                        push        edx
+0283    31 D2                     xor         edx,edx
+0285    EB 09                     jmp         L$26
+0287                          L$25:
+0287    42                        inc         edx
+0288    83 C0 04                  add         eax,0x00000004
+028B    83 FA 02                  cmp         edx,0x00000002
+028E    7D 09                     jge         L$27
+0290                          L$26:
+0290    83 38 00                  cmp         dword ptr [eax],0x00000000
+0293    74 F2                     je          L$25
+0295    31 C0                     xor         eax,eax
+0297    5A                        pop         edx
+0298    C3                        ret         
+0299                          L$27:
+0299    B8 01 00 00 00            mov         eax,0x00000001
+029E    5A                        pop         edx
+029F    C3                        ret         
+02A0                          snd_mask_min_:
+02A0    53                        push        ebx
+02A1    51                        push        ecx
+02A2    52                        push        edx
+02A3    31 D2                     xor         edx,edx
+02A5    EB 09                     jmp         L$29
+02A7                          L$28:
+02A7    42                        inc         edx
+02A8    83 C0 04                  add         eax,0x00000004
+02AB    83 FA 02                  cmp         edx,0x00000002
+02AE    7D 1D                     jge         L$31
+02B0                          L$29:
+02B0    8B 08                     mov         ecx,[eax]
+02B2    85 C9                     test        ecx,ecx
+02B4    74 F1                     je          L$28
+02B6    89 CB                     mov         ebx,ecx
+02B8    0F BC C3                  bsf         eax,ebx
+02BB    75 05                     jne         L$30
+02BD    B8 FF FF FF FF            mov         eax,0xffffffff
+02C2                          L$30:
+02C2    40                        inc         eax
+02C3    C1 E2 05                  shl         edx,0x00000005
+02C6    48                        dec         eax
+02C7    01 D0                     add         eax,edx
+02C9    5A                        pop         edx
+02CA    59                        pop         ecx
+02CB    5B                        pop         ebx
+02CC    C3                        ret         
+02CD                          L$31:
+02CD    31 C0                     xor         eax,eax
+02CF    5A                        pop         edx
+02D0    59                        pop         ecx
+02D1    5B                        pop         ebx
+02D2    C3                        ret         
+02D3                          snd_mask_max_:
+02D3    51                        push        ecx
+02D4    52                        push        edx
+02D5    BA 01 00 00 00            mov         edx,0x00000001
+02DA    83 C0 04                  add         eax,0x00000004
+02DD    EB 08                     jmp         L$33
+02DF                          L$32:
+02DF    4A                        dec         edx
+02E0    83 E8 04                  sub         eax,0x00000004
+02E3    85 D2                     test        edx,edx
+02E5    7C 15                     jl          L$34
+02E7                          L$33:
+02E7    8B 08                     mov         ecx,[eax]
+02E9    85 C9                     test        ecx,ecx
+02EB    74 F2                     je          L$32
+02ED    89 C8                     mov         eax,ecx
+02EF    C1 E2 05                  shl         edx,0x00000005
+02F2    E8 00 00 00 00            call        ld2_
+02F7    01 D0                     add         eax,edx
+02F9    5A                        pop         edx
+02FA    59                        pop         ecx
+02FB    C3                        ret         
+02FC                          L$34:
+02FC    31 C0                     xor         eax,eax
+02FE    5A                        pop         edx
+02FF    59                        pop         ecx
+0300    C3                        ret         
+0301                          snd_mask_reset_range_:
+0301    51                        push        ecx
+0302    56                        push        esi
+0303    57                        push        edi
+0304    89 C6                     mov         esi,eax
+0306    89 D0                     mov         eax,edx
+0308                          L$35:
+0308    39 D8                     cmp         eax,ebx
+030A    77 20                     ja          L$36
+030C    89 C1                     mov         ecx,eax
+030E    BF 01 00 00 00            mov         edi,0x00000001
+0313    83 E1 1F                  and         ecx,0x0000001f
+0316    D3 E7                     shl         edi,cl
+0318    89 C2                     mov         edx,eax
+031A    89 F9                     mov         ecx,edi
+031C    C1 EA 05                  shr         edx,0x00000005
+031F    F7 D1                     not         ecx
+0321    8B 3C 96                  mov         edi,[esi+edx*4]
+0324    21 CF                     and         edi,ecx
+0326    40                        inc         eax
+0327    89 3C 96                  mov         [esi+edx*4],edi
+032A    EB DC                     jmp         L$35
+032C                          L$36:
+032C    5F                        pop         edi
+032D    5E                        pop         esi
+032E    59                        pop         ecx
+032F    C3                        ret         
+0330                          snd_mask_leave_:
+0330    53                        push        ebx
+0331    51                        push        ecx
+0332    56                        push        esi
+0333    89 D6                     mov         esi,edx
+0335    83 E2 1F                  and         edx,0x0000001f
+0338    C1 EE 05                  shr         esi,0x00000005
+033B    88 D1                     mov         cl,dl
+033D    BA 01 00 00 00            mov         edx,0x00000001
+0342    C1 E6 02                  shl         esi,0x00000002
+0345    D3 E2                     shl         edx,cl
+0347    01 C6                     add         esi,eax
+0349    89 D1                     mov         ecx,edx
+034B    8B 16                     mov         edx,[esi]
+034D    BB 20 00 00 00            mov         ebx,0x00000020
+0352    21 D1                     and         ecx,edx
+0354    31 D2                     xor         edx,edx
+0356    E8 00 00 00 00            call        memset_
+035B    89 0E                     mov         [esi],ecx
+035D    5E                        pop         esi
+035E    59                        pop         ecx
+035F    5B                        pop         ebx
+0360    C3                        ret         
+0361                          snd_mask_intersect_:
+0361    53                        push        ebx
+0362    51                        push        ecx
+0363    89 C3                     mov         ebx,eax
+0365    8D 58 08                  lea         ebx,0x8[eax]
+0368                          L$37:
+0368    8B 0A                     mov         ecx,[edx]
+036A    21 08                     and         [eax],ecx
+036C    83 C0 04                  add         eax,0x00000004
+036F    83 C2 04                  add         edx,0x00000004
+0372    39 D8                     cmp         eax,ebx
+0374    75 F2                     jne         L$37
+0376    59                        pop         ecx
+0377    5B                        pop         ebx
+0378    C3                        ret         
+0379                          snd_mask_eq_:
+0379    51                        push        ecx
+037A    56                        push        esi
+037B    57                        push        edi
+037C    B9 08 00 00 00            mov         ecx,0x00000008
+0381    89 D7                     mov         edi,edx
+0383    89 C6                     mov         esi,eax
+0385    31 C0                     xor         eax,eax
+0387    F3 A6                     repe cmpsb  
+0389    74 05                     je          L$38
+038B    19 C0                     sbb         eax,eax
+038D    83 D8 FF                  sbb         eax,0xffffffff
+0390                          L$38:
+0390    85 C0                     test        eax,eax
+0392    0F 94 C0                  sete        al
+0395    25 FF 00 00 00            and         eax,0x000000ff
+039A    5F                        pop         edi
+039B    5E                        pop         esi
+039C    59                        pop         ecx
+039D    C3                        ret         
+039E                          snd_mask_copy_:
+039E    51                        push        ecx
+039F    56                        push        esi
+03A0    57                        push        edi
+03A1    B9 08 00 00 00            mov         ecx,0x00000008
+03A6    89 C7                     mov         edi,eax
+03A8    89 D6                     mov         esi,edx
+03AA    F3 A5                     repe movsd  
+03AC    5F                        pop         edi
+03AD    5E                        pop         esi
+03AE    59                        pop         ecx
+03AF    C3                        ret         
+03B0                          snd_mask_single_:
+03B0    53                        push        ebx
+03B1    51                        push        ecx
+03B2    52                        push        edx
+03B3    31 C9                     xor         ecx,ecx
+03B5    31 D2                     xor         edx,edx
+03B7    EB 0E                     jmp         L$41
+03B9                          L$39:
+03B9    85 C9                     test        ecx,ecx
+03BB    75 15                     jne         L$42
+03BD    41                        inc         ecx
+03BE                          L$40:
+03BE    42                        inc         edx
+03BF    83 C0 04                  add         eax,0x00000004
+03C2    83 FA 02                  cmp         edx,0x00000002
+03C5    7D 11                     jge         L$43
+03C7                          L$41:
+03C7    8B 18                     mov         ebx,[eax]
+03C9    85 DB                     test        ebx,ebx
+03CB    74 F1                     je          L$40
+03CD    4B                        dec         ebx
+03CE    85 18                     test        [eax],ebx
+03D0    74 E7                     je          L$39
+03D2                          L$42:
+03D2    31 C0                     xor         eax,eax
+03D4    5A                        pop         edx
+03D5    59                        pop         ecx
+03D6    5B                        pop         ebx
+03D7    C3                        ret         
+03D8                          L$43:
+03D8    B8 01 00 00 00            mov         eax,0x00000001
+03DD    5A                        pop         edx
+03DE    59                        pop         ecx
+03DF    5B                        pop         ebx
+03E0    C3                        ret         
+
+Routine Size: 993 bytes,    Routine Base: CODE32 + 0000
+
+03E1                          register_chrdev_:
+03E1    89 D0                     mov         eax,edx
+03E3    BA 00 00 00 00            mov         edx,offset L$237
+03E8    E8 00 00 00 00            call        strcmp_
+03ED    85 C0                     test        eax,eax
+03EF    75 06                     jne         L$44
+03F1    89 1D 00 00 00 00         mov         _alsa_fops,ebx
+03F7                          L$44:
+03F7    31 C0                     xor         eax,eax
+03F9    C3                        ret         
+
+Routine Size: 25 bytes,    Routine Base: CODE32 + 03E1
+
+03FA                          unregister_chrdev_:
+03FA    89 D0                     mov         eax,edx
+03FC    BA 00 00 00 00            mov         edx,offset L$237
+0401    E8 00 00 00 00            call        strcmp_
+0406    85 C0                     test        eax,eax
+0408    75 05                     jne         L$45
+040A    A3 00 00 00 00            mov         _alsa_fops,eax
+040F                          L$45:
+040F    31 C0                     xor         eax,eax
+0411    C3                        ret         
+
+Routine Size: 24 bytes,    Routine Base: CODE32 + 03FA
+
+0412                          register_sound_special_:
+0412    51                        push        ecx
+0413    56                        push        esi
+0414    57                        push        edi
+0415    85 C0                     test        eax,eax
+0417    75 09                     jne         L$46
+0419    B8 FF FF FF FF            mov         eax,0xffffffff
+041E    5F                        pop         edi
+041F    5E                        pop         esi
+0420    59                        pop         ecx
+0421    C3                        ret         
+0422                          L$46:
+0422    B9 3C 00 00 00            mov         ecx,0x0000003c
+0427    BF F0 00 00 00            mov         edi,offset _oss_devices+0xf0
+042C    89 C6                     mov         esi,eax
+042E    57                        push        edi
+042F    89 C8                     mov         eax,ecx
+0431    C1 E9 02                  shr         ecx,0x00000002
+0434    F2 A5                     repne movsd 
+0436    8A C8                     mov         cl,al
+0438    80 E1 03                  and         cl,0x03
+043B    F2 A4                     repne movsb 
+043D    5F                        pop         edi
+043E    B8 04 00 00 00            mov         eax,0x00000004
+0443    5F                        pop         edi
+0444    5E                        pop         esi
+0445    59                        pop         ecx
+0446    C3                        ret         
+
+Routine Size: 53 bytes,    Routine Base: CODE32 + 0412
+
+0447                          register_sound_mixer_:
+0447    51                        push        ecx
+0448    56                        push        esi
+0449    57                        push        edi
+044A    85 C0                     test        eax,eax
+044C    75 09                     jne         L$47
+044E    B8 FF FF FF FF            mov         eax,0xffffffff
+0453    5F                        pop         edi
+0454    5E                        pop         esi
+0455    59                        pop         ecx
+0456    C3                        ret         
+0457                          L$47:
+0457    B9 3C 00 00 00            mov         ecx,0x0000003c
+045C    BF B4 00 00 00            mov         edi,offset _oss_devices+0xb4
+0461    89 C6                     mov         esi,eax
+0463    57                        push        edi
+0464    89 C8                     mov         eax,ecx
+0466    C1 E9 02                  shr         ecx,0x00000002
+0469    F2 A5                     repne movsd 
+046B    8A C8                     mov         cl,al
+046D    80 E1 03                  and         cl,0x03
+0470    F2 A4                     repne movsb 
+0472    5F                        pop         edi
+0473    B8 03 00 00 00            mov         eax,0x00000003
+0478    5F                        pop         edi
+0479    5E                        pop         esi
+047A    59                        pop         ecx
+047B    C3                        ret         
+
+Routine Size: 53 bytes,    Routine Base: CODE32 + 0447
+
+047C                          register_sound_midi_:
+047C    51                        push        ecx
+047D    56                        push        esi
+047E    57                        push        edi
+047F    85 C0                     test        eax,eax
+0481    75 09                     jne         L$48
+0483    B8 FF FF FF FF            mov         eax,0xffffffff
+0488    5F                        pop         edi
+0489    5E                        pop         esi
+048A    59                        pop         ecx
+048B    C3                        ret         
+048C                          L$48:
+048C    B9 3C 00 00 00            mov         ecx,0x0000003c
+0491    BF 78 00 00 00            mov         edi,offset _oss_devices+0x78
+0496    89 C6                     mov         esi,eax
+0498    57                        push        edi
+0499    89 C8                     mov         eax,ecx
+049B    C1 E9 02                  shr         ecx,0x00000002
+049E    F2 A5                     repne movsd 
+04A0    8A C8                     mov         cl,al
+04A2    80 E1 03                  and         cl,0x03
+04A5    F2 A4                     repne movsb 
+04A7    5F                        pop         edi
+04A8    B8 02 00 00 00            mov         eax,0x00000002
+04AD    5F                        pop         edi
+04AE    5E                        pop         esi
+04AF    59                        pop         ecx
+04B0    C3                        ret         
+
+Routine Size: 53 bytes,    Routine Base: CODE32 + 047C
+
+04B1                          register_sound_dsp_:
+04B1    51                        push        ecx
+04B2    56                        push        esi
+04B3    57                        push        edi
+04B4    85 C0                     test        eax,eax
+04B6    75 09                     jne         L$49
+04B8    B8 FF FF FF FF            mov         eax,0xffffffff
+04BD    5F                        pop         edi
+04BE    5E                        pop         esi
+04BF    59                        pop         ecx
+04C0    C3                        ret         
+04C1                          L$49:
+04C1    B9 3C 00 00 00            mov         ecx,0x0000003c
+04C6    BF 00 00 00 00            mov         edi,offset _oss_devices
+04CB    89 C6                     mov         esi,eax
+04CD    57                        push        edi
+04CE    89 C8                     mov         eax,ecx
+04D0    C1 E9 02                  shr         ecx,0x00000002
+04D3    F2 A5                     repne movsd 
+04D5    8A C8                     mov         cl,al
+04D7    80 E1 03                  and         cl,0x03
+04DA    F2 A4                     repne movsb 
+04DC    5F                        pop         edi
+04DD    31 C0                     xor         eax,eax
+04DF    5F                        pop         edi
+04E0    5E                        pop         esi
+04E1    59                        pop         ecx
+04E2    C3                        ret         
+
+Routine Size: 50 bytes,    Routine Base: CODE32 + 04B1
+
+04E3                          register_sound_synth_:
+04E3    51                        push        ecx
+04E4    56                        push        esi
+04E5    57                        push        edi
+04E6    85 C0                     test        eax,eax
+04E8    75 09                     jne         L$50
+04EA    B8 FF FF FF FF            mov         eax,0xffffffff
+04EF    5F                        pop         edi
+04F0    5E                        pop         esi
+04F1    59                        pop         ecx
+04F2    C3                        ret         
+04F3                          L$50:
+04F3    B9 3C 00 00 00            mov         ecx,0x0000003c
+04F8    BF 3C 00 00 00            mov         edi,offset _oss_devices+0x3c
+04FD    89 C6                     mov         esi,eax
+04FF    57                        push        edi
+0500    89 C8                     mov         eax,ecx
+0502    C1 E9 02                  shr         ecx,0x00000002
+0505    F2 A5                     repne movsd 
+0507    8A C8                     mov         cl,al
+0509    80 E1 03                  and         cl,0x03
+050C    F2 A4                     repne movsb 
+050E    5F                        pop         edi
+050F    B8 01 00 00 00            mov         eax,0x00000001
+0514    5F                        pop         edi
+0515    5E                        pop         esi
+0516    59                        pop         ecx
+0517    C3                        ret         
+
+Routine Size: 53 bytes,    Routine Base: CODE32 + 04E3
+
+0518                          unregister_sound_special_:
+0518    53                        push        ebx
+0519    52                        push        edx
+051A    BB 3C 00 00 00            mov         ebx,0x0000003c
+051F    B8 F0 00 00 00            mov         eax,offset _oss_devices+0xf0
+0524    31 D2                     xor         edx,edx
+0526    E8 00 00 00 00            call        memset_
+052B    5A                        pop         edx
+052C    5B                        pop         ebx
+052D    C3                        ret         
+
+Routine Size: 22 bytes,    Routine Base: CODE32 + 0518
+
+052E                          unregister_sound_mixer_:
+052E    53                        push        ebx
+052F    52                        push        edx
+0530    BB 3C 00 00 00            mov         ebx,0x0000003c
+0535    B8 B4 00 00 00            mov         eax,offset _oss_devices+0xb4
+053A    31 D2                     xor         edx,edx
+053C    E8 00 00 00 00            call        memset_
+0541    5A                        pop         edx
+0542    5B                        pop         ebx
+0543    C3                        ret         
+
+Routine Size: 22 bytes,    Routine Base: CODE32 + 052E
+
+0544                          unregister_sound_midi_:
+0544    53                        push        ebx
+0545    52                        push        edx
+0546    BB 3C 00 00 00            mov         ebx,0x0000003c
+054B    B8 78 00 00 00            mov         eax,offset _oss_devices+0x78
+0550    31 D2                     xor         edx,edx
+0552    E8 00 00 00 00            call        memset_
+0557    5A                        pop         edx
+0558    5B                        pop         ebx
+0559    C3                        ret         
+
+Routine Size: 22 bytes,    Routine Base: CODE32 + 0544
+
+055A                          unregister_sound_dsp_:
+055A    53                        push        ebx
+055B    52                        push        edx
+055C    BB 3C 00 00 00            mov         ebx,0x0000003c
+0561    B8 00 00 00 00            mov         eax,offset _oss_devices
+0566    31 D2                     xor         edx,edx
+0568    E8 00 00 00 00            call        memset_
+056D    5A                        pop         edx
+056E    5B                        pop         ebx
+056F    C3                        ret         
+
+Routine Size: 22 bytes,    Routine Base: CODE32 + 055A
+
+0570                          unregister_sound_synth_:
+0570    53                        push        ebx
+0571    52                        push        edx
+0572    BB 3C 00 00 00            mov         ebx,0x0000003c
+0577    B8 3C 00 00 00            mov         eax,offset _oss_devices+0x3c
+057C    31 D2                     xor         edx,edx
+057E    E8 00 00 00 00            call        memset_
+0583    5A                        pop         edx
+0584    5B                        pop         ebx
+0585    C3                        ret         
+
+Routine Size: 22 bytes,    Routine Base: CODE32 + 0570
+
+0586                          UNIXToOSSError_:
+0586    51                        push        ecx
+0587    52                        push        edx
+0588    83 F8 F0                  cmp         eax,0xfffffff0
+058B    7C 42                     jl          L$52
+058D    0F 8E 87 00 00 00         jle         L$59
+0593    83 F8 FA                  cmp         eax,0xfffffffa
+0596    7C 22                     jl          L$51
+0598    0F 8E 74 00 00 00         jle         L$58
+059E    83 F8 FF                  cmp         eax,0xffffffff
+05A1    0F 8C 83 00 00 00         jl          L$61
+05A7    0F 8E 75 00 00 00         jle         L$60
+05AD    85 C0                     test        eax,eax
+05AF    0F 84 97 00 00 00         je          L$64
+05B5    E9 70 00 00 00            jmp         L$61
+05BA                          L$51:
+05BA    83 F8 F4                  cmp         eax,0xfffffff4
+05BD    0F 8C 67 00 00 00         jl          L$61
+05C3    7E 2D                     jle         L$54
+05C5    83 F8 F5                  cmp         eax,0xfffffff5
+05C8    74 40                     je          L$57
+05CA    E9 5B 00 00 00            jmp         L$61
+05CF                          L$52:
+05CF    83 F8 E7                  cmp         eax,0xffffffe7
+05D2    7C 10                     jl          L$53
+05D4    7E 2C                     jle         L$56
+05D6    83 F8 EA                  cmp         eax,0xffffffea
+05D9    7C 4F                     jl          L$61
+05DB    7E 25                     jle         L$56
+05DD    83 F8 ED                  cmp         eax,0xffffffed
+05E0    74 18                     je          L$55
+05E2    EB 46                     jmp         L$61
+05E4                          L$53:
+05E4    83 F8 B3                  cmp         eax,0xffffffb3
+05E7    7C 41                     jl          L$61
+05E9    7E 37                     jle         L$60
+05EB    83 F8 E0                  cmp         eax,0xffffffe0
+05EE    74 32                     je          L$60
+05F0    EB 38                     jmp         L$61
+05F2                          L$54:
+05F2    B8 01 00 00 00            mov         eax,0x00000001
+05F7    5A                        pop         edx
+05F8    59                        pop         ecx
+05F9    C3                        ret         
+05FA                          L$55:
+05FA    B8 03 00 00 00            mov         eax,0x00000003
+05FF    5A                        pop         edx
+0600    59                        pop         ecx
+0601    C3                        ret         
+0602                          L$56:
+0602    B8 04 00 00 00            mov         eax,0x00000004
+0607    5A                        pop         edx
+0608    59                        pop         ecx
+0609    C3                        ret         
+060A                          L$57:
+060A    B8 06 00 00 00            mov         eax,0x00000006
+060F    5A                        pop         edx
+0610    59                        pop         ecx
+0611    C3                        ret         
+0612                          L$58:
+0612    B8 07 00 00 00            mov         eax,0x00000007
+0617    5A                        pop         edx
+0618    59                        pop         ecx
+0619    C3                        ret         
+061A                          L$59:
+061A    B8 05 00 00 00            mov         eax,0x00000005
+061F    5A                        pop         edx
+0620    59                        pop         ecx
+0621    C3                        ret         
+0622                          L$60:
+0622    B8 09 00 00 00            mov         eax,0x00000009
+0627    5A                        pop         edx
+0628    59                        pop         ecx
+0629    C3                        ret         
+062A                          L$61:
+062A    83 3D 00 00 00 00 00      cmp         dword ptr _DebugLevel,0x00000000
+0631    7E 14                     jle         L$63
+0633    85 C0                     test        eax,eax
+0635    7F 02                     jg          L$62
+0637    F7 D8                     neg         eax
+0639                          L$62:
+0639    50                        push        eax
+063A    68 05 00 00 00            push        offset L$238
+063F    E8 00 00 00 00            call        _DPE
+0644    83 C4 08                  add         esp,0x00000008
+0647                          L$63:
+0647    B8 FF 00 00 00            mov         eax,0x000000ff
+064C                          L$64:
+064C    5A                        pop         edx
+064D    59                        pop         ecx
+064E    C3                        ret         
+064F    90                        nop         
+0650                          L$65:
+0650    BC 06 00 00                                     DD	L$66
+0654    C2 06 00 00                                     DD	L$67
+0658    C8 06 00 00                                     DD	L$68
+065C    CE 06 00 00                                     DD	L$69
+0660    D4 06 00 00                                     DD	L$70
+0664    DA 06 00 00                                     DD	L$71
+0668    E0 06 00 00                                     DD	L$72
+066C    E6 06 00 00                                     DD	L$73
+0670    EC 06 00 00                                     DD	L$74
+0674    F2 06 00 00                                     DD	L$75
+0678    F8 06 00 00                                     DD	L$76
+067C    FE 06 00 00                                     DD	L$77
+0680    04 07 00 00                                     DD	L$78
+0684    0A 07 00 00                                     DD	L$79
+0688    28 07 00 00                                     DD	L$84
+068C    28 07 00 00                                     DD	L$84
+0690    28 07 00 00                                     DD	L$84
+0694    28 07 00 00                                     DD	L$84
+0698    28 07 00 00                                     DD	L$84
+069C    28 07 00 00                                     DD	L$84
+06A0    10 07 00 00                                     DD	L$80
+06A4    16 07 00 00                                     DD	L$81
+06A8    1C 07 00 00                                     DD	L$82
+06AC    22 07 00 00                                     DD	L$83
+
+Routine Size: 298 bytes,    Routine Base: CODE32 + 0586
+
+06B0                          ALSAToOSSDataType_:
+06B0    83 F8 17                  cmp         eax,0x00000017
+06B3    77 73                     ja          L$84
+06B5    FF 24 85 50 06 00 00      jmp         dword ptr L$65[eax*4]
+06BC                          L$66:
+06BC    B8 01 00 00 00            mov         eax,0x00000001
+06C1    C3                        ret         
+06C2                          L$67:
+06C2    B8 02 00 00 00            mov         eax,0x00000002
+06C7    C3                        ret         
+06C8                          L$68:
+06C8    B8 04 00 00 00            mov         eax,0x00000004
+06CD    C3                        ret         
+06CE                          L$69:
+06CE    B8 08 00 00 00            mov         eax,0x00000008
+06D3    C3                        ret         
+06D4                          L$70:
+06D4    B8 10 00 00 00            mov         eax,0x00000010
+06D9    C3                        ret         
+06DA                          L$71:
+06DA    B8 20 00 00 00            mov         eax,0x00000020
+06DF    C3                        ret         
+06E0                          L$72:
+06E0    B8 40 00 00 00            mov         eax,0x00000040
+06E5    C3                        ret         
+06E6                          L$73:
+06E6    B8 80 00 00 00            mov         eax,0x00000080
+06EB    C3                        ret         
+06EC                          L$74:
+06EC    B8 00 01 00 00            mov         eax,0x00000100
+06F1    C3                        ret         
+06F2                          L$75:
+06F2    B8 00 02 00 00            mov         eax,0x00000200
+06F7    C3                        ret         
+06F8                          L$76:
+06F8    B8 00 04 00 00            mov         eax,0x00000400
+06FD    C3                        ret         
+06FE                          L$77:
+06FE    B8 00 08 00 00            mov         eax,0x00000800
+0703    C3                        ret         
+0704                          L$78:
+0704    B8 00 10 00 00            mov         eax,0x00001000
+0709    C3                        ret         
+070A                          L$79:
+070A    B8 00 20 00 00            mov         eax,0x00002000
+070F    C3                        ret         
+0710                          L$80:
+0710    B8 00 40 00 00            mov         eax,0x00004000
+0715    C3                        ret         
+0716                          L$81:
+0716    B8 00 80 00 00            mov         eax,0x00008000
+071B    C3                        ret         
+071C                          L$82:
+071C    B8 00 00 01 00            mov         eax,0x00010000
+0721    C3                        ret         
+0722                          L$83:
+0722    B8 00 00 02 00            mov         eax,0x00020000
+0727    C3                        ret         
+0728                          L$84:
+0728    B8 FF FF FF FF            mov         eax,0xffffffff
+072D    C3                        ret         
+
+Routine Size: 126 bytes,    Routine Base: CODE32 + 06B0
+
+072E                          ALSAToOSSRateFlags_:
+072E    52                        push        edx
+072F    89 C2                     mov         edx,eax
+0731    31 C0                     xor         eax,eax
+0733    F6 C2 01                  test        dl,0x01
+0736    74 05                     je          L$85
+0738    B8 01 00 00 00            mov         eax,0x00000001
+073D                          L$85:
+073D    F6 C2 02                  test        dl,0x02
+0740    74 02                     je          L$86
+0742    0C 02                     or          al,0x02
+0744                          L$86:
+0744    F6 C2 04                  test        dl,0x04
+0747    74 02                     je          L$87
+0749    0C 04                     or          al,0x04
+074B                          L$87:
+074B    F6 C2 08                  test        dl,0x08
+074E    74 02                     je          L$88
+0750    0C 08                     or          al,0x08
+0752                          L$88:
+0752    F6 C2 10                  test        dl,0x10
+0755    74 02                     je          L$89
+0757    0C 10                     or          al,0x10
+0759                          L$89:
+0759    F6 C2 20                  test        dl,0x20
+075C    74 02                     je          L$90
+075E    0C 20                     or          al,0x20
+0760                          L$90:
+0760    F6 C2 40                  test        dl,0x40
+0763    74 02                     je          L$91
+0765    0C 40                     or          al,0x40
+0767                          L$91:
+0767    F6 C2 80                  test        dl,0x80
+076A    74 02                     je          L$92
+076C    0C 80                     or          al,0x80
+076E                          L$92:
+076E    F6 C6 01                  test        dh,0x01
+0771    74 03                     je          L$93
+0773    80 CC 01                  or          ah,0x01
+0776                          L$93:
+0776    F6 C6 02                  test        dh,0x02
+0779    74 03                     je          L$94
+077B    80 CC 02                  or          ah,0x02
+077E                          L$94:
+077E    F6 C6 04                  test        dh,0x04
+0781    74 03                     je          L$95
+0783    80 CC 04                  or          ah,0x04
+0786                          L$95:
+0786    F6 C6 08                  test        dh,0x08
+0789    74 03                     je          L$96
+078B    80 CC 08                  or          ah,0x08
+078E                          L$96:
+078E    F6 C6 10                  test        dh,0x10
+0791    74 03                     je          L$97
+0793    80 CC 10                  or          ah,0x10
+0796                          L$97:
+0796    F7 C2 00 00 00 40         test        edx,0x40000000
+079C    74 05                     je          L$98
+079E    0D 00 00 00 40            or          eax,0x40000000
+07A3                          L$98:
+07A3    5A                        pop         edx
+07A4    C3                        ret         
+
+Routine Size: 119 bytes,    Routine Base: CODE32 + 072E
+
+07A5                          OSS32_QueryDevCaps_:
+07A5    53                        push        ebx
+07A6    51                        push        ecx
+07A7    56                        push        esi
+07A8    57                        push        edi
+07A9    55                        push        ebp
+07AA    89 E5                     mov         ebp,esp
+07AC    83 EC 38                  sub         esp,0x00000038
+07AF    50                        push        eax
+07B0    52                        push        edx
+07B1    31 D2                     xor         edx,edx
+07B3    B8 98 03 00 00            mov         eax,0x00000398
+07B8    89 55 CC                  mov         -0x34[ebp],edx
+07BB    BA 15 00 00 00            mov         edx,0x00000015
+07C0    E8 00 00 00 00            call        __kmalloc_
+07C5    89 45 F4                  mov         -0xc[ebp],eax
+07C8    85 C0                     test        eax,eax
+07CA    75 17                     jne         L$99
+07CC    68 16 00 00 00            push        offset L$239
+07D1    BB 01 00 00 00            mov         ebx,0x00000001
+07D6    E8 00 00 00 00            call        _printk
+07DB    83 C4 04                  add         esp,0x00000004
+07DE    E9 29 03 00 00            jmp         L$129
+07E3                          L$99:
+07E3    8D 90 1C 01 00 00         lea         edx,0x11c[eax]
+07E9    89 55 E8                  mov         -0x18[ebp],edx
+07EC    8B 55 C0                  mov         edx,-0x40[ebp]
+07EF    C7 02 01 00 00 00         mov         dword ptr [edx],0x00000001
+07F5    83 C2 68                  add         edx,0x00000068
+07F8    C7 42 9C 03 00 00 00      mov         dword ptr -0x64[edx],0x00000003
+07FF    89 55 C8                  mov         -0x38[ebp],edx
+0802    8D 90 64 02 00 00         lea         edx,0x264[eax]
+0808    89 55 EC                  mov         -0x14[ebp],edx
+080B    8D 90 40 01 00 00         lea         edx,0x140[eax]
+0811    89 55 E0                  mov         -0x20[ebp],edx
+0814    8D 90 60 01 00 00         lea         edx,0x160[eax]
+081A    89 55 D8                  mov         -0x28[ebp],edx
+081D    8D 90 58 02 00 00         lea         edx,0x258[eax]
+0823    89 55 F0                  mov         -0x10[ebp],edx
+0826    8D 50 50                  lea         edx,0x50[eax]
+0829    83 C0 10                  add         eax,0x00000010
+082C    89 45 D4                  mov         -0x2c[ebp],eax
+082F    8B 45 C0                  mov         eax,-0x40[ebp]
+0832    83 C0 08                  add         eax,0x00000008
+0835    31 C9                     xor         ecx,ecx
+0837    89 45 E4                  mov         -0x1c[ebp],eax
+083A    8B 45 C0                  mov         eax,-0x40[ebp]
+083D    89 4D F8                  mov         -0x8[ebp],ecx
+0840    83 C0 48                  add         eax,0x00000048
+0843    89 55 DC                  mov         -0x24[ebp],edx
+0846    89 45 D0                  mov         -0x30[ebp],eax
+0849    EB 21                     jmp         L$101
+084B                          L$100:
+084B    8B 45 CC                  mov         eax,-0x34[ebp]
+084E    8B 75 F8                  mov         esi,-0x8[ebp]
+0851    E8 00 00 00 00            call        OSS32_WaveClose_
+0856    31 DB                     xor         ebx,ebx
+0858    46                        inc         esi
+0859    89 5D CC                  mov         -0x34[ebp],ebx
+085C    89 75 F8                  mov         -0x8[ebp],esi
+085F    83 FE 02                  cmp         esi,0x00000002
+0862    0F 8D A7 01 00 00         jge         L$120
+0868    85 F6                     test        esi,esi
+086A    75 05                     jne         L$102
+086C                          L$101:
+086C    8B 45 D0                  mov         eax,-0x30[ebp]
+086F    EB 03                     jmp         L$103
+0871                          L$102:
+0871    8B 45 C8                  mov         eax,-0x38[ebp]
+0874                          L$103:
+0874    6A 00                     push        0x00000000
+0876    8B 5D F8                  mov         ebx,-0x8[ebp]
+0879    89 C6                     mov         esi,eax
+087B    31 D2                     xor         edx,edx
+087D    85 DB                     test        ebx,ebx
+087F    0F 95 C0                  setne       al
+0882    31 C9                     xor         ecx,ecx
+0884    8D 5D CC                  lea         ebx,-0x34[ebp]
+0887    88 C2                     mov         dl,al
+0889    8B 45 C4                  mov         eax,-0x3c[ebp]
+088C    E8 00 00 00 00            call        OSS32_WaveOpen_
+0891    89 C7                     mov         edi,eax
+0893    85 C0                     test        eax,eax
+0895    74 13                     je          L$104
+0897    50                        push        eax
+0898    68 39 00 00 00            push        offset L$240
+089D    E8 00 00 00 00            call        _printk
+08A2    83 C4 08                  add         esp,0x00000008
+08A5    E9 37 02 00 00            jmp         L$126
+08AA                          L$104:
+08AA    8B 45 CC                  mov         eax,-0x34[ebp]
+08AD    89 45 FC                  mov         -0x4[ebp],eax
+08B0    85 C0                     test        eax,eax
+08B2    74 08                     je          L$105
+08B4    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+08BA    74 17                     je          L$107
+08BC                          L$105:
+08BC    68 61 00 00 00            push        offset L$241
+08C1    BF 02 00 00 00            mov         edi,0x00000002
+08C6                          L$106:
+08C6    E8 00 00 00 00            call        _printk
+08CB    83 C4 04                  add         esp,0x00000004
+08CE    E9 0E 02 00 00            jmp         L$126
+08D3                          L$107:
+08D3    8B 4D F4                  mov         ecx,-0xc[ebp]
+08D6    BB 01 41 1C 81            mov         ebx,0x811c4101
+08DB    8D 50 1C                  lea         edx,0x1c[eax]
+08DE    8B 78 24                  mov         edi,0x24[eax]
+08E1    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+08E8    83 C0 0C                  add         eax,0x0000000c
+08EB    FF 57 14                  call        dword ptr 0x14[edi]
+08EE    89 C3                     mov         ebx,eax
+08F0    85 C0                     test        eax,eax
+08F2    74 1C                     je          L$109
+08F4    50                        push        eax
+08F5    68 89 00 00 00            push        offset L$242
+08FA                          L$108:
+08FA    E8 00 00 00 00            call        _printk
+08FF    83 C4 08                  add         esp,0x00000008
+0902    89 D8                     mov         eax,ebx
+0904    E8 00 00 00 00            call        UNIXToOSSError_
+0909    89 C7                     mov         edi,eax
+090B    E9 D1 01 00 00            jmp         L$126
+0910                          L$109:
+0910    83 7D F8 00               cmp         dword ptr -0x8[ebp],0x00000000
+0914    75 23                     jne         L$112
+0916    8B 45 F4                  mov         eax,-0xc[ebp]
+0919    80 78 50 00               cmp         byte ptr 0x50[eax],0x00
+091D    74 0A                     je          L$110
+091F    BB 20 00 00 00            mov         ebx,0x00000020
+0924    8B 55 DC                  mov         edx,-0x24[ebp]
+0927    EB 08                     jmp         L$111
+0929                          L$110:
+0929    BB 20 00 00 00            mov         ebx,0x00000020
+092E    8B 55 D4                  mov         edx,-0x2c[ebp]
+0931                          L$111:
+0931    8B 45 E4                  mov         eax,-0x1c[ebp]
+0934    E8 00 00 00 00            call        strncpy_
+0939                          L$112:
+0939    8B 45 F4                  mov         eax,-0xc[ebp]
+093C    8B 7D FC                  mov         edi,-0x4[ebp]
+093F    8B 55 FC                  mov         edx,-0x4[ebp]
+0942    8B 80 C4 00 00 00         mov         eax,0xc4[eax]
+0948    8B 4D E8                  mov         ecx,-0x18[ebp]
+094B    89 06                     mov         [esi],eax
+094D    8B 45 E8                  mov         eax,-0x18[ebp]
+0950    BB 10 41 7C C2            mov         ebx,0xc27c4110
+0955    E8 00 00 00 00            call        _snd_pcm_hw_params_any_
+095A    8B 45 FC                  mov         eax,-0x4[ebp]
+095D    8B 7F 24                  mov         edi,0x24[edi]
+0960    83 C2 1C                  add         edx,0x0000001c
+0963    83 C0 0C                  add         eax,0x0000000c
+0966    FF 57 14                  call        dword ptr 0x14[edi]
+0969    89 C3                     mov         ebx,eax
+096B    89 C7                     mov         edi,eax
+096D    85 C0                     test        eax,eax
+096F    74 08                     je          L$113
+0971    50                        push        eax
+0972    68 BC 00 00 00            push        offset L$243
+0977    EB 81                     jmp         L$108
+0979                          L$113:
+0979    8B 45 F0                  mov         eax,-0x10[ebp]
+097C    8B 00                     mov         eax,[eax]
+097E    89 46 04                  mov         0x4[esi],eax
+0981    8B 45 F0                  mov         eax,-0x10[ebp]
+0984    8B 40 04                  mov         eax,0x4[eax]
+0987    89 5E 0C                  mov         0xc[esi],ebx
+098A    8B 5E 04                  mov         ebx,0x4[esi]
+098D    89 46 08                  mov         0x8[esi],eax
+0990    83 FB 01                  cmp         ebx,0x00000001
+0993    75 04                     jne         L$114
+0995    80 4E 0C 01               or          byte ptr 0xc[esi],0x01
+0999                          L$114:
+0999    83 7E 08 02               cmp         dword ptr 0x8[esi],0x00000002
+099D    72 04                     jb          L$115
+099F    80 4E 0C 02               or          byte ptr 0xc[esi],0x02
+09A3                          L$115:
+09A3    83 7E 08 04               cmp         dword ptr 0x8[esi],0x00000004
+09A7    72 04                     jb          L$116
+09A9    80 4E 0C 04               or          byte ptr 0xc[esi],0x04
+09AD                          L$116:
+09AD    83 7E 08 06               cmp         dword ptr 0x8[esi],0x00000006
+09B1    72 04                     jb          L$117
+09B3    80 4E 0C 08               or          byte ptr 0xc[esi],0x08
+09B7                          L$117:
+09B7    8B 45 EC                  mov         eax,-0x14[ebp]
+09BA    8B 00                     mov         eax,[eax]
+09BC    89 46 10                  mov         0x10[esi],eax
+09BF    8B 45 EC                  mov         eax,-0x14[ebp]
+09C2    8B 40 04                  mov         eax,0x4[eax]
+09C5    89 46 14                  mov         0x14[esi],eax
+09C8    8B 45 E0                  mov         eax,-0x20[ebp]
+09CB    8B 00                     mov         eax,[eax]
+09CD    89 46 18                  mov         0x18[esi],eax
+09D0    E8 00 00 00 00            call        ALSAToOSSRateFlags_
+09D5    C7 46 1C 00 00 00 00      mov         dword ptr 0x1c[esi],0x00000000
+09DC    8B 5D D8                  mov         ebx,-0x28[ebp]
+09DF    89 46 18                  mov         0x18[esi],eax
+09E2    31 D2                     xor         edx,edx
+09E4    8B 1B                     mov         ebx,[ebx]
+09E6    EB 0A                     jmp         L$119
+09E8                          L$118:
+09E8    42                        inc         edx
+09E9    83 FA 20                  cmp         edx,0x00000020
+09EC    0F 8D 59 FE FF FF         jge         L$100
+09F2                          L$119:
+09F2    B8 01 00 00 00            mov         eax,0x00000001
+09F7    88 D1                     mov         cl,dl
+09F9    D3 E0                     shl         eax,cl
+09FB    85 C3                     test        ebx,eax
+09FD    74 E9                     je          L$118
+09FF    89 D0                     mov         eax,edx
+0A01    E8 00 00 00 00            call        ALSAToOSSDataType_
+0A06    85 C0                     test        eax,eax
+0A08    7C DE                     jl          L$118
+0A0A    09 46 1C                  or          0x1c[esi],eax
+0A0D    EB D9                     jmp         L$118
+0A0F                          L$120:
+0A0F    8D 5D CC                  lea         ebx,-0x34[ebp]
+0A12    BA 02 00 00 00            mov         edx,0x00000002
+0A17    8B 45 C4                  mov         eax,-0x3c[ebp]
+0A1A    E8 00 00 00 00            call        OSS32_MidiOpen_
+0A1F    85 C0                     test        eax,eax
+0A21    75 14                     jne         L$121
+0A23    8B 45 C0                  mov         eax,-0x40[ebp]
+0A26    80 48 04 10               or          byte ptr 0x4[eax],0x10
+0A2A    8B 45 CC                  mov         eax,-0x34[ebp]
+0A2D    31 D2                     xor         edx,edx
+0A2F    E8 00 00 00 00            call        OSS32_MidiClose_
+0A34    89 55 CC                  mov         -0x34[ebp],edx
+0A37                          L$121:
+0A37    8D 5D CC                  lea         ebx,-0x34[ebp]
+0A3A    BA 03 00 00 00            mov         edx,0x00000003
+0A3F    8B 45 C4                  mov         eax,-0x3c[ebp]
+0A42    E8 00 00 00 00            call        OSS32_MidiOpen_
+0A47    85 C0                     test        eax,eax
+0A49    75 14                     jne         L$122
+0A4B    8B 45 C0                  mov         eax,-0x40[ebp]
+0A4E    80 48 04 20               or          byte ptr 0x4[eax],0x20
+0A52    8B 45 CC                  mov         eax,-0x34[ebp]
+0A55    31 C9                     xor         ecx,ecx
+0A57    E8 00 00 00 00            call        OSS32_MidiClose_
+0A5C    89 4D CC                  mov         -0x34[ebp],ecx
+0A5F                          L$122:
+0A5F    8D 5D CC                  lea         ebx,-0x34[ebp]
+0A62    BA 05 00 00 00            mov         edx,0x00000005
+0A67    8B 45 C4                  mov         eax,-0x3c[ebp]
+0A6A    E8 00 00 00 00            call        OSS32_MidiOpen_
+0A6F    85 C0                     test        eax,eax
+0A71    75 14                     jne         L$123
+0A73    8B 45 C0                  mov         eax,-0x40[ebp]
+0A76    80 48 04 04               or          byte ptr 0x4[eax],0x04
+0A7A    8B 45 CC                  mov         eax,-0x34[ebp]
+0A7D    31 DB                     xor         ebx,ebx
+0A7F    E8 00 00 00 00            call        OSS32_MidiClose_
+0A84    89 5D CC                  mov         -0x34[ebp],ebx
+0A87                          L$123:
+0A87    8D 5D CC                  lea         ebx,-0x34[ebp]
+0A8A    BA 04 00 00 00            mov         edx,0x00000004
+0A8F    8B 45 C4                  mov         eax,-0x3c[ebp]
+0A92    E8 00 00 00 00            call        OSS32_MidiOpen_
+0A97    85 C0                     test        eax,eax
+0A99    75 14                     jne         L$124
+0A9B    8B 45 C0                  mov         eax,-0x40[ebp]
+0A9E    80 48 04 08               or          byte ptr 0x4[eax],0x08
+0AA2    8B 45 CC                  mov         eax,-0x34[ebp]
+0AA5    31 F6                     xor         esi,esi
+0AA7    E8 00 00 00 00            call        OSS32_MidiClose_
+0AAC    89 75 CC                  mov         -0x34[ebp],esi
+0AAF                          L$124:
+0AAF    8B 55 C0                  mov         edx,-0x40[ebp]
+0AB2    BB 20 00 00 00            mov         ebx,0x00000020
+0AB7    8B 45 C4                  mov         eax,-0x3c[ebp]
+0ABA    83 C2 28                  add         edx,0x00000028
+0ABD    E8 00 00 00 00            call        OSS32_MixQueryName_
+0AC2    85 C0                     test        eax,eax
+0AC4    74 0A                     je          L$125
+0AC6    68 F4 00 00 00            push        offset L$244
+0ACB    E9 F6 FD FF FF            jmp         L$106
+0AD0                          L$125:
+0AD0    8B 45 F4                  mov         eax,-0xc[ebp]
+0AD3    E8 00 00 00 00            call        __kfree_
+0AD8    31 FF                     xor         edi,edi
+0ADA    31 DB                     xor         ebx,ebx
+0ADC    89 7D CC                  mov         -0x34[ebp],edi
+0ADF    EB 2B                     jmp         L$129
+0AE1                          L$126:
+0AE1    68 22 01 00 00            push        offset L$245
+0AE6    E8 00 00 00 00            call        _printk
+0AEB    8B 55 CC                  mov         edx,-0x34[ebp]
+0AEE    83 C4 04                  add         esp,0x00000004
+0AF1    85 D2                     test        edx,edx
+0AF3    74 07                     je          L$127
+0AF5    89 D0                     mov         eax,edx
+0AF7    E8 00 00 00 00            call        OSS32_WaveClose_
+0AFC                          L$127:
+0AFC    8B 4D F4                  mov         ecx,-0xc[ebp]
+0AFF    85 C9                     test        ecx,ecx
+0B01    74 07                     je          L$128
+0B03    89 C8                     mov         eax,ecx
+0B05    E8 00 00 00 00            call        __kfree_
+0B0A                          L$128:
+0B0A    89 FB                     mov         ebx,edi
+0B0C                          L$129:
+0B0C    89 D8                     mov         eax,ebx
+0B0E    89 EC                     mov         esp,ebp
+0B10    5D                        pop         ebp
+0B11    5F                        pop         edi
+0B12    5E                        pop         esi
+0B13    59                        pop         ecx
+0B14    5B                        pop         ebx
+0B15    C3                        ret         
+
+Routine Size: 881 bytes,    Routine Base: CODE32 + 07A5
+
+0B16                          OSS32_WaveOpen_:
+0B16    56                        push        esi
+0B17    57                        push        edi
+0B18    55                        push        ebp
+0B19    83 EC 04                  sub         esp,0x00000004
+0B1C    50                        push        eax
+0B1D    89 D5                     mov         ebp,edx
+0B1F    89 DF                     mov         edi,ebx
+0B21    89 4C 24 04               mov         0x4[esp],ecx
+0B25    8B 15 00 00 00 00         mov         edx,_alsa_fops
+0B2B    C7 03 00 00 00 00         mov         dword ptr [ebx],0x00000000
+0B31    85 D2                     test        edx,edx
+0B33    75 17                     jne         L$131
+0B35    68 3D 01 00 00            push        offset L$246
+0B3A    E8 00 00 00 00            call        _printk
+0B3F    B8 03 00 00 00            mov         eax,0x00000003
+0B44                          L$130:
+0B44    83 C4 04                  add         esp,0x00000004
+0B47    E9 09 01 00 00            jmp         L$142
+0B4C                          L$131:
+0B4C    BA 15 00 00 00            mov         edx,0x00000015
+0B51    B8 6C 00 00 00            mov         eax,0x0000006c
+0B56    E8 00 00 00 00            call        __kmalloc_
+0B5B    89 C1                     mov         ecx,eax
+0B5D    89 C6                     mov         esi,eax
+0B5F    85 C0                     test        eax,eax
+0B61    75 11                     jne         L$132
+0B63    68 59 01 00 00            push        offset L$247
+0B68    E8 00 00 00 00            call        _printk
+0B6D    B8 01 00 00 00            mov         eax,0x00000001
+0B72    EB D0                     jmp         L$130
+0B74                          L$132:
+0B74    BB 6C 00 00 00            mov         ebx,0x0000006c
+0B79    31 D2                     xor         edx,edx
+0B7B    E8 00 00 00 00            call        memset_
+0B80    8D 41 08                  lea         eax,0x8[ecx]
+0B83    C7 41 2C 00 08 00 00      mov         dword ptr 0x2c[ecx],0x00000800
+0B8A    8D 51 0C                  lea         edx,0xc[ecx]
+0B8D    89 41 20                  mov         0x20[ecx],eax
+0B90    89 10                     mov         [eax],edx
+0B92    8B 04 24                  mov         eax,[esp]
+0B95    C1 E0 05                  shl         eax,0x00000005
+0B98    85 ED                     test        ebp,ebp
+0B9A    76 07                     jbe         L$133
+0B9C    83 FD 01                  cmp         ebp,0x00000001
+0B9F    74 16                     je          L$135
+0BA1    EB 22                     jmp         L$136
+0BA3                          L$133:
+0BA3    8B 54 24 04               mov         edx,0x4[esp]
+0BA7    0C 10                     or          al,0x10
+0BA9    66 C7 41 30 02 00         mov         word ptr 0x30[ecx],0x0002
+0BAF                          L$134:
+0BAF    01 C2                     add         edx,eax
+0BB1    66 89 51 0C               mov         0xc[ecx],dx
+0BB5    EB 29                     jmp         L$137
+0BB7                          L$135:
+0BB7    8B 54 24 04               mov         edx,0x4[esp]
+0BBB    0C 18                     or          al,0x18
+0BBD    66 C7 41 30 01 00         mov         word ptr 0x30[ecx],0x0001
+0BC3    EB EA                     jmp         L$134
+0BC5                          L$136:
+0BC5    89 F0                     mov         eax,esi
+0BC7    E8 00 00 00 00            call        __kfree_
+0BCC    68 78 01 00 00            push        offset L$248
+0BD1    E8 00 00 00 00            call        _printk
+0BD6    B8 04 00 00 00            mov         eax,0x00000004
+0BDB    E9 64 FF FF FF            jmp         L$130
+0BE0                          L$137:
+0BE0    8D 56 1C                  lea         edx,0x1c[esi]
+0BE3    8B 0D 00 00 00 00         mov         ecx,_alsa_fops
+0BE9    8D 46 0C                  lea         eax,0xc[esi]
+0BEC    FF 51 1C                  call        dword ptr 0x1c[ecx]
+0BEF    89 C3                     mov         ebx,eax
+0BF1    85 C0                     test        eax,eax
+0BF3    74 1E                     je          L$138
+0BF5    89 F0                     mov         eax,esi
+0BF7    E8 00 00 00 00            call        __kfree_
+0BFC    53                        push        ebx
+0BFD    68 9B 01 00 00            push        offset L$249
+0C02    E8 00 00 00 00            call        _printk
+0C07    83 C4 08                  add         esp,0x00000008
+0C0A    89 D8                     mov         eax,ebx
+0C0C    E8 00 00 00 00            call        UNIXToOSSError_
+0C11    EB 42                     jmp         L$142
+0C13                          L$138:
+0C13    C7 06 00 EF CD AB         mov         dword ptr [esi],0xabcdef00
+0C19    31 D2                     xor         edx,edx
+0C1B    89 37                     mov         [edi],esi
+0C1D    EB 0C                     jmp         L$140
+0C1F                          L$139:
+0C1F    42                        inc         edx
+0C20    83 C0 08                  add         eax,0x00000008
+0C23    81 FA 00 08 00 00         cmp         edx,0x00000800
+0C29    7D 1A                     jge         L$141
+0C2B                          L$140:
+0C2B    83 B8 04 00 00 00 00      cmp         dword ptr _opened_handles+0x4[eax],0x00000000
+0C32    75 EB                     jne         L$139
+0C34    8B 54 24 18               mov         edx,0x18[esp]
+0C38    89 B0 04 00 00 00         mov         _opened_handles+0x4[eax],esi
+0C3E    66 89 90 00 00 00 00      mov         _opened_handles[eax],dx
+0C45                          L$141:
+0C45    56                        push        esi
+0C46    68 BB 01 00 00            push        offset L$250
+0C4B    E8 00 00 00 00            call        _printk
+0C50    83 C4 08                  add         esp,0x00000008
+0C53    31 C0                     xor         eax,eax
+0C55                          L$142:
+0C55    83 C4 08                  add         esp,0x00000008
+0C58    5D                        pop         ebp
+0C59    5F                        pop         edi
+0C5A    5E                        pop         esi
+0C5B    C2 04 00                  ret         0x00000004
+
+Routine Size: 328 bytes,    Routine Base: CODE32 + 0B16
+
+0C5E                          OSS32_WaveClose_:
+0C5E    53                        push        ebx
+0C5F    51                        push        ecx
+0C60    52                        push        edx
+0C61    56                        push        esi
+0C62    57                        push        edi
+0C63    89 C3                     mov         ebx,eax
+0C65    85 C0                     test        eax,eax
+0C67    74 08                     je          L$143
+0C69    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+0C6F    74 18                     je          L$144
+0C71                          L$143:
+0C71    53                        push        ebx
+0C72    68 D8 01 00 00            push        offset L$251
+0C77    E8 00 00 00 00            call        _printk
+0C7C    B8 02 00 00 00            mov         eax,0x00000002
+0C81    83 C4 08                  add         esp,0x00000008
+0C84    E9 7F 00 00 00            jmp         L$150
+0C89                          L$144:
+0C89    8D 50 1C                  lea         edx,0x1c[eax]
+0C8C    8B 70 24                  mov         esi,0x24[eax]
+0C8F    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+0C96    83 C0 0C                  add         eax,0x0000000c
+0C99    FF 56 24                  call        dword ptr 0x24[esi]
+0C9C    89 C6                     mov         esi,eax
+0C9E    31 D2                     xor         edx,edx
+0CA0    31 C0                     xor         eax,eax
+0CA2    EB 0C                     jmp         L$146
+0CA4                          L$145:
+0CA4    42                        inc         edx
+0CA5    83 C0 08                  add         eax,0x00000008
+0CA8    81 FA 00 08 00 00         cmp         edx,0x00000800
+0CAE    7D 10                     jge         L$147
+0CB0                          L$146:
+0CB0    3B 98 04 00 00 00         cmp         ebx,_opened_handles+0x4[eax]
+0CB6    75 EC                     jne         L$145
+0CB8    31 FF                     xor         edi,edi
+0CBA    89 B8 04 00 00 00         mov         _opened_handles+0x4[eax],edi
+0CC0                          L$147:
+0CC0    81 FA 00 08 00 00         cmp         edx,0x00000800
+0CC6    7C 0E                     jl          L$148
+0CC8    53                        push        ebx
+0CC9    68 FE 01 00 00            push        offset L$252
+0CCE    E8 00 00 00 00            call        _printk
+0CD3    83 C4 08                  add         esp,0x00000008
+0CD6                          L$148:
+0CD6    89 D8                     mov         eax,ebx
+0CD8    E8 00 00 00 00            call        __kfree_
+0CDD    85 F6                     test        esi,esi
+0CDF    74 17                     je          L$149
+0CE1    56                        push        esi
+0CE2    68 14 02 00 00            push        offset L$253
+0CE7    E8 00 00 00 00            call        _printk
+0CEC    83 C4 08                  add         esp,0x00000008
+0CEF    89 F0                     mov         eax,esi
+0CF1    E8 00 00 00 00            call        UNIXToOSSError_
+0CF6    EB 10                     jmp         L$150
+0CF8                          L$149:
+0CF8    53                        push        ebx
+0CF9    68 31 02 00 00            push        offset L$254
+0CFE    E8 00 00 00 00            call        _printk
+0D03    83 C4 08                  add         esp,0x00000008
+0D06    31 C0                     xor         eax,eax
+0D08                          L$150:
+0D08    5F                        pop         edi
+0D09    5E                        pop         esi
+0D0A    5A                        pop         edx
+0D0B    59                        pop         ecx
+0D0C    5B                        pop         ebx
+0D0D    C3                        ret         
+
+Routine Size: 176 bytes,    Routine Base: CODE32 + 0C5E
+
+0D0E                          OSS32_WavePrepare_:
+0D0E    53                        push        ebx
+0D0F    51                        push        ecx
+0D10    52                        push        edx
+0D11    56                        push        esi
+0D12    57                        push        edi
+0D13    89 C6                     mov         esi,eax
+0D15    85 C0                     test        eax,eax
+0D17    74 08                     je          L$151
+0D19    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+0D1F    74 14                     je          L$152
+0D21                          L$151:
+0D21    68 4F 02 00 00            push        offset L$255
+0D26    E8 00 00 00 00            call        _printk
+0D2B    B8 02 00 00 00            mov         eax,0x00000002
+0D30    83 C4 04                  add         esp,0x00000004
+0D33    EB 32                     jmp         L$153
+0D35                          L$152:
+0D35    BB 40 41 00 00            mov         ebx,0x00004140
+0D3A    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+0D41    8D 50 1C                  lea         edx,0x1c[eax]
+0D44    8B 78 24                  mov         edi,0x24[eax]
+0D47    31 C9                     xor         ecx,ecx
+0D49    83 C0 0C                  add         eax,0x0000000c
+0D4C    FF 57 14                  call        dword ptr 0x14[edi]
+0D4F    56                        push        esi
+0D50    50                        push        eax
+0D51    68 7D 02 00 00            push        offset L$256
+0D56    89 C3                     mov         ebx,eax
+0D58    E8 00 00 00 00            call        _printk
+0D5D    83 C4 0C                  add         esp,0x0000000c
+0D60    89 D8                     mov         eax,ebx
+0D62    E8 00 00 00 00            call        UNIXToOSSError_
+0D67                          L$153:
+0D67    5F                        pop         edi
+0D68    5E                        pop         esi
+0D69    5A                        pop         edx
+0D6A    59                        pop         ecx
+0D6B    5B                        pop         ebx
+0D6C    C3                        ret         
+
+Routine Size: 95 bytes,    Routine Base: CODE32 + 0D0E
+
+0D6D                          OSS32_WaveStart_:
+0D6D    53                        push        ebx
+0D6E    51                        push        ecx
+0D6F    52                        push        edx
+0D70    56                        push        esi
+0D71    57                        push        edi
+0D72    89 C6                     mov         esi,eax
+0D74    85 C0                     test        eax,eax
+0D76    74 08                     je          L$154
+0D78    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+0D7E    74 07                     je          L$155
+0D80                          L$154:
+0D80    B8 02 00 00 00            mov         eax,0x00000002
+0D85    EB 32                     jmp         L$156
+0D87                          L$155:
+0D87    BB 42 41 00 00            mov         ebx,0x00004142
+0D8C    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+0D93    8D 50 1C                  lea         edx,0x1c[eax]
+0D96    8B 78 24                  mov         edi,0x24[eax]
+0D99    31 C9                     xor         ecx,ecx
+0D9B    83 C0 0C                  add         eax,0x0000000c
+0D9E    FF 57 14                  call        dword ptr 0x14[edi]
+0DA1    56                        push        esi
+0DA2    50                        push        eax
+0DA3    68 A1 02 00 00            push        offset L$257
+0DA8    89 C3                     mov         ebx,eax
+0DAA    E8 00 00 00 00            call        _printk
+0DAF    83 C4 0C                  add         esp,0x0000000c
+0DB2    89 D8                     mov         eax,ebx
+0DB4    E8 00 00 00 00            call        UNIXToOSSError_
+0DB9                          L$156:
+0DB9    5F                        pop         edi
+0DBA    5E                        pop         esi
+0DBB    5A                        pop         edx
+0DBC    59                        pop         ecx
+0DBD    5B                        pop         ebx
+0DBE    C3                        ret         
+
+Routine Size: 82 bytes,    Routine Base: CODE32 + 0D6D
+
+0DBF                          OSS32_WaveStop_:
+0DBF    53                        push        ebx
+0DC0    51                        push        ecx
+0DC1    52                        push        edx
+0DC2    56                        push        esi
+0DC3    57                        push        edi
+0DC4    89 C6                     mov         esi,eax
+0DC6    85 C0                     test        eax,eax
+0DC8    74 08                     je          L$157
+0DCA    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+0DD0    74 07                     je          L$158
+0DD2                          L$157:
+0DD2    B8 02 00 00 00            mov         eax,0x00000002
+0DD7    EB 32                     jmp         L$159
+0DD9                          L$158:
+0DD9    BB 43 41 00 00            mov         ebx,0x00004143
+0DDE    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+0DE5    8D 50 1C                  lea         edx,0x1c[eax]
+0DE8    8B 78 24                  mov         edi,0x24[eax]
+0DEB    31 C9                     xor         ecx,ecx
+0DED    83 C0 0C                  add         eax,0x0000000c
+0DF0    FF 57 14                  call        dword ptr 0x14[edi]
+0DF3    56                        push        esi
+0DF4    50                        push        eax
+0DF5    68 C3 02 00 00            push        offset L$258
+0DFA    89 C3                     mov         ebx,eax
+0DFC    E8 00 00 00 00            call        _printk
+0E01    83 C4 0C                  add         esp,0x0000000c
+0E04    89 D8                     mov         eax,ebx
+0E06    E8 00 00 00 00            call        UNIXToOSSError_
+0E0B                          L$159:
+0E0B    5F                        pop         edi
+0E0C    5E                        pop         esi
+0E0D    5A                        pop         edx
+0E0E    59                        pop         ecx
+0E0F    5B                        pop         ebx
+0E10    C3                        ret         
+
+Routine Size: 82 bytes,    Routine Base: CODE32 + 0DBF
+
+0E11                          OSS32_WavePause_:
+0E11    53                        push        ebx
+0E12    51                        push        ecx
+0E13    52                        push        edx
+0E14    56                        push        esi
+0E15    57                        push        edi
+0E16    89 C6                     mov         esi,eax
+0E18    85 C0                     test        eax,eax
+0E1A    74 08                     je          L$160
+0E1C    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+0E22    74 07                     je          L$161
+0E24                          L$160:
+0E24    B8 02 00 00 00            mov         eax,0x00000002
+0E29    EB 32                     jmp         L$162
+0E2B                          L$161:
+0E2B    BB 45 41 04 40            mov         ebx,0x40044145
+0E30    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+0E37    8D 50 1C                  lea         edx,0x1c[eax]
+0E3A    8B 78 24                  mov         edi,0x24[eax]
+0E3D    31 C9                     xor         ecx,ecx
+0E3F    83 C0 0C                  add         eax,0x0000000c
+0E42    FF 57 14                  call        dword ptr 0x14[edi]
+0E45    56                        push        esi
+0E46    50                        push        eax
+0E47    68 E4 02 00 00            push        offset L$259
+0E4C    89 C3                     mov         ebx,eax
+0E4E    E8 00 00 00 00            call        _printk
+0E53    83 C4 0C                  add         esp,0x0000000c
+0E56    89 D8                     mov         eax,ebx
+0E58    E8 00 00 00 00            call        UNIXToOSSError_
+0E5D                          L$162:
+0E5D    5F                        pop         edi
+0E5E    5E                        pop         esi
+0E5F    5A                        pop         edx
+0E60    59                        pop         ecx
+0E61    5B                        pop         ebx
+0E62    C3                        ret         
+
+Routine Size: 82 bytes,    Routine Base: CODE32 + 0E11
+
+0E63                          OSS32_WaveResume_:
+0E63    53                        push        ebx
+0E64    51                        push        ecx
+0E65    52                        push        edx
+0E66    56                        push        esi
+0E67    57                        push        edi
+0E68    89 C6                     mov         esi,eax
+0E6A    85 C0                     test        eax,eax
+0E6C    74 08                     je          L$163
+0E6E    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+0E74    74 07                     je          L$164
+0E76                          L$163:
+0E76    B8 02 00 00 00            mov         eax,0x00000002
+0E7B    EB 35                     jmp         L$165
+0E7D                          L$164:
+0E7D    B9 01 00 00 00            mov         ecx,0x00000001
+0E82    BB 45 41 04 40            mov         ebx,0x40044145
+0E87    8D 50 1C                  lea         edx,0x1c[eax]
+0E8A    8B 78 24                  mov         edi,0x24[eax]
+0E8D    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+0E94    83 C0 0C                  add         eax,0x0000000c
+0E97    FF 57 14                  call        dword ptr 0x14[edi]
+0E9A    56                        push        esi
+0E9B    50                        push        eax
+0E9C    68 06 03 00 00            push        offset L$260
+0EA1    89 C3                     mov         ebx,eax
+0EA3    E8 00 00 00 00            call        _printk
+0EA8    83 C4 0C                  add         esp,0x0000000c
+0EAB    89 D8                     mov         eax,ebx
+0EAD    E8 00 00 00 00            call        UNIXToOSSError_
+0EB2                          L$165:
+0EB2    5F                        pop         edi
+0EB3    5E                        pop         esi
+0EB4    5A                        pop         edx
+0EB5    59                        pop         ecx
+0EB6    5B                        pop         ebx
+0EB7    C3                        ret         
+
+Routine Size: 85 bytes,    Routine Base: CODE32 + 0E63
+
+0EB8                          OSS32_WaveSetHwParams_:
+0EB8    53                        push        ebx
+0EB9    51                        push        ecx
+0EBA    56                        push        esi
+0EBB    57                        push        edi
+0EBC    55                        push        ebp
+0EBD    81 EC 28 03 00 00         sub         esp,0x00000328
+0EC3    89 C1                     mov         ecx,eax
+0EC5    89 D6                     mov         esi,edx
+0EC7    31 D2                     xor         edx,edx
+0EC9    89 C7                     mov         edi,eax
+0ECB    89 94 24 0C 03 00 00      mov         0x30c[esp],edx
+0ED2    85 C0                     test        eax,eax
+0ED4    74 08                     je          L$166
+0ED6    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+0EDC    74 11                     je          L$167
+0EDE                          L$166:
+0EDE    68 29 03 00 00            push        offset L$261
+0EE3    E8 00 00 00 00            call        _printk
+0EE8    B8 02 00 00 00            mov         eax,0x00000002
+0EED    EB 13                     jmp         L$169
+0EEF                          L$167:
+0EEF    85 F6                     test        esi,esi
+0EF1    75 17                     jne         L$170
+0EF3    68 56 03 00 00            push        offset L$262
+0EF8                          L$168:
+0EF8    E8 00 00 00 00            call        _printk
+0EFD    B8 04 00 00 00            mov         eax,0x00000004
+0F02                          L$169:
+0F02    83 C4 04                  add         esp,0x00000004
+0F05    E9 86 08 00 00            jmp         L$204
+0F0A                          L$170:
+0F0A    83 7E 0C 12               cmp         dword ptr 0xc[esi],0x00000012
+0F0E    72 07                     jb          L$171
+0F10    68 82 03 00 00            push        offset L$263
+0F15    EB E1                     jmp         L$168
+0F17                          L$171:
+0F17    8B 46 08                  mov         eax,0x8[esi]
+0F1A    85 C0                     test        eax,eax
+0F1C    7F 18                     jg          L$172
+0F1E    50                        push        eax
+0F1F    68 B4 03 00 00            push        offset L$264
+0F24    E8 00 00 00 00            call        _printk
+0F29    B8 04 00 00 00            mov         eax,0x00000004
+0F2E    83 C4 08                  add         esp,0x00000008
+0F31    E9 5A 08 00 00            jmp         L$204
+0F36                          L$172:
+0F36    C7 41 2C 00 08 00 00      mov         dword ptr 0x2c[ecx],0x00000800
+0F3D    8B 46 0C                  mov         eax,0xc[esi]
+0F40    8B 04 85 FD FF FF FF      mov         eax,_OSSToALSADataType+0xfffffffd[eax*4]
+0F47    BA 01 00 00 00            mov         edx,0x00000001
+0F4C    C1 F8 18                  sar         eax,0x00000018
+0F4F    E8 00 00 00 00            call        snd_pcm_format_size_
+0F54    01 C0                     add         eax,eax
+0F56    89 41 04                  mov         0x4[ecx],eax
+0F59    8B 46 08                  mov         eax,0x8[esi]
+0F5C    8B 51 04                  mov         edx,0x4[ecx]
+0F5F    0F AF D0                  imul        edx,eax
+0F62    89 51 04                  mov         0x4[ecx],edx
+0F65    8B 46 10                  mov         eax,0x10[esi]
+0F68    89 84 24 20 03 00 00      mov         0x320[esp],eax
+0F6F    85 D2                     test        edx,edx
+0F71    74 09                     je          L$173
+0F73    8B 59 04                  mov         ebx,0x4[ecx]
+0F76    01 C0                     add         eax,eax
+0F78    31 D2                     xor         edx,edx
+0F7A    F7 F3                     div         ebx
+0F7C                          L$173:
+0F7C    8B AC 24 20 03 00 00      mov         ebp,0x320[esp]
+0F83    55                        push        ebp
+0F84    89 84 24 20 03 00 00      mov         0x320[esp],eax
+0F8B    8B 46 08                  mov         eax,0x8[esi]
+0F8E    50                        push        eax
+0F8F    68 F1 03 00 00            push        offset L$265
+0F94    BB 10 41 7C C2            mov         ebx,0xc27c4110
+0F99    E8 00 00 00 00            call        _printk
+0F9E    83 C4 0C                  add         esp,0x0000000c
+0FA1    89 E0                     mov         eax,esp
+0FA3    89 E1                     mov         ecx,esp
+0FA5    E8 00 00 00 00            call        _snd_pcm_hw_params_any_
+0FAA    8D 47 1C                  lea         eax,0x1c[edi]
+0FAD    8B 6F 24                  mov         ebp,0x24[edi]
+0FB0    89 84 24 E4 02 00 00      mov         0x2e4[esp],eax
+0FB7    8D 47 0C                  lea         eax,0xc[edi]
+0FBA    8B 94 24 E4 02 00 00      mov         edx,0x2e4[esp]
+0FC1    89 84 24 E8 02 00 00      mov         0x2e8[esp],eax
+0FC8    FF 55 14                  call        dword ptr 0x14[ebp]
+0FCB    89 E0                     mov         eax,esp
+0FCD    E8 00 00 00 00            call        _snd_pcm_hw_params_any_
+0FD2    8B 84 24 E4 02 00 00      mov         eax,0x2e4[esp]
+0FD9    89 84 24 00 03 00 00      mov         0x300[esp],eax
+0FE0    8B 84 24 E8 02 00 00      mov         eax,0x2e8[esp]
+0FE7    89 84 24 F8 02 00 00      mov         0x2f8[esp],eax
+0FEE                          L$174:
+0FEE    BB 03 00 00 00            mov         ebx,0x00000003
+0FF3    89 E0                     mov         eax,esp
+0FF5    31 C9                     xor         ecx,ecx
+0FF7    31 D2                     xor         edx,edx
+0FF9    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+0FFE    BA 0A 00 00 00            mov         edx,0x0000000a
+1003    89 E0                     mov         eax,esp
+1005    8B 5E 08                  mov         ebx,0x8[esi]
+1008    31 C9                     xor         ecx,ecx
+100A    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+100F    89 E1                     mov         ecx,esp
+1011    BB 10 41 7C C2            mov         ebx,0xc27c4110
+1016    8B 6F 24                  mov         ebp,0x24[edi]
+1019    8B 94 24 00 03 00 00      mov         edx,0x300[esp]
+1020    8B 84 24 F8 02 00 00      mov         eax,0x2f8[esp]
+1027    FF 55 14                  call        dword ptr 0x14[ebp]
+102A    85 C0                     test        eax,eax
+102C    74 10                     je          L$175
+102E    8B 4E 08                  mov         ecx,0x8[esi]
+1031    49                        dec         ecx
+1032    89 4E 08                  mov         0x8[esi],ecx
+1035    85 C0                     test        eax,eax
+1037    7D 05                     jge         L$175
+1039    83 F9 01                  cmp         ecx,0x00000001
+103C    77 B0                     ja          L$174
+103E                          L$175:
+103E    8B 6E 08                  mov         ebp,0x8[esi]
+1041    55                        push        ebp
+1042    68 10 04 00 00            push        offset L$266
+1047    E8 00 00 00 00            call        _printk
+104C    83 C4 08                  add         esp,0x00000008
+104F    89 E0                     mov         eax,esp
+1051    BB 03 00 00 00            mov         ebx,0x00000003
+1056    E8 00 00 00 00            call        _snd_pcm_hw_params_any_
+105B    31 C9                     xor         ecx,ecx
+105D    31 D2                     xor         edx,edx
+105F    89 E0                     mov         eax,esp
+1061    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1066    8B 46 0C                  mov         eax,0xc[esi]
+1069    BA 02 00 00 00            mov         edx,0x00000002
+106E    31 C9                     xor         ecx,ecx
+1070    8B 1C 85 00 00 00 00      mov         ebx,_OSSToALSADataType[eax*4]
+1077    89 E0                     mov         eax,esp
+1079    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+107E    89 E1                     mov         ecx,esp
+1080    BB 10 41 7C C2            mov         ebx,0xc27c4110
+1085    8D 47 1C                  lea         eax,0x1c[edi]
+1088    8B 6F 24                  mov         ebp,0x24[edi]
+108B    89 84 24 F0 02 00 00      mov         0x2f0[esp],eax
+1092    8D 47 0C                  lea         eax,0xc[edi]
+1095    8B 94 24 F0 02 00 00      mov         edx,0x2f0[esp]
+109C    89 84 24 EC 02 00 00      mov         0x2ec[esp],eax
+10A3    FF 55 14                  call        dword ptr 0x14[ebp]
+10A6    89 C3                     mov         ebx,eax
+10A8    85 C0                     test        eax,eax
+10AA    74 1D                     je          L$177
+10AC    8B 46 0C                  mov         eax,0xc[esi]
+10AF    8B 2C 85 00 00 00 00      mov         ebp,_OSSToALSADataType[eax*4]
+10B6    55                        push        ebp
+10B7    68 27 04 00 00            push        offset L$267
+10BC                          L$176:
+10BC    E8 00 00 00 00            call        _printk
+10C1    83 C4 08                  add         esp,0x00000008
+10C4    E9 C0 06 00 00            jmp         L$203
+10C9                          L$177:
+10C9    BA 08 00 00 00            mov         edx,0x00000008
+10CE    89 E0                     mov         eax,esp
+10D0    8B 5E 04                  mov         ebx,0x4[esi]
+10D3    31 C9                     xor         ecx,ecx
+10D5    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+10DA    89 E1                     mov         ecx,esp
+10DC    BB 10 41 7C C2            mov         ebx,0xc27c4110
+10E1    8B 6F 24                  mov         ebp,0x24[edi]
+10E4    8B 94 24 F0 02 00 00      mov         edx,0x2f0[esp]
+10EB    8B 84 24 EC 02 00 00      mov         eax,0x2ec[esp]
+10F2    FF 55 14                  call        dword ptr 0x14[ebp]
+10F5    89 C3                     mov         ebx,eax
+10F7    85 C0                     test        eax,eax
+10F9    74 0B                     je          L$178
+10FB    8B 7E 04                  mov         edi,0x4[esi]
+10FE    57                        push        edi
+10FF    68 3A 04 00 00            push        offset L$268
+1104    EB B6                     jmp         L$176
+1106                          L$178:
+1106    8B 5E 04                  mov         ebx,0x4[esi]
+1109    0F AF 5E 08               imul        ebx,0x8[esi]
+110D    89 E0                     mov         eax,esp
+110F    31 C9                     xor         ecx,ecx
+1111    BA 09 00 00 00            mov         edx,0x00000009
+1116    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+111B    89 E1                     mov         ecx,esp
+111D    BB 10 41 7C C2            mov         ebx,0xc27c4110
+1122    8B 6F 24                  mov         ebp,0x24[edi]
+1125    8B 94 24 F0 02 00 00      mov         edx,0x2f0[esp]
+112C    8B 84 24 EC 02 00 00      mov         eax,0x2ec[esp]
+1133    FF 55 14                  call        dword ptr 0x14[ebp]
+1136    89 C3                     mov         ebx,eax
+1138    85 C0                     test        eax,eax
+113A    74 12                     je          L$179
+113C    8B 46 04                  mov         eax,0x4[esi]
+113F    0F AF 46 08               imul        eax,0x8[esi]
+1143    50                        push        eax
+1144    68 5C 04 00 00            push        offset L$269
+1149    E9 6E FF FF FF            jmp         L$176
+114E                          L$179:
+114E    BA 08 00 00 00            mov         edx,0x00000008
+1153    89 E0                     mov         eax,esp
+1155    8B 5E 04                  mov         ebx,0x4[esi]
+1158    31 C9                     xor         ecx,ecx
+115A    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+115F    8B 5E 04                  mov         ebx,0x4[esi]
+1162    0F AF 5E 08               imul        ebx,0x8[esi]
+1166    BA 09 00 00 00            mov         edx,0x00000009
+116B    89 E0                     mov         eax,esp
+116D    31 C9                     xor         ecx,ecx
+116F    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1174    8B 46 0C                  mov         eax,0xc[esi]
+1177    BA 02 00 00 00            mov         edx,0x00000002
+117C    31 C9                     xor         ecx,ecx
+117E    8B 1C 85 00 00 00 00      mov         ebx,_OSSToALSADataType[eax*4]
+1185    89 E0                     mov         eax,esp
+1187    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+118C    BA 0A 00 00 00            mov         edx,0x0000000a
+1191    89 E0                     mov         eax,esp
+1193    8B 5E 08                  mov         ebx,0x8[esi]
+1196    31 C9                     xor         ecx,ecx
+1198    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+119D    BA 0B 00 00 00            mov         edx,0x0000000b
+11A2    89 E0                     mov         eax,esp
+11A4    8B 1E                     mov         ebx,[esi]
+11A6    31 C9                     xor         ecx,ecx
+11A8    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+11AD    89 E1                     mov         ecx,esp
+11AF    BB 10 41 7C C2            mov         ebx,0xc27c4110
+11B4    8B 6F 24                  mov         ebp,0x24[edi]
+11B7    8B 94 24 F0 02 00 00      mov         edx,0x2f0[esp]
+11BE    8B 84 24 EC 02 00 00      mov         eax,0x2ec[esp]
+11C5    FF 55 14                  call        dword ptr 0x14[ebp]
+11C8    89 C3                     mov         ebx,eax
+11CA    85 C0                     test        eax,eax
+11CC    0F 84 89 01 00 00         je          L$182
+11D2    50                        push        eax
+11D3    68 7D 04 00 00            push        offset L$270
+11D8    E8 00 00 00 00            call        _printk
+11DD    83 C4 08                  add         esp,0x00000008
+11E0    8B 6E 04                  mov         ebp,0x4[esi]
+11E3    55                        push        ebp
+11E4    68 AA 04 00 00            push        offset L$271
+11E9    E8 00 00 00 00            call        _printk
+11EE    8B 46 0C                  mov         eax,0xc[esi]
+11F1    83 C4 08                  add         esp,0x00000008
+11F4    8B 14 85 00 00 00 00      mov         edx,_OSSToALSADataType[eax*4]
+11FB    52                        push        edx
+11FC    68 B3 04 00 00            push        offset L$272
+1201    E8 00 00 00 00            call        _printk
+1206    83 C4 08                  add         esp,0x00000008
+1209    8B 4E 08                  mov         ecx,0x8[esi]
+120C    51                        push        ecx
+120D    68 BF 04 00 00            push        offset L$273
+1212    E8 00 00 00 00            call        _printk
+1217    83 C4 08                  add         esp,0x00000008
+121A    8B 2E                     mov         ebp,[esi]
+121C    55                        push        ebp
+121D    68 CD 04 00 00            push        offset L$274
+1222    E8 00 00 00 00            call        _printk
+1227    83 C4 08                  add         esp,0x00000008
+122A    89 E0                     mov         eax,esp
+122C    E8 00 00 00 00            call        _snd_pcm_hw_params_any_
+1231    31 C0                     xor         eax,eax
+1233    89 84 24 14 03 00 00      mov         0x314[esp],eax
+123A    8B 84 24 F0 02 00 00      mov         eax,0x2f0[esp]
+1241    31 D2                     xor         edx,edx
+1243    89 84 24 08 03 00 00      mov         0x308[esp],eax
+124A    8B 84 24 EC 02 00 00      mov         eax,0x2ec[esp]
+1251    89 94 24 24 03 00 00      mov         0x324[esp],edx
+1258    89 84 24 04 03 00 00      mov         0x304[esp],eax
+125F    EB 29                     jmp         L$181
+1261                          L$180:
+1261    8B 84 24 24 03 00 00      mov         eax,0x324[esp]
+1268    8B 94 24 14 03 00 00      mov         edx,0x314[esp]
+126F    83 C0 04                  add         eax,0x00000004
+1272    42                        inc         edx
+1273    89 84 24 24 03 00 00      mov         0x324[esp],eax
+127A    89 94 24 14 03 00 00      mov         0x314[esp],edx
+1281    83 FA 0C                  cmp         edx,0x0000000c
+1284    0F 83 FF 04 00 00         jae         L$203
+128A                          L$181:
+128A    8B 94 24 24 03 00 00      mov         edx,0x324[esp]
+1291    8B 06                     mov         eax,[esi]
+1293    8B 8A 00 00 00 00         mov         ecx,_rates[edx]
+1299    39 C8                     cmp         eax,ecx
+129B    72 C4                     jb          L$180
+129D    3B 82 04 00 00 00         cmp         eax,_rates+0x4[edx]
+12A3    77 BC                     ja          L$180
+12A5    BA 0B 00 00 00            mov         edx,0x0000000b
+12AA    89 E0                     mov         eax,esp
+12AC    89 CB                     mov         ebx,ecx
+12AE    89 0E                     mov         [esi],ecx
+12B0    31 C9                     xor         ecx,ecx
+12B2    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+12B7    89 E1                     mov         ecx,esp
+12B9    BB 10 41 7C C2            mov         ebx,0xc27c4110
+12BE    8B 6F 24                  mov         ebp,0x24[edi]
+12C1    8B 94 24 08 03 00 00      mov         edx,0x308[esp]
+12C8    8B 84 24 04 03 00 00      mov         eax,0x304[esp]
+12CF    FF 55 14                  call        dword ptr 0x14[ebp]
+12D2    89 C3                     mov         ebx,eax
+12D4    85 C0                     test        eax,eax
+12D6    75 89                     jne         L$180
+12D8    89 E0                     mov         eax,esp
+12DA    BA 08 00 00 00            mov         edx,0x00000008
+12DF    E8 00 00 00 00            call        _snd_pcm_hw_params_any_
+12E4    31 C9                     xor         ecx,ecx
+12E6    89 E0                     mov         eax,esp
+12E8    8B 5E 04                  mov         ebx,0x4[esi]
+12EB    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+12F0    8B 46 04                  mov         eax,0x4[esi]
+12F3    8B 5E 08                  mov         ebx,0x8[esi]
+12F6    0F AF D8                  imul        ebx,eax
+12F9    BA 09 00 00 00            mov         edx,0x00000009
+12FE    31 C9                     xor         ecx,ecx
+1300    89 E0                     mov         eax,esp
+1302    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1307    8B 46 0C                  mov         eax,0xc[esi]
+130A    BA 02 00 00 00            mov         edx,0x00000002
+130F    31 C9                     xor         ecx,ecx
+1311    8B 1C 85 00 00 00 00      mov         ebx,_OSSToALSADataType[eax*4]
+1318    89 E0                     mov         eax,esp
+131A    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+131F    BA 0A 00 00 00            mov         edx,0x0000000a
+1324    89 E0                     mov         eax,esp
+1326    8B 5E 08                  mov         ebx,0x8[esi]
+1329    31 C9                     xor         ecx,ecx
+132B    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1330    BA 0B 00 00 00            mov         edx,0x0000000b
+1335    89 E0                     mov         eax,esp
+1337    8B 1E                     mov         ebx,[esi]
+1339    31 C9                     xor         ecx,ecx
+133B    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1340    89 E1                     mov         ecx,esp
+1342    BB 10 41 7C C2            mov         ebx,0xc27c4110
+1347    8B 6F 24                  mov         ebp,0x24[edi]
+134A    8B 94 24 08 03 00 00      mov         edx,0x308[esp]
+1351    8B 84 24 04 03 00 00      mov         eax,0x304[esp]
+1358    FF 55 14                  call        dword ptr 0x14[ebp]
+135B                          L$182:
+135B    8B 2E                     mov         ebp,[esi]
+135D    55                        push        ebp
+135E    68 CD 04 00 00            push        offset L$274
+1363    E8 00 00 00 00            call        _printk
+1368    83 C4 08                  add         esp,0x00000008
+136B    89 E0                     mov         eax,esp
+136D    8B 8C 24 20 03 00 00      mov         ecx,0x320[esp]
+1374    8B 90 6C 01 00 00         mov         edx,0x16c[eax]
+137A    8B 80 70 01 00 00         mov         eax,0x170[eax]
+1380    39 CA                     cmp         edx,ecx
+1382    76 09                     jbe         L$183
+1384    89 94 24 20 03 00 00      mov         0x320[esp],edx
+138B    EB 0B                     jmp         L$184
+138D                          L$183:
+138D    39 C8                     cmp         eax,ecx
+138F    73 07                     jae         L$184
+1391    89 84 24 20 03 00 00      mov         0x320[esp],eax
+1398                          L$184:
+1398    89 E0                     mov         eax,esp
+139A    8B AC 24 1C 03 00 00      mov         ebp,0x31c[esp]
+13A1    8B 90 60 01 00 00         mov         edx,0x160[eax]
+13A7    8B 80 64 01 00 00         mov         eax,0x164[eax]
+13AD    39 EA                     cmp         edx,ebp
+13AF    76 09                     jbe         L$185
+13B1    89 94 24 1C 03 00 00      mov         0x31c[esp],edx
+13B8    EB 0B                     jmp         L$186
+13BA                          L$185:
+13BA    39 E8                     cmp         eax,ebp
+13BC    73 07                     jae         L$186
+13BE    89 84 24 1C 03 00 00      mov         0x31c[esp],eax
+13C5                          L$186:
+13C5    8B 84 24 1C 03 00 00      mov         eax,0x31c[esp]
+13CC    8B 4F 04                  mov         ecx,0x4[edi]
+13CF    0F AF C1                  imul        eax,ecx
+13D2    8B 9C 24 20 03 00 00      mov         ebx,0x320[esp]
+13D9    D1 E8                     shr         eax,0x00000001
+13DB    39 D8                     cmp         eax,ebx
+13DD    73 09                     jae         L$187
+13DF    89 84 24 20 03 00 00      mov         0x320[esp],eax
+13E6    EB 3C                     jmp         L$192
+13E8                          L$187:
+13E8    85 C9                     test        ecx,ecx
+13EA    74 09                     je          L$188
+13EC    8D 04 1B                  lea         eax,[ebx+ebx]
+13EF    31 D2                     xor         edx,edx
+13F1    F7 F1                     div         ecx
+13F3    EB 02                     jmp         L$189
+13F5                          L$188:
+13F5    89 D8                     mov         eax,ebx
+13F7                          L$189:
+13F7    3B 84 24 1C 03 00 00      cmp         eax,0x31c[esp]
+13FE    73 24                     jae         L$192
+1400    8B 6F 04                  mov         ebp,0x4[edi]
+1403    85 ED                     test        ebp,ebp
+1405    74 0F                     je          L$190
+1407    8B 84 24 20 03 00 00      mov         eax,0x320[esp]
+140E    31 D2                     xor         edx,edx
+1410    01 C0                     add         eax,eax
+1412    F7 F5                     div         ebp
+1414    EB 07                     jmp         L$191
+1416                          L$190:
+1416    8B 84 24 20 03 00 00      mov         eax,0x320[esp]
+141D                          L$191:
+141D    89 84 24 1C 03 00 00      mov         0x31c[esp],eax
+1424                          L$192:
+1424    89 E0                     mov         eax,esp
+1426    8B 9C 24 1C 03 00 00      mov         ebx,0x31c[esp]
+142D    8B 80 A0 01 00 00         mov         eax,0x1a0[eax]
+1433    85 DB                     test        ebx,ebx
+1435    75 0A                     jne         L$193
+1437    68 DE 04 00 00            push        offset L$275
+143C    E9 B7 FA FF FF            jmp         L$168
+1441                          L$193:
+1441    8B AC 24 20 03 00 00      mov         ebp,0x320[esp]
+1448    31 D2                     xor         edx,edx
+144A    F7 F5                     div         ebp
+144C    89 84 24 18 03 00 00      mov         0x318[esp],eax
+1453    89 E0                     mov         eax,esp
+1455    8B 8C 24 18 03 00 00      mov         ecx,0x318[esp]
+145C    8B 90 78 01 00 00         mov         edx,0x178[eax]
+1462    8B 80 7C 01 00 00         mov         eax,0x17c[eax]
+1468    39 CA                     cmp         edx,ecx
+146A    7E 09                     jle         L$194
+146C    89 94 24 18 03 00 00      mov         0x318[esp],edx
+1473    EB 0B                     jmp         L$195
+1475                          L$194:
+1475    39 C8                     cmp         eax,ecx
+1477    7D 07                     jge         L$195
+1479    89 84 24 18 03 00 00      mov         0x318[esp],eax
+1480                          L$195:
+1480    83 BC 24 18 03 00 00 01
+                                  cmp         dword ptr 0x318[esp],0x00000001
+1488    75 0A                     jne         L$196
+148A    68 22 05 00 00            push        offset L$276
+148F    E9 64 FA FF FF            jmp         L$168
+1494                          L$196:
+1494    80 A4 24 18 03 00 00 FE
+                                  and         byte ptr 0x318[esp],0xfe
+149C    89 E0                     mov         eax,esp
+149E    05 60 01 00 00            add         eax,0x00000160
+14A3    89 84 24 10 03 00 00      mov         0x310[esp],eax
+14AA    8D 47 1C                  lea         eax,0x1c[edi]
+14AD    89 84 24 F4 02 00 00      mov         0x2f4[esp],eax
+14B4    8D 47 0C                  lea         eax,0xc[edi]
+14B7    89 84 24 FC 02 00 00      mov         0x2fc[esp],eax
+14BE                          L$197:
+14BE    89 E0                     mov         eax,esp
+14C0    BB 03 00 00 00            mov         ebx,0x00000003
+14C5    E8 00 00 00 00            call        _snd_pcm_hw_params_any_
+14CA    31 C9                     xor         ecx,ecx
+14CC    31 D2                     xor         edx,edx
+14CE    89 E0                     mov         eax,esp
+14D0    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+14D5    BA 08 00 00 00            mov         edx,0x00000008
+14DA    89 E0                     mov         eax,esp
+14DC    8B 5E 04                  mov         ebx,0x4[esi]
+14DF    31 C9                     xor         ecx,ecx
+14E1    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+14E6    8B 5E 04                  mov         ebx,0x4[esi]
+14E9    0F AF 5E 08               imul        ebx,0x8[esi]
+14ED    89 E0                     mov         eax,esp
+14EF    31 C9                     xor         ecx,ecx
+14F1    BA 09 00 00 00            mov         edx,0x00000009
+14F6    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+14FB    8B 46 0C                  mov         eax,0xc[esi]
+14FE    BA 02 00 00 00            mov         edx,0x00000002
+1503    31 C9                     xor         ecx,ecx
+1505    8B 1C 85 00 00 00 00      mov         ebx,_OSSToALSADataType[eax*4]
+150C    89 E0                     mov         eax,esp
+150E    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1513    BA 0A 00 00 00            mov         edx,0x0000000a
+1518    89 E0                     mov         eax,esp
+151A    8B 5E 08                  mov         ebx,0x8[esi]
+151D    31 C9                     xor         ecx,ecx
+151F    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1524    BA 0B 00 00 00            mov         edx,0x0000000b
+1529    89 E0                     mov         eax,esp
+152B    8B 1E                     mov         ebx,[esi]
+152D    31 C9                     xor         ecx,ecx
+152F    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1534    8B 9C 24 1C 03 00 00      mov         ebx,0x31c[esp]
+153B    BA 0D 00 00 00            mov         edx,0x0000000d
+1540    89 E0                     mov         eax,esp
+1542    31 C9                     xor         ecx,ecx
+1544    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1549    8B 9C 24 20 03 00 00      mov         ebx,0x320[esp]
+1550    BA 0E 00 00 00            mov         edx,0x0000000e
+1555    89 E0                     mov         eax,esp
+1557    31 C9                     xor         ecx,ecx
+1559    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+155E    8B 9C 24 18 03 00 00      mov         ebx,0x318[esp]
+1565    BA 0F 00 00 00            mov         edx,0x0000000f
+156A    89 E0                     mov         eax,esp
+156C    31 C9                     xor         ecx,ecx
+156E    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1573    8B 9C 24 1C 03 00 00      mov         ebx,0x31c[esp]
+157A    0F AF 9C 24 18 03 00 00
+                                  imul        ebx,0x318[esp]
+1582    BA 11 00 00 00            mov         edx,0x00000011
+1587    89 E0                     mov         eax,esp
+1589    31 C9                     xor         ecx,ecx
+158B    8B AC 24 18 03 00 00      mov         ebp,0x318[esp]
+1592    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+1597    8B 9C 24 20 03 00 00      mov         ebx,0x320[esp]
+159E    0F AF DD                  imul        ebx,ebp
+15A1    BA 12 00 00 00            mov         edx,0x00000012
+15A6    89 E0                     mov         eax,esp
+15A8    31 C9                     xor         ecx,ecx
+15AA    E8 00 00 00 00            call        _snd_pcm_hw_param_set_
+15AF    89 E1                     mov         ecx,esp
+15B1    BB 11 41 7C C2            mov         ebx,0xc27c4111
+15B6    8B 6F 24                  mov         ebp,0x24[edi]
+15B9    8B 94 24 F4 02 00 00      mov         edx,0x2f4[esp]
+15C0    8B 84 24 FC 02 00 00      mov         eax,0x2fc[esp]
+15C7    FF 55 14                  call        dword ptr 0x14[ebp]
+15CA    89 C3                     mov         ebx,eax
+15CC    85 C0                     test        eax,eax
+15CE    0F 84 DC 00 00 00         je          L$199
+15D4    83 BC 24 0C 03 00 00 00
+                                  cmp         dword ptr 0x30c[esp],0x00000000
+15DC    75 3E                     jne         L$198
+15DE    8B 8C 24 10 03 00 00      mov         ecx,0x310[esp]
+15E5    8B 84 24 10 03 00 00      mov         eax,0x310[esp]
+15EC    8B 09                     mov         ecx,[ecx]
+15EE    8B 40 04                  mov         eax,0x4[eax]
+15F1    39 C1                     cmp         ecx,eax
+15F3    76 27                     jbe         L$198
+15F5    8B 5F 04                  mov         ebx,0x4[edi]
+15F8    89 84 24 1C 03 00 00      mov         0x31c[esp],eax
+15FF    0F AF C3                  imul        eax,ebx
+1602    BD 01 00 00 00            mov         ebp,0x00000001
+1607    D1 E8                     shr         eax,0x00000001
+1609    89 AC 24 0C 03 00 00      mov         0x30c[esp],ebp
+1610    89 84 24 20 03 00 00      mov         0x320[esp],eax
+1617    E9 A2 FE FF FF            jmp         L$197
+161C                          L$198:
+161C    53                        push        ebx
+161D    68 6C 05 00 00            push        offset L$277
+1622    E8 00 00 00 00            call        _printk
+1627    83 C4 08                  add         esp,0x00000008
+162A    8B 56 04                  mov         edx,0x4[esi]
+162D    52                        push        edx
+162E    68 AA 04 00 00            push        offset L$271
+1633    E8 00 00 00 00            call        _printk
+1638    8B 46 0C                  mov         eax,0xc[esi]
+163B    83 C4 08                  add         esp,0x00000008
+163E    8B 0C 85 00 00 00 00      mov         ecx,_OSSToALSADataType[eax*4]
+1645    51                        push        ecx
+1646    68 B3 04 00 00            push        offset L$272
+164B    E8 00 00 00 00            call        _printk
+1650    83 C4 08                  add         esp,0x00000008
+1653    8B 7E 08                  mov         edi,0x8[esi]
+1656    57                        push        edi
+1657    68 BF 04 00 00            push        offset L$273
+165C    E8 00 00 00 00            call        _printk
+1661    83 C4 08                  add         esp,0x00000008
+1664    8B 2E                     mov         ebp,[esi]
+1666    55                        push        ebp
+1667    68 CD 04 00 00            push        offset L$274
+166C    E8 00 00 00 00            call        _printk
+1671    83 C4 08                  add         esp,0x00000008
+1674    8B 84 24 1C 03 00 00      mov         eax,0x31c[esp]
+167B    50                        push        eax
+167C    68 9A 05 00 00            push        offset L$278
+1681    E8 00 00 00 00            call        _printk
+1686    83 C4 08                  add         esp,0x00000008
+1689    8B 94 24 20 03 00 00      mov         edx,0x320[esp]
+1690    52                        push        edx
+1691    68 AA 05 00 00            push        offset L$279
+1696    E8 00 00 00 00            call        _printk
+169B    83 C4 08                  add         esp,0x00000008
+169E    8B 8C 24 18 03 00 00      mov         ecx,0x318[esp]
+16A5    51                        push        ecx
+16A6    68 BB 05 00 00            push        offset L$280
+16AB    E9 0C FA FF FF            jmp         L$176
+16B0                          L$199:
+16B0    66 83 7F 30 02            cmp         word ptr 0x30[edi],0x0002
+16B5    0F 85 AB 00 00 00         jne         L$202
+16BB    8B 84 24 1C 03 00 00      mov         eax,0x31c[esp]
+16C2    89 84 24 88 02 00 00      mov         0x288[esp],eax
+16C9    B8 01 00 00 00            mov         eax,0x00000001
+16CE    8B 94 24 18 03 00 00      mov         edx,0x318[esp]
+16D5    89 84 24 80 02 00 00      mov         0x280[esp],eax
+16DC    83 FA 02                  cmp         edx,0x00000002
+16DF    7F 0B                     jg          L$200
+16E1    8B 84 24 1C 03 00 00      mov         eax,0x31c[esp]
+16E8    D1 E8                     shr         eax,0x00000001
+16EA    EB 07                     jmp         L$201
+16EC                          L$200:
+16EC    8B 84 24 1C 03 00 00      mov         eax,0x31c[esp]
+16F3                          L$201:
+16F3    89 84 24 9C 02 00 00      mov         0x29c[esp],eax
+16FA    8B 84 24 9C 02 00 00      mov         eax,0x29c[esp]
+1701    8B B4 24 18 03 00 00      mov         esi,0x318[esp]
+1708    89 84 24 98 02 00 00      mov         0x298[esp],eax
+170F    8B 84 24 1C 03 00 00      mov         eax,0x31c[esp]
+1716    0F AF C6                  imul        eax,esi
+1719    BB 01 00 00 00            mov         ebx,0x00000001
+171E    31 C9                     xor         ecx,ecx
+1720    30 D2                     xor         dl,dl
+1722    89 8C 24 84 02 00 00      mov         0x284[esp],ecx
+1729    89 9C 24 90 02 00 00      mov         0x290[esp],ebx
+1730    88 94 24 7C 02 00 00      mov         0x27c[esp],dl
+1737    89 84 24 94 02 00 00      mov         0x294[esp],eax
+173E    8B 84 24 1C 03 00 00      mov         eax,0x31c[esp]
+1745    8D 8C 24 7C 02 00 00      lea         ecx,0x27c[esp]
+174C    89 84 24 8C 02 00 00      mov         0x28c[esp],eax
+1753    8D 57 1C                  lea         edx,0x1c[edi]
+1756    8B 77 24                  mov         esi,0x24[edi]
+1759    BB 13 41 68 C0            mov         ebx,0xc0684113
+175E    8D 47 0C                  lea         eax,0xc[edi]
+1761    FF 56 14                  call        dword ptr 0x14[esi]
+1764    89 C3                     mov         ebx,eax
+1766                          L$202:
+1766    57                        push        edi
+1767    53                        push        ebx
+1768    8B 84 24 28 03 00 00      mov         eax,0x328[esp]
+176F    31 ED                     xor         ebp,ebp
+1771    68 C8 05 00 00            push        offset L$281
+1776    89 2D 00 00 00 00         mov         _total,ebp
+177C    A3 00 00 00 00            mov         _per_bytes,eax
+1781    E8 00 00 00 00            call        _printk
+1786    83 C4 0C                  add         esp,0x0000000c
+1789                          L$203:
+1789    89 D8                     mov         eax,ebx
+178B    E8 00 00 00 00            call        UNIXToOSSError_
+1790                          L$204:
+1790    81 C4 28 03 00 00         add         esp,0x00000328
+1796    5D                        pop         ebp
+1797    5F                        pop         edi
+1798    5E                        pop         esi
+1799    59                        pop         ecx
+179A    5B                        pop         ebx
+179B    C3                        ret         
+
+Routine Size: 2276 bytes,    Routine Base: CODE32 + 0EB8
+
+179C                          OSS32_WaveAddBuffer_:
+179C    56                        push        esi
+179D    57                        push        edi
+179E    55                        push        ebp
+179F    81 EC 8C 00 00 00         sub         esp,0x0000008c
+17A5    89 C6                     mov         esi,eax
+17A7    89 D7                     mov         edi,edx
+17A9    89 5C 24 74               mov         0x74[esp],ebx
+17AD    89 4C 24 6C               mov         0x6c[esp],ecx
+17B1    89 84 24 84 00 00 00      mov         0x84[esp],eax
+17B8    85 C0                     test        eax,eax
+17BA    74 08                     je          L$205
+17BC    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+17C2    74 0A                     je          L$206
+17C4                          L$205:
+17C4    B8 02 00 00 00            mov         eax,0x00000002
+17C9    E9 4E 02 00 00            jmp         L$221
+17CE                          L$206:
+17CE    85 C9                     test        ecx,ecx
+17D0    74 08                     je          L$207
+17D2    85 FF                     test        edi,edi
+17D4    74 04                     je          L$207
+17D6    85 DB                     test        ebx,ebx
+17D8    75 0A                     jne         L$208
+17DA                          L$207:
+17DA    B8 04 00 00 00            mov         eax,0x00000004
+17DF    E9 38 02 00 00            jmp         L$221
+17E4                          L$208:
+17E4    89 E1                     mov         ecx,esp
+17E6    BB 20 41 6C 80            mov         ebx,0x806c4120
+17EB    8D 50 1C                  lea         edx,0x1c[eax]
+17EE    8B 68 24                  mov         ebp,0x24[eax]
+17F1    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+17F8    83 C0 0C                  add         eax,0x0000000c
+17FB    FF 55 14                  call        dword ptr 0x14[ebp]
+17FE    89 84 24 80 00 00 00      mov         0x80[esp],eax
+1805    85 C0                     test        eax,eax
+1807    0F 85 96 01 00 00         jne         L$216
+180D    8B 5C 24 20               mov         ebx,0x20[esp]
+1811    0F AF 5E 04               imul        ebx,0x4[esi]
+1815    8B 44 24 74               mov         eax,0x74[esp]
+1819    D1 EB                     shr         ebx,0x00000001
+181B    89 44 24 70               mov         0x70[esp],eax
+181F    39 C3                     cmp         ebx,eax
+1821    76 02                     jbe         L$209
+1823    89 C3                     mov         ebx,eax
+1825                          L$209:
+1825    89 DE                     mov         esi,ebx
+1827    85 DB                     test        ebx,ebx
+1829    75 10                     jne         L$210
+182B    8B 44 24 6C               mov         eax,0x6c[esp]
+182F    89 18                     mov         [eax],ebx
+1831    B8 0A 00 00 00            mov         eax,0x0000000a
+1836    E9 E1 01 00 00            jmp         L$221
+183B                          L$210:
+183B    31 D2                     xor         edx,edx
+183D    89 94 24 88 00 00 00      mov         0x88[esp],edx
+1844    8B 94 24 84 00 00 00      mov         edx,0x84[esp]
+184B    31 C0                     xor         eax,eax
+184D    8B 8C 24 9C 00 00 00      mov         ecx,0x9c[esp]
+1854    66 8B 42 0C               mov         ax,0xc[edx]
+1858    29 C8                     sub         eax,ecx
+185A    83 E0 1F                  and         eax,0x0000001f
+185D    83 F8 10                  cmp         eax,0x00000010
+1860    0F 82 74 FF FF FF         jb          L$207
+1866    8D 6A 1C                  lea         ebp,0x1c[edx]
+1869    8D 4A 34                  lea         ecx,0x34[edx]
+186C    76 0E                     jbe         L$211
+186E    83 F8 18                  cmp         eax,0x00000018
+1871    0F 84 55 01 00 00         je          L$218
+1877    E9 5E FF FF FF            jmp         L$207
+187C                          L$211:
+187C    89 4C 24 78               mov         0x78[esp],ecx
+1880    89 6C 24 7C               mov         0x7c[esp],ebp
+1884                          L$212:
+1884    8B AC 24 84 00 00 00      mov         ebp,0x84[esp]
+188B    8B 4C 24 78               mov         ecx,0x78[esp]
+188F    8B 44 24 7C               mov         eax,0x7c[esp]
+1893    8B 6D 24                  mov         ebp,0x24[ebp]
+1896    89 F3                     mov         ebx,esi
+1898    89 FA                     mov         edx,edi
+189A    FF 55 08                  call        dword ptr 0x8[ebp]
+189D    89 84 24 80 00 00 00      mov         0x80[esp],eax
+18A4    85 C0                     test        eax,eax
+18A6    0F 8D 01 01 00 00         jge         L$217
+18AC    83 F8 E0                  cmp         eax,0xffffffe0
+18AF    75 22                     jne         L$213
+18B1    8B AC 24 84 00 00 00      mov         ebp,0x84[esp]
+18B8    8B 84 24 84 00 00 00      mov         eax,0x84[esp]
+18BF    BB 40 41 00 00            mov         ebx,0x00004140
+18C4    8B 54 24 7C               mov         edx,0x7c[esp]
+18C8    8B 6D 24                  mov         ebp,0x24[ebp]
+18CB    31 C9                     xor         ecx,ecx
+18CD    83 C0 0C                  add         eax,0x0000000c
+18D0    FF 55 14                  call        dword ptr 0x14[ebp]
+18D3                          L$213:
+18D3    8B AC 24 88 00 00 00      mov         ebp,0x88[esp]
+18DA    85 ED                     test        ebp,ebp
+18DC    7E 26                     jle         L$214
+18DE    8B 94 24 80 00 00 00      mov         edx,0x80[esp]
+18E5    52                        push        edx
+18E6    56                        push        esi
+18E7    57                        push        edi
+18E8    68 1B 06 00 00            push        offset L$282
+18ED    E8 00 00 00 00            call        _printk
+18F2    83 C4 10                  add         esp,0x00000010
+18F5    89 E8                     mov         eax,ebp
+18F7    8B 54 24 6C               mov         edx,0x6c[esp]
+18FB    31 E8                     xor         eax,ebp
+18FD    89 2A                     mov         [edx],ebp
+18FF    E9 18 01 00 00            jmp         L$221
+1904                          L$214:
+1904    8B 84 24 80 00 00 00      mov         eax,0x80[esp]
+190B    50                        push        eax
+190C    68 5B 06 00 00            push        offset L$283
+1911    E8 00 00 00 00            call        _printk
+1916    83 C4 08                  add         esp,0x00000008
+1919    8B 94 24 84 00 00 00      mov         edx,0x84[esp]
+1920    8B 44 24 20               mov         eax,0x20[esp]
+1924    8B 4A 04                  mov         ecx,0x4[edx]
+1927    0F AF C1                  imul        eax,ecx
+192A    56                        push        esi
+192B    D1 E8                     shr         eax,0x00000001
+192D    50                        push        eax
+192E    8B 44 24 1C               mov         eax,0x1c[esp]
+1932    0F AF C1                  imul        eax,ecx
+1935    D1 E8                     shr         eax,0x00000001
+1937    50                        push        eax
+1938    8B 44 24 24               mov         eax,0x24[esp]
+193C    0F AF C1                  imul        eax,ecx
+193F    D1 E8                     shr         eax,0x00000001
+1941    50                        push        eax
+1942    68 9E 06 00 00            push        offset L$284
+1947    E8 00 00 00 00            call        _printk
+194C    83 C4 14                  add         esp,0x00000014
+194F    8B 3D 00 00 00 00         mov         edi,_total
+1955    57                        push        edi
+1956    68 BE 06 00 00            push        offset L$285
+195B    E8 00 00 00 00            call        _printk
+1960    83 C4 08                  add         esp,0x00000008
+1963    8B 44 24 FD               mov         eax,-0x3[esp]
+1967    C1 F8 18                  sar         eax,0x00000018
+196A    50                        push        eax
+196B    68 CA 06 00 00            push        offset L$286
+1970    E8 00 00 00 00            call        _printk
+1975    83 C4 08                  add         esp,0x00000008
+1978    8B 6C 24 20               mov         ebp,0x20[esp]
+197C    55                        push        ebp
+197D    68 D6 06 00 00            push        offset L$287
+1982    E8 00 00 00 00            call        _printk
+1987    83 C4 08                  add         esp,0x00000008
+198A    8B 44 24 70               mov         eax,0x70[esp]
+198E    50                        push        eax
+198F    68 E2 06 00 00            push        offset L$288
+1994    E8 00 00 00 00            call        _printk
+1999    83 C4 08                  add         esp,0x00000008
+199C                          L$215:
+199C    8B 84 24 88 00 00 00      mov         eax,0x88[esp]
+19A3                          L$216:
+19A3    E8 00 00 00 00            call        UNIXToOSSError_
+19A8    E9 6F 00 00 00            jmp         L$221
+19AD                          L$217:
+19AD    74 2E                     je          L$219
+19AF    8B 9C 24 88 00 00 00      mov         ebx,0x88[esp]
+19B6    01 C7                     add         edi,eax
+19B8    01 C3                     add         ebx,eax
+19BA    29 C6                     sub         esi,eax
+19BC    89 9C 24 88 00 00 00      mov         0x88[esp],ebx
+19C3    85 F6                     test        esi,esi
+19C5    76 16                     jbe         L$219
+19C7    E9 B8 FE FF FF            jmp         L$212
+19CC                          L$218:
+19CC    8B 72 24                  mov         esi,0x24[edx]
+19CF    89 E8                     mov         eax,ebp
+19D1    89 FA                     mov         edx,edi
+19D3    FF 56 04                  call        dword ptr 0x4[esi]
+19D6    89 84 24 88 00 00 00      mov         0x88[esp],eax
+19DD                          L$219:
+19DD    83 BC 24 80 00 00 00 00
+                                  cmp         dword ptr 0x80[esp],0x00000000
+19E5    7D 18                     jge         L$220
+19E7    83 3D 00 00 00 00 00      cmp         dword ptr _DebugLevel,0x00000000
+19EE    7E AC                     jle         L$215
+19F0    68 F1 06 00 00            push        offset L$289
+19F5    E8 00 00 00 00            call        _DPE
+19FA    83 C4 04                  add         esp,0x00000004
+19FD    EB 9D                     jmp         L$215
+19FF                          L$220:
+19FF    8B 84 24 88 00 00 00      mov         eax,0x88[esp]
+1A06    8B 1D 00 00 00 00         mov         ebx,_total
+1A0C    8B 54 24 6C               mov         edx,0x6c[esp]
+1A10    01 C3                     add         ebx,eax
+1A12    89 02                     mov         [edx],eax
+1A14    89 1D 00 00 00 00         mov         _total,ebx
+1A1A    31 C0                     xor         eax,eax
+1A1C                          L$221:
+1A1C    81 C4 8C 00 00 00         add         esp,0x0000008c
+1A22    5D                        pop         ebp
+1A23    5F                        pop         edi
+1A24    5E                        pop         esi
+1A25    C2 04 00                  ret         0x00000004
+
+Routine Size: 652 bytes,    Routine Base: CODE32 + 179C
+
+1A28                          OSS32_WaveGetPosition_:
+1A28    53                        push        ebx
+1A29    51                        push        ecx
+1A2A    56                        push        esi
+1A2B    57                        push        edi
+1A2C    55                        push        ebp
+1A2D    83 EC 70                  sub         esp,0x00000070
+1A30    89 C6                     mov         esi,eax
+1A32    89 D7                     mov         edi,edx
+1A34    89 44 24 6C               mov         0x6c[esp],eax
+1A38    85 C0                     test        eax,eax
+1A3A    74 08                     je          L$222
+1A3C    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+1A42    74 0A                     je          L$223
+1A44                          L$222:
+1A44    B8 02 00 00 00            mov         eax,0x00000002
+1A49    E9 6F 00 00 00            jmp         L$227
+1A4E                          L$223:
+1A4E    85 FF                     test        edi,edi
+1A50    75 07                     jne         L$224
+1A52    B8 04 00 00 00            mov         eax,0x00000004
+1A57    EB 64                     jmp         L$227
+1A59                          L$224:
+1A59    89 E1                     mov         ecx,esp
+1A5B    BB 20 41 6C 80            mov         ebx,0x806c4120
+1A60    8D 50 1C                  lea         edx,0x1c[eax]
+1A63    8B 68 24                  mov         ebp,0x24[eax]
+1A66    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+1A6D    83 C0 0C                  add         eax,0x0000000c
+1A70    FF 55 14                  call        dword ptr 0x14[ebp]
+1A73    85 C0                     test        eax,eax
+1A75    74 07                     je          L$225
+1A77    E8 00 00 00 00            call        UNIXToOSSError_
+1A7C    EB 3F                     jmp         L$227
+1A7E                          L$225:
+1A7E    83 3D 00 00 00 00 01      cmp         dword ptr _DebugLevel,0x00000001
+1A85    7E 24                     jle         L$226
+1A87    8B 44 24 14               mov         eax,0x14[esp]
+1A8B    8B 5E 04                  mov         ebx,0x4[esi]
+1A8E    0F AF C3                  imul        eax,ebx
+1A91    D1 E8                     shr         eax,0x00000001
+1A93    50                        push        eax
+1A94    8B 44 24 1C               mov         eax,0x1c[esp]
+1A98    0F AF C3                  imul        eax,ebx
+1A9B    D1 E8                     shr         eax,0x00000001
+1A9D    50                        push        eax
+1A9E    68 0C 07 00 00            push        offset L$290
+1AA3    E8 00 00 00 00            call        _DPE
+1AA8    83 C4 0C                  add         esp,0x0000000c
+1AAB                          L$226:
+1AAB    8B 54 24 6C               mov         edx,0x6c[esp]
+1AAF    8B 44 24 18               mov         eax,0x18[esp]
+1AB3    0F AF 42 04               imul        eax,0x4[edx]
+1AB7    D1 E8                     shr         eax,0x00000001
+1AB9    89 07                     mov         [edi],eax
+1ABB    31 C0                     xor         eax,eax
+1ABD                          L$227:
+1ABD    83 C4 70                  add         esp,0x00000070
+1AC0    5D                        pop         ebp
+1AC1    5F                        pop         edi
+1AC2    5E                        pop         esi
+1AC3    59                        pop         ecx
+1AC4    5B                        pop         ebx
+1AC5    C3                        ret         
+
+Routine Size: 158 bytes,    Routine Base: CODE32 + 1A28
+
+1AC6                          OSS32_WaveGetSpace_:
+1AC6    53                        push        ebx
+1AC7    51                        push        ecx
+1AC8    56                        push        esi
+1AC9    57                        push        edi
+1ACA    55                        push        ebp
+1ACB    83 EC 6C                  sub         esp,0x0000006c
+1ACE    89 C6                     mov         esi,eax
+1AD0    89 D7                     mov         edi,edx
+1AD2    85 C0                     test        eax,eax
+1AD4    74 08                     je          L$228
+1AD6    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+1ADC    74 07                     je          L$229
+1ADE                          L$228:
+1ADE    B8 02 00 00 00            mov         eax,0x00000002
+1AE3    EB 3E                     jmp         L$232
+1AE5                          L$229:
+1AE5    85 FF                     test        edi,edi
+1AE7    75 07                     jne         L$230
+1AE9    B8 04 00 00 00            mov         eax,0x00000004
+1AEE    EB 33                     jmp         L$232
+1AF0                          L$230:
+1AF0    89 E1                     mov         ecx,esp
+1AF2    BB 20 41 6C 80            mov         ebx,0x806c4120
+1AF7    8D 50 1C                  lea         edx,0x1c[eax]
+1AFA    8B 68 24                  mov         ebp,0x24[eax]
+1AFD    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+1B04    83 C0 0C                  add         eax,0x0000000c
+1B07    FF 55 14                  call        dword ptr 0x14[ebp]
+1B0A    85 C0                     test        eax,eax
+1B0C    74 07                     je          L$231
+1B0E    E8 00 00 00 00            call        UNIXToOSSError_
+1B13    EB 0E                     jmp         L$232
+1B15                          L$231:
+1B15    8B 44 24 20               mov         eax,0x20[esp]
+1B19    0F AF 46 04               imul        eax,0x4[esi]
+1B1D    D1 E8                     shr         eax,0x00000001
+1B1F    89 07                     mov         [edi],eax
+1B21    31 C0                     xor         eax,eax
+1B23                          L$232:
+1B23    83 C4 6C                  add         esp,0x0000006c
+1B26    5D                        pop         ebp
+1B27    5F                        pop         edi
+1B28    5E                        pop         esi
+1B29    59                        pop         ecx
+1B2A    5B                        pop         ebx
+1B2B    C3                        ret         
+
+Routine Size: 102 bytes,    Routine Base: CODE32 + 1AC6
+
+1B2C                          OSS32_WaveSetVolume_:
+1B2C    53                        push        ebx
+1B2D    51                        push        ecx
+1B2E    56                        push        esi
+1B2F    57                        push        edi
+1B30    83 EC 1C                  sub         esp,0x0000001c
+1B33    89 C3                     mov         ebx,eax
+1B35    85 C0                     test        eax,eax
+1B37    74 08                     je          L$233
+1B39    81 38 00 EF CD AB         cmp         dword ptr [eax],0xabcdef00
+1B3F    74 07                     je          L$234
+1B41                          L$233:
+1B41    B8 02 00 00 00            mov         eax,0x00000002
+1B46    EB 5C                     jmp         L$236
+1B48                          L$234:
+1B48    BE 04 00 00 00            mov         esi,0x00000004
+1B4D    8B 3D 00 00 00 00         mov         edi,_DebugLevel
+1B53    89 D1                     mov         ecx,edx
+1B55    C7 40 2C 00 08 00 00      mov         dword ptr 0x2c[eax],0x00000800
+1B5C    81 E1 FF 00 00 00         and         ecx,0x000000ff
+1B62    C1 EA 08                  shr         edx,0x00000008
+1B65    89 34 24                  mov         [esp],esi
+1B68    89 4C 24 04               mov         0x4[esp],ecx
+1B6C    89 54 24 08               mov         0x8[esp],edx
+1B70    89 4C 24 0C               mov         0xc[esp],ecx
+1B74    89 54 24 10               mov         0x10[esp],edx
+1B78    85 FF                     test        edi,edi
+1B7A    7E 10                     jle         L$235
+1B7C    52                        push        edx
+1B7D    51                        push        ecx
+1B7E    50                        push        eax
+1B7F    68 3E 07 00 00            push        offset L$291
+1B84    E8 00 00 00 00            call        _DPE
+1B89    83 C4 10                  add         esp,0x00000010
+1B8C                          L$235:
+1B8C    8D 53 1C                  lea         edx,0x1c[ebx]
+1B8F    8B 73 24                  mov         esi,0x24[ebx]
+1B92    8D 43 0C                  lea         eax,0xc[ebx]
+1B95    89 E1                     mov         ecx,esp
+1B97    BB 62 41 1C 40            mov         ebx,0x401c4162
+1B9C    FF 56 14                  call        dword ptr 0x14[esi]
+1B9F    E8 00 00 00 00            call        UNIXToOSSError_
+1BA4                          L$236:
+1BA4    83 C4 1C                  add         esp,0x0000001c
+1BA7    5F                        pop         edi
+1BA8    5E                        pop         esi
+1BA9    59                        pop         ecx
+1BAA    5B                        pop         ebx
+1BAB    C3                        ret         
+
+Routine Size: 128 bytes,    Routine Base: CODE32 + 1B2C
+
+No disassembly errors
+
+Segment: CONST DWORD USE32 00000760 bytes
+0000                          L$237:
+0000    61 6C 73 61 00                                  alsa.
+0005                          L$238:
+0005    55 6E 6B 6E 6F 77 6E 20 65 72 72 6F 72 20 25 64 Unknown error %d
+0015    00                                              .
+0016                          L$239:
+0016    4F 53 53 33 32 5F 51 75 65 72 79 44 65 76 43 61 OSS32_QueryDevCa
+0026    70 73 3A 20 6F 75 74 20 6F 66 20 6D 65 6D 6F 72 ps: out of memor
+0036    79 0A 00                                        y..
+0039                          L$240:
+0039    4F 53 53 33 32 5F 51 75 65 72 79 44 65 76 43 61 OSS32_QueryDevCa
+0049    70 73 3A 20 77 61 76 65 20 6F 70 65 6E 20 65 72 ps: wave open er
+0059    72 6F 72 20 25 69 0A 00                         ror %i..
+0061                          L$241:
+0061    4F 53 53 33 32 5F 51 75 65 72 79 44 65 76 43 61 OSS32_QueryDevCa
+0071    70 73 3A 20 69 6E 76 61 6C 69 64 20 73 74 72 65 ps: invalid stre
+0081    61 6D 20 69 64 20 0A 00                         am id ..
+0089                          L$242:
+0089    4F 53 53 33 32 5F 51 75 65 72 79 44 65 76 43 61 OSS32_QueryDevCa
+0099    70 73 3A 20 53 4E 44 52 56 5F 50 43 4D 5F 49 4F ps: SNDRV_PCM_IO
+00A9    43 54 4C 5F 49 4E 46 4F 20 65 72 72 6F 72 20 25 CTL_INFO error %
+00B9    69 0A 00                                        i..
+00BC                          L$243:
+00BC    4F 53 53 33 32 5F 51 75 65 72 79 44 65 76 43 61 OSS32_QueryDevCa
+00CC    70 73 3A 20 53 4E 44 52 56 5F 50 43 4D 5F 49 4F ps: SNDRV_PCM_IO
+00DC    43 54 4C 5F 48 57 5F 52 45 46 49 4E 45 20 65 72 CTL_HW_REFINE er
+00EC    72 6F 72 20 25 69 0A 00                         ror %i..
+00F4                          L$244:
+00F4    4F 53 53 33 32 5F 51 75 65 72 79 44 65 76 43 61 OSS32_QueryDevCa
+0104    70 73 3A 20 4F 53 53 33 32 5F 4D 69 78 51 75 65 ps: OSS32_MixQue
+0114    72 79 4E 61 6D 65 20 65 72 72 6F 72 0A 00       ryName error..
+0122                          L$245:
+0122    4F 53 53 33 32 5F 51 75 65 72 79 44 65 76 43 61 OSS32_QueryDevCa
+0132    70 73 20 66 61 69 6C 65 64 0A 00                ps failed..
+013D                          L$246:
+013D    4F 53 53 33 32 5F 57 61 76 65 4F 70 65 6E 3A 20 OSS32_WaveOpen: 
+014D    6E 6F 20 64 65 76 69 63 65 73 0A 00             no devices..
+0159                          L$247:
+0159    4F 53 53 33 32 5F 57 61 76 65 4F 70 65 6E 3A 20 OSS32_WaveOpen: 
+0169    6F 75 74 20 6F 66 20 6D 65 6D 6F 72 79 0A 00    out of memory..
+0178                          L$248:
+0178    4F 53 53 33 32 5F 57 61 76 65 4F 70 65 6E 3A 20 OSS32_WaveOpen: 
+0188    69 6E 76 61 6C 69 64 20 70 61 72 61 6D 65 74 65 invalid paramete
+0198    72 0A 00                                        r..
+019B                          L$249:
+019B    4F 53 53 33 32 5F 57 61 76 65 4F 70 65 6E 3A 20 OSS32_WaveOpen: 
+01AB    6F 70 65 6E 20 65 72 72 6F 72 3A 20 25 69 0A 00 open error: %i..
+01BB                          L$250:
+01BB    4F 53 53 33 32 5F 57 61 76 65 4F 70 65 6E 2E 20 OSS32_WaveOpen. 
+01CB    73 74 72 65 61 6D 69 64 20 25 58 0A 00          streamid %X..
+01D8                          L$251:
+01D8    4F 53 53 33 32 5F 57 61 76 65 43 6C 6F 73 65 2E OSS32_WaveClose.
+01E8    20 69 6E 76 61 6C 69 64 20 73 74 72 65 61 6D 69  invalid streami
+01F8    64 20 25 58 0A 00                               d %X..
+01FE                          L$252:
+01FE    70 68 61 6E 64 6C 65 20 25 78 20 6E 6F 74 20 66 phandle %x not f
+020E    6F 75 6E 64 0A 00                               ound..
+0214                          L$253:
+0214    45 72 72 6F 72 20 63 6C 6F 73 69 6E 67 20 77 61 Error closing wa
+0224    76 65 2E 20 72 63 20 3D 20 25 69 0A 00          ve. rc = %i..
+0231                          L$254:
+0231    4F 53 53 33 32 5F 57 61 76 65 43 6C 6F 73 65 2E OSS32_WaveClose.
+0241    20 73 74 72 65 61 6D 69 64 20 25 58 0A 00        streamid %X..
+024F                          L$255:
+024F    76 6C 61 64 65 73 74 3A 20 4F 53 53 33 32 5F 57 vladest: OSS32_W
+025F    61 76 65 50 72 65 70 61 72 65 3A 20 69 6E 76 61 avePrepare: inva
+026F    6C 69 64 20 73 74 72 65 61 6D 49 44 0A 00       lid streamID..
+027D                          L$256:
+027D    57 61 76 65 20 70 72 65 70 61 72 65 20 72 65 74 Wave prepare ret
+028D    20 3D 20 25 69 2C 20 73 74 72 65 61 6D 69 64 20  = %i, streamid 
+029D    25 58 0A 00                                     %X..
+02A1                          L$257:
+02A1    57 61 76 65 20 73 74 61 72 74 20 72 65 74 20 3D Wave start ret =
+02B1    20 25 69 2C 20 73 74 72 65 61 6D 69 64 20 25 58  %i, streamid %X
+02C1    0A 00                                           ..
+02C3                          L$258:
+02C3    57 61 76 65 20 73 74 6F 70 20 72 65 74 20 3D 20 Wave stop ret = 
+02D3    25 69 2E 20 73 74 72 65 61 6D 69 64 20 25 58 0A %i. streamid %X.
+02E3    00                                              .
+02E4                          L$259:
+02E4    57 61 76 65 20 70 61 75 73 65 20 72 65 74 20 3D Wave pause ret =
+02F4    20 25 69 2C 20 73 74 72 65 61 6D 69 64 20 25 58  %i, streamid %X
+0304    0A 00                                           ..
+0306                          L$260:
+0306    57 61 76 65 20 72 65 73 75 6D 65 20 72 65 74 20 Wave resume ret 
+0316    3D 20 25 69 2C 20 73 74 72 65 61 6D 69 64 20 25 = %i, streamid %
+0326    58 0A 00                                        X..
+0329                          L$261:
+0329    4F 53 53 33 32 5F 57 61 76 65 53 65 74 48 77 50 OSS32_WaveSetHwP
+0339    61 72 61 6D 73 20 65 72 72 6F 72 2E 20 49 6E 76 arams error. Inv
+0349    61 6C 69 64 20 68 61 6E 64 6C 65 0A 00          alid handle..
+0356                          L$262:
+0356    4F 53 53 33 32 5F 57 61 76 65 53 65 74 48 77 50 OSS32_WaveSetHwP
+0366    61 72 61 6D 73 20 65 72 72 6F 72 2E 20 70 61 72 arams error. par
+0376    61 6D 73 20 3D 20 4E 55 4C 4C 0A 00             ams = NULL..
+0382                          L$263:
+0382    4F 53 53 33 32 5F 57 61 76 65 53 65 74 48 77 50 OSS32_WaveSetHwP
+0392    61 72 61 6D 73 20 65 72 72 6F 72 2E 20 54 6F 6F arams error. Too
+03A2    20 68 69 67 68 20 50 43 4D 20 66 6F 72 6D 61 74  high PCM format
+03B2    0A 00                                           ..
+03B4                          L$264:
+03B4    4F 53 53 33 32 5F 57 61 76 65 53 65 74 48 77 50 OSS32_WaveSetHwP
+03C4    61 72 61 6D 73 20 65 72 72 6F 72 2E 20 49 6E 76 arams error. Inv
+03D4    61 6C 69 64 20 6E 75 6D 62 65 72 20 6F 66 20 63 alid number of c
+03E4    68 61 6E 6E 65 6C 73 3A 20 25 69 0A 00          hannels: %i..
+03F1                          L$265:
+03F1    63 68 61 6E 6E 65 6C 73 3A 20 25 69 2C 20 70 65 channels: %i, pe
+0401    72 69 6F 64 20 73 69 7A 65 3A 20 25 69 0A 00    riod size: %i..
+0410                          L$266:
+0410    63 68 61 6E 6E 65 6C 73 20 73 65 6C 65 63 74 65 channels selecte
+0420    64 3A 20 25 69 0A 00                            d: %i..
+0427                          L$267:
+0427    69 6E 76 61 6C 69 64 20 66 6F 72 6D 61 74 20 25 invalid format %
+0437    69 0A 00                                        i..
+043A                          L$268:
+043A    69 6E 76 61 6C 69 64 20 6E 75 6D 62 65 72 20 6F invalid number o
+044A    66 20 73 61 6D 70 6C 65 20 62 69 74 73 20 25 69 f sample bits %i
+045A    0A 00                                           ..
+045C                          L$269:
+045C    69 6E 76 61 6C 69 64 20 6E 75 6D 62 65 72 20 6F invalid number o
+046C    66 20 66 72 61 6D 65 20 62 69 74 73 20 25 69 0A f frame bits %i.
+047C    00                                              .
+047D                          L$270:
+047D    4F 53 53 33 32 5F 57 61 76 65 53 65 74 48 77 50 OSS32_WaveSetHwP
+048D    61 72 61 6D 73 20 28 66 69 72 73 74 20 70 61 73 arams (first pas
+049D    73 29 20 65 72 72 6F 72 20 25 69 0A 00          s) error %i..
+04AA                          L$271:
+04AA    62 70 73 3A 20 25 69 0A 00                      bps: %i..
+04B3                          L$272:
+04B3    66 6F 72 6D 61 74 3A 20 25 69 0A 00             format: %i..
+04BF                          L$273:
+04BF    63 68 61 6E 6E 65 6C 73 3A 20 25 69 0A 00       channels: %i..
+04CD                          L$274:
+04CD    73 61 6D 70 6C 65 20 72 61 74 65 3A 20 25 69 0A sample rate: %i.
+04DD    00                                              .
+04DE                          L$275:
+04DE    4F 53 53 33 32 5F 57 61 76 65 53 65 74 48 77 50 OSS32_WaveSetHwP
+04EE    61 72 61 6D 73 20 65 72 72 6F 72 2E 20 49 6E 76 arams error. Inv
+04FE    61 6C 69 64 20 70 65 72 69 6F 64 73 69 7A 65 20 alid periodsize 
+050E    28 3D 30 29 2E 20 63 6C 6F 73 69 6E 67 20 66 69 (=0). closing fi
+051E    6C 65 0A 00                                     le..
+0522                          L$276:
+0522    4F 53 53 33 32 5F 57 61 76 65 53 65 74 48 77 50 OSS32_WaveSetHwP
+0532    61 72 61 6D 73 20 65 72 72 6F 72 2E 20 49 6E 76 arams error. Inv
+0542    61 6C 69 64 20 6E 75 6D 62 65 72 20 6F 66 20 70 alid number of p
+0552    65 72 69 6F 64 73 28 3D 31 29 2E 20 63 6C 6F 73 eriods(=1). clos
+0562    69 6E 67 20 66 69 6C 65 0A 00                   ing file..
+056C                          L$277:
+056C    4F 53 53 33 32 5F 57 61 76 65 53 65 74 48 77 50 OSS32_WaveSetHwP
+057C    61 72 61 6D 73 20 28 73 65 63 6F 6E 64 20 70 61 arams (second pa
+058C    73 73 29 20 65 72 72 6F 72 20 25 69 0A 00       ss) error %i..
+059A                          L$278:
+059A    70 65 72 69 6F 64 73 69 7A 65 3A 20 25 69 0A 00 periodsize: %i..
+05AA                          L$279:
+05AA    70 65 72 69 6F 64 62 79 74 65 73 3A 20 25 69 0A periodbytes: %i.
+05BA    00                                              .
+05BB                          L$280:
+05BB    70 65 72 69 6F 64 73 3A 20 25 69 0A 00          periods: %i..
+05C8                          L$281:
+05C8    4F 53 53 33 32 5F 57 61 76 65 53 65 74 48 77 50 OSS32_WaveSetHwP
+05D8    61 72 61 6D 73 20 72 65 74 75 72 6E 20 25 64 20 arams return %d 
+05E8    61 66 74 65 72 20 53 4E 44 52 56 5F 50 43 4D 5F after SNDRV_PCM_
+05F8    49 4F 43 54 4C 5F 53 57 5F 50 41 52 41 4D 53 20 IOCTL_SW_PARAMS 
+0608    69 6F 63 74 6C 2C 20 73 74 72 65 61 6D 69 64 20 ioctl, streamid 
+0618    25 58 00                                        %X.
+061B                          L$282:
+061B    4F 53 53 33 32 5F 57 61 76 65 41 64 64 42 75 66 OSS32_WaveAddBuf
+062B    66 65 72 20 66 61 69 6C 65 64 20 6F 6E 20 70 61 fer failed on pa
+063B    72 74 69 61 6C 20 74 72 61 6E 73 66 65 72 20 25 rtial transfer %
+064B    78 20 25 69 3B 20 72 65 74 20 3D 20 25 69 0A 00 x %i; ret = %i..
+065B                          L$283:
+065B    4F 53 53 33 32 5F 57 61 76 65 41 64 64 42 75 66 OSS32_WaveAddBuf
+066B    66 65 72 20 66 61 69 6C 65 64 20 77 68 65 6E 20 fer failed when 
+067B    53 4E 44 52 56 5F 4D 49 4E 4F 52 5F 50 43 4D 5F SNDRV_MINOR_PCM_
+068B    50 4C 41 59 42 41 43 4B 2E 20 72 63 20 3D 20 25 PLAYBACK. rc = %
+069B    69 0A 00                                        i..
+069E                          L$284:
+069E    68 77 20 25 69 20 61 70 70 20 25 69 20 61 76 61 hw %i app %i ava
+06AE    69 6C 20 25 69 2C 20 73 69 7A 65 20 25 69 0A 00 il %i, size %i..
+06BE                          L$285:
+06BE    74 6F 74 61 6C 20 3D 20 25 69 0A 00             total = %i..
+06CA                          L$286:
+06CA    73 74 61 74 65 20 3D 20 25 69 0A 00             state = %i..
+06D6                          L$287:
+06D6    61 76 61 69 6C 20 3D 20 25 69 0A 00             avail = %i..
+06E2                          L$288:
+06E2    73 69 7A 65 20 72 65 71 20 3D 20 25 69 0A 00    size req = %i..
+06F1                          L$289:
+06F1    4F 53 53 33 32 5F 57 61 76 65 41 64 64 42 75 66 OSS32_WaveAddBuf
+0701    66 65 72 20 66 61 69 6C 65 64 00                fer failed.
+070C                          L$290:
+070C    4F 53 53 33 32 5F 57 61 76 65 47 65 74 50 6F 73 OSS32_WaveGetPos
+071C    69 74 69 6F 6E 3A 20 68 61 72 64 77 61 72 65 20 ition: hardware 
+072C    25 78 20 61 70 70 6C 69 63 61 74 69 6F 6E 20 25 %x application %
+073C    78 00                                           x.
+073E                          L$291:
+073E    4F 53 53 33 32 5F 57 61 76 65 53 65 74 56 6F 6C OSS32_WaveSetVol
+074E    75 6D 65 20 25 78 20 74 6F 20 28 25 64 2C 25 64 ume %x to (%d,%d
+075E    29 00                                           ).
+
+
+Segment: _DATA DWORD USE32 000041BC bytes
+0000                          _oss_devices:
+0000    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+	--- Above line repeats 17 times ---
+0120    00 00 00 00 00 00 00 00 00 00 00 00             ............
+012C                          _alsa_fops:
+012C    00 00 00 00                                     ....
+0130                          _per_bytes:
+0130    00 00 00 00                                     ....
+0134                          _pcm_device:
+0134    00 00 00 00                                     ....
+0138                          _total:
+0138    00 00 00 00                                     ....
+013C                          _pcm_instances:
+013C    00 00 00 00                                     ....
+0140                          _opened_handles:
+0140    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+	--- Above line repeats 1022 times ---
+4130    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+4140                          _OSSToALSADataType:
+4140    00 00 00 00 01 00 00 00 02 00 00 00 03 00 00 00 ................
+4150    04 00 00 00 05 00 00 00 06 00 00 00 07 00 00 00 ................
+4160    08 00 00 00 09 00 00 00 0A 00 00 00 0B 00 00 00 ................
+4170    0C 00 00 00 0D 00 00 00 14 00 00 00 15 00 00 00 ................
+4180    16 00 00 00 17 00 00 00                         ........
+4188                          _rates:
+4188    88 15 00 00 40 1F 00 00 11 2B 00 00 80 3E 00 00 ....@....+...>..
+4198    22 56 00 00 00 7D 00 00 44 AC 00 00 80 BB 00 00 "V...}..D.......
+41A8    00 FA 00 00 88 58 01 00 00 77 01 00 10 B1 02 00 .....X...w......
+41B8    00 EE 02 00                                     ....
+
