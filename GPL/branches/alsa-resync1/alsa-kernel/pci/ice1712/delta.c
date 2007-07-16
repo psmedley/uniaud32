@@ -257,9 +257,12 @@ static int delta1010lt_ak4524_start(ice1712_t *ice, unsigned char *saved, int ch
 /*
  * change the rate of AK4524 on Delta 44/66, AP, 1010LT
  */
-static void delta_ak4524_set_rate_val(ice1712_t *ice, unsigned char val)
+static void delta_ak4524_set_rate_val(ice1712_t *ice, unsigned int rate)
 {
 	unsigned char tmp, tmp2;
+
+	if (rate == 0)	/* no hint - S/PDIF input is master, simply return */
+		return;
 
 	/* check before reset ak4524 to avoid unnecessary clicks */
 	down(&ice->gpio_mutex);
@@ -267,7 +270,7 @@ static void delta_ak4524_set_rate_val(ice1712_t *ice, unsigned char val)
 	up(&ice->gpio_mutex);
 	tmp2 = tmp;
 	tmp2 &= ~ICE1712_DELTA_DFS; 
-	if (val == 15 || val == 11 || val == 7)
+	if (rate > 48000)
 		tmp2 |= ICE1712_DELTA_DFS;
 	if (tmp == tmp2)
 		return;
@@ -275,12 +278,9 @@ static void delta_ak4524_set_rate_val(ice1712_t *ice, unsigned char val)
 	/* do it again */
 	snd_ice1712_ak4524_reset(ice, 1);
 	down(&ice->gpio_mutex);
-	tmp = snd_ice1712_read(ice, ICE1712_IREG_GPIO_DATA);
-	if (val == 15 || val == 11 || val == 7) {
+	tmp = snd_ice1712_read(ice, ICE1712_IREG_GPIO_DATA) & ~ICE1712_DELTA_DFS;
+	if (rate > 48000)
 		tmp |= ICE1712_DELTA_DFS;
-	} else {
-		tmp &= ~ICE1712_DELTA_DFS;
-	}
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DATA, tmp);
 	up(&ice->gpio_mutex);
 	snd_ice1712_ak4524_reset(ice, 0);
@@ -337,6 +337,9 @@ static int __devinit snd_ice1712_delta_init(ice1712_t *ice)
 	case ICE1712_SUBDEVICE_AUDIOPHILE:
 		ice->num_total_dacs = 2;
 		break;
+	case ICE1712_SUBDEVICE_DELTA410:
+		ice->num_total_dacs = 8;
+		break;
 	case ICE1712_SUBDEVICE_DELTA44:
 	case ICE1712_SUBDEVICE_DELTA66:
 		ice->num_total_dacs = ice->omni ? 8 : 4;
@@ -350,6 +353,7 @@ static int __devinit snd_ice1712_delta_init(ice1712_t *ice)
 	/* initialize spdif */
 	switch (ice->eeprom.subvendor) {
 	case ICE1712_SUBDEVICE_AUDIOPHILE:
+	case ICE1712_SUBDEVICE_DELTA410:
 	case ICE1712_SUBDEVICE_DELTA1010LT:
 		if ((err = snd_i2c_bus_create(ice->card, "ICE1712 GPIO 1", NULL, &ice->i2c)) < 0) {
 			snd_printk("unable to create I2C bus\n");
@@ -378,12 +382,17 @@ static int __devinit snd_ice1712_delta_init(ice1712_t *ice)
 	ak = &ice->ak4524;
 	switch (ice->eeprom.subvendor) {
 	case ICE1712_SUBDEVICE_AUDIOPHILE:
+	case ICE1712_SUBDEVICE_DELTA410:
 		ak->num_adcs = ak->num_dacs = 2;
-		ak->is_ak4528 = 1;
-		ak->cif = 0; /* the default level of the CIF pin from AK4524 */
+		ak->type = SND_AK4528;
+		if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_DELTA410) {
+			ak->num_dacs = 8;
+			ak->type = SND_AK4529;
+		}
+		ak->cif = 0; /* the default level of the CIF pin from AK4528/4529 */
 		ak->data_mask = ICE1712_DELTA_AP_DOUT;
 		ak->clk_mask = ICE1712_DELTA_AP_CCLK;
-		ak->cs_mask = ak->cs_addr = ICE1712_DELTA_AP_CS_CODEC; /* select AK4528 codec */
+		ak->cs_mask = ak->cs_addr = ICE1712_DELTA_AP_CS_CODEC; /* select AK4528/4529 codec */
 		ak->cs_none = 0;
 		ak->add_flags = ICE1712_DELTA_AP_CS_DIGITAL; /* assert digital high */
 		ak->mask_flags = 0;
@@ -392,6 +401,7 @@ static int __devinit snd_ice1712_delta_init(ice1712_t *ice)
 		break;
 	case ICE1712_SUBDEVICE_DELTA1010LT:
 		ak->num_adcs = ak->num_dacs = 8;
+		ak->type = SND_AK4524;
 		ak->cif = 0; /* the default level of the CIF pin from AK4524 */
 		ak->data_mask = ICE1712_DELTA_1010LT_DOUT;
 		ak->clk_mask = ICE1712_DELTA_1010LT_CCLK;
@@ -406,6 +416,7 @@ static int __devinit snd_ice1712_delta_init(ice1712_t *ice)
 	case ICE1712_SUBDEVICE_DELTA66:
 	case ICE1712_SUBDEVICE_DELTA44:
 		ak->num_adcs = ak->num_dacs = 4;
+		ak->type = SND_AK4524;
 		ak->cif = 0; /* the default level of the CIF pin from AK4524 */
 		ak->data_mask = ICE1712_DELTA_CODEC_SERIAL_DATA;
 		ak->clk_mask = ICE1712_DELTA_CODEC_SERIAL_CLOCK;
@@ -471,6 +482,8 @@ static int __devinit snd_ice1712_delta_add_controls(ice1712_t *ice)
 	case ICE1712_SUBDEVICE_DELTADIO2496:
 	case ICE1712_SUBDEVICE_DELTA66:
 	case ICE1712_SUBDEVICE_AUDIOPHILE:
+	case ICE1712_SUBDEVICE_DELTA410:
+	case ICE1712_SUBDEVICE_DELTA1010LT:
 		err = snd_ice1712_spdif_build_controls(ice);
 		if (err < 0)
 			return err;
@@ -490,7 +503,9 @@ static int __devinit snd_ice1712_delta_add_controls(ice1712_t *ice)
 
 	/* ak4524 controls */
 	switch (ice->eeprom.subvendor) {
+	case ICE1712_SUBDEVICE_DELTA1010LT:
 	case ICE1712_SUBDEVICE_AUDIOPHILE:
+	case ICE1712_SUBDEVICE_DELTA410:
 	case ICE1712_SUBDEVICE_DELTA44:
 	case ICE1712_SUBDEVICE_DELTA66:
 		err = snd_ice1712_ak4524_build_controls(ice);
@@ -534,6 +549,12 @@ struct snd_ice1712_card_info snd_ice1712_delta_cards[] __devinitdata = {
 	{
 		ICE1712_SUBDEVICE_AUDIOPHILE,
 		"M Audio Audiophile 24/96",
+		snd_ice1712_delta_init,
+		snd_ice1712_delta_add_controls,
+	},
+	{
+		ICE1712_SUBDEVICE_DELTA410,
+		"M Audio Delta 410",
 		snd_ice1712_delta_init,
 		snd_ice1712_delta_add_controls,
 	},

@@ -261,11 +261,12 @@ char *snd_hidden_kstrdup(const char *s, int flags);
 #define kmalloc(size, flags) snd_hidden_kmalloc(size, flags)
 #define kcalloc(n, size, flags) snd_hidden_kcalloc(n, size, flags)
 #define kfree(obj) snd_hidden_kfree(obj)
-#define kfree_nocheck(obj) snd_wrapper_kfree(obj)
 #define vmalloc(size) snd_hidden_vmalloc(size)
 #define vfree(obj) snd_hidden_vfree(obj)
 #define kstrdup(s, flags)  snd_hidden_kstrdup(s, flags)
 #else
+#define kmalloc_nocheck(size, flags) kmalloc(size, flags)
+#define vmalloc_nocheck(size) vmalloc(size)
 #define kfree_nocheck(obj) kfree(obj)
 #endif
 
