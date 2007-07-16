@@ -1,5 +1,5 @@
-#ifndef __CS4231_H
-#define __CS4231_H
+#ifndef __SOUND_CS4231_H
+#define __SOUND_CS4231_H
 
 /*
  *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -26,9 +26,24 @@
 #include "pcm.h"
 #include "timer.h"
 
+#ifdef CONFIG_SBUS
+#define SBUS_SUPPORT
+#include <asm/sbus.h>
+#endif
+
+#if defined(CONFIG_PCI) && defined(CONFIG_SPARC64)
+#define EBUS_SUPPORT
+#include <linux/pci.h>
+#include <asm/ebus.h>
+#endif
+
+#if !defined(SBUS_SUPPORT) && !defined(EBUS_SUPPORT)
+#define LEGACY_SUPPORT
+#endif
+
 /* IO ports */
 
-#define CS4231P(chip, x)	((chip)->port + c_d_c_CS4231##x)
+#define CS4231P(x)		(c_d_c_CS4231##x)
 
 #define c_d_c_CS4231REGSEL	0
 #define c_d_c_CS4231REG		1
@@ -54,22 +69,28 @@
 #define CS4231_PLY_UPR_CNT	0x0e	/* playback upper base count */
 #define CS4231_PLY_LWR_CNT	0x0f	/* playback lower base count */
 #define CS4231_ALT_FEATURE_1	0x10	/* alternate #1 feature enable */
+#define AD1845_AF1_MIC_LEFT	0x10	/* alternate #1 feature + MIC left */
 #define CS4231_ALT_FEATURE_2	0x11	/* alternate #2 feature enable */
+#define AD1845_AF2_MIC_RIGHT	0x11	/* alternate #2 feature + MIC right */
 #define CS4231_LEFT_LINE_IN	0x12	/* left line input control */
 #define CS4231_RIGHT_LINE_IN	0x13	/* right line input control */
 #define CS4231_TIMER_LOW	0x14	/* timer low byte */
 #define CS4231_TIMER_HIGH	0x15	/* timer high byte */
 #define CS4231_LEFT_MIC_INPUT	0x16	/* left MIC input control register (InterWave only) */
+#define AD1845_UPR_FREQ_SEL	0x16	/* upper byte of frequency select */
 #define CS4231_RIGHT_MIC_INPUT	0x17	/* right MIC input control register (InterWave only) */
+#define AD1845_LWR_FREQ_SEL	0x17	/* lower byte of frequency select */
 #define CS4236_EXT_REG		0x17	/* extended register access */
 #define CS4231_IRQ_STATUS	0x18	/* irq status register */
 #define CS4231_LINE_LEFT_OUTPUT	0x19	/* left line output control register (InterWave only) */
 #define CS4231_VERSION		0x19	/* CS4231(A) - version values */
 #define CS4231_MONO_CTRL	0x1a	/* mono input/output control */
 #define CS4231_LINE_RIGHT_OUTPUT 0x1b	/* right line output control register (InterWave only) */
+#define AD1845_PWR_DOWN		0x1b	/* power down control */
 #define CS4235_LEFT_MASTER	0x1b	/* left master output control */
 #define CS4231_REC_FORMAT	0x1c	/* clock and data format - record - bits 7-0 MCE */
 #define CS4231_PLY_VAR_FREQ	0x1d	/* playback variable frequency */
+#define AD1845_CLOCK		0x1d	/* crystal clock select and total power down */
 #define CS4235_RIGHT_MASTER	0x1d	/* right master output control */
 #define CS4231_REC_UPR_CNT	0x1e	/* record upper count */
 #define CS4231_REC_LWR_CNT	0x1f	/* record lower count */
@@ -191,6 +212,7 @@
 #define CS4231_HW_CS4231_MASK   0x0100	/* CS4231 serie */
 #define CS4231_HW_CS4231        0x0100	/* CS4231 chip */
 #define CS4231_HW_CS4231A       0x0101	/* CS4231A chip */
+#define CS4231_HW_AD1845	0x0102	/* AD1845 chip */
 #define CS4231_HW_CS4232_MASK   0x0200	/* CS4232 serie (has control ports) */
 #define CS4231_HW_CS4232        0x0200	/* CS4232 */
 #define CS4231_HW_CS4232A       0x0201	/* CS4232A */
@@ -214,17 +236,38 @@ typedef struct _snd_cs4231 cs4231_t;
 
 struct _snd_cs4231 {
 	unsigned long port;		/* base i/o port */
+#ifdef LEGACY_SUPPORT
 	struct resource *res_port;
 	unsigned long cport;		/* control base i/o port (CS4236) */
 	struct resource *res_cport;
 	int irq;			/* IRQ line */
 	int dma1;			/* playback DMA */
 	int dma2;			/* record DMA */
+#endif
 	unsigned short version;		/* version of CODEC chip */
 	unsigned short mode;		/* see to CS4231_MODE_XXXX */
 	unsigned short hardware;	/* see to CS4231_HW_XXXX */
 	unsigned short hwshare;		/* shared resources */
-	unsigned short single_dma:1;	/* forced single DMA mode (GUS 16-bit daughter board) or dma1 == dma2 */
+	unsigned short single_dma:1,	/* forced single DMA mode (GUS 16-bit daughter board) or dma1 == dma2 */
+		       ebus_flag:1;	/* SPARC: EBUS present */
+
+#ifdef EBUS_SUPPORT
+	struct ebus_dma_info eb2c;
+        struct ebus_dma_info eb2p;
+#endif
+
+#if defined(SBUS_SUPPORT) || defined(EBUS_SUPPORT)
+	union {
+#ifdef SBUS_SUPPORT
+		struct sbus_dev         *sdev;
+#endif
+#ifdef EBUS_SUPPORT
+		struct pci_dev          *pdev;
+#endif
+	} dev_u;
+	unsigned int p_periods_sent;
+	unsigned int c_periods_sent;
+#endif
 
 	snd_card_t *card;
 	snd_pcm_t *pcm;
@@ -238,8 +281,10 @@ struct _snd_cs4231 {
 	int mce_bit;
 	int calibrate_mute;
 	int sw_3d_bit;
+#ifdef LEGACY_SUPPORT
 	unsigned int p_dma_size;
 	unsigned int c_dma_size;
+#endif
 
 	spinlock_t reg_lock;
 	struct semaphore mce_mutex;
@@ -248,13 +293,16 @@ struct _snd_cs4231 {
 	int (*rate_constraint) (snd_pcm_runtime_t *runtime);
 	void (*set_playback_format) (cs4231_t *chip, snd_pcm_hw_params_t *hw_params, unsigned char pdfr);
 	void (*set_capture_format) (cs4231_t *chip, snd_pcm_hw_params_t *hw_params, unsigned char cdfr);
+	void (*trigger) (cs4231_t *chip, unsigned int what, int start);
 #ifdef CONFIG_PM
 	void (*suspend) (cs4231_t *chip);
 	void (*resume) (cs4231_t *chip);
 #endif
 	void *dma_private_data;
+#ifdef LEGACY_SUPPORT
 	int (*claim_dma) (cs4231_t *chip, void *dma_private_data, int dma);
 	int (*release_dma) (cs4231_t *chip, void *dma_private_data, int dma);
+#endif
 };
 
 /* exported functions */
@@ -296,37 +344,21 @@ int snd_cs4236_mixer(cs4231_t * chip);
  *  mixer library
  */
 
-#ifdef TARGET_OS2
 #define CS4231_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_cs4231_info_single, \
-  snd_cs4231_get_single, snd_cs4231_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#else
-#define CS4231_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_cs4231_info_single, \
-  get: snd_cs4231_get_single, put: snd_cs4231_put_single, \
-  private_value: reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_cs4231_info_single, \
+  .get = snd_cs4231_get_single, .put = snd_cs4231_put_single, \
+  .private_value = reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 int snd_cs4231_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo);
 int snd_cs4231_get_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
 int snd_cs4231_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
 
-#ifdef TARGET_OS2
 #define CS4231_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
-  0, 0, snd_cs4231_info_double, \
-  snd_cs4231_get_double, snd_cs4231_put_double, \
-  left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#else
-#define CS4231_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_cs4231_info_double, \
-  get: snd_cs4231_get_double, put: snd_cs4231_put_double, \
-  private_value: left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_cs4231_info_double, \
+  .get = snd_cs4231_get_double, .put = snd_cs4231_put_double, \
+  .private_value = left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
 
 int snd_cs4231_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo);
 int snd_cs4231_get_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
@@ -336,4 +368,4 @@ int snd_cs4231_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucon
 void snd_cs4231_debug(cs4231_t *chip);
 #endif
 
-#endif				/* __CS4231_H */
+#endif /* __SOUND_CS4231_H */

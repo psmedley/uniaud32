@@ -19,11 +19,16 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/wait.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/mpu401.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
+#include <linux/delay.h>
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("MPU-401 UART");
@@ -118,7 +123,7 @@ static int __init alsa_card_mpu401_init(void)
 	}
 	if (!cards) {
 #ifdef MODULE
-		snd_printk("MPU-401 device not found or device busy\n");
+		printk(KERN_ERR "MPU-401 device not found or device busy\n");
 #endif
 		return -ENODEV;
 	}

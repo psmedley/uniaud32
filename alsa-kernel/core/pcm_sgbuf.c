@@ -66,7 +66,7 @@ int snd_pcm_sgbuf_init(snd_pcm_substream_t *substream, struct pci_dev *pci, int 
 	sgbuf->tblsize = tblsize;
 	sgbuf->table = kmalloc(sizeof(struct snd_sg_page) * tblsize, GFP_KERNEL);
 	if (! sgbuf->table) {
-		snd_pcm_sgbuf_free(substream);
+		snd_pcm_sgbuf_delete(substream);
 		return -ENOMEM;
 	}
 	memset(sgbuf->table, 0, sizeof(struct snd_sg_page) * tblsize);
@@ -110,6 +110,7 @@ int snd_pcm_sgbuf_alloc(snd_pcm_substream_t *substream, size_t size)
 	if (pages < sgbuf->pages) {
 		/* release unsed pages */
 		sgbuf_shrink(sgbuf, pages);
+		if (substream->runtime)
 		substream->runtime->dma_bytes = size;
 		return 1; /* changed */
 	} else if (pages > sgbuf->tblsize) {
@@ -136,6 +137,7 @@ int snd_pcm_sgbuf_alloc(snd_pcm_substream_t *substream, size_t size)
 		changed = 1;
 	}
 	sgbuf->size = size;
+	if (substream->runtime)
 	substream->runtime->dma_bytes = size;
 	return changed;
 }
@@ -156,9 +158,8 @@ int snd_pcm_sgbuf_free(snd_pcm_substream_t *substream)
 #if 1
 /*
  * get the page pointer on the given offset
- * used as the page callback of pcm ops
  */
-void *snd_pcm_sgbuf_ops_page(snd_pcm_substream_t *substream, unsigned long offset)
+static void *sgbuf_get_addr(snd_pcm_substream_t *substream, unsigned long offset)
 {
 	struct snd_sg_buf *sgbuf;
 	unsigned int idx;
@@ -169,7 +170,21 @@ void *snd_pcm_sgbuf_ops_page(snd_pcm_substream_t *substream, unsigned long offse
 		return 0;
 	return sgbuf->table[idx].buf;
 }
+
+/*
+ * get the page struct at the given offset
+ * used as the page callback of pcm ops
+ */
+struct page *snd_pcm_sgbuf_ops_page(snd_pcm_substream_t *substream, unsigned long offset)
+{
+	void *addr = sgbuf_get_addr(substream, offset);
+	if (addr)
+		return virt_to_page(addr);
+	else
+		return 0;
+}
 #endif
+
 /*
  * do copy_from_user to the sg buffer
  */
@@ -182,7 +197,7 @@ static int copy_from_user_sg_buf(snd_pcm_substream_t *substream,
 	hwoff -= p;
 	len = PAGE_SIZE - hwoff;
 	for (;;) {
-		addr = snd_pcm_sgbuf_ops_page(substream, p);
+		addr = sgbuf_get_addr(substream, p);
 		if (! addr)
 			return -EFAULT;
 		if (len > bytes)
@@ -212,7 +227,7 @@ static int copy_to_user_sg_buf(snd_pcm_substream_t *substream,
 	hwoff -= p;
 	len = PAGE_SIZE - hwoff;
 	for (;;) {
-		addr = snd_pcm_sgbuf_ops_page(substream, p);
+		addr = sgbuf_get_addr(substream, p);
 		if (! addr)
 			return -EFAULT;
 		if (len > bytes)
@@ -244,7 +259,7 @@ static int set_silence_sg_buf(snd_pcm_substream_t *substream,
 	len = bytes_to_samples(substream->runtime, PAGE_SIZE - hwoff);
 	page_len = bytes_to_samples(substream->runtime, PAGE_SIZE);
 	for (;;) {
-		addr = snd_pcm_sgbuf_ops_page(substream, p);
+		addr = sgbuf_get_addr(substream, p);
 		if (! addr)
 			return -EFAULT;
 		if (len > samples)

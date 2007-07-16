@@ -791,7 +791,7 @@ cs46xx_dsp_create_mix_only_scb(struct snd_cs46xx * chip, char * scb_name,
 		/* D */ 0,
 		{
 			/* E */ 0x8000,0x8000,
-			/* F */ 0x8000,0x8000
+			/* F */ 0xffff,0xffff
 		}
 	};
 
@@ -980,7 +980,7 @@ cs46xx_dsp_create_asynch_fg_tx_scb(struct snd_cs46xx * chip, char * scb_name, u3
 		   rate etc  */
 		0x18000000,                     /* Phi increment for approx 32k operation */
 		0x8000,0x8000,                  /* Volume controls are unused at this time */
-		0x8000,0x8000
+		0xffff,0xffff
 	};
   
 	scb = cs46xx_dsp_create_generic_scb(chip,scb_name,(u32 *)&asynch_fg_tx_scb,
@@ -1357,7 +1357,9 @@ cs46xx_dsp_create_pcm_channel (struct snd_cs46xx * chip,
 			return NULL;
 		}
 
-		/* cs46xx_dsp_set_src_sample_rate(chip,src_scb,sample_rate); */
+		if (pcm_channel_id != DSP_IEC958_CHANNEL ||
+		    !(ins->spdif_status_out & DSP_SPDIF_STATUS_AC3_MODE))
+			cs46xx_dsp_set_src_sample_rate(chip,src_scb,sample_rate);
 
 		ins->nsrc_scb ++;
 	} 
