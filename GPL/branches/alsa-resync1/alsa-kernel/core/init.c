@@ -21,9 +21,14 @@
 
 #include <sound/driver.h>
 #include <linux/init.h>
+#include <linux/sched.h>
+#include <linux/file.h>
 #include <linux/slab.h>
 #include <linux/time.h>
 #include <linux/ctype.h>
+#ifndef TARGET_OS2 // TODO: implement linux/workqueue.h
+#include <linux/workqueue.h>
+#endif /* !TARGET_OS2 */
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>

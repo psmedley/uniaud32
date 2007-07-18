@@ -131,19 +131,9 @@ static int snd_legacy_auto_probe(unsigned long *ports, int (*probe)(unsigned lon
 }
 #endif
 
-#ifdef SNDRV_LEGACY_FIND_FREE_IOPORT
-static long snd_legacy_find_free_ioport(long *port_table, long size)
-{
-	while (*port_table != -1) {
-		if (!check_region(*port_table, size))
-			return *port_table;
-		port_table++;
-	}
-	return -1;
-}
-#endif
-
 #ifdef SNDRV_LEGACY_FIND_FREE_IRQ
+#include <linux/interrupt.h>
+
 static void snd_legacy_empty_irq_handler(int irq, void *dev_id, struct pt_regs *regs)
 {
 }
@@ -187,12 +177,15 @@ static int __init get_id(char **str, char **dst)
 		return 0;
 	for (s = *str; isalpha(*s) || isdigit(*s) || *s == '_'; s++);
 	if (s != *str) {
-		*dst = (char *)kmalloc(s - *str, GFP_KERNEL);
-		if ((d = *dst) != NULL) {
-			s = *str;
-			while (isalpha(*s) || isdigit(*s) || *s == '_')
-				*d++ = *s++;
+		*dst = (char *)kmalloc((s - *str) + 1, GFP_KERNEL);
+		s = *str; d = *dst;
+		while (isalpha(*s) || isdigit(*s) || *s == '_') {
+			if (d != NULL)
+				*d++ = *s;
+			s++;
 		}
+		if (d != NULL)
+			*d = '\0';
 	}
 	*str = s;
 	if (*s == ',') {

@@ -24,6 +24,9 @@
 #include <linux/file.h>
 #include <linux/slab.h>
 #include <linux/time.h>
+#ifndef TARGET_OS2 // TODO: Using OpenWatcom uio.h conflicts with asound.h ?
+#include <linux/uio.h>
+#endif /* !TARGET_OS2 */
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>

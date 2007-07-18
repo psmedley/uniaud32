@@ -24,6 +24,9 @@
 
 #include <linux/sched.h>		/* wake_up() */
 #include <asm/semaphore.h>
+#ifndef TARGET_OS2 //TODO: implement linux/rwsem.h
+#include <linux/rwsem.h>		/* struct rw_semaphore */
+#endif /* !TARGET_OS2 */
 #include <sound/typedefs.h>
 
 /* Typedef's */
@@ -192,11 +195,11 @@ int snd_card_pci_resume(struct pci_dev *dev);
     snd_card_pci_resume
 #endif
 #else
-#define snd_power_lock(card) do { ; } while (0)
-#define snd_power_unlock(card) do { ; } while (0)
-#define snd_power_wait(card) do { ; } while (0)
+#define snd_power_lock(card)		do { (void)(card); } while (0)
+#define snd_power_unlock(card)		do { (void)(card); } while (0)
+#define snd_power_wait(card)		do { (void)(card); } while (0)
 #define snd_power_get_state(card) SNDRV_CTL_POWER_D0
-#define snd_power_change_state(card, state) do { ; } while (0)
+#define snd_power_change_state(card, state)	do { (void)(card); } while (0)
 #define snd_card_set_pm_callback(card,suspend,resume,data) -EINVAL
 #define snd_card_set_isa_pm_callback(card,suspend,resume,data) -EINVAL
 #define SND_PCI_PM_CALLBACKS
@@ -285,6 +288,7 @@ void *kzalloc(size_t size, unsigned int flags);
 /* init.c */
 
 extern int snd_cards_count;
+extern unsigned int snd_cards_lock;
 extern struct snd_card *snd_cards[SNDRV_CARDS];
 extern rwlock_t snd_card_rwlock;
 #ifdef CONFIG_SND_OSSEMUL
@@ -295,6 +299,7 @@ struct snd_card *snd_card_new(int idx, const char *id,
 			 struct module *module, int extra_size);
 int snd_card_disconnect(struct snd_card *card);
 int snd_card_free(struct snd_card *card);
+int snd_card_free_in_thread(snd_card_t *card);
 int snd_card_register(struct snd_card *card);
 int snd_card_info_init(void);
 int snd_card_info_done(void);
@@ -308,6 +313,7 @@ int snd_device_new(struct snd_card *card, snd_device_type_t type,
 		   void *device_data, struct snd_device_ops *ops);
 int snd_device_register(struct snd_card *card, void *device_data);
 int snd_device_register_all(struct snd_card *card);
+int snd_device_disconnect(snd_card_t *card, void *device_data);
 int snd_device_disconnect_all(struct snd_card *card);
 int snd_device_free(struct snd_card *card, void *device_data);
 int snd_device_free_all(struct snd_card *card, snd_device_cmd_t cmd);
@@ -328,9 +334,6 @@ void snd_verbose_printk(const char *file, int line, const char *format, ...);
 #endif
 #if defined(CONFIG_SND_DEBUG) && defined(CONFIG_SND_VERBOSE_PRINTK)
 void snd_verbose_printd(const char *file, int line, const char *format, ...);
-#endif
-#if defined(CONFIG_SND_DEBUG) && !defined(CONFIG_SND_VERBOSE_PRINTK)
-void snd_printd(const char *format, ...);
 #endif
 
 /* --- */
@@ -372,6 +375,13 @@ void snd_printd(const char *format, ...);
 #else /* !TARGET_OS2 */
 
 #ifdef CONFIG_SND_VERBOSE_PRINTK
+/**
+ * snd_printk - printk wrapper
+ * @fmt: format string
+ *
+ * Works like print() but prints the file and the line of the caller
+ * when configured with CONFIG_SND_VERBOSE_PRINTK.
+ */
 #define snd_printk(fmt, args...) \
 	snd_verbose_printk(__FILE__, __LINE__, fmt ,##args)
 #else
@@ -384,15 +394,45 @@ void snd_printd(const char *format, ...);
 #define __ASTRING__(x) #x
 
 #ifdef CONFIG_SND_VERBOSE_PRINTK
+/**
+ * snd_printd - debug printk
+ * @format: format string
+ *
+ * Compiled only when Works like snd_printk() for debugging purpose.
+ * Ignored when CONFIG_SND_DEBUG is not set.
+ */
 #define snd_printd(fmt, args...) \
 	snd_verbose_printd(__FILE__, __LINE__, fmt ,##args)
+#else
+#define snd_printd(fmt, args...) \
+	printk(fmt ,##args)
 #endif
+/**
+ * snd_assert - run-time assersion macro
+ * @expr: expression
+ * @args...: the action
+ *
+ * This macro checks the expression in run-time and invokes the commands
+ * given in the rest arguments if the assertion is failed.
+ * When CONFIG_SND_DEBUG is not set, the expression is executed but
+ * not checked.
+ */
 #define snd_assert(expr, args...) do {\
 	if (!(expr)) {\
 		snd_printk("BUG? (%s) (called from %p)\n", __ASTRING__(expr), __builtin_return_address(0));\
 		args;\
 	}\
 } while (0)
+/**
+ * snd_runtime_check - run-time assersion macro
+ * @expr: expression
+ * @args...: the action
+ *
+ * This macro checks the expression in run-time and invokes the commands
+ * given in the rest arguments if the assertion is failed.
+ * Unlike snd_assert(), the action commands are executed even if
+ * CONFIG_SND_DEBUG is not set but without any error messages.
+ */
 #define snd_runtime_check(expr, args...) do {\
 	if (!(expr)) {\
 		snd_printk("ERROR (%s) (called from %p)\n", __ASTRING__(expr), __builtin_return_address(0));\
@@ -409,6 +449,13 @@ void snd_printd(const char *format, ...);
 #endif /* CONFIG_SND_DEBUG */
 
 #ifdef CONFIG_SND_DEBUG_DETECT
+/**
+ * snd_printdd - debug printk
+ * @format: format string
+ *
+ * Compiled only when Works like snd_printk() for debugging purpose.
+ * Ignored when CONFIG_SND_DEBUG_DETECT is not set.
+ */
 #define snd_printdd(format, args...) snd_printk(format, ##args)
 #else
 #define snd_printdd(format, args...) /* nothing */

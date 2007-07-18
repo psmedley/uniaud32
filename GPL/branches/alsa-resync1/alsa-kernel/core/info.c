@@ -31,9 +31,9 @@
 #include <sound/info.h>
 #include <sound/version.h>
 #include <linux/proc_fs.h>
-#ifdef CONFIG_DEVFS_FS
+#ifndef TARGET_OS2
 #include <linux/devfs_fs_kernel.h>
-#endif
+#endif /* !TARGET_OS2 */
 #include <stdarg.h>
 
 /*
@@ -285,10 +285,7 @@ static int snd_info_entry_open(struct inode *inode, struct file *file)
         up(&info_mutex);
         return -ENODEV;
     }
-#ifdef LINUX_2_2
-    MOD_INC_USE_COUNT;
-#endif
-    if (entry->module && !try_inc_mod_count(entry->module)) {
+	if (!try_module_get(entry->module)) {
         err = -EFAULT;
         goto __error1;
     }
@@ -393,11 +390,8 @@ static int snd_info_entry_open(struct inode *inode, struct file *file)
     return 0;
 
 __error:
-    dec_mod_count(entry->module);
+	module_put(entry->module);
 __error1:
-#ifndef LINUX_2_3
-    MOD_DEC_USE_COUNT;
-#endif
     up(&info_mutex);
     return err;
 }
@@ -872,7 +866,7 @@ static snd_info_entry_t *snd_info_create_entry(const char *name)
         return NULL;
     entry->name = snd_kmalloc_strdup(name, GFP_KERNEL);
     if (entry->name == NULL) {
-        kfree(entry);
+		snd_magic_kfree(entry);
         return NULL;
     }
     entry->mode = S_IFREG | S_IRUGO;
@@ -1090,7 +1084,7 @@ static void snd_info_version_read(snd_info_entry_t *entry, snd_info_buffer_t * b
     snd_iprintf(buffer,
 		    "Advanced Linux Sound Architecture Driver Version " CONFIG_SND_VERSION CONFIG_SND_DATE ".\n"
                 "Compiled on " __DATE__ " for kernel %s"
-#ifdef __SMP__
+#ifdef CONFIG_SMP
                 " (SMP)"
 #endif
 #ifdef MODVERSIONS
