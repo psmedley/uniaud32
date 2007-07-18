@@ -12,7 +12,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #   List of source files
 #
 #===================================================================
-FILE1    = rme9652_mem.obj rme9652.obj
+FILE1    = hammerfall_mem.obj rme9652.obj hdsp.obj
 FILE2    = 
 FILE3    = 
 FILE4    = 

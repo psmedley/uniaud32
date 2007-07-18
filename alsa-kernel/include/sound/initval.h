@@ -1,5 +1,5 @@
-#ifndef __INITVAL_H
-#define __INITVAL_H
+#ifndef __SOUND_INITVAL_H
+#define __SOUND_INITVAL_H
 
 /*
  *  Init values for soundcard modules
@@ -17,7 +17,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -72,6 +72,7 @@ static const char __module_generic_string_##name [] \
 #define SNDRV_DEFAULT_STR	{ REPEAT_SNDRV(NULL) }
 #define SNDRV_DEFAULT_ENABLE	{ 1,1,1,1,1,1,1,1 }
 #define SNDRV_DEFAULT_ENABLE_PNP	SNDRV_DEFAULT_ENABLE
+#define SNDRV_DEFAULT_ENABLE_ISAPNP SNDRV_DEFAULT_ENABLE_PNP
 #define SNDRV_DEFAULT_PORT	{ REPEAT_SNDRV(-1) }
 #define SNDRV_DEFAULT_IRQ	{ REPEAT_SNDRV(SNDRV_AUTO_IRQ) }
 #define SNDRV_DEFAULT_DMA	{ REPEAT_SNDRV(SNDRV_AUTO_DMA) }
@@ -84,6 +85,12 @@ static const char __module_generic_string_##name [] \
 #define SNDRV_DEFAULT_IDX	{ [0 ... (SNDRV_CARDS-1)] = -1 }
 #define SNDRV_DEFAULT_STR	{ [0 ... (SNDRV_CARDS-1)] = NULL }
 #define SNDRV_DEFAULT_ENABLE	{ 1, [1 ... (SNDRV_CARDS-1)] = 0 }
+#define SNDRV_DEFAULT_ENABLE_PNP { [0 ... (SNDRV_CARDS-1)] = 1 }
+#ifdef __ISAPNP__
+#define SNDRV_DEFAULT_ENABLE_ISAPNP SNDRV_DEFAULT_ENABLE_PNP
+#else
+#define SNDRV_DEFAULT_ENABLE_ISAPNP SNDRV_DEFAULT_ENABLE
+#endif
 #define SNDRV_DEFAULT_PORT	{ SNDRV_AUTO_PORT, [1 ... (SNDRV_CARDS-1)] = -1 }
 #define SNDRV_DEFAULT_IRQ	{ [0 ... (SNDRV_CARDS-1)] = SNDRV_AUTO_IRQ }
 #define SNDRV_DEFAULT_DMA	{ [0 ... (SNDRV_CARDS-1)] = SNDRV_AUTO_DMA }
@@ -124,19 +131,9 @@ static int snd_legacy_auto_probe(unsigned long *ports, int (*probe)(unsigned lon
 }
 #endif
 
-#ifdef SNDRV_LEGACY_FIND_FREE_IOPORT
-static long snd_legacy_find_free_ioport(long *port_table, long size)
-{
-	while (*port_table != -1) {
-		if (!check_region(*port_table, size))
-			return *port_table;
-		port_table++;
-	}
-	return -1;
-}
-#endif
-
 #ifdef SNDRV_LEGACY_FIND_FREE_IRQ
+#include <linux/interrupt.h>
+
 static void snd_legacy_empty_irq_handler(int irq, void *dev_id, struct pt_regs *regs)
 {
 }
@@ -171,6 +168,7 @@ static int snd_legacy_find_free_dma(int *dma_table)
 
 #if defined(SNDRV_GET_ID) && !defined(MODULE)
 #include <linux/ctype.h>
+#include <linux/init.h>
 static int __init get_id(char **str, char **dst)
 {
 	char *s, *d;
@@ -179,12 +177,15 @@ static int __init get_id(char **str, char **dst)
 		return 0;
 	for (s = *str; isalpha(*s) || isdigit(*s) || *s == '_'; s++);
 	if (s != *str) {
-		*dst = (char *)kmalloc(s - *str, GFP_KERNEL);
-		if ((d = *dst) != NULL) {
-			s = *str;
-			while (isalpha(*s) || isdigit(*s) || *s == '_')
-				*d++ = *s++;
+		*dst = (char *)kmalloc((s - *str) + 1, GFP_KERNEL);
+		s = *str; d = *dst;
+		while (isalpha(*s) || isdigit(*s) || *s == '_') {
+			if (d != NULL)
+				*d++ = *s;
+			s++;
 		}
+		if (d != NULL)
+			*d = '\0';
 	}
 	*str = s;
 	if (*s == ',') {
@@ -195,4 +196,4 @@ static int __init get_id(char **str, char **dst)
 }
 #endif
 
-#endif				/* __INITVAL_H */
+#endif /* __SOUND_INITVAL_H */

@@ -1,5 +1,5 @@
-#ifndef __MIXER_OSS_H
-#define __MIXER_OSS_H
+#ifndef __SOUND_MIXER_OSS_H
+#define __SOUND_MIXER_OSS_H
 
 /*
  *  OSS MIXER API
@@ -18,11 +18,11 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#ifdef CONFIG_SND_OSSEMUL
+#if defined(CONFIG_SND_MIXER_OSS) || defined(CONFIG_SND_MIXER_OSS_MODULE)
 
 typedef struct _snd_oss_mixer_slot snd_mixer_oss_slot_t;
 typedef struct _snd_oss_file snd_mixer_oss_file_t;
@@ -34,6 +34,8 @@ typedef int (*snd_mixer_oss_put_recsrc_t)(snd_mixer_oss_file_t *fmixer, snd_mixe
 typedef int (*snd_mixer_oss_get_recsrce_t)(snd_mixer_oss_file_t *fmixer, int *active_index);
 typedef int (*snd_mixer_oss_put_recsrce_t)(snd_mixer_oss_file_t *fmixer, int active_index);
 
+#define SNDRV_OSS_MAX_MIXERS	32
+
 struct _snd_oss_mixer_slot {
 	int number;
 	int stereo: 1;
@@ -44,28 +46,31 @@ struct _snd_oss_mixer_slot {
 	unsigned long private_value;
 	void *private_data;
 	void (*private_free)(snd_mixer_oss_slot_t *slot);
+	int volume[2];
 };
 
 struct _snd_oss_mixer {
 	snd_card_t *card;
 	char id[16];
 	char name[32];
-	snd_mixer_oss_slot_t slots[32];		/* OSS mixer slots */
+	snd_mixer_oss_slot_t slots[SNDRV_OSS_MAX_MIXERS]; /* OSS mixer slots */
 	unsigned int mask_recsrc;		/* exclusive recsrc mask */
 	snd_mixer_oss_get_recsrce_t get_recsrc;
 	snd_mixer_oss_put_recsrce_t put_recsrc;
 	void *private_data_recsrc;
 	void (*private_free_recsrc)(snd_mixer_oss_t *mixer);
+	struct semaphore reg_mutex;
+	snd_info_entry_t *proc_entry;
+	int oss_dev_alloc;
 	/* --- */
 	int oss_recsrc;
 };
 
 struct _snd_oss_file {
-	int volume[32][2];
 	snd_card_t *card;
 	snd_mixer_oss_t *mixer;
 };
 
-#endif				/* CONFIG_SND_OSSEMUL */
+#endif /* CONFIG_SND_MIXER_OSS */
 
-#endif				/* __MIXER_OSS_H */
+#endif /* __SOUND_MIXER_OSS_H */

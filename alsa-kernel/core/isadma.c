@@ -15,7 +15,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -27,15 +27,21 @@
 #undef HAVE_REALLY_SLOW_DMA_CONTROLLER
 
 #include <sound/driver.h>
+#include <sound/core.h>
+#include <asm/dma.h>
 
-#ifdef CONFIG_SND_ISA
-
-/*
+/**
+ * snd_dma_program - program an ISA DMA transfer
+ * @dma: the dma number
+ * @addr: the physical address of the buffer
+ * @size: the DMA transfer size
+ * @mode: the DMA transfer mode, DMA_MODE_XXX
  *
+ * Programs an ISA DMA transfer for the given buffer.
  */
  
 void snd_dma_program(unsigned long dma,
-		     const void *buf, unsigned int size,
+		     unsigned long addr, unsigned int size,
                      unsigned short mode)
 {
 	unsigned long flags;
@@ -44,13 +50,19 @@ void snd_dma_program(unsigned long dma,
 	disable_dma(dma);
 	clear_dma_ff(dma);
 	set_dma_mode(dma, mode);
-	set_dma_addr(dma, virt_to_bus((void *) buf));
+	set_dma_addr(dma, addr);
 	set_dma_count(dma, size);
 	if (!(mode & DMA_MODE_NO_ENABLE))
 		enable_dma(dma);
 	release_dma_lock(flags);
 }
 
+/**
+ * snd_dma_disable - stop the ISA DMA transfer
+ * @dma: the dma number
+ *
+ * Stops the ISA DMA transfer.
+ */
 void snd_dma_disable(unsigned long dma)
 {
 	unsigned long flags;
@@ -61,6 +73,12 @@ void snd_dma_disable(unsigned long dma)
 	release_dma_lock(flags);
 }
 
+/**
+ * snd_dma_residue - return the residue count of the given DMA
+ * @dma: the dma number
+ *
+ * Returns the residue count of the given DMA transfer.
+ */
 unsigned int snd_dma_residue(unsigned long dma)
 {
 	unsigned long flags;
@@ -76,5 +94,3 @@ unsigned int snd_dma_residue(unsigned long dma)
 	release_dma_lock(flags);
 	return result;
 }
-
-#endif /* CONFIG_SND_ISA */

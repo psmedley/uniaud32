@@ -20,9 +20,15 @@
  */
 
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/info.h>
 #include <sound/initval.h>
+#ifdef CONFIG_PCI
+#include <sound/pcm_sgbuf.h>
+#endif
 
 static int preallocate_dma = 1;
 MODULE_PARM(preallocate_dma, "i");
