@@ -1,0 +1,212 @@
+found: 1 number of 13f6, id: 111
+found 1 devices for 11113f6 PCI ID
+Detected device 13F6111 bus 0 dev 7 func 0IO resource EC00 length 256IRQ resource 10 found: 13f6, id: 111 idx 0
+pci_enable_device f903d7a8
+snd_mpu401_uart_new on irq: 10, port: 768
+Created MPU
+<3>NeoMagic 256 audio soundchip not found or device busy
+00-00: CMI8738-MC6 : C-Media PCI DAC/ADC : playback 1 : capture 1
+00-01: CMI8738-MC6 : C-Media PCI 2nd DAC : playback 1
+00-02: CMI8738-MC6 : C-Media PCI IEC958 : playback 1 : capture 1
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f98038ae
+OSS32_WaveOpen. streamid f8ff6fb0
+chan: from 1 to 2
+OSS32_WaveClose. streamid f8ff6fb0
+snd_pcm_open card: 0, dev: 24
+snd_pcm_open_file f98038ae
+OSS32_WaveOpen. streamid f8ff6fb0
+chan: from 1 to 2
+OSS32_WaveClose. streamid f8ff6fb0
+snd_pcm_open card: 0, dev: 17
+snd_pcm_open_file f98038ae
+OSS32_WaveOpen. streamid f8ff6fb0
+chan: from 2 to 6
+OSS32_WaveClose. streamid f8ff6fb0
+OSS32_WaveOpen: open error: -19
+GetUniaudPcmCaps: wave open error 3 REC at pcm 1
+snd_pcm_open card: 0, dev: 18
+snd_pcm_open_file f98038ae
+OSS32_WaveOpen. streamid f8ff6fb0
+chan: from 2 to 2
+OSS32_WaveClose. streamid f8ff6fb0
+snd_pcm_open card: 0, dev: 26
+snd_pcm_open_file f98038ae
+OSS32_WaveOpen. streamid f8ff6fb0
+chan: from 2 to 2
+OSS32_WaveClose. streamid f8ff6fb0
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f9803c74
+OSS32_WaveOpen. streamid f8ffcae8
+OSS32_WaveClose. streamid f8ffcae8
+snd_pcm_open card: 0, dev: 24
+snd_pcm_open_file f9803c74
+OSS32_WaveOpen. streamid f8ffcae8
+OSS32_WaveClose. streamid f8ffcae8
+OSS32_STREAM_MPU401_MIDIOUTrawmidi open
+snd_rawmidi_kernel_open. mode: 9
+Opened MIDI f8ffcae8
+Closing MIDI f8ffcae8
+OSS32_STREAM_MPU401_MIDIINrawmidi open
+snd_rawmidi_kernel_open. mode: 10
+Opened MIDI f8ffcae8
+Closing MIDI f8ffcae8
+OSS32_STREAM_FM_MIDIOUTOpened MIDI f8ffcae8
+Closing MIDI f8ffcae8
+OSS32_STREAM_WAVETABLE_MIDIOUT: TODOOSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (80,80)(28,28) caps 31
+OSS32_MixSetVolume of Line Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+OSS32_MixSetVolume of Mic Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+OSS32_MixSetVolume of CD Playback Volume streamid f8ffc744 to (80,80)(28,28) caps 31
+OSS32_MixSetVolume of Aux Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 15
+OSS32_MixSetProperty of Line Capture Route to 2OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (90,90)(30,30) caps 31
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983bb4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983bb4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+channels: 1, period size: 704
+channels selected: 1
+sample rate: 22050
+OSS32_WaveSetHwParams return 0 after SNDRV_PCM_IOCTL_SW_PARAMS ioctl, streamid f8ffd86cWave prepare ret = 0, streamid f8ffd86c
+OSS32_WaveSetVolume F8FFD86C to (70,70)OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (70,70)(26,26) caps 31
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = 0. streamid f8ffd86c
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = 0. streamid f8ffd86c
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f984eb4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f984eb4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f984eb4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+channels: 1, period size: 704
+channels selected: 1
+sample rate: 22050
+OSS32_WaveSetHwParams return 0 after SNDRV_PCM_IOCTL_SW_PARAMS ioctl, streamid f8ffd86cWave prepare ret = 0, streamid f8ffd86c
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (100,100)(31,31) caps 31
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = 0. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983ab4c
+cp3
+snd_pcm_open_file: error open substream -11
+OSS32_WaveOpen: open error: -16
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983ab4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983ab4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+channels: 1, period size: 704
+channels selected: 1
+sample rate: 22050
+OSS32_WaveSetHwParams return 0 after SNDRV_PCM_IOCTL_SW_PARAMS ioctl, streamid f8ffd86cWave prepare ret = 0, streamid f8ffd86c
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (80,80)(28,28) caps 31
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = 0. streamid f8ffd86c
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = 0. streamid f8ffd86c
+OSS32_WaveClose. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f9851b4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f9851b4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+channels: 1, period size: 704
+channels selected: 1
+sample rate: 22050
+OSS32_WaveSetHwParams return 0 after SNDRV_PCM_IOCTL_SW_PARAMS ioctl, streamid f8ffd86cWave prepare ret = 0, streamid f8ffd86c
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (70,70)(26,26) caps 31
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = 0. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983ab4c
+cp3
+snd_pcm_open_file: error open substream -11
+OSS32_WaveOpen: open error: -16
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983ab4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983ab4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+channels: 1, period size: 704
+channels selected: 1
+sample rate: 22050
+OSS32_WaveSetHwParams return 0 after SNDRV_PCM_IOCTL_SW_PARAMS ioctl, streamid f8ffd86cWave prepare ret = 0, streamid f8ffd86c
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (80,80)(28,28) caps 31
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = 0. streamid f8ffd86c
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = 0. streamid f8ffd86c
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f984eb4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f984eb4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f984eb4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983ab4c
+cp3
+snd_pcm_open_file: error open substream -11
+OSS32_WaveOpen: open error: -16
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+channels: 1, period size: 704
+channels selected: 1
+sample rate: 22050
+OSS32_WaveSetHwParams return 0 after SNDRV_PCM_IOCTL_SW_PARAMS ioctl, streamid f8ffd86cWave prepare ret = 0, streamid f8ffd86c
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (100,100)(31,31) caps 31
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = 0. streamid f8ffd86c
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983ab4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of PCM Playback Volume streamid f8ffc744 to (0,0)(0,0) caps 31
+Wave stop ret = -77. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+snd_pcm_open card: 0, dev: 16
+snd_pcm_open_file f983ab4c
+OSS32_WaveOpen. streamid f8ffd86c
+OSS32_MixSetVolume of Master Playback Volume streamid f8ffc744 to (73,73)(27,27) caps 31
+OSS32_WaveClose. streamid f8ffd86c
+
