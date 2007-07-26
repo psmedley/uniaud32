@@ -28,17 +28,25 @@
  */
 
 #include <sound/driver.h>
-#include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+#ifndef TARGET_OS2 //TODO: Implement linux/gameport.h
+#include <linux/gameport.h>
+#endif /* !TARGET_OS2 */
+
 #include <sound/core.h>
 #include <sound/info.h>
 #include <sound/control.h>
 #include <sound/trident.h>
 #include <sound/asoundef.h>
+
+#include <asm/io.h>
+
+#define chip_t trident_t
 
 static int snd_trident_pcm_mixer_build(struct snd_trident *trident, struct snd_trident_voice* voice, snd_pcm_substream_t *substream);
 static int snd_trident_pcm_mixer_free(struct snd_trident *trident, struct snd_trident_voice* voice, snd_pcm_substream_t *substream);
@@ -1014,6 +1022,9 @@ static int snd_trident_capture_prepare(snd_pcm_substream_t * substream)
     outl(voice->LBA, TRID_REG(trident, LEGACY_DMAR0));
     if (voice->memblk)
         voice->LBA = voice->memblk->offset;
+	else
+		voice->LBA = runtime->dma_addr;
+	outl(voice->LBA, TRID_REG(trident, LEGACY_DMAR0));
 
     // set ESO
     ESO_bytes = snd_pcm_lib_buffer_bytes(substream) - 1;
@@ -2418,8 +2429,8 @@ static int snd_trident_spdif_default_put(snd_kcontrol_t * kcontrol,
 
 static snd_kcontrol_new_t snd_trident_spdif_default __devinitdata =
 {
-	.iface =		SNDRV_CTL_ELEM_IFACE_PCM,
-	.name =           SNDRV_CTL_NAME_IEC958("",PLAYBACK,DEFAULT),
+	.iface =	SNDRV_CTL_ELEM_IFACE_PCM,
+	.name =         SNDRV_CTL_NAME_IEC958("",PLAYBACK,DEFAULT),
 	.info =		snd_trident_spdif_default_info,
 	.get =		snd_trident_spdif_default_get,
 	.put =		snd_trident_spdif_default_put
@@ -3994,6 +4005,10 @@ EXPORT_SYMBOL(snd_trident_start_voice);
 EXPORT_SYMBOL(snd_trident_stop_voice);
 EXPORT_SYMBOL(snd_trident_write_voice_regs);
 EXPORT_SYMBOL(snd_trident_clear_voices);
+#ifdef CONFIG_PM
+EXPORT_SYMBOL(snd_trident_suspend);
+EXPORT_SYMBOL(snd_trident_resume);
+#endif
 /* trident_memory.c symbols */
 EXPORT_SYMBOL(snd_trident_synth_alloc);
 EXPORT_SYMBOL(snd_trident_synth_free);

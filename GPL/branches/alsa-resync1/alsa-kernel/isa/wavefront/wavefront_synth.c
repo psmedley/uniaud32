@@ -233,13 +233,6 @@ static wavefront_command wavefront_commands[] = {
 	{ 0x00 }
 };
 
-static inline void
-dec_mod_count(struct module *module)
-{
-	if (module)
-		__MOD_DEC_USE_COUNT(module);
-}
-
 static const char *
 wavefront_errorstr (int errnum)
 
@@ -884,7 +877,7 @@ wavefront_send_sample (snd_wavefront_t *dev,
 	u32 length;
 	u16 *data_end = 0;
 	unsigned int i;
-	const int max_blksize = 4096/2;
+	const unsigned int max_blksize = 4096/2;
 	unsigned int written;
 	unsigned int blocksize;
 	int dma_ack;
@@ -951,7 +944,7 @@ wavefront_send_sample (snd_wavefront_t *dev,
 	if (header->size) {
 		dev->freemem = wavefront_freemem (dev);
 
-		if (dev->freemem < header->size) {
+		if (dev->freemem < (int)header->size) {
 			snd_printk ("insufficient memory to "
 				    "load %d byte sample.\n",
 				    header->size);
@@ -1610,11 +1603,8 @@ int
 snd_wavefront_synth_open (snd_hwdep_t *hw, struct file *file)
 
 {
-	MOD_INC_USE_COUNT;
-	if (!try_inc_mod_count(hw->card->module)) {
-		MOD_DEC_USE_COUNT;
+	if (!try_module_get(hw->card->module))
 		return -EFAULT;
-	}
 	file->private_data = hw;
 	return 0;
 }
@@ -1623,8 +1613,7 @@ int
 snd_wavefront_synth_release (snd_hwdep_t *hw, struct file *file)
 
 {
-	dec_mod_count(hw->card->module);
-	MOD_DEC_USE_COUNT;
+	module_put(hw->card->module);
 	return 0;
 }
 

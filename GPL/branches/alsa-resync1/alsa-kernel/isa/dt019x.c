@@ -103,12 +103,6 @@ static const struct isapnp_card_id *snd_dt019x_isapnp_id[SNDRV_CARDS] __devinitd
 static struct isapnp_card_id snd_dt019x_pnpids[] __devinitdata = {
 	/* DT197A30 */
 	{
-#ifdef TARGET_OS2
-		0, ISAPNP_CARD_ID('R','W','B',0x1688),
-		{ ISAPNP_DEVICE_ID('@','@','@',0x1688),
-		  ISAPNP_DEVICE_ID('@','X','@',0x0001),
-		  ISAPNP_DEVICE_ID('@','H','@',0x0001) }
-#else
 		ISAPNP_CARD_ID('R','W','B',0x1688),
 		.devs = { ISAPNP_DEVICE_ID('@','@','@',0x0001),
 			ISAPNP_DEVICE_ID('@','X','@',0x0001),
@@ -117,10 +111,9 @@ static struct isapnp_card_id snd_dt019x_pnpids[] __devinitdata = {
 	/* DT0196 / ALS-007 */
 	{
 		ISAPNP_CARD_ID('A','L','S',0x0007),
-		devs: { ISAPNP_DEVICE_ID('@','@','@',0x0001),
+		.devs = { ISAPNP_DEVICE_ID('@','@','@',0x0001),
 			ISAPNP_DEVICE_ID('@','X','@',0x0001),
 			ISAPNP_DEVICE_ID('@','H','@',0x0001) }
-#endif
 	},
 	{ ISAPNP_CARD_END, }
 };
@@ -386,7 +379,7 @@ module_exit(alsa_card_dt019x_exit)
 
 #ifndef MODULE
 
-/* format is: snd-dt019x=enable,index,id,snd_isapnp,
+/* format is: snd-dt019x=enable,index,id,
 			  port,mpu_port,fm_port,
 			  irq,mpu_irq,dma8,dma8_size */
 

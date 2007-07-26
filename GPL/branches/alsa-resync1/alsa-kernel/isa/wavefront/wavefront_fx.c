@@ -33,13 +33,6 @@
 #define FX_MSB_TRANSFER 0x02    /* transfer after DSP MSB byte written */
 #define FX_AUTO_INCR    0x04    /* auto-increment DSP address after transfer */
 
-static inline void
-dec_mod_count(struct module *module)
-{
-	if (module)
-		__MOD_DEC_USE_COUNT(module);
-}
-
 static int
 wavefront_fx_idle (snd_wavefront_t *dev) 
     
@@ -151,11 +144,8 @@ int
 snd_wavefront_fx_open (snd_hwdep_t *hw, struct file *file)
 
 {
-	MOD_INC_USE_COUNT;
-	if (!try_inc_mod_count(hw->card->module)) {
-		MOD_DEC_USE_COUNT;
+	if (!try_module_get(hw->card->module))
 		return -EFAULT;
-	}
 	file->private_data = hw;
 	return 0;
 }
@@ -164,8 +154,7 @@ int
 snd_wavefront_fx_release (snd_hwdep_t *hw, struct file *file)
 
 {
-	dec_mod_count(hw->card->module);
-	MOD_DEC_USE_COUNT;
+	module_put(hw->card->module);
 	return 0;
 }
 
@@ -206,7 +195,7 @@ snd_wavefront_fx_ioctl (snd_hwdep_t *sdev, struct file *file,
 		} else if (r.data[2] == 1) {
 			pd = (unsigned short *) &r.data[3];
 		} else {
-			if (r.data[2] > sizeof (page_data)) {
+			if (r.data[2] > (long)sizeof (page_data)) {
 				snd_printk ("cannot write "
 					    "> 255 bytes to FX\n");
 				return -EIO;

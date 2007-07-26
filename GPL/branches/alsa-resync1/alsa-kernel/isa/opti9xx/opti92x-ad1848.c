@@ -47,7 +47,6 @@
 #endif	/* CS4231 */
 #include <sound/mpu401.h>
 #include <sound/opl3.h>
-#define SNDRV_LEGACY_FIND_FREE_IOPORT
 #define SNDRV_LEGACY_FIND_FREE_IRQ
 #define SNDRV_LEGACY_FIND_FREE_DMA
 #define SNDRV_GET_ID
@@ -323,6 +322,16 @@ static char * snd_opti9xx_names[] = {
 	"82C930",	"82C931",	"82C933"
 };
 
+
+static long snd_legacy_find_free_ioport(long *port_table, long size)
+{
+	while (*port_table != -1) {
+		if (!check_region(*port_table, size))
+			return *port_table;
+		port_table++;
+	}
+	return -1;
+}
 
 static int __init snd_opti9xx_init(opti9xx_t *chip, unsigned short hardware)
 {
@@ -816,8 +825,9 @@ static unsigned int snd_opti93x_get_count(unsigned char format,
 	return (format & OPTi93X_STEREO) ? (size >> 1) : size;
 }
 
-unsigned int rates[] = {  5512,  6615,  8000,  9600, 11025, 16000, 18900,
-			 22050, 27428, 32000, 33075, 37800, 44100, 48000 };
+static unsigned int rates[] = {  5512,  6615,  8000,  9600, 11025, 16000, 
+				18900, 22050, 27428, 32000, 33075, 37800,
+				44100, 48000 };
 #define RATES sizeof(rates) / sizeof(rates[0])
 
 static snd_pcm_hw_constraint_list_t hw_constraints_rates = {
@@ -826,12 +836,13 @@ static snd_pcm_hw_constraint_list_t hw_constraints_rates = {
 	.mask = 0,
 };
 
-unsigned char bits[] = {  0x01,  0x0f,  0x00,  0x0e,  0x03,  0x02,  0x05,
-			  0x07,  0x04,  0x06,  0x0d,  0x09,  0x0b,  0x0c};
+static unsigned char bits[] = {  0x01,  0x0f,  0x00,  0x0e,  0x03,  0x02,
+				 0x05,  0x07,  0x04,  0x06,  0x0d,  0x09,
+				 0x0b,  0x0c};
 
 static unsigned char snd_opti93x_get_freq(unsigned int rate)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < RATES; i++) {
 		if (rate == rates[i])
@@ -1089,7 +1100,7 @@ static snd_pcm_uframes_t snd_opti93x_playback_pointer(snd_pcm_substream_t *subst
 	if (!(chip->image[OPTi93X_IFACE_CONF] & OPTi93X_PLAYBACK_ENABLE))
 		return 0;
 
-	ptr = chip->p_dma_size - snd_dma_residue(chip->dma1);
+	ptr = snd_dma_pointer(chip->dma1, chip->p_dma_size);
 	return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -1101,7 +1112,7 @@ static snd_pcm_uframes_t snd_opti93x_capture_pointer(snd_pcm_substream_t *substr
 	if (!(chip->image[OPTi93X_IFACE_CONF] & OPTi93X_CAPTURE_ENABLE))
 		return 0;
 
-	ptr = chip->c_dma_size - snd_dma_residue(chip->dma2);
+	ptr = snd_dma_pointer(chip->dma2, chip->c_dma_size);
 	return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -1624,7 +1635,8 @@ int snd_opti93x_mixer(opti93x_t *chip)
 {
 	snd_card_t *card;
 	snd_kcontrol_new_t knew;
-	int err, idx;
+	int err;
+	unsigned int idx;
 
 	snd_assert(chip != NULL && chip->card != NULL, return -EINVAL);
 

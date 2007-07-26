@@ -48,7 +48,7 @@ typedef struct {
 	snd_gus_card_t * gus;
 	snd_pcm_substream_t * substream;
 	spinlock_t lock;
-	int voices;
+	unsigned int voices;
 	snd_gus_voice_t *pvoices[2];
 	unsigned int memory;
 	unsigned short flags;
@@ -186,7 +186,7 @@ static void snd_gf1_pcm_interrupt_wave(snd_gus_card_t * gus, snd_gus_voice_t *pv
 	gus_pcm_private_t * pcmp;
 	snd_pcm_runtime_t * runtime;
 	unsigned char voice_ctrl, ramp_ctrl;
-	int idx;
+	unsigned int idx;
 	unsigned int end, step;
 
 	if (!pvoice->private_data) {
@@ -600,7 +600,7 @@ static int snd_gf1_pcm_capture_trigger(snd_pcm_substream_t * substream,
 static snd_pcm_uframes_t snd_gf1_pcm_capture_pointer(snd_pcm_substream_t * substream)
 {
 	snd_gus_card_t *gus = snd_pcm_substream_chip(substream);
-	int pos = gus->c_period_size - snd_dma_residue(gus->gf1.dma2);
+	int pos = snd_dma_pointer(gus->gf1.dma2, gus->c_period_size);
 	pos = bytes_to_frames(substream->runtime, (gus->c_pos + pos) % gus->c_dma_size);
 	return pos;
 }
@@ -620,7 +620,7 @@ static void snd_gf1_pcm_interrupt_dma_read(snd_gus_card_t * gus)
 static snd_pcm_hardware_t snd_gf1_pcm_playback =
 {
 	.info =			SNDRV_PCM_INFO_NONINTERLEAVED,
-	formats:		(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
+	.formats		= (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
 			  	 SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE),
 	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
 	.rate_min =		5510,
@@ -766,7 +766,8 @@ static int snd_gf1_pcm_volume_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 {
 	snd_gus_card_t *gus = snd_kcontrol_chip(kcontrol);
 	unsigned long flags;
-	int change, idx;
+	int change;
+	unsigned int idx;
 	unsigned short val1, val2, vol;
 	gus_pcm_private_t *pcmp;
 	snd_gus_voice_t *pvoice;

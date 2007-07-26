@@ -26,9 +26,6 @@
 #include <sound/pcm.h>
 #include <sound/info.h>
 #include <sound/initval.h>
-#ifdef CONFIG_PCI
-#include <sound/pcm_sgbuf.h>
-#endif
 
 static int preallocate_dma = 1;
 MODULE_PARM(preallocate_dma, "i");
@@ -196,6 +193,7 @@ static int snd_pcm_lib_preallocate_pages1(snd_pcm_substream_t *substream,
 {
     snd_info_entry_t *entry;
 
+	memset(&substream->dma_buffer, 0, sizeof(substream->dma_buffer));
     if (size > 0 && preallocate_dma && substream->number < maximum_substreams)
         preallocate_pcm_pages(substream, size);
 
@@ -216,6 +214,7 @@ static int snd_pcm_lib_preallocate_pages1(snd_pcm_substream_t *substream,
     substream->proc_prealloc_entry = entry;
     return 0;
 }
+
 
 /**
  * snd_pcm_lib_preallocate_pages - pre-allocation for the given DMA type

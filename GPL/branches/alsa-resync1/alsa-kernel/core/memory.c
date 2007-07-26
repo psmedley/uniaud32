@@ -29,9 +29,6 @@
 #include <linux/pci.h>
 #include <sound/core.h>
 #include <sound/info.h>
-#ifdef CONFIG_SBUS
-#include <asm/sbus.h>
-#endif
 #include <sound/memalloc.h>
 
 /*
@@ -50,7 +47,6 @@ struct snd_alloc_track {
 
 #define snd_alloc_track_entry(obj) (struct snd_alloc_track *)((char*)obj - (unsigned long)((struct snd_alloc_track *)0)->data)
 
-static long snd_alloc_pages;
 static long snd_alloc_kmalloc;
 static long snd_alloc_vmalloc;
 static LIST_HEAD(snd_alloc_kmalloc_list);
@@ -72,8 +68,7 @@ void snd_memory_done(void)
 {
 	struct list_head *head;
 	struct snd_alloc_track *t;
-	if (snd_alloc_pages > 0)
-		snd_printk(KERN_ERR "Not freed snd_alloc_pages = %li\n", snd_alloc_pages);
+
 	if (snd_alloc_kmalloc > 0)
 		snd_printk(KERN_ERR "Not freed snd_alloc_kmalloc = %li\n", snd_alloc_kmalloc);
 	if (snd_alloc_vmalloc > 0)
@@ -197,8 +192,6 @@ void snd_hidden_vfree(void *obj)
 
 static void snd_memory_info_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)
 {
-	long pages = snd_alloc_pages >> (PAGE_SHIFT-12);
-	snd_iprintf(buffer, "pages  : %li bytes (%li pages per %likB)\n", pages * PAGE_SIZE, pages, PAGE_SIZE / 1024);
 	snd_iprintf(buffer, "kmalloc: %li bytes\n", snd_alloc_kmalloc);
 	snd_iprintf(buffer, "vmalloc: %li bytes\n", snd_alloc_vmalloc);
 }

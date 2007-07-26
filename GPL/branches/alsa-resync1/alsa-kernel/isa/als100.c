@@ -109,23 +109,13 @@ static snd_card_t *snd_als100_cards[SNDRV_CARDS] = SNDRV_DEFAULT_PTR;
 static struct isapnp_card *snd_als100_isapnp_cards[SNDRV_CARDS] __devinitdata = SNDRV_DEFAULT_PTR;
 static const struct isapnp_card_id *snd_als100_isapnp_id[SNDRV_CARDS] __devinitdata = SNDRV_DEFAULT_PTR;
 
-#ifdef TARGET_OS2
-#define ISAPNP_ALS100(_va, _vb, _vc, _device, _audio, _mpu401, _opl) \
-        { \
-                0, ISAPNP_CARD_ID(_va, _vb, _vc, _device), \
-                       { ISAPNP_DEVICE_ID('@', '@', '@', _audio), \
-                         ISAPNP_DEVICE_ID('@', 'X', '@', _mpu401), \
-			 ISAPNP_DEVICE_ID('@', 'H', '@', _opl) } \
-        }
-#else
 #define ISAPNP_ALS100(_va, _vb, _vc, _device, _audio, _mpu401, _opl) \
         { \
                 ISAPNP_CARD_ID(_va, _vb, _vc, _device), \
-                devs : { ISAPNP_DEVICE_ID('@', '@', '@', _audio), \
+                .devs = { ISAPNP_DEVICE_ID('@', '@', '@', _audio), \
                          ISAPNP_DEVICE_ID('@', 'X', '@', _mpu401), \
 			 ISAPNP_DEVICE_ID('@', 'H', '@', _opl) } \
         }
-#endif
 
 static struct isapnp_card_id snd_als100_pnpids[] __devinitdata = {
 	/* ALS100 - PRO16PNP */

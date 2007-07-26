@@ -30,6 +30,7 @@
 #include <sound/core.h>
 #include <sound/sb.h>
 #include <sound/ad1848.h>
+#include <sound/control.h>
 #define SNDRV_LEGACY_FIND_FREE_IRQ
 #define SNDRV_LEGACY_FIND_FREE_DMA
 #define SNDRV_GET_ID
@@ -43,7 +44,7 @@ MODULE_DEVICES("{{Aztech Systems,Sound Galaxy}}");
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
 static long sbport[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* 0x220,0x240 */
 static long wssport[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* 0x530,0xe80,0xf40,0x604 */
 static int irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;	/* 7,9,10,11 */
@@ -176,9 +177,7 @@ static int __init snd_sgalaxy_detect(int dev, int irq, int dma)
 	return snd_sgalaxy_setup_wss(wssport[dev], irq, dma);
 }
 
-#define SGALAXY_CONTROLS 2
-
-static snd_kcontrol_new_t snd_sgalaxy_controls[2] = {
+static struct ad1848_mix_elem snd_sgalaxy_controls[] = {
 AD1848_DOUBLE("Aux Playback Switch", 0, SGALAXY_AUXC_LEFT, SGALAXY_AUXC_RIGHT, 7, 7, 1, 1),
 AD1848_DOUBLE("Aux Playback Volume", 0, SGALAXY_AUXC_LEFT, SGALAXY_AUXC_RIGHT, 0, 0, 31, 0)
 };
@@ -187,7 +186,8 @@ static int __init snd_sgalaxy_mixer(ad1848_t *chip)
 {
 	snd_card_t *card = chip->card;
 	snd_ctl_elem_id_t id1, id2;
-	int idx, err;
+	unsigned int idx;
+	int err;
 
 	memset(&id1, 0, sizeof(id1));
 	memset(&id2, 0, sizeof(id2));
@@ -211,8 +211,8 @@ static int __init snd_sgalaxy_mixer(ad1848_t *chip)
 	if ((err = snd_ctl_rename_id(card, &id1, &id2)) < 0)
 		return err;
 	/* build AUX2 input */
-	for (idx = 0; idx < SGALAXY_CONTROLS; idx++) {
-		if ((err = snd_ctl_add(card, snd_ctl_new1(&snd_sgalaxy_controls[idx], chip))) < 0)
+	for (idx = 0; idx < ARRAY_SIZE(snd_sgalaxy_controls); idx++) {
+		if ((err = snd_ad1848_add_ctl_elem(chip, &snd_sgalaxy_controls[idx])) < 0)
 			return err;
 	}
 	return 0;
@@ -300,7 +300,7 @@ static int __init alsa_card_sgalaxy_init(void)
 {
 	int dev, cards;
 
-	for (dev = cards = 0; dev < SNDRV_CARDS && snd_enable[dev]; dev++) {
+	for (dev = cards = 0; dev < SNDRV_CARDS && enable[dev]; dev++) {
 		if (snd_sgalaxy_probe(dev) >= 0)
 			cards++;
 	}
@@ -327,7 +327,7 @@ module_exit(alsa_card_sgalaxy_exit)
 
 #ifndef MODULE
 
-/* format is: snd-sgalaxy=snd_enable,index,id,
+/* format is: snd-sgalaxy=enable,index,id,
 			  sbport,wssport,
 			  irq,dma1 */
 
@@ -337,7 +337,7 @@ static int __init alsa_card_sgalaxy_setup(char *str)
 
 	if (nr_dev >= SNDRV_CARDS)
 		return 0;
-	(void)(get_option(&str,&snd_enable[nr_dev]) == 2 &&
+	(void)(get_option(&str,&enable[nr_dev]) == 2 &&
 	       get_option(&str,&index[nr_dev]) == 2 &&
 	       get_id(&str,&id[nr_dev]) == 2 &&
 	       get_option(&str,(int *)&sbport[nr_dev]) == 2 &&

@@ -106,21 +106,12 @@ static snd_card_t *snd_ad1816a_cards[SNDRV_CARDS] = SNDRV_DEFAULT_PTR;
 static struct isapnp_card *snd_ad1816a_isapnp_cards[SNDRV_CARDS] __devinitdata = SNDRV_DEFAULT_PTR;
 static const struct isapnp_card_id *snd_ad1816a_isapnp_id[SNDRV_CARDS] __devinitdata = SNDRV_DEFAULT_PTR;
 
-#ifdef TARGET_OS2
-#define ISAPNP_AD1816A(_va, _vb, _vc, _device, _fa, _fb, _fc, _audio, _mpu401) \
-	{ \
-		0, ISAPNP_CARD_ID(_va, _vb, _vc, _device), \
-		{ ISAPNP_DEVICE_ID(_fa, _fb, _fc, _audio), \
-		  ISAPNP_DEVICE_ID(_fa, _fb, _fc, _mpu401), } \
-	}
-#else
 #define ISAPNP_AD1816A(_va, _vb, _vc, _device, _fa, _fb, _fc, _audio, _mpu401) \
 	{ \
 		ISAPNP_CARD_ID(_va, _vb, _vc, _device), \
-		devs : { ISAPNP_DEVICE_ID(_fa, _fb, _fc, _audio), \
+		.devs = { ISAPNP_DEVICE_ID(_fa, _fb, _fc, _audio), \
 			 ISAPNP_DEVICE_ID(_fa, _fb, _fc, _mpu401), } \
 	}
-#endif
 
 static struct isapnp_card_id snd_ad1816a_pnpids[] __devinitdata = {
 	/* Highscreen Sound-Boostar 16 3D */

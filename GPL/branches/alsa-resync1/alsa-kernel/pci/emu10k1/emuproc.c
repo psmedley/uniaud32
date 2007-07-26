@@ -477,15 +477,10 @@ static void snd_emu_proc_ptr_reg_read20b(snd_info_entry_t *entry,
 #endif
 
 
-#ifdef TARGET_OS2
 static struct snd_info_entry_ops snd_emu10k1_proc_ops_fx8010 = {
-    0, 0, snd_emu10k1_fx8010_read, 0, 0,0,0,0
+	.read = snd_emu10k1_fx8010_read,
 };
-#else
-static struct snd_info_entry_ops snd_emu10k1_proc_ops_fx8010 = {
-read: snd_emu10k1_fx8010_read,
-};
-#endif
+
 int __devinit snd_emu10k1_proc_init(struct snd_emu10k1 * emu)
 {
     snd_info_entry_t *entry;

@@ -30,7 +30,7 @@
 #include <sound/typedefs.h>
 
 /* Typedef's */
-typedef struct timeval snd_timestamp_t;
+typedef struct timespec snd_timestamp_t;
 #ifndef TARGET_OS2
 typedef enum sndrv_card_type snd_card_type;
 #endif
@@ -324,7 +324,7 @@ int snd_device_free_all(struct snd_card *card, snd_device_cmd_t cmd);
 
 void snd_dma_program(unsigned long dma, const void *buf, unsigned int size, unsigned short mode);
 void snd_dma_disable(unsigned long dma);
-unsigned int snd_dma_residue(unsigned long dma);
+unsigned int snd_dma_pointer(unsigned long dma, unsigned int size);
 
 /* misc.c */
 

@@ -25,18 +25,23 @@
  */
 
 #include <sound/driver.h>
-#include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/pci.h>
+#include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/ymfpci.h>
 #include <sound/asoundef.h>
 #include <sound/mpu401.h>
+
+#include <asm/io.h>
+
 #ifdef TARGET_OS2
 #include <sound/timer.h>
 #endif /* TARGET_OS2 */
@@ -1315,8 +1320,8 @@ static int snd_ymfpci_spdif_mask_get(snd_kcontrol_t * kcontrol,
 static struct snd_kcontrol_new snd_ymfpci_spdif_mask __devinitdata =
 {
 	.access =	SNDRV_CTL_ELEM_ACCESS_READ,
-	.iface =		SNDRV_CTL_ELEM_IFACE_PCM,
-	.name =           SNDRV_CTL_NAME_IEC958("",PLAYBACK,CON_MASK),
+	.iface =	SNDRV_CTL_ELEM_IFACE_PCM,
+	.name =         SNDRV_CTL_NAME_IEC958("",PLAYBACK,CON_MASK),
 	.info =		snd_ymfpci_spdif_mask_info,
 	.get =		snd_ymfpci_spdif_mask_get,
 };

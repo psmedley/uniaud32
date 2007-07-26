@@ -187,21 +187,21 @@ static const struct isapnp_card_id *snd_cs4236_isapnp_id[SNDRV_CARDS] __devinitd
 #define ISAPNP_CS4232(_va, _vb, _vc, _device, _wss, _ctrl, _mpu401) \
 	{ \
 		ISAPNP_CARD_ID(_va, _vb, _vc, _device), \
-		devs : { ISAPNP_DEVICE_ID(_va, _vb, _vc, _wss), \
+		.devs = { ISAPNP_DEVICE_ID(_va, _vb, _vc, _wss), \
                          ISAPNP_DEVICE_ID(_va, _vb, _vc, _ctrl), \
 			 ISAPNP_DEVICE_ID(_va, _vb, _vc, _mpu401) } \
         }
 #define ISAPNP_CS4232_1(_va, _vb, _vc, _device, _wss, _ctrl, _mpu401) \
 	{ \
 		ISAPNP_CARD_ID(_va, _vb, _vc, _device), \
-		devs : { ISAPNP_DEVICE_ID(_va, _vb, _vc, _wss), \
+		.devs = { ISAPNP_DEVICE_ID(_va, _vb, _vc, _wss), \
                          ISAPNP_DEVICE_ID(_va, _vb, _vc, _ctrl), \
 			 ISAPNP_DEVICE_ID('P', 'N', 'P', _mpu401) } \
         }
 #define ISAPNP_CS4232_WOMPU(_va, _vb, _vc, _device, _wss, _ctrl) \
 	{ \
 		ISAPNP_CARD_ID(_va, _vb, _vc, _device), \
-		devs : { ISAPNP_DEVICE_ID(_va, _vb, _vc, _wss), \
+		.devs = { ISAPNP_DEVICE_ID(_va, _vb, _vc, _wss), \
                          ISAPNP_DEVICE_ID(_va, _vb, _vc, _ctrl) } \
         }
 #endif
@@ -215,6 +215,8 @@ static struct isapnp_card_id snd_card_pnpids[] __devinitdata = {
 	ISAPNP_CS4232('C','S','C',0x1a32,0x0000,0x0010,0x0003),
 	/* HP Omnibook 5500 onboard */
 	ISAPNP_CS4232('C','S','C',0x4232,0x0000,0x0002,0x0003),
+	/* Unnamed CS4236 card (Made in Taiwan) */
+	ISAPNP_CS4232('C','S','C',0x4236,0x0000,0x0010,0x0003),
 	/* Turtle Beach TBS-2000 (CS4232) */
 	ISAPNP_CS4232('C','S','C',0x7532,0x0000,0x0010,0xb006),
 	/* Turtle Beach Tropez Plus (CS4232) */
@@ -290,6 +292,8 @@ static struct isapnp_card_id snd_card_pnpids[] __devinitdata = {
 	ISAPNP_CS4232('C','S','C',0xd937,0x0000,0x0010,0x0003),
 	/* CS4235 without MPU401 */
 	ISAPNP_CS4232_WOMPU('C','S','C',0xe825,0x0100,0x0110),
+	/* IBM IntelliStation M Pro 6898 11U - CS4236B */
+	ISAPNP_CS4232_WOMPU('C','S','C',0xe835,0x0000,0x0010),
 	/* Some noname CS4236 based card */
 	ISAPNP_CS4232('C','S','C',0xe936,0x0000,0x0010,0x0003),
 	/* CS4236B */
@@ -353,7 +357,7 @@ static int __init snd_card_cs4236_isapnp(int dev, struct snd_card_cs4236 *acard)
 	sb_port[dev] = pdev->resource[2].start;
 	irq[dev] = pdev->irq_resource[0].start;
 	dma1[dev] = pdev->dma_resource[0].start;
-	dma2[dev] = pdev->dma_resource[1].start == 4 ? -1 : pdev->dma_resource[1].start;
+	dma2[dev] = pdev->dma_resource[1].start == 4 ? -1 : (int)pdev->dma_resource[1].start;
 	snd_printdd("isapnp WSS: wss port=0x%lx, fm port=0x%lx, sb port=0x%lx\n",
 			port[dev], fm_port[dev], sb_port[dev]);
 	snd_printdd("isapnp WSS: irq=%i, dma1=%i, dma2=%i\n",
@@ -636,12 +640,10 @@ module_exit(alsa_card_cs423x_exit)
 
 /* format is: snd-cs4232=enable,index,id,isapnp,port,
 			 cport,mpu_port,fm_port,sb_port,
-			 irq,mpu_irq,dma1,dma1_size,
-			 dma2,dma2_size */
+			 irq,mpu_irq,dma1,dma2 */
 /* format is: snd-cs4236=enable,index,id,isapnp,port,
 			 cport,mpu_port,fm_port,sb_port,
-			 irq,mpu_irq,dma1,dma1_size,
-			 dma2,dma2_size */
+			 irq,mpu_irq,dma1,dma2 */
 
 static int __init alsa_card_cs423x_setup(char *str)
 {

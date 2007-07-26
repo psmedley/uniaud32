@@ -97,11 +97,7 @@ static int snd_sb8_hw_constraint_channels_rate(snd_pcm_hw_params_t *params,
 {
     snd_interval_t *r = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE);
     if (r->min > SB8_RATE(22050) || r->max <= SB8_RATE(11025)) {
-#ifdef TARGET_OS2
-        snd_interval_t t = { 1, 1 };
-#else
-        snd_interval_t t = { min: 1, max: 1 };
-#endif
+		snd_interval_t t = { .min = 1, .max = 1 };
         return snd_interval_refine(hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS), &t);
     }
     return 0;
@@ -369,7 +365,7 @@ static snd_pcm_uframes_t snd_sb8_playback_pointer(snd_pcm_substream_t * substrea
 
     if (chip->mode != SB_MODE_PLAYBACK_8)
         return 0;
-    ptr = chip->p_dma_size - snd_dma_residue(chip->dma8);
+	ptr = snd_dma_pointer(chip->dma8, chip->p_dma_size);
     return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -380,7 +376,7 @@ static snd_pcm_uframes_t snd_sb8_capture_pointer(snd_pcm_substream_t * substream
 
     if (chip->mode != SB_MODE_CAPTURE_8)
         return 0;
-    ptr = chip->c_dma_size - snd_dma_residue(chip->dma8);
+	ptr = snd_dma_pointer(chip->dma8, chip->c_dma_size);
     return bytes_to_frames(substream->runtime, ptr);
 }
 

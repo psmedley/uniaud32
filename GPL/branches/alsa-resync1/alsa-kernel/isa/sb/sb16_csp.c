@@ -42,8 +42,6 @@ MODULE_CLASSES("{sound}");
 #define CSP_HDR_VALUE(a,b,c,d)	((a) | ((b)<<8) | ((c)<<16) | ((d)<<24))
 #else
 #define CSP_HDR_VALUE(a,b,c,d)	((d) | ((c)<<8) | ((b)<<16) | ((a)<<24))
-#define LE_SHORT(v)		bswap_16(v)
-#define LE_INT(v)		bswap_32(v)
 #endif
 #define LE_SHORT(v)		le16_to_cpu(v)
 #define LE_INT(v)		le32_to_cpu(v)
@@ -107,7 +105,6 @@ static void snd_sb_qsound_destroy(snd_sb_csp_t * p);
 static int snd_sb_csp_qsound_transfer(snd_sb_csp_t * p);
 
 static int init_proc_entry(snd_sb_csp_t * p, int device);
-static void delete_proc_entry(snd_sb_csp_t * p);
 static void info_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer);
 
 /*
@@ -170,7 +167,6 @@ static void snd_sb_csp_free(snd_hwdep_t *hwdep)
     if (p) {
         if (p->running & SNDRV_SB_CSP_ST_RUNNING)
             snd_sb_csp_stop(p);
-        delete_proc_entry(p);
         kfree(p);
     }
 }
@@ -215,7 +211,10 @@ static int snd_sb_csp_ioctl(snd_hwdep_t * hw, struct file *file, unsigned int cm
         info.run_width = p->run_width;
         info.version = p->version;
         info.state = p->running;
-        err = copy_to_user((void *) arg, &info, sizeof(info));
+		if (copy_to_user((void *) arg, &info, sizeof(info)))
+			err = -EFAULT;
+		else
+			err = 0;
         break;
 
         /* load CSP microcode */
@@ -1008,7 +1007,7 @@ static int snd_sb_qsound_space_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value
     spin_unlock_irqrestore(&p->q_lock, flags);
     return change;
 }
-#ifdef TARGET_OS2
+
 static snd_kcontrol_new_t snd_sb_qsound_switch = {
 	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
 	.name = "3D Control - Switch",
@@ -1104,26 +1103,9 @@ static int init_proc_entry(snd_sb_csp_t * p, int device)
     char name[16];
     snd_info_entry_t *entry;
     sprintf(name, "cspD%d", device);
-    entry = p->proc = snd_info_create_card_entry(p->chip->card, name, p->chip->card->proc_root);
-    if (entry) {
-        entry->content = SNDRV_INFO_CONTENT_TEXT;
-        entry->c.text.read_size = 256;
-        entry->c.text.read = info_read;
-        entry->private_data = p;
-        if (snd_info_register(entry) < 0) {
-            snd_info_free_entry(entry);
-            p->proc = NULL;
-        }
-    }
-    return 0;
-}
-
-static void delete_proc_entry(snd_sb_csp_t * p)
-{
-    if (p->proc) {
-        snd_info_unregister(p->proc);
-        p->proc = NULL;
-    }
+	if (! snd_card_proc_new(p->chip->card, name, &entry))
+		snd_info_set_text_ops(entry, p, info_read);
+	return 0;
 }
 
 static void info_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)

@@ -199,12 +199,12 @@ static const struct isapnp_card_id *snd_sb16_isapnp_id[SNDRV_CARDS] = SNDRV_DEFA
 #define ISAPNP_SB16(_va, _vb, _vc, _device, _audio) \
     { \
     ISAPNP_CARD_ID(_va, _vb, _vc, _device), \
-    devs : { ISAPNP_DEVICE_ID(_va, _vb, _vc, _audio), } \
+		.devs = { ISAPNP_DEVICE_ID(_va, _vb, _vc, _audio), } \
     }
 #define ISAPNP_SBAWE(_va, _vb, _vc, _device, _audio, _awe) \
     { \
     ISAPNP_CARD_ID(_va, _vb, _vc, _device), \
-    devs : { ISAPNP_DEVICE_ID(_va, _vb, _vc, _audio), \
+		.devs = { ISAPNP_DEVICE_ID(_va, _vb, _vc, _audio), \
     ISAPNP_DEVICE_ID(_va, _vb, _vc, _awe), } \
     }
 #endif
@@ -213,6 +213,8 @@ static struct isapnp_card_id snd_sb16_pnpids[] __devinitdata = {
 #ifndef SNDRV_SBAWE
     /* Sound Blaster 16 PnP */
     ISAPNP_SB16('C','T','L',0x0024,0x0031),
+	/* Sound Blaster 16 PnP */
+	ISAPNP_SB16('C','T','L',0x0025,0x0031),
     /* Sound Blaster 16 PnP */
     ISAPNP_SB16('C','T','L',0x0026,0x0031),
     /* Sound Blaster 16 PnP */
@@ -234,6 +236,9 @@ static struct isapnp_card_id snd_sb16_pnpids[] __devinitdata = {
     ISAPNP_SB16('C','T','L',0x0070,0x0001),
     /* Sound Blaster Vibra16CL - added by ctm@ardi.com */
     ISAPNP_SB16('C','T','L',0x0080,0x0041),
+	/* Sound Blaster 16 'value' PnP. It says model ct4130 on the pcb, */
+	/* but ct4131 on a sticker on the board.. */
+	ISAPNP_SB16('C','T','L',0x0086,0x0041),
     /* Sound Blaster Vibra16X */
     ISAPNP_SB16('C','T','L',0x00f0,0x0043),
 #else  /* SNDRV_SBAWE defined */
@@ -663,9 +668,9 @@ static int __init snd_sb16_probe_legacy_port(unsigned long xport)
 #ifdef MODULE
 		printk(KERN_ERR "Sound Blaster 16 soundcard not found or device busy\n");
 #ifdef SNDRV_SBAWE_EMU8000
-		printk(KERN_ERR "In case, if you have non-AWE card, try snd-card-sb16 module\n");
+		printk(KERN_ERR "In case, if you have non-AWE card, try snd-sb16 module\n");
 #else
-		printk(KERN_ERR "In case, if you have AWE card, try snd-card-sbawe module\n");
+		printk(KERN_ERR "In case, if you have AWE card, try snd-sbawe module\n");
 #endif
 #endif
             return -ENODEV;
@@ -696,7 +701,7 @@ static int __init snd_sb16_probe_legacy_port(unsigned long xport)
     {
         static unsigned __initdata nr_dev = 0;
         int __attribute__ ((__unused__)) pnp = INT_MAX;
-        int __attribute__ ((__unused__)) csp = INT_MAX;
+	int __attribute__ ((__unused__)) xcsp = INT_MAX;
 
         if (nr_dev >= SNDRV_CARDS)
             return 0;
@@ -713,7 +718,7 @@ static int __init snd_sb16_probe_legacy_port(unsigned long xport)
 	       get_option(&str,&mic_agc[nr_dev]) == 2
 #ifdef CONFIG_SND_SB16_CSP
 	       &&
-	       get_option(&str,&csp[nr_dev]) == 2
+	       get_option(&str,&xcsp) == 2
 #endif
 #ifdef SNDRV_SBAWE_EMU8000
                &&
@@ -726,8 +731,8 @@ static int __init snd_sb16_probe_legacy_port(unsigned long xport)
 		isapnp[nr_dev] = pnp;
 #endif
 #ifdef CONFIG_SND_SB16_CSP
-        if (csp != INT_MAX)
-		csp[nr_dev] = csp;
+	if (xcsp != INT_MAX)
+		csp[nr_dev] = xcsp;
 #endif
         nr_dev++;
         return 1;

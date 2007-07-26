@@ -25,7 +25,7 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 
-    hammerfall_mem.c,v 1.5 2002/11/04 09:11:42 perex Exp
+    hammerfall_mem.c,v 1.8 2003/02/25 13:35:44 perex Exp
 
 
     Tue Oct 17 2000  Jaroslav Kysela <perex@suse.cz>
@@ -155,7 +155,6 @@ void *snd_hammerfall_get_buffer (struct pci_dev *pcidev, dma_addr_t *dmaaddr)
 		if (rbuf->flags == HAMMERFALL_BUF_ALLOCATED) {
 			rbuf->flags |= HAMMERFALL_BUF_USED;
 			rbuf->pci = pcidev;
-			MOD_INC_USE_COUNT;
 			*dmaaddr = rbuf->addr;
 			return rbuf->buf;
 		}
@@ -172,7 +171,6 @@ void snd_hammerfall_free_buffer (struct pci_dev *pcidev, void *addr)
 	for (i = 0; i < NBUFS; i++) {
 		rbuf = &hammerfall_buffers[i];
 		if (rbuf->buf == addr && rbuf->pci == pcidev) {
-			MOD_DEC_USE_COUNT;
 			rbuf->flags &= ~HAMMERFALL_BUF_USED;
 			return;
 		}
@@ -181,7 +179,7 @@ void snd_hammerfall_free_buffer (struct pci_dev *pcidev, void *addr)
 	printk ("Hammerfall memory allocator: unknown buffer address or PCI device ID");
 }
 
-static void __exit hammerfall_free_buffers (void)
+static void hammerfall_free_buffers (void)
 
 {
 	int i;

@@ -20,8 +20,8 @@
  */
 
 #include <sound/driver.h>
-#include <asm/io.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/pm.h>
 #include <linux/slab.h>
 #ifndef LINUX_ISAPNP_H
@@ -35,6 +35,8 @@
 #include <sound/opl3.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
+
+#include <asm/io.h>
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Yamaha OPL3SA2+");
@@ -355,21 +357,11 @@ static int snd_opl3sa2_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 	return 0;
 }
 
-#ifdef TARGET_OS2
-#define OPL3SA2_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
-  0, 0, snd_opl3sa2_info_single, \
-  snd_opl3sa2_get_single, snd_opl3sa2_put_single, \
-  0, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-
-#else
 #define OPL3SA2_SINGLE(xname, xindex, reg, shift, mask, invert) \
 { .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
   .info = snd_opl3sa2_info_single, \
   .get = snd_opl3sa2_get_single, .put = snd_opl3sa2_put_single, \
   .private_value = reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
 
 static int snd_opl3sa2_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -423,21 +415,11 @@ int snd_opl3sa2_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * uco
 	return change;
 }
 
-#ifdef TARGET_OS2
-#define OPL3SA2_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
-  0, 0, snd_opl3sa2_info_double, \
-  snd_opl3sa2_get_double, snd_opl3sa2_put_double, \
-  0, \
-  left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-
-#else
 #define OPL3SA2_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
 { .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
   .info = snd_opl3sa2_info_double, \
   .get = snd_opl3sa2_get_double, .put = snd_opl3sa2_put_double, \
   .private_value = left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#endif
 
 int snd_opl3sa2_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {

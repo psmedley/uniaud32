@@ -67,7 +67,7 @@ MODULE_AUTHOR("Paul Davis <pbd@op.net>");
 MODULE_DESCRIPTION("RME Hammerfall DSP");
 MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
-MODULE_DEVICES("{{RME,Hammerfall-DSP},");
+MODULE_DEVICES("{{RME,Hammerfall-DSP}}");
 
 typedef enum {
 	Digiface,
@@ -454,7 +454,7 @@ static inline int hdsp_fifo_wait(hdsp_t *hdsp, int count, int timeout)
 	*/
 	
 	for (i = 0; i < timeout; i++)
-		if ((hdsp_read (hdsp, HDSP_fifoStatus) & 0xff) <= count)
+		if ((int)(hdsp_read (hdsp, HDSP_fifoStatus) & 0xff) <= count)
 			return 0;
 
 	snd_printk ("wait for FIFO status <= %d failed after %d iterations\n",
@@ -838,7 +838,7 @@ static int snd_hdsp_midi_output_write (hdsp_midi_t *hmidi)
 	if (hmidi->output) {
 		if (!snd_rawmidi_transmit_empty (hmidi->output)) {
 			if ((n_pending = snd_hdsp_midi_output_possible (hmidi->hdsp, hmidi->id)) > 0) {
-				if (n_pending > sizeof (buf))
+				if (n_pending > (int)sizeof (buf))
 					n_pending = sizeof (buf);
 				
 				if ((to_write = snd_rawmidi_transmit (hmidi->output, buf, n_pending)) > 0) {
@@ -872,7 +872,7 @@ static int snd_hdsp_midi_input_read (hdsp_midi_t *hmidi)
 
 	if ((n_pending = snd_hdsp_midi_input_available (hmidi->hdsp, hmidi->id)) > 0) {
 		if (hmidi->input) {
-			if (n_pending > sizeof (buf)) {
+			if (n_pending > (int)sizeof (buf)) {
 				n_pending = sizeof (buf);
 			}
 			for (i = 0; i < n_pending; ++i) {
@@ -1278,7 +1278,7 @@ static int snd_hdsp_put_spdif_out(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 		return -EBUSY;
 	val = ucontrol->value.integer.value[0] & 1;
 	spin_lock_irqsave(&hdsp->lock, flags);
-	change = val != hdsp_spdif_out(hdsp);
+	change = (int)val != hdsp_spdif_out(hdsp);
 	hdsp_set_spdif_output(hdsp, val);
 	spin_unlock_irqrestore(&hdsp->lock, flags);
 	return change;
@@ -1393,7 +1393,7 @@ static int snd_hdsp_put_sync_pref(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 	max = hdsp->ss_channels == (hdsp->type == Digiface) ? 7 : 6;
 	val = ucontrol->value.enumerated.item[0] % max;
 	spin_lock_irqsave(&hdsp->lock, flags);
-	change = val != hdsp_sync_pref(hdsp);
+	change = (int)val != hdsp_sync_pref(hdsp);
 	hdsp_set_sync_pref(hdsp, val);
 	spin_unlock_irqrestore(&hdsp->lock, flags);
 	return change;
@@ -1497,7 +1497,7 @@ static int snd_hdsp_put_line_out(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t
 		return -EBUSY;
 	val = ucontrol->value.integer.value[0] & 1;
 	spin_lock_irqsave(&hdsp->lock, flags);
-	change = val != hdsp_line_out(hdsp);
+	change = (int)val != hdsp_line_out(hdsp);
 	hdsp_set_line_output(hdsp, val);
 	spin_unlock_irqrestore(&hdsp->lock, flags);
 	return change;
@@ -1566,7 +1566,8 @@ static int snd_hdsp_put_mixer(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * 
 	gain = ucontrol->value.integer.value[2];
 
 	spin_lock_irqsave(&hdsp->lock, flags);
-	if ((change = gain != hdsp_read_gain(hdsp, addr)))
+	change = gain != hdsp_read_gain(hdsp, addr);
+	if (change)
 		hdsp_write_gain(hdsp, addr, gain);
 	spin_unlock_irqrestore(&hdsp->lock, flags);
 	return change;
@@ -1628,7 +1629,8 @@ static int snd_hdsp_put_playback_mixer(snd_kcontrol_t * kcontrol, snd_ctl_elem_v
 
 
 	spin_lock_irqsave(&hdsp->lock, flags);
-	if ((change = gain != hdsp_read_gain(hdsp, addr)))
+	change = gain != hdsp_read_gain(hdsp, addr);
+	if (change)
 		hdsp_write_gain(hdsp, addr, gain);
 	spin_unlock_irqrestore(&hdsp->lock, flags);
 	return change;
@@ -1800,7 +1802,8 @@ static snd_kcontrol_new_t snd_hdsp_playback_rms = HDSP_RMS_PLAYBACK;
 
 int snd_hdsp_create_controls(snd_card_t *card, hdsp_t *hdsp)
 {
-	int idx, err, limit;
+	unsigned int idx, limit;
+	int err;
 	snd_kcontrol_t *kctl;
 
 	for (idx = 0; idx < HDSP_CONTROLS; idx++) {
@@ -2299,7 +2302,8 @@ static int snd_hdsp_playback_copy(snd_pcm_substream_t *substream, int channel,
 
 	channel_buf = hdsp_channel_buffer_location (hdsp, substream->pstr->stream, channel);
 	snd_assert(channel_buf != NULL, return -EIO);
-	copy_from_user(channel_buf + pos * 4, src, count * 4);
+	if (copy_from_user(channel_buf + pos * 4, src, count * 4))
+		return -EFAULT;
 	return count;
 }
 
@@ -2313,7 +2317,8 @@ static int snd_hdsp_capture_copy(snd_pcm_substream_t *substream, int channel,
 
 	channel_buf = hdsp_channel_buffer_location (hdsp, substream->pstr->stream, channel);
 	snd_assert(channel_buf != NULL, return -EIO);
-	copy_to_user(dst, channel_buf + pos * 4, count * 4);
+	if (copy_to_user(dst, channel_buf + pos * 4, count * 4))
+		return -EFAULT;
 	return count;
 }
 
@@ -2387,7 +2392,7 @@ static int snd_hdsp_hw_params(snd_pcm_substream_t *substream,
 		   that matter are the same.
 		 */
 
-		if (params_rate(params) != hdsp_system_sample_rate(hdsp)) {
+		if ((int)params_rate(params) != hdsp_system_sample_rate(hdsp)) {
 			spin_unlock_irq(&hdsp->lock);
 			_snd_pcm_hw_param_setempty(params, SNDRV_PCM_HW_PARAM_RATE);
 			return -EBUSY;
@@ -2563,9 +2568,9 @@ static snd_pcm_hardware_t snd_hdsp_playback_subinfo =
 	.rate_max =		96000,
 	.channels_min =		10,
 	.channels_max =		HDSP_MAX_CHANNELS,
-	.buffer_bytes_max =	1024*1024,
-	.period_bytes_min =	1,
-	.period_bytes_max =	1024*1024,
+	.buffer_bytes_max =	HDSP_CHANNEL_BUFFER_BYTES * HDSP_MAX_CHANNELS,
+	.period_bytes_min =	(64 * 4) *10,
+	.period_bytes_max =	(8192 * 4) * HDSP_MAX_CHANNELS,
 	.periods_min =		2,
 	.periods_max =		2,
 	.fifo_size =		0,
@@ -2588,9 +2593,9 @@ static snd_pcm_hardware_t snd_hdsp_capture_subinfo =
 	.rate_max =		96000,
 	.channels_min =		10,
 	.channels_max =		HDSP_MAX_CHANNELS,
-	.buffer_bytes_max =	1024*1024,
-	.period_bytes_min =	1,
-	.period_bytes_max =	1024*1024,
+	.buffer_bytes_max =	HDSP_CHANNEL_BUFFER_BYTES * HDSP_MAX_CHANNELS,
+	.period_bytes_min =	(64 * 4) * 10,
+	.period_bytes_max =	(8192 * 4) * HDSP_MAX_CHANNELS,
 	.periods_min =		2,
 	.periods_max =		2,
 	.fifo_size =		0,
@@ -2623,16 +2628,16 @@ static int snd_hdsp_hw_rule_channels_rate(snd_pcm_hw_params_t *params,
 	snd_interval_t *r = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE);
 	if (r->min > 48000) {
 		snd_interval_t t = {
-			min: hdsp->ds_channels,
-			max: hdsp->ds_channels,
-			integer: 1,
+			.min = hdsp->ds_channels,
+			.max = hdsp->ds_channels,
+			.integer = 1,
 		};
 		return snd_interval_refine(c, &t);
 	} else if (r->max < 64000) {
 		snd_interval_t t = {
-			min: hdsp->ss_channels,
-			max: hdsp->ss_channels,
-			integer: 1,
+			.min = hdsp->ss_channels,
+			.max = hdsp->ss_channels,
+			.integer = 1,
 		};
 		return snd_interval_refine(c, &t);
 	}
@@ -2647,16 +2652,16 @@ static int snd_hdsp_hw_rule_rate_channels(snd_pcm_hw_params_t *params,
 	snd_interval_t *r = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE);
 	if (c->min >= hdsp->ss_channels) {
 		snd_interval_t t = {
-			min: 32000,
-			max: 48000,
-			integer: 1,
+			.min = 32000,
+			.max = 48000,
+			.integer = 1,
 		};
 		return snd_interval_refine(r, &t);
 	} else if (c->max <= hdsp->ds_channels) {
 		snd_interval_t t = {
-			min: 64000,
-			max: 96000,
-			integer: 1,
+			.min = 64000,
+			.max = 96000,
+			.integer = 1,
 		};
 		return snd_interval_refine(r, &t);
 	}
@@ -2966,6 +2971,8 @@ static int __devinit snd_hdsp_create(snd_card_t *card,
 	
 	switch (rev & 0xff) {
 	case 0xa:
+	case 0xb:
+	case 0x64:
 		/* hdsp_initialize_firmware() will reset this */
 		hdsp->card_name = "RME Hammerfall DSP";
 		break;

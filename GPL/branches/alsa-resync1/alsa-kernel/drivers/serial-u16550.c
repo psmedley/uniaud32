@@ -7,85 +7,6 @@
  *
  *   This code is based on the code from ALSA 0.5.9, but heavily rewritten.
  *
- * Sat Mar 31 17:27:57 PST 2001 tim.mann@compaq.com 
- *      Added support for the Midiator MS-124T and for the MS-124W in
- *      Single Addressed (S/A) or Multiple Burst (M/B) mode, with
- *      power derived either parasitically from the serial port or
- *      from a separate power supply.
- * 
- *      The new snd_adaptor module parameter allows you to select
- *      either the default Roland Soundcanvas support (0), which was
- *      previously included in this driver but was not documented,
- *      Midiator MS-124T support (1), Midiator MS-124W S/A mode
- *      support (2), or MS-124W M/B mode support (3).  For the
- *      Midiator MS-124W, you must set the physical M-S and A-B
- *      switches on the Midiator to match the driver mode you select.
- *  
- *      - In Roland Soundcanvas mode, multiple ALSA raw MIDI
- *      substreams are supported (midiCnD0-midiCnD15).  Whenever you
- *      write to a different substream, the driver sends the
- *      nonstandard MIDI command sequence F5 NN, where NN is the
- *      substream number plus 1.  Roland modules use this command to
- *      switch between different "parts", so this feature lets you
- *      treat each part as a distinct raw MIDI substream.  The driver
- *      provides no way to send F5 00 (no selection) or to not send
- *      the F5 NN command sequence at all; perhaps it ought to.
- *
- *      - In MS-124T mode, one raw MIDI substream is supported
- *      (midiCnD0); the snd_outs module parameter is automatically set
- *      to 1.  The driver sends the same data to all four MIDI Out
- *      connectors.  Set the A-B switch and the snd_speed module
- *      parameter to match (A=19200, B=9600).
- *
- *      Usage example for MS-124T, with A-B switch in A position:
- *        setserial /dev/ttyS0 uart none
- *        /sbin/modprobe snd-card-serial snd_port=0x3f8 snd_irq=4 \
- *            snd_adaptor=1 snd_speed=19200
- *
- *      - In MS-124W S/A mode, one raw MIDI substream is supported
- *      (midiCnD0); the snd_outs module parameter is automatically set
- *      to 1.  The driver sends the same data to all four MIDI Out
- *      connectors at full MIDI speed.
- *
- *      Usage example for S/A mode:
- *        setserial /dev/ttyS0 uart none
- *        /sbin/modprobe snd-card-serial snd_port=0x3f8 snd_irq=4 \
- *            snd_adaptor=2
- *
- *      - In MS-124W M/B mode, the driver supports 16 ALSA raw MIDI
- *      substreams; the snd_outs module parameter is automatically set
- *      to 16.  The substream number gives a bitmask of which MIDI Out
- *      connectors the data should be sent to, with midiCnD1 sending
- *      to Out 1, midiCnD2 to Out 2, midiCnD4 to Out 3, and midiCnD8
- *      to Out 4.  Thus midiCnD15 sends the data to all 4 ports.  As a
- *      special case, midiCnD0 also sends to all ports, since it is
- *      not useful to send the data to no ports.  M/B mode has extra
- *      overhead to select the MIDI Out for each byte, so the
- *      aggregate data rate across all four MIDI Outs is at most one
- *      byte every 520 us, as compared with the full MIDI data rate of
- *      one byte every 320 us per port.
- *
- *      Usage example for M/B mode:
- *        setserial /dev/ttyS0 uart none
- *        /sbin/insmod snd-card-serial snd_port=0x3f8 snd_irq=4 \
- *            snd_adaptor=3
- *
- *      - The MS-124W hardware's M/A mode is currently not supported.
- *      This mode allows the MIDI Outs to act independently at double
- *      the aggregate throughput of M/B, but does not allow sending
- *      the same byte simultaneously to multiple MIDI Outs.  The M/A
- *      protocol requires the driver to twiddle the modem control
- *      lines under timing constraints, so it would be a bit more
- *      complicated to implement than the other modes.
- *
- *      - Midiator models other than MS-124W and MS-124T are currently
- *      not supported.  Note that the suffix letter is significant;
- *      the MS-124 and MS-124B are not compatible, nor are the other
- *      known models MS-101, MS-101B, MS-103, and MS-114.  I do have
- *      documentation that partially covers these models, but no units
- *      to experiment with.  The MS-124W support is tested with a real
- *      unit.  The MS-124T support is untested, but should work.
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -100,12 +21,20 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
+ * Sat Mar 31 17:27:57 PST 2001 tim.mann@compaq.com 
+ *      Added support for the Midiator MS-124T and for the MS-124W in
+ *      Single Addressed (S/A) or Multiple Burst (M/B) mode, with
+ *      power derived either parasitically from the serial port or
+ *      from a separate power supply.
+ * 
+ *      More documentation can be found in serial-u16550.txt.
  */
 
 #include <sound/driver.h>
-#include <asm/io.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/slab.h>
+#include <linux/ioport.h>
 #include <sound/core.h>
 #include <sound/rawmidi.h>
 #define SNDRV_GET_ID
@@ -113,10 +42,12 @@
 
 #include <linux/serial_reg.h>
 
-MODULE_DESCRIPTION("MIDI serial");
+#include <asm/io.h>
+
+MODULE_DESCRIPTION("MIDI serial u16550");
 MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
-MODULE_DEVICES("{{ALSA, MIDI serial}}");
+MODULE_DEVICES("{{ALSA, MIDI serial u16550}}");
 
 #define SNDRV_SERIAL_SOUNDCANVAS 0 /* Roland Soundcanvas; F5 NN selects part */
 #define SNDRV_SERIAL_MS124T 1      /* Midiator MS-124T */
@@ -281,7 +212,7 @@ inline static void snd_uart16550_buffer_output(snd_uart16550_t *uart)
 
 /* This loop should be called with interrupts disabled
  * We don't want to interrupt this,
- * as we're already handling an interupt
+ * as we're already handling an interrupt 
  */
 static void snd_uart16550_io_loop(snd_uart16550_t * uart)
 {
@@ -351,16 +282,16 @@ static void snd_uart16550_io_loop(snd_uart16550_t * uart)
  * ---------------------------
  * After receiving a interrupt, it is important to indicate to the UART that
  * this has been done.
- * For a Rx interupt, this is done by reading the received byte.
- * For a Tx interupt this is done by either:
+ * For a Rx interrupt, this is done by reading the received byte.
+ * For a Tx interrupt this is done by either:
  * a) Writing a byte
  * b) Reading the IIR
- * It is particularly important to read the IIR if a Tx interupt is received
+ * It is particularly important to read the IIR if a Tx interrupt is received
  * when there is no data in tx_buff[], as in this case there no other
- * indication that the interupt has been serviced, and it remains outstanding
- * indefinitely. This has the curious side effect that and no further interupts
+ * indication that the interrupt has been serviced, and it remains outstanding
+ * indefinitely. This has the curious side effect that and no further interrupts
  * will be generated from this device AT ALL!!.
- * It is also desirable to clear outstanding interupts when the device is
+ * It is also desirable to clear outstanding interrupts when the device is
  * opened/closed.
  *
  *
@@ -400,17 +331,20 @@ static void snd_uart16550_buffer_timer(unsigned long data)
  *  return 0 if found
  *  return negative error if not found
  */
-static int __init snd_uart16550_detect(unsigned int io_base)
+static int __init snd_uart16550_detect(snd_uart16550_t *uart)
 {
+	unsigned long io_base = uart->base;
     int ok;
     unsigned char c;
 
-    if (check_region(io_base, 8))
-        return -EBUSY;
-
     /* Do some vague tests for the presence of the uart */
-    if (io_base == 0)
+	if (io_base == 0) {
         return -ENODEV;	/* Not configured */
+	}
+
+	uart->res_base = request_region(io_base, 8, "Serial MIDI");
+	if (uart->res_base == NULL)
+		return -EBUSY;
 
     ok = 1;			/* uart detected unless one of the following tests should fail */
     /* 8 data-bits, 1 stop-bit, parity off, DLAB = 0 */
@@ -453,7 +387,7 @@ static void snd_uart16550_do_open(snd_uart16550_t * uart)
          | UART_FCR_CLEAR_RCVR	/* Clear receiver FIFO */
          | UART_FCR_CLEAR_XMIT	/* Clear transmitter FIFO */
          | UART_FCR_TRIGGER_4	/* Set FIFO trigger at 4-bytes */
-         /* NOTE: interupt generated after T=(time)4-bytes
+	/* NOTE: interrupt generated after T=(time)4-bytes
           * if less than UART_FCR_TRIGGER bytes received
           */
          ,uart->base + UART_FCR);	/* FIFO Control Register */
@@ -505,8 +439,8 @@ static void snd_uart16550_do_open(snd_uart16550_t * uart)
     }
 
     if (uart->irq < 0) {
-        byte = (0 & UART_IER_RDI)	/* Disable Receiver data interupt */
-            |(0 & UART_IER_THRI)	/* Disable Transmitter holding register empty interupt */
+		byte = (0 & UART_IER_RDI)	/* Disable Receiver data interrupt */
+		    |(0 & UART_IER_THRI)	/* Disable Transmitter holding register empty interrupt */
             ;
     } else if (uart->adaptor == SNDRV_SERIAL_MS124W_SA) {
         byte = UART_IER_RDI	/* Enable Receiver data interrupt */
@@ -515,11 +449,11 @@ static void snd_uart16550_do_open(snd_uart16550_t * uart)
 	} else if (uart->adaptor == SNDRV_SERIAL_GENERIC) {
 		byte = UART_IER_RDI	/* Enable Receiver data interrupt */
 		    | UART_IER_MSI	/* Enable Modem status interrupt */
-		    | UART_IER_THRI	/* Enable Transmitter holding register empty interupt */
+		    | UART_IER_THRI	/* Enable Transmitter holding register empty interrupt */
 		    ;
     } else {
-        byte = UART_IER_RDI	/* Enable Receiver data interupt */
-            | UART_IER_THRI	/* Enable Transmitter holding register empty interupt */
+		byte = UART_IER_RDI	/* Enable Receiver data interrupt */
+		    | UART_IER_THRI	/* Enable Transmitter holding register empty interrupt */
             ;
     }
     outb(byte, uart->base + UART_IER);	/* Interupt enable Register */
@@ -538,8 +472,8 @@ static void snd_uart16550_do_close(snd_uart16550_t * uart)
      * For now, the consequences are harmless.
      */
 
-    outb((0 & UART_IER_RDI)		/* Disable Receiver data interupt */
-         |(0 & UART_IER_THRI)	/* Disable Transmitter holding register empty interupt */
+	outb((0 & UART_IER_RDI)		/* Disable Receiver data interrupt */
+	     |(0 & UART_IER_THRI)	/* Disable Transmitter holding register empty interrupt */
          ,uart->base + UART_IER);	/* Interupt enable Register */
 
     switch (uart->adaptor) {
@@ -564,7 +498,7 @@ static void snd_uart16550_do_close(snd_uart16550_t * uart)
         break;
     }
 
-    inb(uart->base + UART_IIR);	/* Clear any outstanding interupts */
+	inb(uart->base + UART_IIR);	/* Clear any outstanding interrupts */
 
     /* Restore old divisor */
     if (uart->divisor != 0) {
@@ -847,15 +781,9 @@ static int __init snd_uart16550_create(snd_card_t * card,
                                        int adaptor,
                                        snd_uart16550_t **ruart)
 {
-#ifdef TARGET_OS2
     static snd_device_ops_t ops = {
-        snd_uart16550_dev_free,0,0,0
+		.dev_free =	snd_uart16550_dev_free,
     };
-#else
-    static snd_device_ops_t ops = {
-    dev_free:       snd_uart16550_dev_free,
-    };
-#endif
     snd_uart16550_t *uart;
     int err;
 
@@ -866,11 +794,13 @@ static int __init snd_uart16550_create(snd_card_t * card,
     uart->card = card;
     spin_lock_init(&uart->open_lock);
     uart->irq = -1;
-    if ((uart->res_base = request_region(iobase, 8, "Serial MIDI")) == NULL) {
-        snd_printk("unable to grab ports 0x%lx-0x%lx\n", iobase, iobase + 8 - 1);
-        return -EBUSY;
-    }
     uart->base = iobase;
+
+	if ((err = snd_uart16550_detect(uart)) <= 0) {
+		printk(KERN_ERR "no UART detected at 0x%lx\n", iobase);
+		return err;
+	}
+
     if (irq >= 0) {
         if (request_irq(irq, snd_uart16550_interrupt,
                         SA_INTERRUPT, "Serial MIDI", (void *) uart)) {
@@ -987,12 +917,6 @@ static int __init snd_serial_probe(int dev)
 
     strcpy(card->driver, "Serial");
     strcpy(card->shortname, "Serial midi (uart16550A)");
-
-	if ((err = snd_uart16550_detect(port[dev])) <= 0) {
-        snd_card_free(card);
-		printk(KERN_ERR "no UART detected at 0x%lx\n", (long)port[dev]);
-        return err;
-    }
 
     if ((err = snd_uart16550_create(card,
 					port[dev],
