@@ -1,5 +1,5 @@
-#ifndef __MINORS_H
-#define __MINORS_H
+#ifndef __SOUND_MINORS_H
+#define __SOUND_MINORS_H
 
 /*
  *  MINOR numbers
@@ -17,7 +17,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -31,8 +31,8 @@
 #define SNDRV_MINOR_TIMER		(1+32)
 #define SNDRV_MINOR_HWDEP		4	/* 4 - 7 */
 #define SNDRV_MINOR_HWDEPS		4
-#define SNDRV_MINOR_RAWMIDI		8	/* 8 - 11 */
-#define SNDRV_MINOR_RAWMIDIS		4
+#define SNDRV_MINOR_RAWMIDI		8	/* 8 - 15 */
+#define SNDRV_MINOR_RAWMIDIS		8
 #define SNDRV_MINOR_PCM_PLAYBACK	16	/* 16 - 23 */
 #define SNDRV_MINOR_PCM_CAPTURE		24	/* 24 - 31 */
 #define SNDRV_MINOR_PCMS		8
@@ -83,4 +83,4 @@
 
 #endif
 
-#endif				/* __MINORS_H */
+#endif /* __SOUND_MINORS_H */

@@ -14,14 +14,18 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #define __GUS_TABLES_ALLOC__
 #include "gus_tables.h"
+
+EXPORT_SYMBOL(snd_gf1_atten_table); /* for snd-gus-synth module */
 
 unsigned short snd_gf1_lvol_to_gvol_raw(unsigned int vol)
 {
