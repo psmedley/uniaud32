@@ -193,7 +193,6 @@ static int snd_pcm_lib_preallocate_pages1(snd_pcm_substream_t *substream,
 {
     snd_info_entry_t *entry;
 
-	memset(&substream->dma_buffer, 0, sizeof(substream->dma_buffer));
     if (size > 0 && preallocate_dma && substream->number < maximum_substreams)
         preallocate_pcm_pages(substream, size);
 
