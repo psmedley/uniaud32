@@ -29,7 +29,7 @@
 
 # note: Watcom headers must be before DDK headers to avoid conflicts
 # with C runtime headers
-CINCLUDES   = .;..\runtime;..\include;$(%WATCOM)\h;$(DDK_BASE)\h
+CINCLUDES   = .;..\include;$(%WATCOM)\h;$(DDK_BASE)\h
 
 AINCLUDES = -I:$(DDK_BASE)\INC
 
@@ -129,7 +129,7 @@ $(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
 
 $(OBJDIR)\$(TARGET).sym: $(LIBS)
 !ifdef USE_WLINK
-     $(WAT2MAP) $(WMAPNAME) $(OBJDIR)\$(TARGET).map
+     @$(WAT2MAP) $(WMAPNAME) $(OBJDIR)\$(TARGET).map
 !endif
      cd $(OBJDIR)
      mapsym $(TARGET).MAP
