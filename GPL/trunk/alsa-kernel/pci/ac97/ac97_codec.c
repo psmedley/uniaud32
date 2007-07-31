@@ -2404,6 +2404,11 @@ static void update_power_regs(struct snd_ac97 *ac97)
     unsigned int power_up, bits;
     int i;
 
+#ifdef CONFIG_SND_AC97_POWER_SAVE
+	if (power_save)
+		power_up = ac97->power_up;
+	else {
+#endif
         power_up = (1 << PWIDX_FRONT) | (1 << PWIDX_ADC);
         power_up |= (1 << PWIDX_MIC);
         if (ac97->scaps & AC97_SCAP_SURROUND_DAC)
@@ -2411,6 +2416,7 @@ static void update_power_regs(struct snd_ac97 *ac97)
         if (ac97->scaps & AC97_SCAP_CENTER_LFE_DAC)
             power_up |= (1 << PWIDX_CLFE);
 #ifdef CONFIG_SND_AC97_POWER_SAVE
+	}
 	if (ac97_is_power_save_mode(ac97))
 		power_up = ac97->power_up;
 #endif
