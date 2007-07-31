@@ -31,6 +31,7 @@
 #include "control.h"
 #include "info.h"
 
+#define CONFIG_SND_AC97_POWER_SAVE /* experimental !!! */
 /*
  *  AC'97 codec registers
  */
