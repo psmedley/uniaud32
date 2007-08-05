@@ -2034,6 +2034,8 @@ static int snd_pcm_release_file(snd_pcm_file_t * pcm_file)
         if (substream->ops->hw_free != NULL)
             substream->ops->hw_free(substream);
         substream->ops->close(substream);
+		substream->open_flag = 0;
+	}
         substream->ffile = NULL;
     }
     snd_pcm_remove_file(str, pcm_file);
