@@ -21,13 +21,13 @@ typedef struct snd_kcontrol snd_kcontrol_t;
 typedef struct snd_kcontrol_new snd_kcontrol_new_t;
 typedef struct snd_kcontrol_volatile snd_kcontrol_volatile_t;
 typedef struct snd_kctl_event snd_kctl_event_t;
-typedef struct snd_aes_iec958 snd_aes_iec958_t;
-typedef struct snd_ctl_card_info snd_ctl_card_info_t;
-typedef struct snd_ctl_elem_id snd_ctl_elem_id_t;
-typedef struct snd_ctl_elem_list snd_ctl_elem_list_t;
-typedef struct snd_ctl_elem_info snd_ctl_elem_info_t;
-typedef struct snd_ctl_elem_value snd_ctl_elem_value_t;
-typedef struct snd_ctl_event snd_ctl_event_t;
+//typedef struct snd_aes_iec958 snd_aes_iec958_t;
+//typedef struct snd_ctl_card_info snd_ctl_card_info_t;
+//typedef struct snd_ctl_elem_id snd_ctl_elem_id_t;
+//typedef struct snd_ctl_elem_list snd_ctl_elem_list_t;
+//typedef struct snd_ctl_elem_info snd_ctl_elem_info_t;
+//typedef struct snd_ctl_elem_value snd_ctl_elem_value_t;
+//typedef struct snd_ctl_event snd_ctl_event_t;
 #if defined(CONFIG_SND_MIXER_OSS) || defined(CONFIG_SND_MIXER_OSS_MODULE)
 typedef struct snd_mixer_oss snd_mixer_oss_t;
 #endif

@@ -15,34 +15,17 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#ifdef ALSA_BUILD
-#include <sound/config.h>
-#endif
-
 #include <linux/version.h>
 #include <linux/config.h>
-#ifdef ALSA_BUILD
-#if defined(CONFIG_MODVERSIONS) && !defined(__GENKSYMS__) && !defined(__DEPEND__)
-#define MODVERSIONS
-#include <linux/modversions.h>
-#include <sound/sndversions.h>
-#endif
-#endif
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/ioport.h>
 #include <linux/vmalloc.h>
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
-void snd_wrapper_request_region(unsigned long from, unsigned long extent, const char *name)
-{
-	return request_region(from, extent, name);
-}
-#endif
+#include <linux/fs.h>
 
 #ifdef CONFIG_SND_DEBUG_MEMORY
 void *snd_wrapper_kmalloc(size_t size, int flags)
@@ -65,3 +48,4 @@ void snd_wrapper_vfree(void *obj)
 	vfree(obj);
 }
 #endif
+

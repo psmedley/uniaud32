@@ -20,6 +20,9 @@
  */
 
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/info.h>
 #include <sound/initval.h>
@@ -210,6 +213,7 @@ static int snd_pcm_lib_preallocate_pages1(snd_pcm_substream_t *substream,
     substream->proc_prealloc_entry = entry;
     return 0;
 }
+
 
 /**
  * snd_pcm_lib_preallocate_pages - pre-allocation for the given DMA type

@@ -20,7 +20,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -79,9 +79,19 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/cs4231.h>
+#include <sound/asoundef.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_DESCRIPTION("Routines for control of CS4235/4236B/4237B/4238B/4239 chips");
+MODULE_LICENSE("GPL");
 
 #define chip_t cs4231_t
 
@@ -132,39 +142,21 @@ static unsigned char snd_cs4236_ctrl_in(cs4231_t *chip, unsigned char reg)
 
 #define CLOCKS 8
 
-#ifdef TARGET_OS2
 static ratnum_t clocks[CLOCKS] = {
-	{ 16934400, 353, 353, 1 },
-	{ 16934400, 529, 529, 1 },
-	{ 16934400, 617, 617, 1 },
-	{ 16934400, 1058, 1058, 1 },
-	{ 16934400, 1764, 1764, 1 },
-	{ 16934400, 2117, 2117, 1 },
-	{ 16934400, 2558, 2558, 1 },
-	{ 16934400/16, 21, 192, 1 }
+	{ .num = 16934400, .den_min = 353, .den_max = 353, .den_step = 1 },
+	{ .num = 16934400, .den_min = 529, .den_max = 529, .den_step = 1 },
+	{ .num = 16934400, .den_min = 617, .den_max = 617, .den_step = 1 },
+	{ .num = 16934400, .den_min = 1058, .den_max = 1058, .den_step = 1 },
+	{ .num = 16934400, .den_min = 1764, .den_max = 1764, .den_step = 1 },
+	{ .num = 16934400, .den_min = 2117, .den_max = 2117, .den_step = 1 },
+	{ .num = 16934400, .den_min = 2558, .den_max = 2558, .den_step = 1 },
+	{ .num = 16934400/16, .den_min = 21, .den_max = 192, .den_step = 1 }
 };
 
 static snd_pcm_hw_constraint_ratnums_t hw_constraints_clocks = {
-	CLOCKS,
-	clocks,
+	.nrats = CLOCKS,
+	.rats = clocks,
 };
-#else
-static ratnum_t clocks[CLOCKS] = {
-	{ num: 16934400, den_min: 353, den_max: 353, den_step: 1 },
-	{ num: 16934400, den_min: 529, den_max: 529, den_step: 1 },
-	{ num: 16934400, den_min: 617, den_max: 617, den_step: 1 },
-	{ num: 16934400, den_min: 1058, den_max: 1058, den_step: 1 },
-	{ num: 16934400, den_min: 1764, den_max: 1764, den_step: 1 },
-	{ num: 16934400, den_min: 2117, den_max: 2117, den_step: 1 },
-	{ num: 16934400, den_min: 2558, den_max: 2558, den_step: 1 },
-	{ num: 16934400/16, den_min: 21, den_max: 192, den_step: 1 }
-};
-
-static snd_pcm_hw_constraint_ratnums_t hw_constraints_clocks = {
-	nrats: CLOCKS,
-	rats: clocks,
-};
-#endif
 
 static int snd_cs4236_xrate(snd_pcm_runtime_t *runtime)
 {
@@ -278,7 +270,8 @@ int snd_cs4236_create(snd_card_t * card,
 {
 	cs4231_t *chip;
 	unsigned char ver1, ver2;
-	int err, reg;
+	unsigned int reg;
+	int err;
 
 	*rchip = NULL;
 	if (hardware == CS4231_HW_DETECT)
@@ -289,7 +282,9 @@ int snd_cs4236_create(snd_card_t * card,
 	}
 	if ((err = snd_cs4231_create(card, port, cport, irq, dma1, dma2, hardware, hwshare, &chip)) < 0)
 		return err;
+
 	if (!(chip->hardware & CS4231_HW_CS4236B_MASK)) {
+	        snd_printk("CS4236+: MODE3 and extended registers not available, hardware=0x%lx\n",chip->hardware);
 		snd_device_free(card, chip);
 		return -ENODEV;
 	}
@@ -304,7 +299,7 @@ int snd_cs4236_create(snd_card_t * card,
 #endif
 	ver1 = snd_cs4236_ctrl_in(chip, 1);
 	ver2 = snd_cs4236_ext_in(chip, CS4236_VERSION);
-	snd_printdd("CS4236: [0x%x] C1 (version) = 0x%x, ext = 0x%x\n", cport, ver1, ver2);
+	snd_printdd("CS4236: [0x%lx] C1 (version) = 0x%x, ext = 0x%x\n", cport, ver1, ver2);
 	if (ver1 != ver2) {
 		snd_printk("CS4236+ chip detected, but control port 0x%lx is not valid\n", cport);
 		snd_device_free(card, chip);
@@ -313,15 +308,15 @@ int snd_cs4236_create(snd_card_t * card,
 	snd_cs4236_ctrl_out(chip, 0, 0x00);
 	snd_cs4236_ctrl_out(chip, 2, 0xff);
 	snd_cs4236_ctrl_out(chip, 3, 0x00);
-	snd_cs4236_ctrl_out(chip, 4, 0x00);
-	snd_cs4236_ctrl_out(chip, 5, 0x00);
-	snd_cs4236_ctrl_out(chip, 6, 0x00);
+	snd_cs4236_ctrl_out(chip, 4, 0x80);
+	snd_cs4236_ctrl_out(chip, 5, ((IEC958_AES1_CON_PCM_CODER & 3) << 6) | IEC958_AES0_CON_EMPHASIS_NONE);
+	snd_cs4236_ctrl_out(chip, 6, IEC958_AES1_CON_PCM_CODER >> 2);
 	snd_cs4236_ctrl_out(chip, 7, 0x00);
-	/* 0x07 for C8 is valid for Turtle Beach Malibu - the IEC-958 output */
+	/* 0x8c for C8 is valid for Turtle Beach Malibu - the IEC-958 output */
 	/* is working with this setup, other hardware should have */
 	/* different signal paths and this value should be selectable */
 	/* in the future */
-	snd_cs4236_ctrl_out(chip, 8, 0x07);
+	snd_cs4236_ctrl_out(chip, 8, 0x8c);
 	chip->rate_constraint = snd_cs4236_xrate;
 	chip->set_playback_format = snd_cs4236_playback_format;
 	chip->set_capture_format = snd_cs4236_capture_format;
@@ -373,19 +368,11 @@ int snd_cs4236_pcm(cs4231_t *chip, int device, snd_pcm_t **rpcm)
  *  MIXER
  */
 
-#ifdef TARGET_OS2
 #define CS4236_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_cs4236_info_single, \
-  snd_cs4236_get_single, snd_cs4236_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#else
-#define CS4236_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_cs4236_info_single, \
-  get: snd_cs4236_get_single, put: snd_cs4236_put_single, \
-  private_value: reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_cs4236_info_single, \
+  .get = snd_cs4236_get_single, .put = snd_cs4236_put_single, \
+  .private_value = reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 static int snd_cs4236_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -438,19 +425,11 @@ static int snd_cs4236_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define CS4236_SINGLEC(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0,xname, xindex, \
-  0, 0, snd_cs4236_info_single, \
-  snd_cs4236_get_singlec, snd_cs4236_put_singlec, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#else
-#define CS4236_SINGLEC(xname, xindex, reg, shift, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_cs4236_info_single, \
-  get: snd_cs4236_get_singlec, put: snd_cs4236_put_singlec, \
-  private_value: reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_cs4236_info_single, \
+  .get = snd_cs4236_get_singlec, .put = snd_cs4236_put_singlec, \
+  .private_value = reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 static int snd_cs4236_get_singlec(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
 {
@@ -492,19 +471,11 @@ static int snd_cs4236_put_singlec(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define CS4236_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_cs4236_info_double, \
-  snd_cs4236_get_double, snd_cs4236_put_double, \
-  left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#else
-#define CS4236_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_cs4236_info_double, \
-  get: snd_cs4236_get_double, put: snd_cs4236_put_double, \
-  private_value: left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_cs4236_info_double, \
+  .get = snd_cs4236_get_double, .put = snd_cs4236_put_double, \
+  .private_value = left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
 
 static int snd_cs4236_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -576,19 +547,11 @@ static int snd_cs4236_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define CS4236_DOUBLE1(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_cs4236_info_double, \
-  snd_cs4236_get_double1, snd_cs4236_put_double1, \
-  left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#else
-#define CS4236_DOUBLE1(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_cs4236_info_double, \
-  get: snd_cs4236_get_double1, put: snd_cs4236_put_double1, \
-  private_value: left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_cs4236_info_double, \
+  .get = snd_cs4236_get_double1, .put = snd_cs4236_put_double1, \
+  .private_value = left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
 
 static int snd_cs4236_get_double1(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
 {
@@ -643,19 +606,11 @@ static int snd_cs4236_put_double1(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define CS4236_MASTER_DIGITAL(xname, xindex) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0,xname, xindex, \
-  0, 0, snd_cs4236_info_double, \
-  snd_cs4236_get_master_digital, snd_cs4236_put_master_digital, \
-  71 << 24 }
-#else
-#define CS4236_MASTER_DIGITAL(xname, xindex) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_cs4236_info_double, \
-  get: snd_cs4236_get_master_digital, put: snd_cs4236_put_master_digital, \
-  private_value: 71 << 24 }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_cs4236_info_double, \
+  .get = snd_cs4236_get_master_digital, .put = snd_cs4236_put_master_digital, \
+  .private_value = 71 << 24 }
 
 static inline int snd_cs4236_mixer_master_digital_invert_volume(int vol)
 {
@@ -693,19 +648,11 @@ static int snd_cs4236_put_master_digital(snd_kcontrol_t * kcontrol, snd_ctl_elem
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define CS4235_OUTPUT_ACCU(xname, xindex) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0,xname, xindex, \
-  0, 0, snd_cs4236_info_double, \
-  snd_cs4235_get_output_accu, snd_cs4235_put_output_accu, \
-  3 << 24 }
-#else
-#define CS4235_OUTPUT_ACCU(xname, xindex) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_cs4236_info_double, \
-  get: snd_cs4235_get_output_accu, put: snd_cs4235_put_output_accu, \
-  private_value: 3 << 24 }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_cs4236_info_double, \
+  .get = snd_cs4235_get_output_accu, .put = snd_cs4235_put_output_accu, \
+  .private_value = 3 << 24 }
 
 static inline int snd_cs4235_mixer_output_accu_get_volume(int vol)
 {
@@ -862,19 +809,11 @@ CS4231_SINGLE("Mono Volume", 0, CS4231_MONO_CTRL, 0, 15, 1),
 CS4231_DOUBLE("Analog Loopback Switch", 0, CS4231_LEFT_INPUT, CS4231_RIGHT_INPUT, 7, 7, 1, 0),
 };
 
-#ifdef TARGET_OS2
 #define CS4236_IEC958_ENABLE(xname, xindex) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0,xname, xindex, \
-  0, 0, snd_cs4236_info_single, \
-  snd_cs4236_get_iec958_switch, snd_cs4236_put_iec958_switch, \
-  1 << 16 }
-#else
-#define CS4236_IEC958_ENABLE(xname, xindex) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_cs4236_info_single, \
-  get: snd_cs4236_get_iec958_switch, put: snd_cs4236_put_iec958_switch, \
-  private_value: 1 << 16 }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_cs4236_info_single, \
+  .get = snd_cs4236_get_iec958_switch, .put = snd_cs4236_put_iec958_switch, \
+  .private_value = 1 << 16 }
 
 static int snd_cs4236_get_iec958_switch(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
 {
@@ -883,6 +822,15 @@ static int snd_cs4236_get_iec958_switch(snd_kcontrol_t * kcontrol, snd_ctl_elem_
 	
 	spin_lock_irqsave(&chip->reg_lock, flags);
 	ucontrol->value.integer.value[0] = chip->image[CS4231_ALT_FEATURE_1] & 0x02 ? 1 : 0;
+#if 0
+	printk("get valid: ALT = 0x%x, C3 = 0x%x, C4 = 0x%x, C5 = 0x%x, C6 = 0x%x, C8 = 0x%x\n",
+			snd_cs4231_in(chip, CS4231_ALT_FEATURE_1),
+			snd_cs4236_ctrl_in(chip, 3),
+			snd_cs4236_ctrl_in(chip, 4),
+			snd_cs4236_ctrl_in(chip, 5),
+			snd_cs4236_ctrl_in(chip, 6),
+			snd_cs4236_ctrl_in(chip, 8));
+#endif
 	spin_unlock_irqrestore(&chip->reg_lock, flags);
 	return 0;
 }
@@ -899,11 +847,13 @@ static int snd_cs4236_put_iec958_switch(snd_kcontrol_t * kcontrol, snd_ctl_elem_
 	down(&chip->mce_mutex);
 	snd_cs4231_mce_up(chip);
 	spin_lock_irqsave(&chip->reg_lock, flags);
-	val = (chip->image[CS4231_ALT_FEATURE_1] & ~0x02) | (enable << 1);
+	val = (chip->image[CS4231_ALT_FEATURE_1] & ~0x0e) | (0<<2) | (enable << 1);
 	change = val != chip->image[CS4231_ALT_FEATURE_1];
 	snd_cs4231_out(chip, CS4231_ALT_FEATURE_1, val);
-	val = (snd_cs4236_ctrl_in(chip, 4) & ~0x80) | (enable << 7);
-	change |= snd_cs4236_ctrl_in(chip, 4) != val;
+	val = snd_cs4236_ctrl_in(chip, 4) | 0xc0;
+	snd_cs4236_ctrl_out(chip, 4, val);
+	udelay(100);
+	val &= ~0x40;
 	snd_cs4236_ctrl_out(chip, 4, val);
 	spin_unlock_irqrestore(&chip->reg_lock, flags);
 	snd_cs4231_mce_down(chip);
@@ -924,13 +874,12 @@ static int snd_cs4236_put_iec958_switch(snd_kcontrol_t * kcontrol, snd_ctl_elem_
 #define CS4236_IEC958_CONTROLS (sizeof(snd_cs4236_iec958_controls)/sizeof(snd_kcontrol_new_t))
 
 static snd_kcontrol_new_t snd_cs4236_iec958_controls[] = {
-CS4236_IEC958_ENABLE("S/PDIF Output Enable", 0),
-CS4236_SINGLEC("S/PDIF Output Validity", 0, 4, 4, 1, 0),
-CS4236_SINGLEC("S/PDIF Output User", 0, 4, 5, 1, 0),
-CS4236_SINGLEC("S/PDIF Output CSBR", 0, 4, 6, 1, 0),
-CS4236_SINGLEC("S/PDIF Output 3D", 0, 3, 5, 1, 0),
-CS4236_SINGLEC("S/PDIF Output Channel Status Low", 0, 5, 1, 127, 0),
-CS4236_SINGLEC("S/PDIF Output Channel Status High", 0, 6, 0, 255, 0)
+CS4236_IEC958_ENABLE("IEC958 Output Enable", 0),
+CS4236_SINGLEC("IEC958 Output Validity", 0, 4, 4, 1, 0),
+CS4236_SINGLEC("IEC958 Output User", 0, 4, 5, 1, 0),
+CS4236_SINGLEC("IEC958 Output CSBR", 0, 4, 6, 1, 0),
+CS4236_SINGLEC("IEC958 Output Channel Status Low", 0, 5, 1, 127, 0),
+CS4236_SINGLEC("IEC958 Output Channel Status High", 0, 6, 0, 255, 0)
 };
 
 #define CS4236_3D_CONTROLS_CS4235 (sizeof(snd_cs4236_3d_controls_cs4235)/sizeof(snd_kcontrol_new_t))
@@ -947,7 +896,7 @@ CS4236_SINGLEC("3D Control - Switch", 0, 3, 7, 1, 0),
 CS4236_SINGLEC("3D Control - Space", 0, 2, 4, 15, 1),
 CS4236_SINGLEC("3D Control - Center", 0, 2, 0, 15, 1),
 CS4236_SINGLEC("3D Control - Mono", 0, 3, 6, 1, 0),
-CS4236_SINGLEC("3D Control - S/PDIF", 0, 3, 5, 1, 0)
+CS4236_SINGLEC("3D Control - IEC958", 0, 3, 5, 1, 0)
 };
 
 #define CS4236_3D_CONTROLS_CS4238 (sizeof(snd_cs4236_3d_controls_cs4238)/sizeof(snd_kcontrol_new_t))
@@ -956,13 +905,14 @@ static snd_kcontrol_new_t snd_cs4236_3d_controls_cs4238[] = {
 CS4236_SINGLEC("3D Control - Switch", 0, 3, 4, 1, 0),
 CS4236_SINGLEC("3D Control - Space", 0, 2, 4, 15, 1),
 CS4236_SINGLEC("3D Control - Volume", 0, 2, 0, 15, 1),
-CS4236_SINGLEC("3D Control - S/PDIF", 0, 3, 5, 1, 0)
+CS4236_SINGLEC("3D Control - IEC958", 0, 3, 5, 1, 0)
 };
 
 int snd_cs4236_mixer(cs4231_t *chip)
 {
 	snd_card_t *card;
-	int err, idx, count;
+	unsigned int idx, count;
+	int err;
 	snd_kcontrol_new_t *kcontrol;
 
 	snd_assert(chip != NULL && chip->card != NULL, return -EINVAL);
@@ -996,7 +946,7 @@ int snd_cs4236_mixer(cs4231_t *chip)
 		kcontrol = snd_cs4236_3d_controls_cs4238;
 		break;
 	default:
-		count = -1;
+		count = 0;
 		kcontrol = NULL;
 	}
 	for (idx = 0; idx < count; idx++, kcontrol++) {

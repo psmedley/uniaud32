@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  * --
  *
@@ -30,69 +30,50 @@
  *   Cleaned up and rewrote lowlevel routines.
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <asm/dma.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/sb.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>, Uros Bizjak <uros@kss-loka.si>");
+MODULE_DESCRIPTION("Routines for control of 8-bit SoundBlaster cards and clones");
+MODULE_LICENSE("GPL");
+
+#define chip_t sb_t
 
 #define SB8_CLOCK	1000000
 #define SB8_DEN(v)	((SB8_CLOCK + (v) / 2) / (v))
 #define SB8_RATE(v)	(SB8_CLOCK / SB8_DEN(v))
 
-#ifdef TARGET_OS2
 static ratnum_t clock = {
-    SB8_CLOCK,
-    1,
-    256,
-    1,
+	.num = SB8_CLOCK,
+	.den_min = 1,
+	.den_max = 256,
+	.den_step = 1,
 };
 
 static snd_pcm_hw_constraint_ratnums_t hw_constraints_clock = {
-    1,
-    &clock,
+	.nrats = 1,
+	.rats = &clock,
 };
 
 static ratnum_t stereo_clocks[] = {
     {
-        SB8_CLOCK,
-        SB8_DEN(22050),
-        SB8_DEN(22050),
-        1,
+		.num = SB8_CLOCK,
+		.den_min = SB8_DEN(22050),
+		.den_max = SB8_DEN(22050),
+		.den_step = 1,
     },
     {
-        SB8_CLOCK,
-        SB8_DEN(11025),
-        SB8_DEN(11025),
-        1,
+		.num = SB8_CLOCK,
+		.den_min = SB8_DEN(11025),
+		.den_max = SB8_DEN(11025),
+		.den_step = 1,
     }
 };
-#else
-static ratnum_t clock = {
-num: SB8_CLOCK,
-    den_min: 1,
-    den_max: 256,
-    den_step: 1,
-};
-
-static snd_pcm_hw_constraint_ratnums_t hw_constraints_clock = {
-nrats: 1,
-    rats: &clock,
-};
-
-static ratnum_t stereo_clocks[] = {
-    {
-    num: SB8_CLOCK,
-        den_min: SB8_DEN(22050),
-        den_max: SB8_DEN(22050),
-        den_step: 1,
-    },
-    {
-    num: SB8_CLOCK,
-        den_min: SB8_DEN(11025),
-        den_max: SB8_DEN(11025),
-        den_step: 1,
-    }
-};
-#endif
 
 static int snd_sb8_hw_constraint_rate_channels(snd_pcm_hw_params_t *params,
                                                snd_pcm_hw_rule_t *rule)
@@ -116,11 +97,7 @@ static int snd_sb8_hw_constraint_channels_rate(snd_pcm_hw_params_t *params,
 {
     snd_interval_t *r = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE);
     if (r->min > SB8_RATE(22050) || r->max <= SB8_RATE(11025)) {
-#ifdef TARGET_OS2
-        snd_interval_t t = { 1, 1 };
-#else
-        snd_interval_t t = { min: 1, max: 1 };
-#endif
+		snd_interval_t t = { .min = 1, .max = 1 };
         return snd_interval_refine(hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS), &t);
     }
     return 0;
@@ -171,7 +148,7 @@ static int snd_sb8_playback_prepare(snd_pcm_substream_t * substream)
         /* Soundblaster hardware programming reference guide, 3-23 */
         snd_sbdsp_command(chip, SB_DSP_DMA8_EXIT);
         runtime->dma_area[0] = 0x80;
-        snd_dma_program(chip->dma8, runtime->dma_area, 1, DMA_MODE_WRITE);
+		snd_dma_program(chip->dma8, runtime->dma_addr, 1, DMA_MODE_WRITE);
         /* force interrupt */
         chip->mode = SB_MODE_HALT;
         snd_sbdsp_command(chip, SB_DSP_OUTPUT);
@@ -198,7 +175,7 @@ static int snd_sb8_playback_prepare(snd_pcm_substream_t * substream)
         snd_sbdsp_command(chip, count >> 8);
     }
     spin_unlock_irqrestore(&chip->reg_lock, flags);
-    snd_dma_program(chip->dma8, runtime->dma_area,
+	snd_dma_program(chip->dma8, runtime->dma_addr,
                     size, DMA_MODE_WRITE | DMA_AUTOINIT);
     return 0;
 }
@@ -310,7 +287,7 @@ static int snd_sb8_capture_prepare(snd_pcm_substream_t * substream)
         snd_sbdsp_command(chip, count >> 8);
     }
     spin_unlock_irqrestore(&chip->reg_lock, flags);
-    snd_dma_program(chip->dma8, runtime->dma_area,
+	snd_dma_program(chip->dma8, runtime->dma_addr,
                     size, DMA_MODE_READ | DMA_AUTOINIT);
     return 0;
 }
@@ -388,7 +365,7 @@ static snd_pcm_uframes_t snd_sb8_playback_pointer(snd_pcm_substream_t * substrea
 
     if (chip->mode != SB_MODE_PLAYBACK_8)
         return 0;
-    ptr = chip->p_dma_size - snd_dma_residue(chip->dma8);
+	ptr = snd_dma_pointer(chip->dma8, chip->p_dma_size);
     return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -399,7 +376,7 @@ static snd_pcm_uframes_t snd_sb8_capture_pointer(snd_pcm_substream_t * substream
 
     if (chip->mode != SB_MODE_CAPTURE_8)
         return 0;
-    ptr = chip->c_dma_size - snd_dma_residue(chip->dma8);
+	ptr = snd_dma_pointer(chip->dma8, chip->c_dma_size);
     return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -407,83 +384,43 @@ static snd_pcm_uframes_t snd_sb8_capture_pointer(snd_pcm_substream_t * substream
 
 */
 
-#ifdef TARGET_OS2
 static snd_pcm_hardware_t snd_sb8_playback =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP_VALID),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_U8,
-                                 /*	rates:		  */	(SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000 |
+	.formats =		 SNDRV_PCM_FMTBIT_U8,
+	.rates =		(SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000 |
                                                                  SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_22050),
-                                                                 /*	rate_min:	  */	4000,
-                                                                 /*	rate_max:	  */	23000,
-                                                                 /*	channels_min:	  */	1,
-                                                                 /*	channels_max:	  */	1,
-                                                                 /*	buffer_bytes_max:  */	65536,
-                                                                 /*	period_bytes_min:  */	64,
-                                                                 /*	period_bytes_max:  */	65536,
-                                                                 /*	periods_min:	  */	1,
-                                                                 /*	periods_max:	  */	1024,
-                                                                 /*	fifo_size:	  */	0,
+	.rate_min =		4000,
+	.rate_max =		23000,
+	.channels_min =		1,
+	.channels_max =		1,
+	.buffer_bytes_max =	65536,
+	.period_bytes_min =	64,
+	.period_bytes_max =	65536,
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static snd_pcm_hardware_t snd_sb8_capture =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP_VALID),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_U8,
-                                 /*	rates:		  */	(SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000 |
+	.formats =		SNDRV_PCM_FMTBIT_U8,
+	.rates =		(SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000 |
                                                                  SNDRV_PCM_RATE_11025),
-                                                                 /*	rate_min:	  */	4000,
-                                                                 /*	rate_max:	  */	13000,
-                                                                 /*	channels_min:	  */	1,
-                                                                 /*	channels_max:	  */	1,
-                                                                 /*	buffer_bytes_max:  */	65536,
-                                                                 /*	period_bytes_min:  */	64,
-                                                                 /*	period_bytes_max:  */	65536,
-                                                                 /*	periods_min:	  */	1,
-                                                                 /*	periods_max:	  */	1024,
-                                                                 /*	fifo_size:	  */	0,
+	.rate_min =		4000,
+	.rate_max =		13000,
+	.channels_min =		1,
+	.channels_max =		1,
+	.buffer_bytes_max =	65536,
+	.period_bytes_min =	64,
+	.period_bytes_max =	65536,
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
-#else
-static snd_pcm_hardware_t snd_sb8_playback =
-{
-info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                         SNDRV_PCM_INFO_MMAP_VALID),
-    formats:		SNDRV_PCM_FMTBIT_U8,
-    rates:			(SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000 |
-                                 SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_22050),
-    rate_min:		4000,
-    rate_max:		23000,
-    channels_min:		1,
-    channels_max:		1,
-    buffer_bytes_max:	65536,
-    period_bytes_min:	64,
-    period_bytes_max:	65536,
-    periods_min:		1,
-    periods_max:		1024,
-    fifo_size:		0,
-};
-
-static snd_pcm_hardware_t snd_sb8_capture =
-{
-info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                         SNDRV_PCM_INFO_MMAP_VALID),
-    formats:		SNDRV_PCM_FMTBIT_U8,
-    rates:			(SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000 |
-                                 SNDRV_PCM_RATE_11025),
-    rate_min:		4000,
-    rate_max:		13000,
-    channels_min:		1,
-    channels_max:		1,
-    buffer_bytes_max:	65536,
-    period_bytes_min:	64,
-    period_bytes_max:	65536,
-    periods_min:		1,
-    periods_max:		1024,
-    fifo_size:		0,
-};
-#endif
 
 /*
  *
@@ -552,51 +489,27 @@ int snd_sb8_close(snd_pcm_substream_t *substream)
  *  Initialization part
  */
 
-#ifdef TARGET_OS2
 static snd_pcm_ops_t snd_sb8_playback_ops = {
-    snd_sb8_open,
-    snd_sb8_close,
-    snd_pcm_lib_ioctl,
-    snd_sb8_hw_params,
-    snd_sb8_hw_free,
-    snd_sb8_playback_prepare,
-    snd_sb8_playback_trigger,
-    snd_sb8_playback_pointer,0,0
+	.open =			snd_sb8_open,
+	.close =		snd_sb8_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =		snd_sb8_hw_params,
+	.hw_free =		snd_sb8_hw_free,
+	.prepare =		snd_sb8_playback_prepare,
+	.trigger =		snd_sb8_playback_trigger,
+	.pointer =		snd_sb8_playback_pointer,
 };
 
 static snd_pcm_ops_t snd_sb8_capture_ops = {
-    snd_sb8_open,
-    snd_sb8_close,
-    snd_pcm_lib_ioctl,
-    snd_sb8_hw_params,
-    snd_sb8_hw_free,
-    snd_sb8_capture_prepare,
-    snd_sb8_capture_trigger,
-    snd_sb8_capture_pointer,0,0
+	.open =			snd_sb8_open,
+	.close =		snd_sb8_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =		snd_sb8_hw_params,
+	.hw_free =		snd_sb8_hw_free,
+	.prepare =		snd_sb8_capture_prepare,
+	.trigger =		snd_sb8_capture_trigger,
+	.pointer =		snd_sb8_capture_pointer,
 };
-#else
-static snd_pcm_ops_t snd_sb8_playback_ops = {
-open:			snd_sb8_open,
-    close:			snd_sb8_close,
-    ioctl:			snd_pcm_lib_ioctl,
-    hw_params:		snd_sb8_hw_params,
-    hw_free:		snd_sb8_hw_free,
-    prepare:		snd_sb8_playback_prepare,
-    trigger:		snd_sb8_playback_trigger,
-    pointer:		snd_sb8_playback_pointer,
-};
-
-static snd_pcm_ops_t snd_sb8_capture_ops = {
-open:			snd_sb8_open,
-    close:			snd_sb8_close,
-    ioctl:			snd_pcm_lib_ioctl,
-    hw_params:		snd_sb8_hw_params,
-    hw_free:		snd_sb8_hw_free,
-    prepare:		snd_sb8_capture_prepare,
-    trigger:		snd_sb8_capture_trigger,
-    pointer:		snd_sb8_capture_pointer,
-};
-#endif
 
 static void snd_sb8dsp_pcm_free(snd_pcm_t *pcm)
 {
@@ -621,7 +534,7 @@ int snd_sb8dsp_pcm(sb_t *chip, int device, snd_pcm_t ** rpcm)
     snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &snd_sb8_playback_ops);
     snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &snd_sb8_capture_ops);
 
-    snd_pcm_lib_preallocate_pages_for_all(pcm, 64*1024, 64*1024, GFP_KERNEL|GFP_DMA);
+	snd_pcm_lib_preallocate_isa_pages_for_all(pcm, 64*1024, 64*1024);
 
     if (rpcm)
         *rpcm = pcm;

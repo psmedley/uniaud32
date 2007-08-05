@@ -14,7 +14,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  * --
  *
@@ -24,6 +24,9 @@
  */
 
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/sb.h>
 
 /*
@@ -223,35 +226,19 @@ static void snd_sb8dsp_midi_output_trigger(snd_rawmidi_substream_t * substream, 
 
 */
 
-#ifdef TARGET_OS2
 static snd_rawmidi_ops_t snd_sb8dsp_midi_output =
 {
-    snd_sb8dsp_midi_output_open,
-    snd_sb8dsp_midi_output_close,
-    snd_sb8dsp_midi_output_trigger,0
+	.open =		snd_sb8dsp_midi_output_open,
+	.close =	snd_sb8dsp_midi_output_close,
+	.trigger =	snd_sb8dsp_midi_output_trigger,
 };
 
 static snd_rawmidi_ops_t snd_sb8dsp_midi_input =
 {
-    snd_sb8dsp_midi_input_open,
-    snd_sb8dsp_midi_input_close,
-    snd_sb8dsp_midi_input_trigger,0
+	.open =		snd_sb8dsp_midi_input_open,
+	.close =	snd_sb8dsp_midi_input_close,
+	.trigger =	snd_sb8dsp_midi_input_trigger,
 };
-#else
-static snd_rawmidi_ops_t snd_sb8dsp_midi_output =
-{
-open:           snd_sb8dsp_midi_output_open,
-    close:          snd_sb8dsp_midi_output_close,
-    trigger:	snd_sb8dsp_midi_output_trigger,
-};
-
-static snd_rawmidi_ops_t snd_sb8dsp_midi_input =
-{
-open:           snd_sb8dsp_midi_input_open,
-    close:          snd_sb8dsp_midi_input_close,
-    trigger:        snd_sb8dsp_midi_input_trigger,
-};
-#endif
 
 int snd_sb8dsp_midi(sb_t *chip, int device, snd_rawmidi_t ** rrawmidi)
 {
