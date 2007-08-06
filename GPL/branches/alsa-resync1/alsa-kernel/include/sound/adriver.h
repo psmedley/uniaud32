@@ -101,6 +101,10 @@
 #ifndef mk_kdev
 #define mk_kdev(maj, min) MKDEV(maj, min)
 #endif
+#ifndef DECLARE_BITMAP
+#define DECLARE_BITMAP(name,bits) \
+	unsigned long name[((bits)+BITS_PER_LONG-1)/BITS_PER_LONG]
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 3)
 #define need_resched() (current->need_resched)
@@ -134,7 +138,11 @@ static inline struct proc_dir_entry *PDE(const struct inode *inode)
 #define isapnp_dev pci_dev
 #define isapnp_card pci_bus
 #else
+#ifdef TARGET_OS2
 #include "isapnp.h"
+#else /* !TARGET_OS2 */
+#include <linux/isapnp.h>
+#endif /* TARGET_OS2 */
 #endif
 #undef __ISAPNP__
 #define __ISAPNP__
@@ -148,23 +156,11 @@ static inline struct proc_dir_entry *PDE(const struct inode *inode)
 #define MODULE_LICENSE(license)
 #endif
 
-#if 0
-static inline mm_segment_t snd_enter_user(void)
-{
-	mm_segment_t fs = get_fs();
-	set_fs(get_ds());
-	return fs;
-}
-static inline void snd_leave_user(mm_segment_t fs)
-{
-	set_fs(fs);
-}
-
-static inline void dec_mod_count(struct module *module)
-{
-	if (module)
-		__MOD_DEC_USE_COUNT(module);
-}
+/* no vsnprintf yet? */
+/* FIXME: the version number is not sure.. at least it exists already on 2.4.10 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 10) && !TARGET_OS2
+#define snprintf(buf,size,fmt,args...) sprintf(buf,fmt,##args)
+#define vsnprintf(buf,size,fmt,args) vsprintf(buf,fmt,args)
 #endif
 
 #if defined(__alpha__) && LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 14)
