@@ -216,8 +216,8 @@ WORD32 DiscardableInit(RPInit __far* rp)
     GetParms(args);
 
     if(fVerbose) {
-        WriteString(szCopyRight3, sizeof(szCopyRight3)-1);
         WriteString(szALSA, sizeof(szALSA)-1);
+        WriteString(szCopyRight3, sizeof(szCopyRight3)-1);
         WriteString(szCopyRight2, sizeof(szCopyRight2)-1);
     }
 
