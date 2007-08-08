@@ -88,9 +88,9 @@ $(LNKFILE): $(MAKEFILE)
     @%write $^@ option alignment=16
     @%write $^@ option map=$(WMAPNAME)
 !if "$(KEE)" == "1"
-    @%write $^@ option description '@$#$(BLDLVL_VENDOR):$(BLDLVL_REVISION)$#@$#$#1$#$# $(BLDLVL_DATETIME)      $(BLDLVL_MACHINE)::::$(BLDLVL_FILEVER)::@@$(BLDLVL_PRODUCT) (KEE)'
+    @%write $^@ option description '$(%BUILDLEVEL) (KEE)'
 !else
-    @%write $^@ option description '@$#$(BLDLVL_VENDOR):$(BLDLVL_REVISION)$#@$#$#1$#$# $(BLDLVL_DATETIME)      $(BLDLVL_MACHINE)::::$(BLDLVL_FILEVER)::@@$(BLDLVL_PRODUCT) (W4)'
+    @%write $^@ option description '$(%BUILDLEVEL) (W4)'
 !endif
     @%write $^@ name $(OBJDIR)\$(TARGET).sys
     @for %f in ($(FILES)) do @%append $^@ file $(OBJDIR)\%f
@@ -110,9 +110,9 @@ $(LNKFILE): $(MAKEFILE)
 
 $(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
 !if "$(KEE)" == "1"
-     @%write $(DEFFILE) description '@$#$(BLDLVL_VENDOR):$(BLDLVL_REVISION)$#@$#$#1$#$# $(BLDLVL_DATETIME)      $(BLDLVL_MACHINE)::::$(BLDLVL_FILEVER)::@@$(BLDLVL_PRODUCT) (KEE)'
+     @%write $(DEFFILE) description '$(%BUILDLEVEL) (KEE)'
 !else
-     @%write $(DEFFILE) description '@$#$(BLDLVL_VENDOR):$(BLDLVL_REVISION)$#@$#$#1$#$# $(BLDLVL_DATETIME)      $(BLDLVL_MACHINE)::::$(BLDLVL_FILEVER)::@@$(BLDLVL_PRODUCT) (W4)'
+     @%write $(DEFFILE) description '$(%BUILDLEVEL) (W4)'
 !endif
 
      $(LINK) @$(LNKFILE)
@@ -120,7 +120,7 @@ $(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
      copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)
 !if "$(KEE)" == "1"
 #     copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)\$(TARGET)kee.sys
-	     
+         
       copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN_)\$(TARGET)kee.sys
 !else
 #     copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)\$(TARGET)w4.sys

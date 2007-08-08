@@ -213,7 +213,7 @@ ULONG StratIOCtl(RP __far* _rp)
                 break;
             }
             pData = (ULONG *) linData;
-            (*pData) = UNIAUD_VERSION;
+            (*pData) = RM_VERSION;
 
         } break;
 

@@ -47,11 +47,11 @@ const char ERR_ERROR[]   = "ERROR: ";
 const char ERR_LOCK[]    = "Unable to lock 32 bit data & code segments, exiting...\r\r\n";
 const char ERR_INIT[]    = "Initialization failed\r\r\n";
 const char ERR_NAMES[]    = "Query names failed\r\r\n";
-const char szALSA[]      = "\r\n\r\nOS/2 Universal Audio Core Driver v"ALSA_VERSION"\r\n";
+const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"\r\nBased on ALSA "ALSA_VERSION"\r\n";
 
 const char szCopyRight1[]= "Copyright 2000-2002 InnoTek Systemberatung GmbH\r\n";
-const char szCopyRight2[]= "Copyright 2000-2002 The ALSA Project\r\n\r\n";
-const char szCopyRight3[]= "Copyright 2005-2006 Netlabs http://www.netlabs.org\r\n";
+const char szCopyRight2[]= "Copyright 2000-2007 The ALSA Project\r\n\r\n";
+const char szCopyRight3[]= "Copyright 2005-2007 Netlabs http://www.netlabs.org\r\n";
 //const char szCopyRight3[]= "Maintained by http://os2.kiev.ua/en/uniaud.php\r\n\r\n";
 
 const char szCodeStartEnd[] = "Code 0x%0x - 0x%0x\r\n\r\n";
@@ -216,9 +216,8 @@ WORD32 DiscardableInit(RPInit __far* rp)
     GetParms(args);
 
     if(fVerbose) {
-        WriteString(szALSA, sizeof(szALSA)-1);
-        WriteString(szCopyRight1, sizeof(szCopyRight1)-1);
         WriteString(szCopyRight3, sizeof(szCopyRight3)-1);
+        WriteString(szALSA, sizeof(szALSA)-1);
         WriteString(szCopyRight2, sizeof(szCopyRight2)-1);
     }
 
