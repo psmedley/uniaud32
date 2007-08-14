@@ -1,1 +1,0 @@
-diff.exe -Nuwr e:\dev\uss\from_z\ua2\GPL\alsa-kernel\pci\ymfpci\%1 E:\DEV\alsa\alsa-kernel\pci\ymfpci\%1 >%1.diff
