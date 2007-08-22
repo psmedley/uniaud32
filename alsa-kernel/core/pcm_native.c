@@ -20,13 +20,21 @@
  */
 
 #include <sound/driver.h>
+#include <linux/version.h>
+#include <linux/mm.h>
+#include <linux/file.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#ifndef TARGET_OS2 // TODO: Using OpenWatcom uio.h conflicts with asound.h ?
+#include <linux/uio.h>
+#endif /* !TARGET_OS2 */
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/timer.h>
 #include <sound/minors.h>
-#include <linux/file.h>
 
 /*
  *  Compatibility

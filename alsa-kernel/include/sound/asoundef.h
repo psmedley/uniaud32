@@ -1,3 +1,6 @@
+#ifndef __SOUND_ASOUNDEF_H
+#define __SOUND_ASOUNDEF_H
+
 /*
  *  Advanced Linux Sound Architecture - ALSA - Driver
  *  Copyright (c) 1994-2000 by Jaroslav Kysela <perex@suse.cz>
@@ -15,12 +18,9 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
-
-#ifndef __ASOUNDEF_H
-#define __ASOUNDEF_H
 
 /****************************************************************************
  *                                                                          *
@@ -155,7 +155,7 @@
 #define MIDI_CTL_MSB_MODWHEEL         	0x01
 #define MIDI_CTL_MSB_BREATH           	0x02
 #define MIDI_CTL_MSB_FOOT             	0x04
-#define MIDI_CTL_MSB_PORTNAMENTO_TIME 	0x05
+#define MIDI_CTL_MSB_PORTAMENTO_TIME 	0x05
 #define MIDI_CTL_MSB_DATA_ENTRY		0x06
 #define MIDI_CTL_MSB_MAIN_VOLUME      	0x07
 #define MIDI_CTL_MSB_BALANCE          	0x08
@@ -171,7 +171,7 @@
 #define MIDI_CTL_LSB_MODWHEEL        	0x21
 #define MIDI_CTL_LSB_BREATH           	0x22
 #define MIDI_CTL_LSB_FOOT             	0x24
-#define MIDI_CTL_LSB_PORTNAMENTO_TIME 	0x25
+#define MIDI_CTL_LSB_PORTAMENTO_TIME 	0x25
 #define MIDI_CTL_LSB_DATA_ENTRY		0x26
 #define MIDI_CTL_LSB_MAIN_VOLUME      	0x27
 #define MIDI_CTL_LSB_BALANCE          	0x28
@@ -203,7 +203,7 @@
 #define MIDI_CTL_GENERAL_PURPOSE6     	0x51
 #define MIDI_CTL_GENERAL_PURPOSE7     	0x52
 #define MIDI_CTL_GENERAL_PURPOSE8     	0x53
-#define MIDI_CTL_PORNAMENTO_CONTROL	0x54
+#define MIDI_CTL_PORTAMENTO_CONTROL	0x54
 #define MIDI_CTL_E1_REVERB_DEPTH	0x5b
 #define MIDI_CTL_E2_TREMOLO_DEPTH	0x5c
 #define MIDI_CTL_E3_CHORUS_DEPTH	0x5d
@@ -224,4 +224,4 @@
 #define MIDI_CTL_MONO1			0x7e
 #define MIDI_CTL_MONO2			0x7f
 
-#endif				/* __ASOUNDEF_H */
+#endif /* __SOUND_ASOUNDEF_H */

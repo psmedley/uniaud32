@@ -1,5 +1,5 @@
-#ifndef __TEA6330T_H
-#define __TEA6330T_H
+#ifndef __SOUND_TEA6330T_H
+#define __SOUND_TEA6330T_H
 
 /*
  *  Routines for control of TEA6330T circuit.
@@ -17,7 +17,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  *
  */
@@ -33,10 +33,9 @@ typedef struct {
 	unsigned char mleft, mright;
 	unsigned char bass, treble;
 	unsigned char max_bass, max_treble;
-	spinlock_t reg_lock;
 } tea6330t_t;
 
 extern int snd_tea6330t_detect(snd_i2c_bus_t *bus, int equalizer);
 extern int snd_tea6330t_update_mixer(snd_card_t * card, snd_i2c_bus_t * bus, int equalizer, int fader);
 
-#endif				/* __TEA6330T_H */
+#endif /* __SOUND_TEA6330T_H */
