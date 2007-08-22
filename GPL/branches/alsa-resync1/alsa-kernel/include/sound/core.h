@@ -197,8 +197,8 @@ int snd_card_pci_resume(struct pci_dev *dev);
 #else
 #define snd_power_lock(card)		do { (void)(card); } while (0)
 #define snd_power_unlock(card)		do { (void)(card); } while (0)
-#define snd_power_wait(card)		do { (void)(card); } while (0)
-#define snd_power_get_state(card) SNDRV_CTL_POWER_D0
+static inline int snd_power_wait(snd_card_t *card, unsigned int state, struct file *file) { return 0; }
+#define snd_power_get_state(card)	SNDRV_CTL_POWER_D0
 #define snd_power_change_state(card, state)	do { (void)(card); } while (0)
 #define snd_card_set_pm_callback(card,suspend,resume,data) -EINVAL
 #define snd_card_set_isa_pm_callback(card,suspend,resume,data) -EINVAL
@@ -499,12 +499,6 @@ void *snd_compat_kcalloc(size_t n, size_t size, int gfp_flags);
 #define __builtin_expect(x, expected_value) (x)
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
-
-typedef u32 /*__bitwise*/ pm_message_t;
-
-#ifndef __devexit_p
-#define __devexit_p(x) x
-#endif
 
 #define printk_ratelimit()      1
 

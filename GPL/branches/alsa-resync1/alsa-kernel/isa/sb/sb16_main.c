@@ -393,7 +393,7 @@ static int snd_sb16_capture_trigger(snd_pcm_substream_t * substream,
     return result;
 }
 
-void snd_sb16dsp_interrupt(int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t snd_sb16dsp_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
     sb_t *chip = dev_id;
     unsigned char status;
@@ -438,6 +438,7 @@ void snd_sb16dsp_interrupt(int irq, void *dev_id, struct pt_regs *regs)
         snd_sb_ack_16bit(chip);
         spin_unlock(&chip->reg_lock);
     }
+	return IRQ_HANDLED;
 }
 
 /*

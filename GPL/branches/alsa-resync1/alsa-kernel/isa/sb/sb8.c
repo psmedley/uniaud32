@@ -70,14 +70,14 @@ struct snd_sb8 {
 
 static snd_card_t *snd_sb8_cards[SNDRV_CARDS] = SNDRV_DEFAULT_PTR;
 
-static void snd_sb8_interrupt(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t snd_sb8_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
-	sb_t *chip = snd_magic_cast(sb_t, dev_id, return);
+	sb_t *chip = snd_magic_cast(sb_t, dev_id, return IRQ_NONE);
 
     if (chip->open & SB_OPEN_PCM) {
-        snd_sb8dsp_interrupt(chip);
+		return snd_sb8dsp_interrupt(chip);
     } else {
-        snd_sb8dsp_midi_interrupt(chip);
+		return snd_sb8dsp_midi_interrupt(chip);
     }
 }
 
@@ -143,13 +143,13 @@ static int __init snd_sb8_probe(int dev)
         if ((err = snd_opl3_create(card, chip->port + 8, 0,
                                    OPL3_HW_AUTO, 1,
                                    &opl3)) < 0) {
-			printk(KERN_ERR "sb8: no OPL device at 0x%lx\n", chip->port + 8);
+			snd_printk(KERN_ERR "sb8: no OPL device at 0x%lx\n", chip->port + 8);
         }
     } else {
         if ((err = snd_opl3_create(card, chip->port, chip->port + 2,
                                    OPL3_HW_AUTO, 1,
                                    &opl3)) < 0) {
-			printk(KERN_ERR "sb8: no OPL device at 0x%lx-0x%lx\n",
+			snd_printk(KERN_ERR "sb8: no OPL device at 0x%lx-0x%lx\n",
                        chip->port, chip->port + 2);
         }
     }
@@ -210,7 +210,7 @@ static int __init alsa_card_sb8_init(void)
     cards += snd_legacy_auto_probe(possible_ports, snd_card_sb8_legacy_auto_probe);
     if (!cards) {
 #ifdef MODULE
-		printk(KERN_ERR "Sound Blaster soundcard not found or device busy\n");
+		snd_printk(KERN_ERR "Sound Blaster soundcard not found or device busy\n");
 #endif
         return -ENODEV;
     }

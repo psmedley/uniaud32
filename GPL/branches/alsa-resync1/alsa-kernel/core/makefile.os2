@@ -31,7 +31,7 @@ KEE=1
 #   List of source files
 #
 #===================================================================
-FILE1    = sound.obj init.obj memory.obj memory_wrapper.obj memalloc.obj sgbuf.obj
+FILE1    = sound.obj init.obj memory.obj memalloc.obj sgbuf.obj
 FILE2    = control.obj device.obj misc.obj wrappers.obj 
 #FILE3    = sound_oss.obj info_oss.obj isadma.obj
 FILE4    = pcm.obj pcm_native.obj pcm_lib.obj pcm_misc.obj pcm_timer.obj pcm_memory.obj

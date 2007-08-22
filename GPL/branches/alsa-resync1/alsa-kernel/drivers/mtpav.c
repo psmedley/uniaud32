@@ -102,7 +102,7 @@ MODULE_PARM_SYNTAX(hwports, SNDRV_ENABLED ",allows:{{1,8}},dialog:list");
 /*
  *      defines
  */
-//#define USE_FAKE_MTP //       dont actually read/write to MTP device (for debugging without an actual unit) (does not work yet)
+//#define USE_FAKE_MTP //       don't actually read/write to MTP device (for debugging without an actual unit) (does not work yet)
 
 // parallel port usage masks
 #define SIGS_BYTE 0x08
@@ -586,14 +586,15 @@ static void snd_mtpav_read_bytes(mtpav_t * mcrd)
 	} while (sbyt & SIGS_BYTE);
 }
 
-static void snd_mtpav_irqh(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t snd_mtpav_irqh(int irq, void *dev_id, struct pt_regs *regs)
 {
-	mtpav_t *mcard = snd_magic_cast(mtpav_t, dev_id, return);
+	mtpav_t *mcard = snd_magic_cast(mtpav_t, dev_id, return IRQ_NONE);
 
 	//printk("irqh()\n");
 	spin_lock(&mcard->spinlock);
 	snd_mtpav_read_bytes(mcard);
 	spin_unlock(&mcard->spinlock);
+	return IRQ_HANDLED;
 }
 
 /*
@@ -764,7 +765,7 @@ static int __init alsa_card_mtpav_init(void)
 	if (err < 0)
 		goto __error;
 
-	err = snd_card_register(mtp_card->card);	// dont snd_card_register until AFTER all cards reources done!
+	err = snd_card_register(mtp_card->card);	// don't snd_card_register until AFTER all cards reources done!
 
 	//printk("snd_card_register returned %d\n", err);
 	if (err < 0)

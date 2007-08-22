@@ -22,6 +22,8 @@
  *
  */
 
+#include <linux/version.h>
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 2, 3)
 #error "This driver requires Linux 2.2.3 or higher."
 #endif
@@ -212,6 +214,16 @@ unsigned long snd_compat_msleep_interruptible(unsigned int msecs);
 #endif
 #endif
 
+/* pm_message_t type */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11)
+#include <linux/pm.h>
+#ifndef PMSG_FREEZE
+typedef u32 /* __bitwise */ pm_message_t;
+#define PMSG_FREEZE	3
+#define PMSG_SUSPEND	3
+#define PMSG_ON		0
+#endif
+#endif
 #ifndef PCI_D0
 #define PCI_D0     0
 #define PCI_D1     1

@@ -112,8 +112,9 @@ static int __init snd_sgalaxy_sbdsp_command(unsigned long port, unsigned char va
 	return 0;
 }
 
-static void snd_sgalaxy_dummy_interrupt(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t snd_sgalaxy_dummy_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
+	return IRQ_NONE;
 }
 
 static int __init snd_sgalaxy_setup_wss(unsigned long port, int irq, int dma)
@@ -306,7 +307,7 @@ static int __init alsa_card_sgalaxy_init(void)
 	}
 	if (!cards) {
 #ifdef MODULE
-		printk(KERN_ERR "Sound Galaxy soundcard not found or device busy\n");
+		snd_printk(KERN_ERR "Sound Galaxy soundcard not found or device busy\n");
 #endif
 		return -ENODEV;
 	}

@@ -1367,8 +1367,8 @@ static int snd_ymfpci_spdif_stream_put(snd_kcontrol_t * kcontrol,
 static struct snd_kcontrol_new snd_ymfpci_spdif_stream __devinitdata =
 {
 	.access =	SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_INACTIVE,
-	.iface =		SNDRV_CTL_ELEM_IFACE_PCM,
-	.name =           SNDRV_CTL_NAME_IEC958("",PLAYBACK,PCM_STREAM),
+	.iface =	SNDRV_CTL_ELEM_IFACE_PCM,
+	.name =         SNDRV_CTL_NAME_IEC958("",PLAYBACK,PCM_STREAM),
 	.info =		snd_ymfpci_spdif_stream_info,
 	.get =		snd_ymfpci_spdif_stream_get,
 	.put =		snd_ymfpci_spdif_stream_put
