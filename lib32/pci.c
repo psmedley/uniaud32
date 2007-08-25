@@ -901,6 +901,8 @@ OSSRET OSS32_APMResume()
 
     dprintf(("OSS32_APMResume"));
 
+    fSuspended = FALSE;
+
     for(i=0;i<MAX_PCI_DEVICES;i++)
     {
         if(pci_devices[i].devfn)
@@ -908,12 +910,9 @@ OSSRET OSS32_APMResume()
             driver = pci_devices[i].pcidriver;
             if(driver && driver->resume) {
                 driver->resume(&pci_devices[i]);
-                //		fSuspended = FALSE;
             }
         }
     }
-
-    fSuspended = FALSE;
 
     return OSSERR_SUCCESS;
 }
