@@ -20,13 +20,22 @@
  */
 
 #include <sound/driver.h>
+#include <linux/version.h>
+#include <linux/init.h>
+#include <linux/vmalloc.h>
+#include <linux/time.h>
+#ifndef TARGET_OS2 /* Introduced in version 0.9.0beta12, not present */
+#include <linux/smp_lock.h>
+#endif /* TARGET_OS2 */
+#include <sound/core.h>
 #include <sound/minors.h>
 #include <sound/info.h>
 #include <sound/version.h>
-#include <stdarg.h>
-#ifdef CONFIG_DEVFS_FS
+#include <linux/proc_fs.h>
+#ifndef TARGET_OS2
 #include <linux/devfs_fs_kernel.h>
-#endif
+#endif /* !TARGET_OS2 */
+#include <stdarg.h>
 
 /*
  *
@@ -41,7 +50,7 @@ int snd_info_check_reserved_words(const char *str)
         "memdebug",
         "detect",
         "devices",
-        "oss",
+		"oss",
         "cards",
         "timers",
         "synth",
@@ -95,7 +104,7 @@ int snd_iprintf(snd_info_buffer_t * buffer, char *fmt,...)
     if (buffer->stop || buffer->error)
         return 0;
     va_start(args, fmt);
-    res = vsprintf(sbuffer, fmt, args);
+	res = vsnprintf(sbuffer, sizeof(sbuffer), fmt, args);
     va_end(args);
     if (buffer->size + res >= buffer->len) {
         buffer->stop = 1;
@@ -163,16 +172,16 @@ static loff_t snd_info_entry_llseek(struct file *file, loff_t offset, int orig)
             ret = entry->c.ops->llseek(entry,
                                        data->file_private_data,
                                        file, offset, orig);
-            goto out;
-        }
-        break;
-    }
-    ret = -ENXIO;
+			goto out;
+		}
+		break;
+	}
+	ret = -ENXIO;
 out:
 #ifndef TARGET_OS2
-    unlock_kernel();
+	unlock_kernel();
 #endif
-    return ret;
+	return ret;
 }
 
 static ssize_t snd_info_entry_read(struct file *file, char *buffer,
@@ -269,16 +278,13 @@ static int snd_info_entry_open(struct inode *inode, struct file *file)
     int mode, err;
 
     down(&info_mutex);
-    p = (struct proc_dir_entry *) inode->u.generic_ip;
+	p = PDE(inode);
     entry = p == NULL ? NULL : (snd_info_entry_t *)p->data;
-    if (entry == NULL) {
+	if (entry == NULL || entry->disconnected) {
         up(&info_mutex);
         return -ENODEV;
     }
-#ifndef LINUX_2_3
-    MOD_INC_USE_COUNT;
-#endif
-    if (entry->module && !try_inc_mod_count(entry->module)) {
+	if (!try_module_get(entry->module)) {
         err = -EFAULT;
         goto __error1;
     }
@@ -383,11 +389,8 @@ static int snd_info_entry_open(struct inode *inode, struct file *file)
     return 0;
 
 __error:
-    dec_mod_count(entry->module);
+	module_put(entry->module);
 __error1:
-#ifndef LINUX_2_3
-    MOD_DEC_USE_COUNT;
-#endif
     up(&info_mutex);
     return err;
 }
@@ -412,7 +415,7 @@ static int snd_info_entry_release(struct inode *inode, struct file *file)
             if (entry->c.text.write) {
                 entry->c.text.write(entry, data->wbuffer);
                 if (data->wbuffer->error) {
-                    snd_printk("data write error to %s (%i)\n",
+					snd_printk(KERN_WARNING "data write error to %s (%i)\n",
                                entry->name,
                                data->wbuffer->error);
                 }
@@ -500,102 +503,22 @@ static int snd_info_entry_mmap(struct file *file, struct vm_area_struct *vma)
     return -ENXIO;
 }
 
-#ifdef TARGET_OS2
 static struct file_operations snd_info_entry_operations =
 {
-#ifdef LINUX_2_3
-.owner=		THIS_MODULE,
-#endif
-	.llseek=	snd_info_entry_llseek,
-	.read=		snd_info_entry_read,
-	.write=		snd_info_entry_write,
-	.poll=		snd_info_entry_poll,
-	.ioctl=		snd_info_entry_ioctl,
-	.mmap=		snd_info_entry_mmap,
-//	.open=		snd_info_entry_open,
-	.release=	snd_info_entry_release,
+#ifndef TARGET_OS2
+	.owner =	THIS_MODULE,
+#endif /* !TARGET_OS2 */
+	.llseek =	snd_info_entry_llseek,
+	.read =		snd_info_entry_read,
+	.write =	snd_info_entry_write,
+	.poll =		snd_info_entry_poll,
+	.ioctl =	snd_info_entry_ioctl,
+	.mmap =		snd_info_entry_mmap,
+#ifndef TARGET_OS2
+	.open =		snd_info_entry_open,
+#endif /* !TARGET_OS2 */
+	.release =	snd_info_entry_release,
 };
-#else
-static struct file_operations snd_info_entry_operations =
-{
-#ifdef LINUX_2_3
-owner:		THIS_MODULE,
-#endif
-    llseek:		snd_info_entry_llseek,
-    read:		snd_info_entry_read,
-    write:		snd_info_entry_write,
-    poll:		snd_info_entry_poll,
-    ioctl:		snd_info_entry_ioctl,
-    mmap:		snd_info_entry_mmap,
-    open:		snd_info_entry_open,
-    release:	snd_info_entry_release,
-};
-
-#ifndef LINUX_2_3
-static struct inode_operations snd_info_entry_inode_operations =
-{
-    &snd_info_entry_operations,	/* default sound info directory file-ops */
-};
-
-static struct inode_operations snd_info_device_inode_operations =
-{
-    &snd_fops,		/* default sound info directory file-ops */
-};
-#endif	/* LINUX_2_3 */
-
-static int snd_info_card_readlink(struct dentry *dentry,
-                                  char *buffer, int buflen)
-{
-    char *s = ((struct proc_dir_entry *) dentry->d_inode->u.generic_ip)->data;
-#ifdef LINUX_2_3
-    return vfs_readlink(dentry, buffer, buflen, s);
-#else
-    int len;
-
-    if (s == NULL)
-        return -EIO;
-    len = strlen(s);
-    if (len > buflen)
-        len = buflen;
-    if (copy_to_user(buffer, s, len))
-        return -EFAULT;
-    return len;
-#endif
-}
-
-#ifdef LINUX_2_3
-static int snd_info_card_followlink(struct dentry *dentry,
-                                    struct nameidata *nd)
-{
-    char *s = ((struct proc_dir_entry *) dentry->d_inode->u.generic_ip)->data;
-    return vfs_follow_link(nd, s);
-}
-#else
-static struct dentry *snd_info_card_followlink(struct dentry *dentry,
-                                               struct dentry *base,
-                                               unsigned int follow)
-{
-    char *s = ((struct proc_dir_entry *) dentry->d_inode->u.generic_ip)->data;
-    return lookup_dentry(s, base, follow);
-}
-#endif
-
-#ifndef LINUX_2_3
-static struct file_operations snd_info_card_link_operations =
-{
-    NULL
-};
-#endif
-
-struct inode_operations snd_info_card_link_inode_operations =
-{
-#ifndef LINUX_2_3
-default_file_ops:	&snd_info_card_link_operations,
-#endif
-    readlink:		snd_info_card_readlink,
-    follow_link:		snd_info_card_followlink,
-};
-#endif //TARGET_OS2
 
 /**
  * snd_create_proc_entry - create a procfs entry
@@ -653,13 +576,9 @@ int __init snd_info_init(void)
     }
 #endif
     snd_info_version_init();
-#ifdef CONFIG_SND_DEBUG_MEMORY
     snd_memory_info_init();
-#endif
     snd_minor_info_init();
-#ifdef CONFIG_SND_OSSEMUL
     snd_minor_info_oss_init();
-#endif
     snd_card_info_init();
     return 0;
 }
@@ -667,18 +586,18 @@ int __init snd_info_init(void)
 int __exit snd_info_done(void)
 {
     snd_card_info_done();
-#ifdef CONFIG_SND_OSSEMUL
     snd_minor_info_oss_done();
-#endif
     snd_minor_info_done();
-#ifdef CONFIG_SND_DEBUG_MEMORY
     snd_memory_info_done();
-#endif
     snd_info_version_done();
     if (snd_proc_root) {
-#ifdef CONFIG_SND_SEQUENCER
+#if defined(CONFIG_SND_SEQUENCER) || defined(CONFIG_SND_SEQUENCER_MODULE)
         if (snd_seq_root)
             snd_info_unregister(snd_seq_root);
+#endif
+#ifdef CONFIG_SND_OSSEMUL
+		if (snd_oss_root)
+			snd_info_unregister(snd_oss_root);
 #endif
         snd_remove_proc_entry(&proc_root, snd_proc_root);
     }
@@ -849,7 +768,7 @@ static snd_info_entry_t *snd_info_create_entry(const char *name)
         return NULL;
     entry->name = snd_kmalloc_strdup(name, GFP_KERNEL);
     if (entry->name == NULL) {
-        kfree(entry);
+		snd_magic_kfree(entry);
         return NULL;
     }
     entry->mode = S_IFREG | S_IRUGO;
@@ -949,15 +868,14 @@ static int snd_info_dev_unregister_entry(snd_device_t *device)
  *
  * Returns zero if successful, or a negative error code on failure.
  */
-//#ifndef TARGET_OS2
 int snd_card_proc_new(snd_card_t *card, const char *name,
                       snd_info_entry_t **entryp)
 {
     static snd_device_ops_t ops = {
-        /*.dev_free = */snd_info_dev_free_entry,
-        /*.dev_register =*/ snd_info_dev_register_entry,
-        /*.dev_disconnect = */snd_info_dev_disconnect_entry,
-        /*.dev_unregister = */snd_info_dev_unregister_entry
+	.dev_free = snd_info_dev_free_entry,
+	.dev_register =	snd_info_dev_register_entry,
+	.dev_disconnect = snd_info_dev_disconnect_entry,
+	.dev_unregister = snd_info_dev_unregister_entry
     };
     snd_info_entry_t *entry;
     int err;
@@ -973,7 +891,6 @@ int snd_card_proc_new(snd_card_t *card, const char *name,
         *entryp = entry;
     return 0;
 }
-//#endif
 
 /**
  * snd_info_free_entry - release the info entry
@@ -1012,18 +929,10 @@ int snd_info_register(snd_info_entry_t * entry)
         up(&info_mutex);
         return -ENOMEM;
     }
-#ifdef LINUX_2_3
     p->owner = entry->module;
-#endif
-
 #ifndef TARGET_OS2
-    if (!S_ISDIR(entry->mode)) {
-#ifdef LINUX_2_3
+	if (!S_ISDIR(entry->mode))
         p->proc_fops = &snd_info_entry_operations;
-#else
-        p->ops = &snd_info_entry_inode_operations;
-#endif
-    }
 #endif
     p->size = entry->size;
     p->data = entry;
@@ -1065,9 +974,9 @@ static void snd_info_version_read(snd_info_entry_t *entry, snd_info_buffer_t * b
     static char *kernel_version = UTS_RELEASE;
 
     snd_iprintf(buffer,
-                "Advanced Linux Sound Architecture Driver Version " CONFIG_SND_VERSION ".\n"
+		    "Advanced Linux Sound Architecture Driver Version " CONFIG_SND_VERSION CONFIG_SND_DATE ".\n"
                 "Compiled on " __DATE__ " for kernel %s"
-#ifdef __SMP__
+#ifdef CONFIG_SMP
                 " (SMP)"
 #endif
 #ifdef MODVERSIONS

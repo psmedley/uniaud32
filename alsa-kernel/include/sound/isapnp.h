@@ -15,12 +15,14 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #ifndef LINUX_ISAPNP_H
 #define LINUX_ISAPNP_H
+
+#define ISAPNP_ALSA_LOCAL 1
 
 /*
  *  Configuration registers (TODO: change by specification)

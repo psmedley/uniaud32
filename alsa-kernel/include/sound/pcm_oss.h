@@ -1,5 +1,5 @@
-#ifndef __PCM_OSS_H
-#define __PCM_OSS_H
+#ifndef __SOUND_PCM_OSS_H
+#define __SOUND_PCM_OSS_H
 
 /*
  *  Digital Audio (PCM) - OSS compatibility abstract layer
@@ -18,12 +18,11 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#include "pcm_plugin.h"
-
+typedef struct _snd_pcm_plugin snd_pcm_plugin_t;
 typedef struct _snd_pcm_oss_setup snd_pcm_oss_setup_t;
 
 struct _snd_pcm_oss_setup {
@@ -78,6 +77,7 @@ typedef struct _snd_pcm_oss_stream {
 
 typedef struct _snd_pcm_oss {
 	int reg;
+	unsigned int reg_mask;
 } snd_pcm_oss_t;
 
-#endif /* __PCM_OSS_H */
+#endif /* __SOUND_PCM_OSS_H */

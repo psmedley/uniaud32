@@ -21,6 +21,9 @@
  */
 
 #include <sound/driver.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
@@ -66,6 +69,8 @@ void snd_pcm_playback_silence(snd_pcm_substream_t *substream, snd_pcm_uframes_t 
         frames = runtime->silence_threshold - noise_dist;
         if (frames > runtime->silence_size)
             frames = runtime->silence_size;
+		else
+			frames = runtime->silence_threshold;
     } else {
         if (new_hw_ptr == ULONG_MAX) {	/* initialization */
             snd_pcm_sframes_t avail = snd_pcm_playback_hw_avail(runtime);
@@ -896,7 +901,7 @@ int snd_pcm_hw_rule_add(snd_pcm_runtime_t *runtime, unsigned int cond,
     va_start(args, dep);
 
 #ifdef DEBUG
-            dprintf(("snd_pcm_hw_rule_add. func() = %x, var = %d",func, var));
+    //        dprintf(("snd_pcm_hw_rule_add. func() = %x, var = %d",func, var));
 #endif
     if (constrs->rules_num >= constrs->rules_all) {
         snd_pcm_hw_rule_t *new;
@@ -2688,4 +2693,8 @@ EXPORT_SYMBOL(snd_pcm_lib_preallocate_pci_pages_for_all);
 EXPORT_SYMBOL(snd_pcm_lib_preallocate_sg_pages);
 EXPORT_SYMBOL(snd_pcm_lib_preallocate_sg_pages_for_all);
 EXPORT_SYMBOL(snd_pcm_sgbuf_ops_page);
+#endif
+#ifdef CONFIG_SBUS
+EXPORT_SYMBOL(snd_pcm_lib_preallocate_sbus_pages);
+EXPORT_SYMBOL(snd_pcm_lib_preallocate_sbus_pages_for_all);
 #endif

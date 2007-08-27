@@ -15,11 +15,13 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #include <sound/info.h>
 
@@ -73,8 +75,8 @@ static long long snd_gf1_mem_proc_llseek(snd_info_entry_t *entry,
 	case 1:	/* SEEK_CUR */
 		file->f_pos += offset;
 		break;
-	case 2: /* SEEK_END */
-		file->f_pos = priv->size - offset;
+	case 2: /* SEEK_END, offset is negative */
+		file->f_pos = priv->size + offset;
 		break;
 	default:
 		return -EINVAL;
@@ -90,18 +92,10 @@ static void snd_gf1_mem_proc_free(snd_info_entry_t *entry)
 	snd_magic_kfree(priv);
 }
 
-#ifdef TARGET_OS2
 static struct snd_info_entry_ops snd_gf1_mem_proc_ops = {
-        0,0,
-	snd_gf1_mem_proc_dump,0,
-	snd_gf1_mem_proc_llseek,0,0,0
+	.read = snd_gf1_mem_proc_dump,
+	.llseek = snd_gf1_mem_proc_llseek,
 };
-#else
-static struct snd_info_entry_ops snd_gf1_mem_proc_ops = {
-	read: snd_gf1_mem_proc_dump,
-	llseek: snd_gf1_mem_proc_llseek,
-};
-#endif
 
 int snd_gf1_mem_proc_init(snd_gus_card_t * gus)
 {

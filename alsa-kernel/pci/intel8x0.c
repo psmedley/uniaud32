@@ -3271,11 +3271,9 @@ static struct pci_device_id snd_intel8x0_joystick_ids[] = {
 };
 
 static struct pci_driver joystick_driver = {
-    0, 0, 0,
-    /*	name:     */ "Intel ICH Joystick",
-    /*	id_table: */ snd_intel8x0_joystick_ids,
-    /*	probe:    */ snd_intel8x0_joystick_probe,
-    0,0,0
+	.name = "Intel ICH Joystick",
+	.id_table = snd_intel8x0_joystick_ids,
+	.probe = snd_intel8x0_joystick_probe,
 };
 static int have_joystick;
 #endif

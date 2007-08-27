@@ -18,9 +18,14 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
+#include <sound/driver.h>
+#include <linux/wait.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/emu8000.h>
 #include <sound/emu8000_reg.h>
 
@@ -33,5 +38,8 @@ void snd_emu8000_sample_reset(snd_emux_t *rec);
 
 /* emu8000_callback.c */
 void snd_emu8000_ops_setup(emu8000_t *emu);
+
+/* emu8000_pcm.c */
+int snd_emu8000_pcm_new(snd_card_t *card, emu8000_t *emu, int index);
 
 #endif	/* __EMU8000_LOCAL_H */
