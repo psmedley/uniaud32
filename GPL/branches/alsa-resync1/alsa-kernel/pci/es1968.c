@@ -666,6 +666,11 @@ inline static u16 maestro_read(es1968_t *chip, u16 reg)
     return result;
 }
 
+#define big_mdelay(msec) do {\
+	set_current_state(TASK_UNINTERRUPTIBLE);\
+	schedule_timeout(((msec) * HZ + 999) / 1000);\
+} while (0)
+	
 /* Wait for the codec bus to be free */
 static int snd_es1968_ac97_wait(es1968_t *chip)
 {

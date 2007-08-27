@@ -50,6 +50,20 @@
 
 #include <linux/module.h>
 
+#ifdef CONFIG_HAVE_OLD_REQUEST_MODULE
+#include <linux/kmod.h>
+#undef request_module
+void snd_compat_request_module(const char *name, ...);
+#define request_module(name, args...) snd_compat_request_module(name, ##args)
+#endif
+
+#ifndef TARGET_OS2
+#include <linux/compiler.h>
+#endif /* !TARGET_OS2 */
+#ifndef __user
+#define __user
+#endif
+
 #ifdef CONFIG_PCI
 #include <linux/pci.h>
 #endif
@@ -70,6 +84,7 @@
 #ifdef LINUX_2_4__donotuse
 #include <linux/init.h>
 #include <linux/pm.h>
+#include <asm/page.h>
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 3)
 #define pci_set_dma_mask(pci, mask) pci->dma_mask = mask
 #endif
@@ -108,7 +123,8 @@
 	unsigned long name[((bits)+BITS_PER_LONG-1)/BITS_PER_LONG]
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 3)
+#include <linux/sched.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 3) && !defined(need_resched)
 #define need_resched() (current->need_resched)
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 4) && !defined TARGET_OS2
@@ -135,19 +151,24 @@ static inline struct proc_dir_entry *PDE(const struct inode *inode)
 #endif
 
 #if defined(CONFIG_ISAPNP) || (defined(CONFIG_ISAPNP_MODULE) && defined(MODULE))
-#if (defined(CONFIG_ISAPNP_KERNEL) && defined(ALSA_BUILD)) || (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 3, 30) && !defined(ALSA_BUILD))
-#include <linux/isapnp.h>
-#define isapnp_dev pci_dev
-#define isapnp_card pci_bus
-#else
 #ifdef TARGET_OS2
 #include "isapnp.h"
 #else /* !TARGET_OS2 */
 #include <linux/isapnp.h>
-#endif /* TARGET_OS2 */
+#endif /* !TARGET_OS2 */
+#ifndef CONFIG_PNP
+#define CONFIG_PNP
+#endif
+#if (defined(CONFIG_ISAPNP_KERNEL) && defined(ALSA_BUILD)) || (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 3, 30) && !defined(ALSA_BUILD))
+#define isapnp_dev pci_dev
+#define isapnp_card pci_bus
 #endif
 #undef __ISAPNP__
 #define __ISAPNP__
+#else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 0)
+#undef CONFIG_PNP
+#endif
 #endif
 
 #if !defined(CONFIG_ISA) && defined(CONFIG_SND_ISA)
@@ -158,11 +179,19 @@ static inline struct proc_dir_entry *PDE(const struct inode *inode)
 #define MODULE_LICENSE(license)
 #endif
 
-/* no vsnprintf yet? */
-/* FIXME: the version number is not sure.. at least it exists already on 2.4.10 */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 10) && !TARGET_OS2
-#define snprintf(buf,size,fmt,args...) sprintf(buf,fmt,##args)
-#define vsnprintf(buf,size,fmt,args) vsprintf(buf,fmt,args)
+#if !defined CONFIG_HAVE_STRLCPY && !defined TARGET_OS2
+size_t snd_compat_strlcpy(char *dest, const char *src, size_t size);
+#define strlcpy(dest, src, size) snd_compat_strlcpy(dest, src, size)
+size_t snd_compat_strlcat(char *dest, const char *src, size_t size);
+#define strlcat(dest, src, size) snd_compat_strlcat(dest, src, size)
+#endif
+
+#if !defined CONFIG_HAVE_SNPRINTF && !defined TARGET_OS2
+#include <stdarg.h>
+int snd_compat_snprintf(char * buf, size_t size, const char * fmt, ...);
+int snd_compat_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
+#define snprintf(buf,size,fmt,args...) snd_compat_snprintf(buf,size,fmt,##args)
+#define vsnprintf(buf,size,fmt,args) snd_compat_vsnprintf(buf,size,fmt,args)
 #endif
 
 #if defined(__alpha__) && LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 14)

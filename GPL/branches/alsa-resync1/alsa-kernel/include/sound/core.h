@@ -24,8 +24,9 @@
 
 #include <linux/sched.h>		/* wake_up() */
 #include <asm/semaphore.h>
-#ifndef TARGET_OS2 //TODO: implement linux/rwsem.h
+#ifndef TARGET_OS2 //TODO: implement linux/rwsem.h, workqueue.h
 #include <linux/rwsem.h>		/* struct rw_semaphore */
+#include <linux/workqueue.h>		/* struct workqueue_struct */
 #endif /* !TARGET_OS2 */
 #include <sound/typedefs.h>
 
@@ -212,7 +213,6 @@ struct _snd_minor {
 	int number;			/* minor number */
 	int device;			/* device number */
 	const char *comment;		/* for /proc/asound/devices */
-	snd_info_entry_t *dev;		/* for /proc/asound/dev */
         struct file_operations *f_ops;	/* file operations */
         char name[1];
 };
@@ -240,12 +240,13 @@ int snd_minor_info_done(void);
 /* sound_oss.c */
 
 #ifdef CONFIG_SND_OSSEMUL
-
 int snd_minor_info_oss_init(void);
 int snd_minor_info_oss_done(void);
-
 int snd_oss_init_module(void);
-
+#else
+#define snd_minor_info_oss_init() /*NOP*/
+#define snd_minor_info_oss_done() /*NOP*/
+#define snd_oss_init_module() /*NOP*/
 #endif
 
 /* memory.c */
@@ -268,6 +269,10 @@ char *snd_hidden_kstrdup(const char *s, int flags);
 #define vfree(obj) snd_hidden_vfree(obj)
 #define kstrdup(s, flags)  snd_hidden_kstrdup(s, flags)
 #else
+#define snd_memory_init() /*NOP*/
+#define snd_memory_done() /*NOP*/
+#define snd_memory_info_init() /*NOP*/
+#define snd_memory_info_done() /*NOP*/
 #define kmalloc_nocheck(size, flags) kmalloc(size, flags)
 #define vmalloc_nocheck(size) vmalloc(size)
 #define kfree_nocheck(obj) kfree(obj)

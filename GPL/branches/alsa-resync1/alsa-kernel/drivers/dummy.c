@@ -21,11 +21,9 @@
 #include <sound/driver.h>
 #include <linux/version.h>
 #include <linux/init.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 0)
+#ifndef TARGET_OS2 //TODO: Implement linux/jiffies.h
 #include <linux/jiffies.h>
-#else
-#include <linux/sched.h>
-#endif
+#endif /* !TARGET_OS2 */
 #include <linux/slab.h>
 #include <linux/time.h>
 #include <linux/wait.h>
@@ -59,8 +57,8 @@ MODULE_DEVICES("{{ALSA,Dummy soundcard}}");
 #if 0 /* ICE1712 emulation */
 #define MAX_BUFFER_SIZE		(256 * 1024)
 #define USE_FORMATS		SNDRV_PCM_FMTBIT_S32_LE
-#define USE_CHANNELS_MIN	12
-#define USE_CHANNELS_MAX	12
+#define USE_CHANNELS_MIN	10
+#define USE_CHANNELS_MAX	10
 #define USE_PERIODS_MIN		1
 #define USE_PERIODS_MAX		1024
 #endif

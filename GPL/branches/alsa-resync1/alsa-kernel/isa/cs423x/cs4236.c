@@ -308,6 +308,9 @@ static int __devinit snd_card_cs4236_pnp(int dev, struct snd_card_cs4236 *acard,
 	struct pnp_resource_table * cfg = kmalloc(sizeof(struct pnp_resource_table), GFP_KERNEL);
 	int err;
 
+	if (!cfg)
+		return -ENOMEM;
+
 	acard->wss = pnp_request_card_device(card, id->devs[0].id, NULL);
 	if (acard->wss == NULL) {
 		kfree(cfg);
@@ -392,7 +395,6 @@ static int __devinit snd_card_cs4236_pnp(int dev, struct snd_card_cs4236 *acard,
 			snd_printk(KERN_ERR IDENT " MPU401 PnP manual resources are invalid, using auto config\n");
 		err = pnp_activate_dev(pdev);
 		if (err < 0) {
-			kfree(cfg);
 			printk(KERN_ERR IDENT " MPU401 PnP configure failed for WSS (out of resources?)\n");
 			mpu_port[dev] = SNDRV_AUTO_PORT;
 			mpu_irq[dev] = SNDRV_AUTO_IRQ;
@@ -409,7 +411,7 @@ static int __devinit snd_card_cs4236_pnp(int dev, struct snd_card_cs4236 *acard,
 	kfree(cfg);
 	return 0;
 }
-#endif
+#endif /* CONFIG_PNP */
 
 static void snd_card_cs4236_free(snd_card_t *card)
 {

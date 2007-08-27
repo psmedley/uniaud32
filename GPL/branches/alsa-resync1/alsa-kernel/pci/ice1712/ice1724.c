@@ -42,6 +42,7 @@
 /* lowlevel routines */
 #include "amp.h"
 #include "revo.h"
+#include "aureon.h"
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("ICEnsemble ICE1724 (Envy24HT)");
@@ -50,6 +51,7 @@ MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{"
 	       REVO_DEVICE_DESC
 	       AMP_AUDIO2000_DEVICE_DESC
+	       AUREON_DEVICE_DESC
 		"{VIA,VT1724},"
 		"{ICEnsemble,Generic ICE1724},"
 		"{ICEnsemble,Generic Envy24HT}}");
@@ -88,12 +90,6 @@ static int PRO_RATE_RESET = 1;
 static unsigned int PRO_RATE_DEFAULT = 44100;
 
 /*
- *  AK4xxx stuff
- */
-
-#include "ak4xxx.c"
-
-/*
  *  Basic I/O
  */
  
@@ -122,8 +118,9 @@ static unsigned char snd_vt1724_ac97_ready(ice1712_t *ice)
 			continue;
 		if (!(old_cmd & VT1724_AC97_READY))
 			continue;
-		return 0;
+		return old_cmd;
 	}
+	snd_printd(KERN_ERR "snd_vt1724_ac97_ready: timeout\n");
 	return old_cmd;
 }
 
@@ -133,6 +130,7 @@ static int snd_vt1724_ac97_wait_bit(ice1712_t *ice, unsigned char bit)
 	for (tm = 0; tm < 0x10000; tm++)
 		if ((inb(ICEMT1724(ice, AC97_CMD)) & bit) == 0)
 			return 0;
+	snd_printd(KERN_ERR "snd_vt1724_ac97_wait_bit: timeout\n");
 	return -EIO;
 }
 
@@ -144,9 +142,10 @@ static void snd_vt1724_ac97_write(ac97_t *ac97,
 	unsigned char old_cmd;
 
 	old_cmd = snd_vt1724_ac97_ready(ice);
+	old_cmd &= ~VT1724_AC97_ID_MASK;
+	old_cmd |= ac97->num;
 	outb(reg, ICEMT1724(ice, AC97_INDEX));
 	outw(val, ICEMT1724(ice, AC97_DATA));
-	old_cmd &= ~(VT1724_AC97_PBK_VSR | VT1724_AC97_CAP_VSR);
 	outb(old_cmd | VT1724_AC97_WRITE, ICEMT1724(ice, AC97_CMD));
 	snd_vt1724_ac97_wait_bit(ice, VT1724_AC97_WRITE);
 }
@@ -157,6 +156,8 @@ static unsigned short snd_vt1724_ac97_read(ac97_t *ac97, unsigned short reg)
 	unsigned char old_cmd;
 
 	old_cmd = snd_vt1724_ac97_ready(ice);
+	old_cmd &= ~VT1724_AC97_ID_MASK;
+	old_cmd |= ac97->num;
 	outb(reg, ICEMT1724(ice, AC97_INDEX));
 	outb(old_cmd | VT1724_AC97_READ, ICEMT1724(ice, AC97_CMD));
 	if (snd_vt1724_ac97_wait_bit(ice, VT1724_AC97_READ) < 0)
@@ -173,6 +174,7 @@ static unsigned short snd_vt1724_ac97_read(ac97_t *ac97, unsigned short reg)
 static void snd_vt1724_set_gpio_dir(ice1712_t *ice, unsigned int data)
 {
 	outl(data, ICEREG1724(ice, GPIO_DIRECTION));
+	inw(ICEREG1724(ice, GPIO_DIRECTION)); /* dummy read for pci-posting */
 }
 
 /* set the gpio mask (0 = writable) */
@@ -180,12 +182,14 @@ static void snd_vt1724_set_gpio_mask(ice1712_t *ice, unsigned int data)
 {
 	outw(data, ICEREG1724(ice, GPIO_WRITE_MASK));
 	outb((data >> 16) & 0xff, ICEREG1724(ice, GPIO_WRITE_MASK_22));
+	inw(ICEREG1724(ice, GPIO_WRITE_MASK)); /* dummy read for pci-posting */
 }
 
 static void snd_vt1724_set_gpio_data(ice1712_t *ice, unsigned int data)
 {
 	outw(data, ICEREG1724(ice, GPIO_DATA));
 	outb(data >> 16, ICEREG1724(ice, GPIO_DATA_22));
+	inw(ICEREG1724(ice, GPIO_DATA)); /* dummy read for pci-posting */
 }
 
 static unsigned int snd_vt1724_get_gpio_data(ice1712_t *ice)
@@ -416,14 +420,16 @@ static void snd_vt1724_set_pro_rate(ice1712_t *ice, unsigned int rate, int force
 			val &= ~VT1724_MT_I2S_MCLK_128X; /* 256x MCLK */
 		if (val != old) {
 			outb(val, ICEMT1724(ice, I2S_FORMAT));
-			/* FIXME: is this revo only? */
-			/* assert PRST# to converters; MT05 bit 7 */
-			outb(inb(ICEMT1724(ice, AC97_CMD)) | 0x80, ICEMT1724(ice, AC97_CMD));
-			spin_unlock_irqrestore(&ice->reg_lock, flags);
-			mdelay(5);
-			spin_lock_irqsave(&ice->reg_lock, flags);
-			/* deassert PRST# */
-			outb(inb(ICEMT1724(ice, AC97_CMD)) & ~0x80, ICEMT1724(ice, AC97_CMD));
+			if (ice->eeprom.subvendor == VT1724_SUBDEVICE_REVOLUTION71) {
+				/* FIXME: is this revo only? */
+				/* assert PRST# to converters; MT05 bit 7 */
+				outb(inb(ICEMT1724(ice, AC97_CMD)) | 0x80, ICEMT1724(ice, AC97_CMD));
+				spin_unlock_irqrestore(&ice->reg_lock, flags);
+				mdelay(5);
+				spin_lock_irqsave(&ice->reg_lock, flags);
+				/* deassert PRST# */
+				outb(inb(ICEMT1724(ice, AC97_CMD)) & ~0x80, ICEMT1724(ice, AC97_CMD));
+			}
 		}
 	}
 	spin_unlock_irqrestore(&ice->reg_lock, flags);
@@ -884,6 +890,11 @@ static int __devinit snd_vt1724_ac97_mixer(ice1712_t * ice)
 
 	if (! (ice->eeprom.data[ICE_EEP2_ACLINK] & VT1724_CFG_PRO_I2S)) {
 		ac97_t ac97;
+		/* cold reset */
+		outb(inb(ICEMT1724(ice, AC97_CMD)) | 0x80, ICEMT1724(ice, AC97_CMD));
+		mdelay(5); /* FIXME */
+		outb(inb(ICEMT1724(ice, AC97_CMD)) & ~0x80, ICEMT1724(ice, AC97_CMD));
+
 		memset(&ac97, 0, sizeof(ac97));
 		ac97.write = snd_vt1724_ac97_write;
 		ac97.read = snd_vt1724_ac97_read;
@@ -1540,6 +1551,19 @@ static snd_kcontrol_new_t snd_vt1724_mixer_pro_peak __devinitdata = {
  *
  */
 
+static struct snd_ice1712_card_info no_matched __devinitdata;
+
+static struct snd_ice1712_card_info *card_tables[] __devinitdata = {
+	snd_vt1724_revo_cards,
+	snd_vt1724_amp_cards, 
+	snd_vt1724_aureon_cards,
+	0,
+};
+
+
+/*
+ */
+
 static unsigned char __devinit snd_vt1724_read_i2c(ice1712_t *ice,
 						 unsigned char dev,
 						 unsigned char addr)
@@ -1555,7 +1579,8 @@ static unsigned char __devinit snd_vt1724_read_i2c(ice1712_t *ice,
 static int __devinit snd_vt1724_read_eeprom(ice1712_t *ice)
 {
 	int dev = 0xa0;		/* EEPROM device address */
-	unsigned int i;
+	unsigned int i, size;
+	struct snd_ice1712_card_info **tbl, *c;
 
 	if ((inb(ICEREG1724(ice, I2C_CTRL)) & VT1724_I2C_EEPROM) == 0) {
 		snd_printk("ICE1724 has not detected EEPROM\n");
@@ -1565,8 +1590,27 @@ static int __devinit snd_vt1724_read_eeprom(ice1712_t *ice)
 				(snd_vt1724_read_i2c(ice, dev, 0x01) << 8) | 
 				(snd_vt1724_read_i2c(ice, dev, 0x02) << 16) | 
 				(snd_vt1724_read_i2c(ice, dev, 0x03) << 24);
+
+	/* if the EEPROM is given by the driver, use it */
+	for (tbl = card_tables; *tbl; tbl++) {
+		for (c = *tbl; c->subvendor; c++) {
+			if (c->subvendor == ice->eeprom.subvendor) {
+				if (! c->eeprom_size || ! c->eeprom_data)
+					goto found;
+				snd_printdd("using the defined eeprom..\n");
+				ice->eeprom.version = 2;
+				ice->eeprom.size = c->eeprom_size + 6;
+				memcpy(ice->eeprom.data, c->eeprom_data, c->eeprom_size);
+				goto read_skipped;
+			}
+		}
+	}
+
+ found:
 	ice->eeprom.size = snd_vt1724_read_i2c(ice, dev, 0x04);
-	if (ice->eeprom.size > 32) {
+	if (ice->eeprom.size < 6)
+		ice->eeprom.size = 32;
+	else if (ice->eeprom.size > 32) {
 		snd_printk("invalid EEPROM (size = %i)\n", ice->eeprom.size);
 		return -EIO;
 	}
@@ -1575,9 +1619,11 @@ static int __devinit snd_vt1724_read_eeprom(ice1712_t *ice)
 		snd_printk("invalid EEPROM version %i\n", ice->eeprom.version);
 		// return -EIO;
 	}
-	for (i = 0; i < ice->eeprom.size; i++)
+	size = ice->eeprom.size - 6;
+	for (i = 0; i < size; i++)
 		ice->eeprom.data[i] = snd_vt1724_read_i2c(ice, dev, i + 6);
 
+ read_skipped:
 	ice->eeprom.gpiomask = eeprom_triple(ice, ICE_EEP2_GPIO_MASK);
 	ice->eeprom.gpiostate = eeprom_triple(ice, ICE_EEP2_GPIO_STATE);
 	ice->eeprom.gpiodir = eeprom_triple(ice, ICE_EEP2_GPIO_DIR);
@@ -1802,15 +1848,6 @@ static int __devinit snd_vt1724_create(snd_card_t * card,
  * Registration
  *
  */
-
-static struct snd_ice1712_card_info no_matched __devinitdata;
-
-static struct snd_ice1712_card_info *card_tables[] __devinitdata = {
-	snd_vt1724_revo_cards,
-	snd_vt1724_amp_cards, 
-	0,
-};
-
 
 static int __devinit snd_vt1724_probe(struct pci_dev *pci,
 				      const struct pci_device_id *pci_id)

@@ -69,6 +69,8 @@ void snd_pcm_playback_silence(snd_pcm_substream_t *substream, snd_pcm_uframes_t 
         frames = runtime->silence_threshold - noise_dist;
         if (frames > runtime->silence_size)
             frames = runtime->silence_size;
+		else
+			frames = runtime->silence_threshold;
     } else {
         if (new_hw_ptr == ULONG_MAX) {	/* initialization */
             snd_pcm_sframes_t avail = snd_pcm_playback_hw_avail(runtime);

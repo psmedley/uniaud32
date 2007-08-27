@@ -26,6 +26,9 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
+#ifndef TARGET_OS2 //TODO: Implement linux/gameport.h
+#include <linux/gameport.h>
+#endif /* TARGET_OS2 */
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/pcm.h>
@@ -35,9 +38,6 @@
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-#ifndef LINUX_2_2
-#include <linux/gameport.h>
-#endif
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Cirrus Logic CS4281");
@@ -1246,7 +1246,7 @@ static void __devinit snd_cs4281_proc_init(cs4281_t * chip)
  * joystick support
  */
 
-#ifndef LINUX_2_2
+#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
 
 typedef struct snd_cs4281_gameport {
     struct gameport info;
@@ -1341,7 +1341,7 @@ static void __devinit snd_cs4281_gameport(cs4281_t *chip)
 
 static int snd_cs4281_free(cs4281_t *chip)
 {
-#ifndef LINUX_2_2
+#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
     if (chip->gameport) {
         gameport_unregister_port(&chip->gameport->info);
         kfree(chip->gameport);
@@ -1729,7 +1729,7 @@ static int snd_cs4281_midi_output_open(snd_rawmidi_substream_t * substream)
     spin_lock_irq(&chip->reg_lock);
     chip->uartm |= CS4281_MODE_OUTPUT;
     chip->midcr |= BA0_MIDCR_TXE;
-    chip->midi_input = substream;
+	chip->midi_output = substream;
     if (!(chip->uartm & CS4281_MODE_INPUT)) {
         snd_cs4281_midi_reset(chip);
     } else {
@@ -1912,6 +1912,7 @@ static irqreturn_t snd_cs4281_interrupt(int irq, void *dev_id, struct pt_regs *r
 
     /* EOI to the PCI part... reenables interrupts */
     snd_cs4281_pokeBA0(chip, BA0_HICR, BA0_HICR_EOI);
+
     return IRQ_HANDLED;
 
 }
@@ -1990,9 +1991,9 @@ static int __devinit snd_cs4281_probe(struct pci_dev *pci,
         snd_card_free(card);
         return err;
     }
-#ifndef LINUX_2_2
+#ifndef TARGET_OS2
     snd_cs4281_gameport(chip);
-#endif
+#endif /* !TARGET_OS2 */
     strcpy(card->driver, "CS4281");
     strcpy(card->shortname, "Cirrus Logic CS4281");
     sprintf(card->longname, "%s at 0x%lx, irq %d",

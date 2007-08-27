@@ -118,12 +118,6 @@ static int PRO_RATE_RESET = 1;
 static unsigned int PRO_RATE_DEFAULT = 44100;
 
 /*
- *  AK4xxx stuff
- */
-
-#include "ak4xxx.c"
-
-/*
  *  Basic I/O
  */
  
@@ -304,11 +298,13 @@ static snd_kcontrol_new_t snd_ice1712_mixer_digmix_route_ac97 __devinitdata = {
 static void snd_ice1712_set_gpio_dir(ice1712_t *ice, unsigned int data)
 {
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DIRECTION, data);
+	inb(ICEREG(ice, DATA)); /* dummy read for pci-posting */
 }
 
 static void snd_ice1712_set_gpio_mask(ice1712_t *ice, unsigned int data)
 {
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_WRITE_MASK, data);
+	inb(ICEREG(ice, DATA)); /* dummy read for pci-posting */
 }
 
 static unsigned int snd_ice1712_get_gpio_data(ice1712_t *ice)
@@ -319,6 +315,7 @@ static unsigned int snd_ice1712_get_gpio_data(ice1712_t *ice)
 static void snd_ice1712_set_gpio_data(ice1712_t *ice, unsigned int val)
 {
 	snd_ice1712_write(ice, ICE1712_IREG_GPIO_DATA, val);
+	inb(ICEREG(ice, DATA)); /* dummy read for pci-posting */
 }
 
 
@@ -666,6 +663,8 @@ static snd_pcm_uframes_t snd_ice1712_playback_pointer(snd_pcm_substream_t * subs
 	if (!(snd_ice1712_read(ice, ICE1712_IREG_PBK_CTRL) & 1))
 		return 0;
 	ptr = runtime->buffer_size - inw(ice->ddma_port + 4);
+	if (ptr == runtime->buffer_size)
+		ptr = 0;
 	return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -683,6 +682,8 @@ static snd_pcm_uframes_t snd_ice1712_playback_ds_pointer(snd_pcm_substream_t * s
 		addr = ICE1712_DSC_ADDR0;
 	ptr = snd_ice1712_ds_read(ice, substream->number * 2, addr) -
 		ice->playback_con_virt_addr[substream->number];
+	if (ptr == substream->runtime->buffer_size)
+		ptr = 0;
 	return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -694,6 +695,8 @@ static snd_pcm_uframes_t snd_ice1712_capture_pointer(snd_pcm_substream_t * subst
 	if (!(snd_ice1712_read(ice, ICE1712_IREG_CAP_CTRL) & 1))
 		return 0;
 	ptr = inl(ICEREG(ice, CONCAP_ADDR)) - ice->capture_con_virt_addr;
+	if (ptr == substream->runtime->buffer_size)
+		ptr = 0;
 	return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -1104,6 +1107,8 @@ static snd_pcm_uframes_t snd_ice1712_playback_pro_pointer(snd_pcm_substream_t * 
 	if (!(inl(ICEMT(ice, PLAYBACK_CONTROL)) & ICE1712_PLAYBACK_START))
 		return 0;
 	ptr = ice->playback_pro_size - (inw(ICEMT(ice, PLAYBACK_SIZE)) << 2);
+	if (ptr == substream->runtime->buffer_size)
+		ptr = 0;
 	return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -1115,6 +1120,8 @@ static snd_pcm_uframes_t snd_ice1712_capture_pro_pointer(snd_pcm_substream_t * s
 	if (!(inl(ICEMT(ice, PLAYBACK_CONTROL)) & ICE1712_CAPTURE_START_SHADOW))
 		return 0;
 	ptr = ice->capture_pro_size - (inw(ICEMT(ice, CAPTURE_SIZE)) << 2);
+	if (ptr == substream->runtime->buffer_size)
+		ptr = 0;
 	return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -2151,7 +2158,7 @@ static unsigned char __devinit snd_ice1712_read_i2c(ice1712_t *ice,
 static int __devinit snd_ice1712_read_eeprom(ice1712_t *ice)
 {
 	int dev = 0xa0;		/* EEPROM device address */
-	unsigned int i;
+	unsigned int i, size;
 
 	if ((inb(ICEREG(ice, I2C_CTRL)) & ICE1712_I2C_EEPROM) == 0) {
 		snd_printk("ICE1712 has not detected EEPROM\n");
@@ -2162,7 +2169,9 @@ static int __devinit snd_ice1712_read_eeprom(ice1712_t *ice)
 				(snd_ice1712_read_i2c(ice, dev, 0x02) << 16) | 
 				(snd_ice1712_read_i2c(ice, dev, 0x03) << 24);
 	ice->eeprom.size = snd_ice1712_read_i2c(ice, dev, 0x04);
-	if (ice->eeprom.size > 32) {
+	if (ice->eeprom.size < 6)
+		ice->eeprom.size = 32; /* FIXME: any cards without the correct size? */
+	else if (ice->eeprom.size > 32) {
 		snd_printk("invalid EEPROM (size = %i)\n", ice->eeprom.size);
 		return -EIO;
 	}
@@ -2171,7 +2180,8 @@ static int __devinit snd_ice1712_read_eeprom(ice1712_t *ice)
 		snd_printk("invalid EEPROM version %i\n", ice->eeprom.version);
 		/* return -EIO; */
 	}
-	for (i = 0; i < ice->eeprom.size; i++)
+	size = ice->eeprom.size - 6;
+	for (i = 0; i < size; i++)
 		ice->eeprom.data[i] = snd_ice1712_read_i2c(ice, dev, i + 6);
 
 	ice->eeprom.gpiomask = ice->eeprom.data[ICE_EEP1_GPIO_MASK];

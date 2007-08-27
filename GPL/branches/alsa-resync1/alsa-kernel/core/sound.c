@@ -163,21 +163,13 @@ static int snd_open(struct inode *inode, struct file *file)
     return err;
 }
 
-#ifdef TARGET_OS2
 struct file_operations snd_fops =
 {
-    0,0,0,0,0,0,0,
-    snd_open,0,0,0,0,0,0,0
-};
-#else
-struct file_operations snd_fops =
-{
-#ifndef LINUX_2_2
+#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
-#endif
+#endif /* !TARGET_OS2 */
 	.open =		snd_open
 };
-#endif
 
 static int snd_kernel_minor(int type, struct snd_card * card, int dev)
 {

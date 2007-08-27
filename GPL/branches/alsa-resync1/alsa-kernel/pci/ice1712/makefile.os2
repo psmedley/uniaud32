@@ -14,7 +14,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #===================================================================
 FILE1    = ak4xxx.obj delta.obj ews.obj hoontech.obj ice1712.obj
 FILE2    = ice1724.obj revo.obj
-FILE3    = 
+FILE3    = aureon.obj
 FILE4    = 
 FILE5    = 
 FILE6    = 

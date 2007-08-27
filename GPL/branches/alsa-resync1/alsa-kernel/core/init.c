@@ -26,9 +26,6 @@
 #include <linux/slab.h>
 #include <linux/time.h>
 #include <linux/ctype.h>
-#ifndef TARGET_OS2 // TODO: implement linux/workqueue.h
-#include <linux/workqueue.h>
-#endif /* !TARGET_OS2 */
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
@@ -207,9 +204,9 @@ int snd_card_disconnect(struct snd_card * card)
 		f_ops = &s_f_ops->f_ops;
 
 		memset(f_ops, 0, sizeof(*f_ops));
-#ifdef LINUX_2_3
+#ifndef TARGET_OS2
                 f_ops->owner = file->f_op->owner;
-#endif
+#endif /* !TARGET_OS2 */
 		f_ops->release = file->f_op->release;
 		f_ops->poll = snd_disconnect_poll;
 

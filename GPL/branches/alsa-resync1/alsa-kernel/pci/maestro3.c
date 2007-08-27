@@ -43,6 +43,7 @@
 #include <sound/info.h>
 #include <sound/control.h>
 #include <sound/pcm.h>
+#include <sound/mpu401.h>
 #include <sound/ac97_codec.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
@@ -1054,6 +1055,11 @@ static const struct m3_hv_quirk m3_hv_quirk_list[] = {
  * lowlevel functions
  */
 
+#define big_mdelay(msec) do {\
+	set_current_state(TASK_UNINTERRUPTIBLE);\
+	schedule_timeout(((msec) * HZ) / 1000);\
+} while (0)
+	
 inline static void snd_m3_outw(m3_t *chip, u16 value, unsigned long reg)
 {
     outw(value, chip->iobase + reg);
