@@ -20,6 +20,7 @@ versConst = sAlsaBase"\uniaud.inc"
 
 versMak   = sAlsaBase"\include\version.mak"
 versHdr   = sAlsaBase"\include\version.h"
+AlsaVersHdr = sAlsaBase'\alsa-kernel\include\sound\version.h'
 
 /* get and format date and time */
 curDate    = DATE('S')
@@ -41,7 +42,7 @@ say "Version Hdr:   "versHdr
 
 LINEIN(versConst,,0)
 
-fixpack=''
+fixpack = ''
 
 do while(LINES(versConst))
     tmpLine = LINEIN(versConst)
@@ -60,10 +61,6 @@ do while(LINES(versConst))
     if opLoc > 0 then
       fixpack = STRIP((RIGHT(tmpLine, ( LENGTH(tmpLine) - (POS("=", tmpLine)+1) ))), B, ' ')
 
-    opLoc = POS('ALSAVERSION', tmpLine)
-    if opLoc > 0 then
-      alsalevel = STRIP((RIGHT(tmpLine, ( LENGTH(tmpLine) - (POS("=", tmpLine)+1) ))), B, ' ')
-
 end
 
 if versionIn = "" then do
@@ -76,6 +73,18 @@ parse value versionIn with major'.'minor'.'projVersion
 projVers  = versionIn'-'fixpack
 projVers2 = major||minor||LEFT(projVersion, 1)
 
+LINEIN(AlsaVersHdr,,0)
+
+alsalevel = ''
+
+do while(LINES(AlsaVersHdr))
+    tmpLine = LINEIN(AlsaVersHdr)
+    opLoc = POS('#define CONFIG_SND_VERSION', tmpLine)
+    if opLoc > 0 then
+      AlsaLevel = STRIP(RIGHT(tmpLine, ( LENGTH(tmpLine) - (POS('"', tmpLine)))),,'"') 
+end
+
+SAY 'Alsalevel = ' AlsaLevel
 
 SET "BUILDLEVEL=@#"ProjVendor":"major"."minor"#@##1## "ProjString":"alsalevel":::"ProjVersion"::"Fixpack"@@"productname
 
