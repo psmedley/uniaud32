@@ -21,15 +21,17 @@
  */
 
 #include <sound/driver.h>
-#include <asm/io.h>
-#include <asm/dma.h>
 #include <linux/delay.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/ioport.h>
 #include <sound/core.h>
 #include <sound/sb.h>
 #include <sound/initval.h>
+
+#include <asm/io.h>
+#include <asm/dma.h>
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("ALSA lowlevel driver for Sound Blaster cards");
@@ -287,6 +289,7 @@ EXPORT_SYMBOL(snd_sbdsp_create);
 EXPORT_SYMBOL(snd_sbmixer_write);
 EXPORT_SYMBOL(snd_sbmixer_read);
 EXPORT_SYMBOL(snd_sbmixer_new);
+EXPORT_SYMBOL(snd_sbmixer_add_ctl);
 
 /*
  *  INIT part

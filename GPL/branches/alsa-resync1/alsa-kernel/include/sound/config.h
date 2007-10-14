@@ -43,7 +43,6 @@ extern int this_module[64];
 #define SNDRV_LITTLE_ENDIAN
 #define EXPORT_SYMBOL(a)
 #define CONFIG_SOUND
-#define CONFIG_SND_VERSION	"0.9.3"
 #define ATTRIBUTE_UNUSED
 
 #undef interrupt

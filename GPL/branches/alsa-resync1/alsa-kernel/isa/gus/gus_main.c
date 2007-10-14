@@ -20,14 +20,16 @@
  */
 
 #include <sound/driver.h>
-#include <asm/dma.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/ioport.h>
 #include <sound/core.h>
 #include <sound/gus.h>
 #include <sound/control.h>
+
+#include <asm/dma.h>
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Routines for Gravis UltraSound soundcards");
@@ -37,26 +39,16 @@ MODULE_LICENSE("GPL");
 
 static int snd_gus_init_dma_irq(snd_gus_card_t * gus, int latches);
 
-static inline void dec_mod_count(struct module *module)
-{
-	if (module)
-		__MOD_DEC_USE_COUNT(module);
-}
-
 int snd_gus_use_inc(snd_gus_card_t * gus)
 {
-	MOD_INC_USE_COUNT;
-	if (!try_inc_mod_count(gus->card->module)) {
-		MOD_DEC_USE_COUNT;
+	if (!try_module_get(gus->card->module))
 		return 0;
-	}
 	return 1;
 }
 
 void snd_gus_use_dec(snd_gus_card_t * gus)
 {
-	dec_mod_count(gus->card->module);
-	MOD_DEC_USE_COUNT;
+	module_put(gus->card->module);
 }
 
 static int snd_gus_joystick_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)

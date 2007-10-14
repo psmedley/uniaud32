@@ -1778,26 +1778,26 @@ static snd_pcm_hardware_t snd_trident_spdif =
 	.fifo_size =		0,
 };
 
-
 static snd_pcm_hardware_t snd_trident_spdif_7018 =
 {
-    /*	.info =		     */   (SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                                   SNDRV_PCM_INFO_BLOCK_TRANSFER |
-                                   SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_SYNC_START |
-                                   SNDRV_PCM_INFO_PAUSE /* | SNDRV_PCM_INFO_RESUME */),
-                                   /*	.formats =	     */   SNDRV_PCM_FMTBIT_S16_LE,
-                                   /*	.rates =	     */   SNDRV_PCM_RATE_48000,
-                                   /*	.rate_min =	     */   48000,
-                                   /*	.rate_max =	     */   48000,
-                                   /*	.channels_min =	     */   2,
-                                   /*	.channels_max =	     */   2,
-                                   /*	.buffer_bytes_max =  */   (128*1024),
-                                   /*	.period_bytes_min =  */   64,
-                                   /*	.period_bytes_max =  */   (128*1024),
-                                   /*	.periods_min =	     */   1,
-                                   /*	.periods_max =	     */   1024,
-                                   /*	.fifo_size =	     */   0,
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_SYNC_START |
+				 SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_RESUME),
+	.formats =		SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_48000,
+	.rate_min =		48000,
+	.rate_max =		48000,
+	.channels_min =		2,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
+
 static void snd_trident_pcm_free_substream(snd_pcm_runtime_t *runtime)
 {
     struct snd_trident_voice*voice = (struct snd_trident_voice*) runtime->private_data;
@@ -2884,6 +2884,7 @@ static snd_kcontrol_new_t snd_trident_pcm_cvol_control __devinitdata =
 	.iface =	SNDRV_CTL_ELEM_IFACE_MIXER,
 	.name =         "PCM Chorus Playback Volume",
 	.access =	SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_INACTIVE,
+	.count =	32,
 	.info =		snd_trident_pcm_cvol_control_info,
 	.get =		snd_trident_pcm_cvol_control_get,
 	.put =		snd_trident_pcm_cvol_control_put,
