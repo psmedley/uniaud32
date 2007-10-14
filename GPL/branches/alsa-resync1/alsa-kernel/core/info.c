@@ -293,8 +293,7 @@ static int snd_info_entry_open(struct inode *inode, struct file *file)
         if ((entry->content == SNDRV_INFO_CONTENT_TEXT &&
              !entry->c.text.read_size) ||
             (entry->content == SNDRV_INFO_CONTENT_DATA &&
-             entry->c.ops->read == NULL) ||
-            entry->content == SNDRV_INFO_CONTENT_DEVICE) {
+		     entry->c.ops->read == NULL)) {
             err = -ENODEV;
             goto __error;
         }
@@ -303,8 +302,7 @@ static int snd_info_entry_open(struct inode *inode, struct file *file)
         if ((entry->content == SNDRV_INFO_CONTENT_TEXT &&
              !entry->c.text.write_size) ||
             (entry->content == SNDRV_INFO_CONTENT_DATA &&
-             entry->c.ops->write == NULL) ||
-            entry->content == SNDRV_INFO_CONTENT_DEVICE) {
+		     entry->c.ops->write == NULL)) {
             err = -ENODEV;
             goto __error;
         }
