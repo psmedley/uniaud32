@@ -1,5 +1,5 @@
-#ifndef __GUS_H
-#define __GUS_H
+#ifndef __SOUND_GUS_H
+#define __SOUND_GUS_H
 
 /*
  *  Global structures used for GUS part of ALSA driver
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -30,8 +30,9 @@
 #include "ainstr_iw.h"
 #include "ainstr_gf1.h"
 #include "ainstr_simple.h"
+#include <asm/io.h>
 
-#define SNDRV_SEQ_DEV_ID_GUS			"synth-gus"
+#define SNDRV_SEQ_DEV_ID_GUS			"gus-synth"
 
 /* IO ports */
 
@@ -209,12 +210,12 @@ typedef struct _snd_gf1_mem {
 	snd_gf1_bank_info_t banks_16[4];
 	snd_gf1_mem_block_t *first;
 	snd_gf1_mem_block_t *last;
-	snd_info_entry_t *info_entry;
 	struct semaphore memory_mutex;
 } snd_gf1_mem_t;
 
 typedef struct snd_gf1_dma_block {
 	void *buffer;		/* buffer in computer's RAM */
+	unsigned long buf_addr;	/* buffer address */
 	unsigned int addr;	/* address in onboard memory */
 	unsigned int count;	/* count in bytes */
 	unsigned int cmd;	/* DMA command (format) */
@@ -330,8 +331,6 @@ struct _snd_gf1 {
 	unsigned int rom_banks;		/* GUS's ROM banks */
 
 	snd_gf1_mem_t mem_alloc;
-	snd_info_entry_t *ram_entries[4];
-	snd_info_entry_t *rom_entries[4];
 
 	/* registers */
 	unsigned short reg_page;
@@ -450,9 +449,6 @@ struct _snd_gus_card {
 	int timer_dev;			/* timer device */
 
 	struct _snd_gf1 gf1;	/* gf1 specific variables */
-#ifdef CONFIG_SND_DEBUG
-	snd_info_entry_t *irq_entry;
-#endif
 	snd_pcm_t *pcm;
 	snd_pcm_substream_t *pcm_cap_substream;
 	unsigned int c_dma_size;
@@ -565,7 +561,7 @@ struct _SND_IW_LFO_PROGRAM {
 };
 
 #if 0
-extern void snd_gf1_lfo_effect_interrupt(snd_gus_card_t * gus, snd_gf1_voice_t * voice);
+extern irqreturn_t snd_gf1_lfo_effect_interrupt(snd_gus_card_t * gus, snd_gf1_voice_t * voice);
 #endif
 extern void snd_gf1_lfo_init(snd_gus_card_t * gus);
 extern void snd_gf1_lfo_done(snd_gus_card_t * gus);
@@ -599,12 +595,11 @@ int snd_gf1_mem_done(snd_gus_card_t * gus);
 /* gus_mem_proc.c */
 
 int snd_gf1_mem_proc_init(snd_gus_card_t * gus);
-int snd_gf1_mem_proc_done(snd_gus_card_t * gus);
 
 /* gus_dma.c */
 
 void snd_gf1_dma_program(snd_gus_card_t * gus, unsigned int addr,
-			 const void *buf, unsigned int count,
+			 unsigned long buf_addr, unsigned int count,
 			 unsigned int cmd);
 void snd_gf1_dma_ack(snd_gus_card_t * gus);
 int snd_gf1_dma_init(snd_gus_card_t * gus);
@@ -671,10 +666,9 @@ int snd_gus_initialize(snd_gus_card_t * gus);
 
 /* gus_irq.c */
 
-void snd_gus_interrupt(int irq, void *dev_id, struct pt_regs *regs);
+irqreturn_t snd_gus_interrupt(int irq, void *dev_id, struct pt_regs *regs);
 #ifdef CONFIG_SND_DEBUG
 void snd_gus_irq_profile_init(snd_gus_card_t *gus);
-void snd_gus_irq_profile_done(snd_gus_card_t *gus);
 #endif
 
 /* gus_uart.c */
@@ -695,7 +689,7 @@ int snd_gus_dram_write(snd_gus_card_t *gus, char *ptr,
 int snd_gus_dram_read(snd_gus_card_t *gus, char *ptr,
 		      unsigned int addr, unsigned int size, int rom);
 
-#ifdef CONFIG_SND_SEQUENCER
+#if defined(CONFIG_SND_SEQUENCER) || defined(CONFIG_SND_SEQUENCER_MODULE)
 
 /* gus_sample.c */
 void snd_gus_sample_event(snd_seq_event_t *ev, snd_gus_port_t *p);
@@ -723,6 +717,6 @@ int snd_gus_simple_get_sample(void *private_data, simple_instrument_t *instr,
 int snd_gus_simple_remove_sample(void *private_data, simple_instrument_t *instr,
 				 int atomic);
 
-#endif				/* CONFIG_SND_SEQUENCER */
+#endif /* CONFIG_SND_SEQUENCER */
 
-#endif				/* __GUS_H */
+#endif /* __SOUND_GUS_H */

@@ -15,11 +15,17 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/threads.h>
+#include <linux/interrupt.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/minors.h>
 #include <sound/info.h>
 #include <sound/control.h>
@@ -42,111 +48,111 @@ static LIST_HEAD(snd_control_ioctls);
 
 static int snd_ctl_open(struct inode *inode, struct file *file)
 {
-    int cardnum = SNDRV_MINOR_CARD(MINOR(inode->i_rdev));
-    unsigned long flags;
-    struct snd_card *card;
-    struct snd_ctl_file *ctl;
-    int err;
+	int cardnum = SNDRV_MINOR_CARD(minor(inode->i_rdev));
+	unsigned long flags;
+	struct snd_card *card;
+	struct snd_ctl_file *ctl;
+	int err;
 
-    card = snd_cards[cardnum];
-    if (!card) {
-        err = -ENODEV;
-        goto __error1;
-    }
-    err = snd_card_file_add(card, file);
-    if (err < 0) {
-        err = -ENODEV;
-        goto __error1;
-    }
-    if (!try_module_get(card->module)) {
-        err = -EFAULT;
-        goto __error2;
-    }
-    ctl = kcalloc(1, sizeof(*ctl), GFP_KERNEL);
-    if (ctl == NULL) {
-        err = -ENOMEM;
-        goto __error;
-    }
-    INIT_LIST_HEAD(&ctl->events);
-    init_waitqueue_head(&ctl->change_sleep);
-    spin_lock_init(&ctl->read_lock);
-    ctl->card = card;
-    ctl->pid = current->pid;
-    file->private_data = ctl;
-    write_lock_irqsave(&card->ctl_files_rwlock, flags);
-    list_add_tail(&ctl->list, &card->ctl_files);
-    write_unlock_irqrestore(&card->ctl_files_rwlock, flags);
-    return 0;
+	card = snd_cards[cardnum];
+	if (!card) {
+		err = -ENODEV;
+		goto __error1;
+	}
+	err = snd_card_file_add(card, file);
+	if (err < 0) {
+		err = -ENODEV;
+		goto __error1;
+	}
+	if (!try_module_get(card->module)) {
+		err = -EFAULT;
+		goto __error2;
+	}
+	ctl = kcalloc(1, sizeof(*ctl), GFP_KERNEL);
+	if (ctl == NULL) {
+		err = -ENOMEM;
+		goto __error;
+	}
+	INIT_LIST_HEAD(&ctl->events);
+	init_waitqueue_head(&ctl->change_sleep);
+	spin_lock_init(&ctl->read_lock);
+	ctl->card = card;
+	ctl->pid = current->pid;
+	file->private_data = ctl;
+	write_lock_irqsave(&card->ctl_files_rwlock, flags);
+	list_add_tail(&ctl->list, &card->ctl_files);
+	write_unlock_irqrestore(&card->ctl_files_rwlock, flags);
+	return 0;
 
 __error:
     module_put(card->module);
 __error2:
     snd_card_file_remove(card, file);
 __error1:
-    return err;
+	return err;
 }
 
 static void snd_ctl_empty_read_queue(struct snd_ctl_file * ctl)
 {
     struct snd_kctl_event *cread;
-
-    spin_lock(&ctl->read_lock);
-    while (!list_empty(&ctl->events)) {
-        cread = snd_kctl_event(ctl->events.next);
-        list_del(&cread->list);
-        kfree(cread);
-    }
-    spin_unlock(&ctl->read_lock);
+	
+	spin_lock(&ctl->read_lock);
+	while (!list_empty(&ctl->events)) {
+		cread = snd_kctl_event(ctl->events.next);
+		list_del(&cread->list);
+		kfree(cread);
+	}
+	spin_unlock(&ctl->read_lock);
 }
 
 static int snd_ctl_release(struct inode *inode, struct file *file)
 {
-    unsigned long flags;
-    struct list_head *list;
-    struct snd_card *card;
-    struct snd_ctl_file *ctl;
-    struct snd_kcontrol *control;
-    unsigned int idx;
+	unsigned long flags;
+	struct list_head *list;
+	struct snd_card *card;
+	struct snd_ctl_file *ctl;
+	struct snd_kcontrol *control;
+	unsigned int idx;
 
-    ctl = file->private_data;
-    fasync_helper(-1, file, 0, &ctl->fasync);
-    file->private_data = NULL;
-    card = ctl->card;
-    write_lock_irqsave(&card->ctl_files_rwlock, flags);
-    list_del(&ctl->list);
-    write_unlock_irqrestore(&card->ctl_files_rwlock, flags);
-    down_write(&card->controls_rwsem);
-    list_for_each(list, &card->controls) {
-        control = snd_kcontrol(list);
-        for (idx = 0; idx < control->count; idx++)
-            if (control->vd[idx].owner == ctl)
-                control->vd[idx].owner = NULL;
-    }
-    up_write(&card->controls_rwsem);
-    snd_ctl_empty_read_queue(ctl);
-    kfree(ctl);
-    module_put(card->module);
-    snd_card_file_remove(card, file);
-    return 0;
+	ctl = file->private_data;
+	fasync_helper(-1, file, 0, &ctl->fasync);
+	file->private_data = NULL;
+	card = ctl->card;
+	write_lock_irqsave(&card->ctl_files_rwlock, flags);
+	list_del(&ctl->list);
+	write_unlock_irqrestore(&card->ctl_files_rwlock, flags);
+	down_write(&card->controls_rwsem);
+	list_for_each(list, &card->controls) {
+		control = snd_kcontrol(list);
+		for (idx = 0; idx < control->count; idx++)
+			if (control->vd[idx].owner == ctl)
+				control->vd[idx].owner = NULL;
+	}
+	up_write(&card->controls_rwsem);
+	snd_ctl_empty_read_queue(ctl);
+	kfree(ctl);
+	module_put(card->module);
+	snd_card_file_remove(card, file);
+	return 0;
 }
 
 void snd_ctl_notify(struct snd_card *card, unsigned int mask, struct snd_ctl_elem_id *id)
 {
-    unsigned long flags;
-    struct list_head *flist;
-    struct snd_ctl_file *ctl;
-    struct snd_kctl_event *ev;
+	unsigned long flags;
+	struct list_head *flist;
+	struct snd_ctl_file *ctl;
+	struct snd_kctl_event *ev;
+	
+	snd_runtime_check(card != NULL && id != NULL, return);
 
-    snd_runtime_check(card != NULL && id != NULL, return);
-
-    control_id_changed = id->numid;
-    card_id_changed = card->number;
-    //        printk("ctl id %i changed\n", id->numid);
-    read_lock(&card->ctl_files_rwlock);
+	control_id_changed = id->numid;
+	card_id_changed = card->number;
+	//        printk("ctl id %i changed\n", id->numid);
+	read_lock(&card->ctl_files_rwlock);
 #if defined(CONFIG_SND_MIXER_OSS) || defined(CONFIG_SND_MIXER_OSS_MODULE)
-    card->mixer_oss_change_count++;
+	card->mixer_oss_change_count++;
 #endif
-    list_for_each(flist, &card->ctl_files) {
+	list_for_each(flist, &card->ctl_files) {
         struct list_head *elist;
         ctl = snd_ctl_file(flist);
         if (!ctl->subscribed)
@@ -165,8 +171,8 @@ void snd_ctl_notify(struct snd_card *card, unsigned int mask, struct snd_ctl_ele
             ev->mask = mask;
             list_add_tail(&ev->list, &ctl->events);
         } else {
-            snd_printk("No memory available to allocate event\n");
-        }
+			snd_printk(KERN_ERR "No memory available to allocate event\n");
+		}
         _found:
         wake_up(&ctl->change_sleep);
         spin_unlock_irqrestore(&ctl->read_lock, flags);
@@ -337,18 +343,18 @@ int snd_ctl_add(struct snd_card * card, struct snd_kcontrol * kcontrol)
         goto error;
     }
 #endif
-    list_add_tail(&kcontrol->list, &card->controls);
+	list_add_tail(&kcontrol->list, &card->controls);
     card->controls_count += kcontrol->count;
-    kcontrol->id.numid = card->last_numid + 1;
-    card->last_numid += kcontrol->count;
-    up_write(&card->controls_rwsem);
-    for (idx = 0; idx < kcontrol->count; idx++, id.index++, id.numid++)
-        snd_ctl_notify(card, SNDRV_CTL_EVENT_MASK_ADD, &id);
-    return 0;
+	kcontrol->id.numid = card->last_numid + 1;
+	card->last_numid += kcontrol->count;
+	up_write(&card->controls_rwsem);
+	for (idx = 0; idx < kcontrol->count; idx++, id.index++, id.numid++)
+	snd_ctl_notify(card, SNDRV_CTL_EVENT_MASK_ADD, &id);
+	return 0;
 
 error:
     snd_ctl_free_one(kcontrol);
-    return err;
+	return err;
 }
 
 /**
@@ -1288,18 +1294,17 @@ static int snd_ctl_fasync(int fd, struct file * file, int on)
  *  INIT PART
  */
 
-#ifdef TARGET_OS2
 static struct file_operations snd_ctl_f_ops =
 {
-#ifdef LINUX_2_3
- .owner=   THIS_MODULE,
-#endif
-	.read=		snd_ctl_read,
-	.poll=		snd_ctl_poll,
-	.ioctl=		snd_ctl_ioctl,
-	.open=		snd_ctl_open,
-	.release=	snd_ctl_release,
-	.fasync=	snd_ctl_fasync,
+#ifndef TARGET_OS2
+	.owner =	THIS_MODULE,
+#endif /* !TARGET_OS2 */
+	.read =		snd_ctl_read,
+	.open =		snd_ctl_open,
+	.release =	snd_ctl_release,
+	.poll =		snd_ctl_poll,
+	.ioctl =	snd_ctl_ioctl,
+	.fasync =	snd_ctl_fasync,
 };
 
 static struct snd_minor snd_ctl_reg =
@@ -1307,27 +1312,6 @@ static struct snd_minor snd_ctl_reg =
 	.comment =	"ctl",
 	.f_ops =	&snd_ctl_f_ops,
 };
-
-#else
-static struct file_operations snd_ctl_f_ops =
-{
-#ifdef LINUX_2_3
-owner:		THIS_MODULE,
-#endif
-    read:		snd_ctl_read,
-    open:		snd_ctl_open,
-    release:	snd_ctl_release,
-    poll:		snd_ctl_poll,
-    ioctl:		snd_ctl_ioctl,
-    fasync:		snd_ctl_fasync,
-};
-
-static snd_minor_t snd_ctl_reg =
-{
-comment:	"ctl",
-    f_ops:		&snd_ctl_f_ops,
-};
-#endif
 
 /*
  * registration of the control device:

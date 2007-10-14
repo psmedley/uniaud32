@@ -25,6 +25,9 @@
 #include "pcm.h"
 #include "rawmidi.h"
 #include "ac97_codec.h"
+#ifndef TARGET_OS2 //TODO: Implement linux/gameport.h
+#include <linux/gameport.h>
+#endif /* !TARGET_OS2 */
 
 #ifndef PCI_VENDOR_ID_YAMAHA
 #define PCI_VENDOR_ID_YAMAHA            0x1073

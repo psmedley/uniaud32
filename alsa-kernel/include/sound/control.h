@@ -1,5 +1,5 @@
-#ifndef __CONTROL_H
-#define __CONTROL_H
+#ifndef __SOUND_CONTROL_H
+#define __SOUND_CONTROL_H
 
 /*
  *  Header file for control interface
@@ -18,10 +18,22 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
+#include <sound/asound.h>
+
+typedef struct sndrv_aes_iec958 snd_aes_iec958_t;
+typedef struct snd_ctl_card_info snd_ctl_card_info_t;
+typedef struct snd_ctl_elem_id snd_ctl_elem_id_t;
+typedef struct snd_ctl_elem_list snd_ctl_elem_list_t;
+typedef struct snd_ctl_elem_info snd_ctl_elem_info_t;
+typedef struct snd_ctl_elem_value snd_ctl_elem_value_t;
+typedef enum sndrv_ctl_event_type snd_ctl_event_type_t;
+typedef struct sndrv_ctl_event snd_ctl_event_t;
+
+#define _snd_kcontrol_chip(kcontrol) ((kcontrol)->private_data)
 #define snd_kcontrol_chip(kcontrol) ((kcontrol)->private_data)
 struct snd_kcontrol;
 typedef int (snd_kcontrol_info_t) (struct snd_kcontrol * kcontrol, struct snd_ctl_elem_info * uinfo);
@@ -159,4 +171,4 @@ static inline struct snd_ctl_elem_id *snd_ctl_build_ioff(struct snd_ctl_elem_id 
 	return dst_id;
 }
 
-#endif				/* __CONTROL_H */
+#endif	/* __SOUND_CONTROL_H */

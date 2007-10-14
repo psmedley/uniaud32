@@ -34,6 +34,7 @@
 #include <sound/driver.h>
 #include <linux/delay.h>
 #include <linux/init.h>
+#include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <sound/core.h>
@@ -597,6 +598,7 @@ static int snd_emu10k1_cardbus_init(struct snd_emu10k1 * emu)
     return 0;
 }
 
+
 static int snd_emu1010_load_firmware(struct snd_emu10k1 * emu, const char * filename)
 {
     int err;
@@ -1019,7 +1021,6 @@ static int snd_emu10k1_emu1010_init(struct snd_emu10k1 * emu)
 
     return 0;
 }
-
 
 /*
  *  Create the EMU10K1 instance

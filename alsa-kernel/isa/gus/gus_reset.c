@@ -14,11 +14,15 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 
 extern void snd_gf1_timers_init(snd_gus_card_t * gus);
@@ -406,10 +410,6 @@ int snd_gf1_stop(snd_gus_card_t * gus)
 	snd_gf1_stop_voices(gus, 0, 31);		/* stop all voices */
 	snd_gf1_i_write8(gus, SNDRV_GF1_GB_RESET, 1);	/* disable IRQ & DAC */
 	snd_gf1_timers_done(gus);
-#ifdef CONFIG_SND_DEBUG
-	snd_gus_irq_profile_done(gus);
-#endif
-	snd_gf1_mem_proc_done(gus);
 	snd_gf1_mem_done(gus);
 #if 0
 	snd_gf1_lfo_done(gus);

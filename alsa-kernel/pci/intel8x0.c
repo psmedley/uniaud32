@@ -1159,6 +1159,10 @@ static int snd_intel8x0_pcm_open(snd_pcm_substream_t * substream, struct ichdev 
 {
     struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
+	static unsigned int i, rates[] = {
+		/* ATTENTION: these values depend on the definition in pcm.h! */
+		5512, 8000, 11025, 16000, 22050, 32000, 44100, 48000
+	};
     int err;
 
     ichdev->substream = substream;
@@ -3271,11 +3275,9 @@ static struct pci_device_id snd_intel8x0_joystick_ids[] = {
 };
 
 static struct pci_driver joystick_driver = {
-    0, 0, 0,
-    /*	name:     */ "Intel ICH Joystick",
-    /*	id_table: */ snd_intel8x0_joystick_ids,
-    /*	probe:    */ snd_intel8x0_joystick_probe,
-    0,0,0
+	.name = "Intel ICH Joystick",
+	.id_table = snd_intel8x0_joystick_ids,
+	.probe = snd_intel8x0_joystick_probe,
 };
 static int have_joystick;
 #endif

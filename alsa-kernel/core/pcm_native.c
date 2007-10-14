@@ -20,13 +20,21 @@
  */
 
 #include <sound/driver.h>
+#include <linux/version.h>
+#include <linux/mm.h>
+#include <linux/file.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#ifndef TARGET_OS2 // TODO: Using OpenWatcom uio.h conflicts with asound.h ?
+#include <linux/uio.h>
+#endif /* !TARGET_OS2 */
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/timer.h>
 #include <sound/minors.h>
-#include <linux/file.h>
 
 /*
  *  Compatibility
@@ -1559,12 +1567,12 @@ static struct file *snd_pcm_file_fd(int fd)
         return 0;
     inode = file->f_dentry->d_inode;
     if (!S_ISCHR(inode->i_mode) ||
-        MAJOR(inode->i_rdev) != CONFIG_SND_MAJOR) {
+	    major(inode->i_rdev) != snd_major) {
         fput(file);
         return 0;
     }
-    minor = MINOR(inode->i_rdev);
-    if (minor >= 256 ||
+	minor = minor(inode->i_rdev);
+	if (minor >= 256 || 
         minor % SNDRV_MINOR_DEVICES < SNDRV_MINOR_PCM_PLAYBACK) {
         fput(file);
         return 0;
@@ -2096,8 +2104,8 @@ static int snd_pcm_open_file(struct file *file,
 
 int snd_pcm_open(struct inode *inode, struct file *file)
 {
-    int cardnum = SNDRV_MINOR_CARD(MINOR(inode->i_rdev));
-    int device = SNDRV_MINOR_DEVICE(MINOR(inode->i_rdev));
+	int cardnum = SNDRV_MINOR_CARD(minor(inode->i_rdev));
+	int device = SNDRV_MINOR_DEVICE(minor(inode->i_rdev));
     int err;
     snd_pcm_t *pcm;
     snd_pcm_file_t *pcm_file;
@@ -3283,43 +3291,39 @@ static int snd_pcm_hw_params_old_user(snd_pcm_substream_t * substream, struct sn
  */
 
 static struct file_operations snd_pcm_f_ops_playback = {
-#ifdef LINUX_2_3
+#ifndef TARGET_OS2
     .owner =	THIS_MODULE,
-#endif
+#endif /* !TARGET_OS2 */
     .write =	snd_pcm_write,
-#ifdef LINUX_2_3
+#ifndef TARGET_OS2
     .writev =	snd_pcm_writev,
-#endif
+#endif /* !TARGET_OS2 */
     .open =	snd_pcm_open,
     .release =	snd_pcm_release,
     .poll =	snd_pcm_playback_poll,
     .ioctl =	snd_pcm_playback_ioctl,
-#ifdef LINUX_2_3
+#ifndef TARGET_OS2
     .compat_ioctl = snd_pcm_ioctl_compat,
     .mmap =		snd_pcm_mmap,
-#endif
-#ifndef TARGET_OS2
     .fasync =	snd_pcm_fasync,
 #endif
 };
 
 static struct file_operations snd_pcm_f_ops_capture = {
-#ifdef LINUX_2_3
+#ifndef TARGET_OS2
     .owner =	THIS_MODULE,
-#endif
+#endif /* !TARGET_OS2 */
     .read =		snd_pcm_read,
-#ifdef LINUX_2_3
+#ifndef TARGET_OS2
     .readv =	snd_pcm_readv,
-#endif
+#endif /* !TARGET_OS2 */
     .open =		snd_pcm_open,
     .release =	snd_pcm_release,
     .poll =		snd_pcm_capture_poll,
     .ioctl =	snd_pcm_capture_ioctl,
-#ifdef LINUX_2_3
+#ifndef TARGET_OS2
     .ioctl = snd_pcm_ioctl_compat,
     .mmap =		snd_pcm_mmap,
-#endif
-#ifndef TARGET_OS2
     .fasync =	snd_pcm_fasync,
 #endif
 };
