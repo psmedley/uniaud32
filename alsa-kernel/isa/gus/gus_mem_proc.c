@@ -15,11 +15,13 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #include <sound/info.h>
 
@@ -73,8 +75,8 @@ static long long snd_gf1_mem_proc_llseek(snd_info_entry_t *entry,
 	case 1:	/* SEEK_CUR */
 		file->f_pos += offset;
 		break;
-	case 2: /* SEEK_END */
-		file->f_pos = priv->size - offset;
+	case 2: /* SEEK_END, offset is negative */
+		file->f_pos = priv->size + offset;
 		break;
 	default:
 		return -EINVAL;
@@ -90,18 +92,10 @@ static void snd_gf1_mem_proc_free(snd_info_entry_t *entry)
 	snd_magic_kfree(priv);
 }
 
-#ifdef TARGET_OS2
 static struct snd_info_entry_ops snd_gf1_mem_proc_ops = {
-        0,0,
-	snd_gf1_mem_proc_dump,0,
-	snd_gf1_mem_proc_llseek,0,0,0
+	.read = snd_gf1_mem_proc_dump,
+	.llseek = snd_gf1_mem_proc_llseek,
 };
-#else
-static struct snd_info_entry_ops snd_gf1_mem_proc_ops = {
-	read: snd_gf1_mem_proc_dump,
-	llseek: snd_gf1_mem_proc_llseek,
-};
-#endif
 
 int snd_gf1_mem_proc_init(snd_gus_card_t * gus)
 {
@@ -110,73 +104,40 @@ int snd_gf1_mem_proc_init(snd_gus_card_t * gus)
 	gus_proc_private_t *priv;
 	snd_info_entry_t *entry;
 
-	memset(&gus->gf1.rom_entries, 0, sizeof(gus->gf1.rom_entries));
-	memset(&gus->gf1.ram_entries, 0, sizeof(gus->gf1.ram_entries));
 	for (idx = 0; idx < 4; idx++) {
 		if (gus->gf1.mem_alloc.banks_8[idx].size > 0) {
 			priv = snd_magic_kcalloc(gus_proc_private_t, 0, GFP_KERNEL);
-			if (priv == NULL) {
-				snd_gf1_mem_proc_done(gus);
+			if (priv == NULL)
 				return -ENOMEM;
-			}
 			priv->gus = gus;
 			sprintf(name, "gus-ram-%i", idx);
-			entry = snd_info_create_card_entry(gus->card, name, gus->card->proc_root);
-			if (entry) {
+			if (! snd_card_proc_new(gus->card, name, &entry)) {
 				entry->content = SNDRV_INFO_CONTENT_DATA;
 				entry->private_data = priv;
 				entry->private_free = snd_gf1_mem_proc_free;
 				entry->c.ops = &snd_gf1_mem_proc_ops;
 				priv->address = gus->gf1.mem_alloc.banks_8[idx].address;
 				priv->size = entry->size = gus->gf1.mem_alloc.banks_8[idx].size;
-				if (snd_info_register(entry) < 0) {
-					snd_info_free_entry(entry);
-					entry = NULL;
-				}
 			}
-			gus->gf1.ram_entries[idx] = entry;
 		}
 	}
 	for (idx = 0; idx < 4; idx++) {
 		if (gus->gf1.rom_present & (1 << idx)) {
 			priv = snd_magic_kcalloc(gus_proc_private_t, 0, GFP_KERNEL);
-			if (priv == NULL) {
-				snd_gf1_mem_proc_done(gus);
+			if (priv == NULL)
 				return -ENOMEM;
-			}
 			priv->rom = 1;
 			priv->gus = gus;
 			sprintf(name, "gus-rom-%i", idx);
-			entry = snd_info_create_card_entry(gus->card, name, gus->card->proc_root);
-			if (entry) {
+			if (! snd_card_proc_new(gus->card, name, &entry)) {
 				entry->content = SNDRV_INFO_CONTENT_DATA;
 				entry->private_data = priv;
 				entry->private_free = snd_gf1_mem_proc_free;
 				entry->c.ops = &snd_gf1_mem_proc_ops;
 				priv->address = idx * 4096 * 1024;
 				priv->size = entry->size = gus->gf1.rom_memory;
-				if (snd_info_register(entry) < 0) {
-					snd_info_free_entry(entry);
-					entry = NULL;
-				}
 			}
-			gus->gf1.rom_entries[idx] = entry;
 		}
-	}
-	return 0;
-}
-
-int snd_gf1_mem_proc_done(snd_gus_card_t * gus)
-{
-	int idx;
-
-	for (idx = 0; idx < 4; idx++) {
-		if (gus->gf1.ram_entries[idx])
-			snd_info_unregister(gus->gf1.ram_entries[idx]);
-	}
-	for (idx = 0; idx < 4; idx++) {
-		if (gus->gf1.rom_entries[idx])
-			snd_info_unregister(gus->gf1.rom_entries[idx]);
 	}
 	return 0;
 }

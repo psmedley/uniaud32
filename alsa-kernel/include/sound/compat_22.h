@@ -6,6 +6,18 @@
  */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,3,0)
 
+#include <linux/list.h>
+#include <linux/pagemap.h>
+#include <linux/ioport.h>
+
+#if defined(SND_NEED_USB_WRAPPER) && (defined(CONFIG_USB) || defined(CONFIG_USB_MODULE))
+/* include linux/usb.h at first since it defines another compatibility layers, which
+ * conflicts with ours...
+ */
+#include <linux/usb.h>
+#undef IORESOURCE_IO
+#endif
+
 #ifndef CONFIG_HAVE_DMA_ADDR_T
 typedef unsigned long dma_addr_t;
 #endif
@@ -32,6 +44,34 @@ static __inline__ void list_add_tail(struct list_head *new, struct list_head *he
 
 #endif /* !CONFIG_HAVE_MUTEX_MACROS */
 
+/**
+ * list_del_init - deletes entry from list and reinitialize it.
+ * @entry: the element to delete from the list.
+ */
+static __inline__ void list_del_init(struct list_head *entry)
+{
+	__list_del(entry->prev, entry->next);
+	INIT_LIST_HEAD(entry); 
+}
+
+/**
+ * list_for_each_safe	-	iterate over a list safe against removal of list entry
+ * @pos:	the &struct list_head to use as a loop counter.
+ * @n:		another &struct list_head to use as temporary storage
+ * @head:	the head for your list.
+ */
+#define list_for_each_safe(pos, n, head) \
+	for (pos = (head)->next, n = pos->next; pos != (head); \
+		pos = n, n = pos->next)
+
+/* rw_semaphore - replaced with mutex */
+#define rw_semaphore semaphore
+#define init_rwsem(x) init_MUTEX(x)
+#define DECLARE_RWSEM(x) DECLARE_MUTEX(x)
+#define down_read(x) down(x)
+#define down_write(x) down(x)
+#define up_read(x) up(x)
+#define up_write(x) up(x)
 
 #define virt_to_page(x) (&mem_map[MAP_NR(x)])
 #define get_page(p) atomic_inc(&(p)->count)
@@ -50,33 +90,61 @@ static __inline__ void list_add_tail(struct list_head *new, struct list_head *he
 
 /* Some distributions use modified kill_fasync */
 #ifdef CONFIG_OLD_KILL_FASYNC
-#define snd_kill_fasync(fp, sig, band) kill_fasync(*(fp), sig)
-#else
-#define snd_kill_fasync(fp, sig, band) kill_fasync(*(fp), sig, band)
+#include <linux/fs.h>
+#undef kill_fasync
+#define kill_fasync(fp, sig, band) snd_wrapper_kill_fasync(fp, sig, band)
+void snd_wrapper_kill_fasync(struct fasync_struct **, int, int);
 #endif
 
-#define tasklet_hi_schedule(t)	queue_task((t), &tq_immediate); \
-				mark_bh(IMMEDIATE_BH)
+/* this is identical with tq_struct but the "routine" field is renamed to "func" */
+struct tasklet_struct {
+	struct tasklet_struct *next;	/* linked list of active bh's */
+	unsigned long sync;		/* must be initialized to zero */
+	void (*func)(void *);		/* function to call */
+	void *data;			/* argument to function */
+};
 
-#define tasklet_init(t,f,d)	(t)->next = NULL; \
-				(t)->sync = 0; \
-				(t)->routine = (void (*)(void *))(f); \
-				(t)->data = (void *)(d)
+#define tasklet_hi_schedule(t)	do { \
+	queue_task((struct tq_struct *)(t), &tq_immediate);\
+	mark_bh(IMMEDIATE_BH); \
+} while (0)
 
-#define tasklet_struct		tq_struct 
+#define tasklet_init(t,f,d)	do { \
+	(t)->next = NULL; \
+	(t)->sync = 0; \
+	(t)->func = (void (*)(void *))(f); \
+	(t)->data = (void *)(d); \
+} while (0)
 
 #define tasklet_unlock_wait(t)	while (test_bit(0, &(t)->sync)) { }
+#define tasklet_kill(t)		tasklet_unlock_wait(t) /* FIXME: world is not perfect... */
 
 #define rwlock_init(x) do { *(x) = RW_LOCK_UNLOCKED; } while(0)
 
+#ifndef __init
 #define __init
+#endif
+#ifndef __initdata
 #define __initdata
+#endif
+#ifndef __exit
 #define __exit
+#endif
+#ifndef __exitdata
 #define __exitdata
+#endif
+#ifndef __devinit
 #define __devinit
+#endif
+#ifndef __devinitdata
 #define __devinitdata
+#endif
+#ifndef __devexit
 #define __devexit
+#endif
+#ifndef __devexitdata
 #define __devexitdata
+#endif
 
 #ifdef MODULE
   #ifndef module_init
@@ -91,7 +159,7 @@ static __inline__ void list_add_tail(struct list_head *new, struct list_head *he
   #define module_init(x)
   #define module_exit(x)
   #define THIS_MODULE NULL
-  #define try_inc_mod_count(x) do { ; } while (0)
+  #define try_inc_mod_count(x) 1
 #endif
 
 #define try_module_get(x) try_inc_mod_count(x)
@@ -147,13 +215,11 @@ struct resource {
 
 void snd_wrapper_request_region(unsigned long from, unsigned long extent, const char *name);
 #undef request_region
-#define request_region snd_compat_request_region
-#define release_resource snd_compat_release_resource
-#define request_mem_region(from, size, name) (&snd_compat_mem_region)
+#define request_region(start,size,name) snd_compat_request_region(start,size,name,0)
+#define request_mem_region(start,size,name) snd_compat_request_region(start,size,name,1)
+#define release_resource(res) snd_compat_release_resource(res)
 
-extern struct resource snd_compat_mem_region;
-
-struct resource *snd_compat_request_region(unsigned long start, unsigned long size, const char *name);
+struct resource *snd_compat_request_region(unsigned long start, unsigned long size, const char *name, int is_memory);
 int snd_compat_release_resource(struct resource *resource);
 
 #if 0
@@ -166,11 +232,12 @@ int snd_compat_release_resource(struct resource *resource);
 
 #define PCI_ANY_ID (~0)
 
-#define PCI_GET_DRIVER_DATA snd_pci_compat_get_driver_data
-#define PCI_SET_DRIVER_DATA snd_pci_compat_set_driver_data
+#define pci_get_drvdata snd_pci_compat_get_driver_data
+#define pci_set_drvdata snd_pci_compat_set_driver_data
 
 #define pci_set_dma_mask snd_pci_compat_set_dma_mask
 
+#undef pci_enable_device
 #define pci_enable_device snd_pci_compat_enable_device
 #define pci_register_driver snd_pci_compat_register_driver
 #define pci_unregister_driver snd_pci_compat_unregister_driver
@@ -186,12 +253,23 @@ int snd_compat_release_resource(struct resource *resource);
 #define pci_for_each_dev(dev) \
 	for(dev = pci_devices; dev; dev = dev->next)
 
+#undef pci_resource_start
 #define pci_resource_start(dev,bar) \
 	(((dev)->base_address[(bar)] & PCI_BASE_ADDRESS_SPACE) ? \
 	 ((dev)->base_address[(bar)] & PCI_BASE_ADDRESS_IO_MASK) : \
 	 ((dev)->base_address[(bar)] & PCI_BASE_ADDRESS_MEM_MASK))
+#undef pci_resource_end
 #define pci_resource_end(dev,bar) \
 	(pci_resource_start(dev,bar) + snd_pci_compat_get_size((dev),(bar)))
+#undef pci_resource_len
+#define pci_resource_len(dev,bar) \
+	((pci_resource_start((dev),(bar)) == 0 &&	\
+	  pci_resource_end((dev),(bar)) ==		\
+	  pci_resource_start((dev),(bar))) ? 0 :	\
+							\
+	(pci_resource_end((dev),(bar)) -		\
+	 pci_resource_start((dev),(bar)) + 1))
+#undef pci_resource_flags
 #define pci_resource_flags(dev,bar) (snd_pci_compat_get_flags((dev),(bar)))
 
 struct pci_device_id {
@@ -219,6 +297,7 @@ struct pci_driver {
 const struct pci_device_id * snd_pci_compat_match_device(const struct pci_device_id *ids, struct pci_dev *dev);
 int snd_pci_compat_register_driver(struct pci_driver *drv);
 void snd_pci_compat_unregister_driver(struct pci_driver *drv);
+struct pci_driver *snd_pci_compat_get_pci_driver(struct pci_dev *dev);
 unsigned long snd_pci_compat_get_size (struct pci_dev *dev, int n_base);
 int snd_pci_compat_get_flags (struct pci_dev *dev, int n_base);
 int snd_pci_compat_set_power_state(struct pci_dev *dev, int new_state);
@@ -228,7 +307,7 @@ void *snd_pci_compat_alloc_consistent(struct pci_dev *, long, dma_addr_t *);
 void snd_pci_compat_free_consistent(struct pci_dev *, long, void *, dma_addr_t);
 int snd_pci_compat_dma_supported(struct pci_dev *, dma_addr_t mask);
 unsigned long snd_pci_compat_get_dma_mask(struct pci_dev *);
-void snd_pci_compat_set_dma_mask(struct pci_dev *, unsigned long mask);
+int snd_pci_compat_set_dma_mask(struct pci_dev *, unsigned long mask);
 void * snd_pci_compat_get_driver_data (struct pci_dev *dev);
 void snd_pci_compat_set_driver_data (struct pci_dev *dev, void *driver_data);
 static inline int pci_module_init(struct pci_driver *drv)
@@ -292,6 +371,8 @@ enum
 	PM_SYS_VGA =	 0x41d00900, /* VGA controller */
 	PM_SYS_PCMCIA =	 0x41d00e00, /* PCMCIA controller */
 };
+
+#define __LINUX_PM_H	/* <linux/pm.h> in 2.2.18 is a bit stripped */
 
 /*
  * Device identifier

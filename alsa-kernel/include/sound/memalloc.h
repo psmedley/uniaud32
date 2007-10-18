@@ -44,6 +44,7 @@ typedef struct device {
 struct snd_dma_device {
     int type;                       /* SNDRV_DMA_TYPE_XXX */
     struct device *dev;
+    unsigned int id;		/* a unique ID */
 };
 
 #ifndef snd_dma_pci_data
@@ -60,8 +61,27 @@ struct snd_dma_device {
 #define SNDRV_DMA_TYPE_CONTINUOUS	1	/* continuous no-DMA memory */
 #define SNDRV_DMA_TYPE_DEV		2	/* generic device continuous */
 #define SNDRV_DMA_TYPE_DEV_SG		3	/* generic device SG-buffer */
+#ifdef TARGET_OS2 // Provide old types until 1.0.4
+#define SNDRV_DMA_TYPE_ISA		2	/* ISA continuous */
+#define SNDRV_DMA_TYPE_PCI		3	/* PCI continuous */
+#endif /* TARGET_OS2 */
 #define SNDRV_DMA_TYPE_SBUS		4	/* SBUS continuous */
 #define SNDRV_DMA_TYPE_PCI_SG		5	/* PCI SG-buffer */
+
+#ifdef CONFIG_PCI
+#if 0
+/*
+ * compose a snd_dma_device struct for the PCI device
+ */
+static inline void snd_dma_device_pci(struct snd_dma_device *dev, struct pci_dev *pci, unsigned int id)
+{
+	memset(dev, 0, sizeof(*dev));
+	dev->type = SNDRV_DMA_TYPE_PCI;
+	dev->dev.pci = pci;
+	dev->id = id;
+}
+#endif
+#endif
 
 #define __GFP_NOWARN    0
 

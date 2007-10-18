@@ -20,7 +20,13 @@
  */
 
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/sched.h>
+#include <linux/file.h>
+#include <linux/slab.h>
+#include <linux/time.h>
 #include <linux/ctype.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 
@@ -41,7 +47,7 @@ rwlock_t snd_card_rwlock = RW_LOCK_UNLOCKED;
 static unsigned int pci_saved_config[SNDRV_CARDS][16];
 
 #if defined(CONFIG_SND_MIXER_OSS) || defined(CONFIG_SND_MIXER_OSS_MODULE)
-int (*snd_mixer_oss_notify_callback)(struct snd_card *card, int free_flag);
+int (*snd_mixer_oss_notify_callback)(snd_card_t *card, int free_flag);
 #endif
 
 static void snd_card_id_read(snd_info_entry_t *entry, struct snd_info_buffer * buffer)
@@ -102,7 +108,7 @@ struct snd_card *snd_card_new(int idx, const char *xid,
 	if (idx < 0) {
 		write_unlock(&snd_card_rwlock);
 		if (idx >= snd_ecards_limit)
-			snd_printk("card %i is out of range (0-%i)\n", idx, snd_ecards_limit-1);
+			snd_printk(KERN_ERR "card %i is out of range (0-%i)\n", idx, snd_ecards_limit-1);
 		goto __error;
 	}
 	snd_cards_lock |= 1 << idx;		/* lock it */
@@ -198,9 +204,9 @@ int snd_card_disconnect(struct snd_card * card)
 		f_ops = &s_f_ops->f_ops;
 
 		memset(f_ops, 0, sizeof(*f_ops));
-#ifdef LINUX_2_3
+#ifndef TARGET_OS2
                 f_ops->owner = file->f_op->owner;
-#endif
+#endif /* !TARGET_OS2 */
 		f_ops->release = file->f_op->release;
 		f_ops->poll = snd_disconnect_poll;
 
@@ -277,19 +283,19 @@ int snd_card_free(struct snd_card * card)
 		snd_mixer_oss_notify_callback(card, SND_MIXER_OSS_NOTIFY_FREE);
 #endif
 	if (snd_device_free_all(card, SNDRV_DEV_CMD_PRE) < 0) {
-		snd_printk("unable to free all devices (pre)\n");
+		snd_printk(KERN_ERR "unable to free all devices (pre)\n");
 		/* Fatal, but this situation should never occur */
 	}
 	if (snd_device_free_all(card, SNDRV_DEV_CMD_NORMAL) < 0) {
-		snd_printk("unable to free all devices (normal)\n");
+		snd_printk(KERN_ERR "unable to free all devices (normal)\n");
 		/* Fatal, but this situation should never occur */
 	}
 	if (snd_ctl_unregister(card) < 0) {
-		snd_printk("unable to unregister control minors\n");
+		snd_printk(KERN_ERR "unable to unregister control minors\n");
 		/* Not fatal error */
 	}
 	if (snd_device_free_all(card, SNDRV_DEV_CMD_POST) < 0) {
-		snd_printk("unable to free all devices (post)\n");
+		snd_printk(KERN_ERR "unable to free all devices (post)\n");
 		/* Fatal, but this situation should never occur */
 	}
 	if (card->private_free)
@@ -450,7 +456,7 @@ int snd_card_register(struct snd_card * card)
 		/* already registered */
 		write_unlock(&snd_card_rwlock);
 		return 0;
-        }
+	}
 
 	if (card->id[0] == '\0')
 		choose_default_id(card);
@@ -742,9 +748,9 @@ int snd_power_wait(struct snd_card *card, unsigned int power_state, struct file 
  * These callbacks are called from ALSA's common PCI suspend/resume
  * handler and from the control API.
  */
-int snd_card_set_pm_callback(struct snd_card *card,
-                             int (*suspend)(struct snd_card *, unsigned int),
-                             int (*resume)(struct snd_card *, unsigned int),
+int snd_card_set_pm_callback(snd_card_t *card,
+			     int (*suspend)(snd_card_t *, unsigned int),
+			     int (*resume)(snd_card_t *, unsigned int),
                              void *private_data)
 {
     card->pm_suspend = suspend;

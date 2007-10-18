@@ -16,17 +16,26 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/interrupt.h>
+#include <linux/slab.h>
+#include <linux/ioport.h>
+#include <sound/core.h>
 #include <sound/sb.h>
 #include <sound/initval.h>
 
+#include <asm/io.h>
+#include <asm/dma.h>
+
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("ALSA lowlevel driver for Sound Blaster cards");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 
 #define BUSY_LOOPS 100000
@@ -157,6 +166,9 @@ static int snd_sbdsp_probe(struct snd_sb * chip)
     case SB_HW_ALS4000:
         str = "16 (ALS-4000)";
         break;
+	case SB_HW_DT019X:
+		str = "(DT019X/ALS007)";
+		break;
     default:
         return -ENODEV;
     }
@@ -171,15 +183,17 @@ static int snd_sbdsp_free(struct snd_sb *chip)
         release_resource(chip->res_port);
     if (chip->irq >= 0)
         free_irq(chip->irq, (void *) chip);
+#ifdef CONFIG_ISA
     if (chip->dma8 >= 0) {
         disable_dma(chip->dma8);
         free_dma(chip->dma8);
     }
-    if (chip->dma16 >= 0) {
+	if (chip->dma16 >= 0 && chip->dma16 != chip->dma8) {
         disable_dma(chip->dma16);
         free_dma(chip->dma16);
     }
-    kfree(chip);
+#endif
+	kfree(chip);
     return 0;
 }
 
@@ -200,15 +214,9 @@ int snd_sbdsp_create(snd_card_t *card,
 {
     struct snd_sb *chip;
     int err;
-#ifdef TARGET_OS2
     static snd_device_ops_t ops = {
-        snd_sbdsp_dev_free,0,0
+		.dev_free =	snd_sbdsp_dev_free,
     };
-#else
-    static snd_device_ops_t ops = {
-    dev_free:       snd_sbdsp_dev_free,
-    };
-#endif
 
     snd_assert(r_chip != NULL, return -EINVAL);
     *r_chip = NULL;
@@ -240,16 +248,23 @@ int snd_sbdsp_create(snd_card_t *card,
         return -EBUSY;
     }
 
+#ifdef CONFIG_ISA
     if (dma8 >= 0 && request_dma(dma8, "SoundBlaster - 8bit")) {
         snd_sbdsp_free(chip);
         return -EBUSY;
     }
     chip->dma8 = dma8;
-    if (dma16 >= 0 && request_dma(dma16, "SoundBlaster - 16bit")) {
+	if (dma16 >= 0) {
+		if (hardware != SB_HW_ALS100 && (dma16 < 5 || dma16 > 7)) {
+			/* no duplex */
+			dma16 = -1;
+		} else if (request_dma(dma16, "SoundBlaster - 16bit")) {
         snd_sbdsp_free(chip);
         return -EBUSY;
+		}
     }
     chip->dma16 = dma16;
+#endif
 
 __skip_allocation:
     chip->card = card;
@@ -274,6 +289,7 @@ EXPORT_SYMBOL(snd_sbdsp_create);
 EXPORT_SYMBOL(snd_sbmixer_write);
 EXPORT_SYMBOL(snd_sbmixer_read);
 EXPORT_SYMBOL(snd_sbmixer_new);
+EXPORT_SYMBOL(snd_sbmixer_add_ctl);
 
 /*
  *  INIT part

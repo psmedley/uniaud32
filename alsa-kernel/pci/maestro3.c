@@ -32,15 +32,25 @@
 #define DRIVER_NAME "Maestro3"
 
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
+#include <linux/pci.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <sound/core.h>
 #include <sound/info.h>
 #include <sound/control.h>
 #include <sound/pcm.h>
+#include <sound/mpu401.h>
 #include <sound/ac97_codec.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
 MODULE_AUTHOR("Zach Brown <zab@zabbo.net>, Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("ESS Maestro3 PCI");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{ESS,Maestro3 PCI},"
                "{ESS,ES1988},"
@@ -1045,6 +1055,11 @@ static const struct m3_hv_quirk m3_hv_quirk_list[] = {
  * lowlevel functions
  */
 
+#define big_mdelay(msec) do {\
+	set_current_state(TASK_UNINTERRUPTIBLE);\
+	schedule_timeout(((msec) * HZ) / 1000);\
+} while (0)
+	
 inline static void snd_m3_outw(m3_t *chip, u16 value, unsigned long reg)
 {
     outw(value, chip->iobase + reg);
@@ -1758,46 +1773,44 @@ snd_m3_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 
 static snd_pcm_hardware_t snd_m3_playback =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                  SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP_VALID |
                                  SNDRV_PCM_INFO_BLOCK_TRANSFER |
                                  /*SNDRV_PCM_INFO_PAUSE |*/
                                  SNDRV_PCM_INFO_RESUME),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	8000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	(512*1024),
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	(512*1024),
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 0
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		8000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(512*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(512*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
 };
 
 static snd_pcm_hardware_t snd_m3_capture =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                  SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP_VALID |
                                  SNDRV_PCM_INFO_BLOCK_TRANSFER |
                                  /*SNDRV_PCM_INFO_PAUSE |*/
                                  SNDRV_PCM_INFO_RESUME),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	8000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	(512*1024),
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	(512*1024),
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 0
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		8000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(512*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(512*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
 };
 
 /*
@@ -1913,25 +1926,25 @@ snd_m3_capture_close(snd_pcm_substream_t *subs)
  */
 
 static snd_pcm_ops_t snd_m3_playback_ops = {
-    snd_m3_playback_open,
-    snd_m3_playback_close,
-    snd_pcm_lib_ioctl,
-    snd_m3_pcm_hw_params,
-    snd_m3_pcm_hw_free,
-    snd_m3_pcm_prepare,
-    snd_m3_pcm_trigger,
-    snd_m3_pcm_pointer,0,0
+	.open =		snd_m3_playback_open,
+	.close =	snd_m3_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_m3_pcm_hw_params,
+	.hw_free =	snd_m3_pcm_hw_free,
+	.prepare =	snd_m3_pcm_prepare,
+	.trigger =	snd_m3_pcm_trigger,
+	.pointer =	snd_m3_pcm_pointer,
 };
 
 static snd_pcm_ops_t snd_m3_capture_ops = {
-    snd_m3_capture_open,
-    snd_m3_capture_close,
-    snd_pcm_lib_ioctl,
-    snd_m3_pcm_hw_params,
-    snd_m3_pcm_hw_free,
-    snd_m3_pcm_prepare,
-    snd_m3_pcm_trigger,
-    snd_m3_pcm_pointer,0,0
+	.open =		snd_m3_capture_open,
+	.close =	snd_m3_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_m3_pcm_hw_params,
+	.hw_free =	snd_m3_pcm_hw_free,
+	.prepare =	snd_m3_pcm_prepare,
+	.trigger =	snd_m3_pcm_trigger,
+	.pointer =	snd_m3_pcm_pointer,
 };
 
 static int __devinit
@@ -2803,7 +2816,9 @@ snd_m3_create(snd_card_t *card, struct pci_dev *pci,
 #ifdef CONFIG_PM
     chip->suspend_mem = vmalloc(sizeof(u16) * (REV_B_CODE_MEMORY_LENGTH + REV_B_DATA_MEMORY_LENGTH));
     if (chip->suspend_mem == NULL)
-        snd_printk("can't allocate apm buffer\n");
+		snd_printk(KERN_WARNING "can't allocate apm buffer\n");
+	else
+		snd_card_set_pm_callback(card, m3_suspend, m3_resume, chip);
 #endif
 
     if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops)) < 0) {
@@ -2923,7 +2938,7 @@ static int __init alsa_card_m3_init(void)
 
     if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-        //		snd_printk("Maestro3/Allegro soundcard not found or device busy\n");
+		//		snd_printk(KERN_ERR "Maestro3/Allegro soundcard not found or device busy\n");
 #endif
         return err;
     }
