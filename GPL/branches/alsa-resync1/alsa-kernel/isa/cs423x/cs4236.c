@@ -201,7 +201,7 @@ static snd_card_t *snd_cs4236_legacy[SNDRV_CARDS] = SNDRV_DEFAULT_PTR;
 
 
 #ifdef CS4232
-static struct pnp_card_device_id snd_cs423x_pnpids[] __devinitdata = {
+static struct pnp_card_device_id snd_cs423x_pnpids[] = {
 	/* Philips PCA70PS */
 	{ .id = "CSC0d32", .devs = { { "CSC0000" }, { "CSC0010" }, { "PNPb006" } } },
 	/* TerraTec Maestro 32/96 (CS4232) */
@@ -220,7 +220,7 @@ static struct pnp_card_device_id snd_cs423x_pnpids[] __devinitdata = {
 	{ .id = "" }	/* end */
 };
 #else /* CS4236 */
-static struct pnp_card_device_id snd_cs423x_pnpids[] __devinitdata = {
+static struct pnp_card_device_id snd_cs423x_pnpids[] = {
 	/* Intel Marlin Spike Motherboard - CS4235 */
 	{ .id = "CSC0225", .devs = { { "CSC0000" }, { "CSC0010" }, { "CSC0003" } } },
 	/* Intel Marlin Spike Motherboard (#2) - CS4235 */
@@ -552,7 +552,7 @@ static int __devinit snd_card_cs423x_probe(int dev, struct pnp_card_link *pcard,
 		chip->port,
 		irq[dev],
 		dma1[dev]);
-	if (dma1[dev] >= 0)
+	if (dma2[dev] >= 0)
 		sprintf(card->longname + strlen(card->longname), "&%d", dma2[dev]);
 	if ((err = snd_card_register(card)) < 0) {
 		snd_card_free(card);

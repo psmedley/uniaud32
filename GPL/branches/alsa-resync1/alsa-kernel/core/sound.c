@@ -20,7 +20,6 @@
  */
 
 #include <sound/driver.h>
-#include <linux/version.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/time.h>
@@ -127,7 +126,7 @@ static struct snd_minor *snd_minor_search(int minor)
 
 static int snd_open(struct inode *inode, struct file *file)
 {
-	int minor = minor(inode->i_rdev);
+	int minor = iminor(inode);
     int card = SNDRV_MINOR_CARD(minor);
     int dev = SNDRV_MINOR_DEVICE(minor);
     snd_minor_t *mptr = NULL;

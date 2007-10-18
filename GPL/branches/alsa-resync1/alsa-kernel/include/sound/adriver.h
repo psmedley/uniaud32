@@ -115,6 +115,12 @@ void snd_compat_request_module(const char *name, ...);
 #ifndef minor
 #define minor(x) MINOR(x)
 #endif
+#ifndef imajor
+#define imajor(x) major((x)->i_rdev)
+#endif
+#ifndef iminor
+#define iminor(x) minor((x)->i_rdev)
+#endif
 #ifndef mk_kdev
 #define mk_kdev(maj, min) MKDEV(maj, min)
 #endif
@@ -127,7 +133,7 @@ void snd_compat_request_module(const char *name, ...);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 3) && !defined(need_resched)
 #define need_resched() (current->need_resched)
 #endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 4) && !defined TARGET_OS2
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 4) && !defined(WE_ARE_WOLK) && !defined TARGET_OS2
 #include <linux/fs.h>
 static inline struct proc_dir_entry *PDE(const struct inode *inode)
 {

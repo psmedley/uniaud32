@@ -1597,6 +1597,7 @@ static int snd_es1968_playback_open(snd_pcm_substream_t *substream)
     snd_pcm_runtime_t *runtime = substream->runtime;
     esschan_t *es;
     int apu1;
+	unsigned long flags;
 
     /* search 2 APUs */
     apu1 = snd_es1968_alloc_apu_pair(chip, ESM_APU_PCM_PLAY);
@@ -1616,7 +1617,6 @@ static int snd_es1968_playback_open(snd_pcm_substream_t *substream)
     es->running = 0;
     es->substream = substream;
     es->mode = ESM_MODE_PLAY;
-	INIT_LIST_HEAD(&es->list);
 
     runtime->private_data = es;
     runtime->hw = snd_es1968_playback;
@@ -1639,6 +1639,7 @@ static int snd_es1968_capture_open(snd_pcm_substream_t *substream)
     es1968_t *chip = snd_pcm_substream_chip(substream);
     esschan_t *es;
     int apu1, apu2;
+	unsigned long flags;
 
     apu1 = snd_es1968_alloc_apu_pair(chip, ESM_APU_PCM_CAPTURE);
     if (apu1 < 0)
@@ -1668,7 +1669,6 @@ static int snd_es1968_capture_open(snd_pcm_substream_t *substream)
     es->running = 0;
     es->substream = substream;
     es->mode = ESM_MODE_CAPTURE;
-	INIT_LIST_HEAD(&es->list);
 
     /* get mixbuffer */
     if ((es->mixbuf = snd_es1968_new_memory(chip, ESM_MIXBUF_SIZE)) == NULL) {
@@ -1698,6 +1698,7 @@ static int snd_es1968_playback_close(snd_pcm_substream_t * substream)
 {
     es1968_t *chip = snd_pcm_substream_chip(substream);
     esschan_t *es;
+	unsigned long flags;
 
     if (substream->runtime->private_data == NULL)
         return 0;
@@ -1715,6 +1716,7 @@ static int snd_es1968_capture_close(snd_pcm_substream_t * substream)
 {
     es1968_t *chip = snd_pcm_substream_chip(substream);
     esschan_t *es;
+	unsigned long flags;
 
     if (substream->runtime->private_data == NULL)
         return 0;
@@ -2015,12 +2017,9 @@ static irqreturn_t snd_es1968_interrupt(int irq, void *dev_id, struct pt_regs *r
     }
 
     if (event & ESM_SOUND_IRQ) {
-		struct list_head *p, *n;
+		struct list_head *p;
         spin_lock(&chip->substream_lock);
-		/* we need to use list_for_each_safe here since the substream
-		 * can be deleted in period_elapsed().
-		 */
-		list_for_each_safe(p, n, &chip->substream_list) {
+		list_for_each(p, &chip->substream_list) {
             esschan_t *es = list_entry(p, esschan_t, list);
             if (es->running)
                 snd_es1968_update_pcm(chip, es);

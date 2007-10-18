@@ -2644,7 +2644,7 @@ static void __devinit snd_cmipci_proc_init(struct cmipci *cm)
         snd_info_set_text_ops(entry, cm, 1024, snd_cmipci_proc_read);
 }
 
-static struct pci_device_id snd_cmipci_ids[] __devinitdata = {
+static struct pci_device_id snd_cmipci_ids[] = {
     {PCI_VENDOR_ID_CMEDIA, PCI_DEVICE_ID_CMEDIA_CM8338A, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
     {PCI_VENDOR_ID_CMEDIA, PCI_DEVICE_ID_CMEDIA_CM8338B, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
     {PCI_VENDOR_ID_CMEDIA, PCI_DEVICE_ID_CMEDIA_CM8738, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},

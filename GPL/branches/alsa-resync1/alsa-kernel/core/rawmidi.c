@@ -357,7 +357,7 @@ __error1:
 
 static int snd_rawmidi_open(struct inode *inode, struct file *file)
 {
-	int maj = major(inode->i_rdev);
+	int maj = imajor(inode);
     int cardnum;
     snd_card_t *card;
     int device, subdevice;

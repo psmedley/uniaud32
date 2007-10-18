@@ -77,7 +77,7 @@ MODULE_PARM_SYNTAX(enable, SNDRV_ENABLE_DESC);
 #define PCI_DEVICE_ID_VT1724		0x1724
 #endif
 
-static struct pci_device_id snd_vt1724_ids[] __devinitdata = {
+static struct pci_device_id snd_vt1724_ids[] = {
 	{ PCI_VENDOR_ID_ICE, PCI_DEVICE_ID_VT1724, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },
 	{ 0, }
 };
@@ -85,7 +85,7 @@ static struct pci_device_id snd_vt1724_ids[] __devinitdata = {
 MODULE_DEVICE_TABLE(pci, snd_vt1724_ids);
 
 
-static int PRO_RATE_LOCKED = 0;
+static int PRO_RATE_LOCKED;
 static int PRO_RATE_RESET = 1;
 static unsigned int PRO_RATE_DEFAULT = 44100;
 
@@ -382,11 +382,6 @@ static void snd_vt1724_set_pro_rate(ice1712_t *ice, unsigned int rate, int force
 		return;
 	}
 
-	if (rate == ice->cur_rate) {
-		spin_unlock_irqrestore(&ice->reg_lock, flags);
-		return;
-	}
-
 	switch (rate) {
 	case 8000: val = 6; break;
 	case 9600: val = 3; break;
@@ -409,6 +404,11 @@ static void snd_vt1724_set_pro_rate(ice1712_t *ice, unsigned int rate, int force
 		break;
 	}
 	outb(val, ICEMT1724(ice, RATE));
+	if (rate == ice->cur_rate) {
+		spin_unlock_irqrestore(&ice->reg_lock, flags);
+		return;
+	}
+
 	ice->cur_rate = rate;
 
 	/* check MT02 */
@@ -482,8 +482,6 @@ static int snd_vt1724_playback_pro_prepare(snd_pcm_substream_t * substream)
 	return 0;
 }
 
-#define CHECK_INVALID_PTR
-
 static snd_pcm_uframes_t snd_vt1724_playback_pro_pointer(snd_pcm_substream_t * substream)
 {
 	ice1712_t *ice = snd_pcm_substream_chip(substream);
@@ -491,19 +489,27 @@ static snd_pcm_uframes_t snd_vt1724_playback_pro_pointer(snd_pcm_substream_t * s
 
 	if (!(inl(ICEMT1724(ice, DMA_CONTROL)) & VT1724_PDMA0_START))
 		return 0;
+#if 0 /* read PLAYBACK_ADDR */
 	ptr = inl(ICEMT1724(ice, PLAYBACK_ADDR));
-#ifdef CHECK_INVALID_PTR
 	if (ptr < substream->runtime->dma_addr) {
 		snd_printd("ice1724: invalid negative ptr\n");
 		return 0;
 	}
-#endif
 	ptr -= substream->runtime->dma_addr;
 	ptr = bytes_to_frames(substream->runtime, ptr);
-#ifdef CHECK_INVALID_PTR
 	if (ptr >= substream->runtime->buffer_size) {
 		snd_printd("ice1724: invalid ptr %d (size=%d)\n", (int)ptr, (int)substream->runtime->period_size);
 		return 0;
+	}
+#else /* read PLAYBACK_SIZE */
+	ptr = inl(ICEMT1724(ice, PLAYBACK_SIZE)) & 0xffffff;
+	ptr = (ptr + 1) << 2;
+	ptr = bytes_to_frames(substream->runtime, ptr);
+	if (ptr <= substream->runtime->buffer_size)
+		ptr = substream->runtime->buffer_size - ptr;
+	else {
+		snd_printd("ice1724: invalid ptr %d (size=%d)\n", (int)ptr, (int)substream->runtime->buffer_size);
+		ptr = 0;
 	}
 #endif
 	return ptr;
@@ -536,9 +542,22 @@ static snd_pcm_uframes_t snd_vt1724_pcm_pointer(snd_pcm_substream_t *substream, 
 
 	if (!(inl(ICEMT1724(ice, DMA_CONTROL)) & reg->start))
 		return 0;
+#if 0 /* use ADDR register */
 	ptr = inl(ice->profi_port + reg->addr);
 	ptr -= substream->runtime->dma_addr;
 	return bytes_to_frames(substream->runtime, ptr);
+#else /* use SIZE register */
+	ptr = inw(ice->profi_port + reg->size);
+	ptr = (ptr + 1) << 2;
+	ptr = bytes_to_frames(substream->runtime, ptr);
+	if (ptr <= substream->runtime->buffer_size)
+		ptr = substream->runtime->buffer_size - ptr;
+	else {
+		snd_printd("ice1724: invalid ptr %d (size=%d)\n", (int)ptr, (int)substream->runtime->buffer_size);
+		ptr = 0;
+	}
+	return ptr;
+#endif
 }
 
 const static struct vt1724_pcm_reg vt1724_capture_pro_reg = {
@@ -566,7 +585,7 @@ static snd_pcm_hardware_t snd_vt1724_playback_pro =
 				 SNDRV_PCM_INFO_MMAP_VALID |
 				 SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_SYNC_START),
 	.formats =		SNDRV_PCM_FMTBIT_S32_LE,
-	.rates =		SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_96000,
+	.rates =		SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_192000,
 	.rate_min =		4000,
 	.rate_max =		192000,
 	.channels_min =		2,
@@ -585,7 +604,7 @@ static snd_pcm_hardware_t snd_vt1724_capture_pro =
 				 SNDRV_PCM_INFO_MMAP_VALID |
 				 SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_SYNC_START),
 	.formats =		SNDRV_PCM_FMTBIT_S32_LE,
-	.rates =		SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_96000,
+	.rates =		SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_192000,
 	.rate_min =		4000,
 	.rate_max =		192000,
 	.channels_min =		2,
@@ -720,7 +739,7 @@ static snd_pcm_hardware_t snd_vt1724_playback_spdif =
 				 SNDRV_PCM_INFO_MMAP_VALID |
 				 SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_SYNC_START),
 	.formats =		SNDRV_PCM_FMTBIT_S32_LE,
-	.rates =		SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_96000,
+	.rates =		SNDRV_PCM_RATE_KNOT | SNDRV_PCM_RATE_8000_192000,
 	.rate_min =		4000,
 	.rate_max =		192000,
 	.channels_min =		2,
@@ -778,7 +797,7 @@ static int snd_vt1724_playback_spdif_open(snd_pcm_substream_t *substream)
 	snd_pcm_set_sync(substream);
 	snd_pcm_hw_constraint_msbits(runtime, 0, 32, 24);
 
-	snd_pcm_hw_constraint_list(runtime, 0, SNDRV_PCM_HW_PARAM_RATE, &hw_constraints_rates_96);
+	snd_pcm_hw_constraint_list(runtime, 0, SNDRV_PCM_HW_PARAM_RATE, &hw_constraints_rates_192);
 	return 0;
 }
 
@@ -1796,20 +1815,20 @@ static int __devinit snd_vt1724_create(snd_card_t * card,
 	synchronize_irq(pci->irq);
 
 	if ((ice->res_port = request_region(ice->port, 32, "ICE1724 - Controller")) == NULL) {
-		snd_vt1724_free(ice);
 		snd_printk("unable to grab ports 0x%lx-0x%lx\n", ice->port, ice->port + 32 - 1);
+		snd_vt1724_free(ice);
 		return -EIO;
 	}
 
 	if ((ice->res_profi_port = request_region(ice->profi_port, 128, "ICE1724 - Professional")) == NULL) {
-		snd_vt1724_free(ice);
 		snd_printk("unable to grab ports 0x%lx-0x%lx\n", ice->profi_port, ice->profi_port + 16 - 1);
+		snd_vt1724_free(ice);
 		return -EIO;
 	}
 		
 	if (request_irq(pci->irq, snd_vt1724_interrupt, SA_INTERRUPT|SA_SHIRQ, "ICE1724", (void *) ice)) {
-		snd_vt1724_free(ice);
 		snd_printk("unable to grab IRQ %d\n", pci->irq);
+		snd_vt1724_free(ice);
 		return -EIO;
 	}
 

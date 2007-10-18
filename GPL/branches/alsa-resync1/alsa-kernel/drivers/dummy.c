@@ -19,7 +19,6 @@
  */
 
 #include <sound/driver.h>
-#include <linux/version.h>
 #include <linux/init.h>
 #ifndef TARGET_OS2 //TODO: Implement linux/jiffies.h
 #include <linux/jiffies.h>
