@@ -184,6 +184,7 @@ typedef struct
 #define IDC32_MIDI_CHANNEL_PRESSURE     0x39
 #define IDC32_MIDI_PITCH_BEND           0x3A
 #define IDC32_MIDI_CLOSE                0x3B
+#define IDC32_DEBUG_STRING              0x3C
 
 #define IDC16_INIT			0
 #define IDC16_EXIT			1
