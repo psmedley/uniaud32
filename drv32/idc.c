@@ -204,6 +204,9 @@ OSSRET OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket)
   case IDC32_MIDI_QUERYCAPS:
        return OSS32_MidiQueryCaps(pPacket->streamid, (POSS32_MIDICAPS)__Stack16ToFlat(pPacket->midicaps.pCaps));
 
+  case IDC32_DEBUG_STRING:
+       return OSS32_DebugString((char *)pPacket->buffer.buffer, pPacket->buffer.size);
+
   case IDC32_MIDI_NOTEON:
   case IDC32_MIDI_NOTEOFF:
   case IDC32_MIDI_KEY_PRESSURE:

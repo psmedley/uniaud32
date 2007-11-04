@@ -77,6 +77,8 @@ OSSRET OSS32_MidiCommand(OSSSTREAMID streamid, ULONG Cmd, BYTE channel, BYTE par
 
 int OSS32_ProcessMIDIIRQ(int bytes);	// 12 Jun 07 SHL
 
+int OSS32_DebugString(char *buffer, ULONG size); //PS debug from uniaud16
+
 //Sets file id in current task structure
 ULONG OSS32_SetFileId(ULONG fileid);
 

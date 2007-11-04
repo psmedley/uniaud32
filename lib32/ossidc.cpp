@@ -328,3 +328,8 @@ int MyDevBlock(ULONG id, ULONG tout, char flag)
     return DevBlock(id,tout, flag);
 }
 
+int OSS32_DebugString(char *buffer, ULONG size)
+{
+    dprintf(("U16: %s",buffer));
+    return size;
+}
