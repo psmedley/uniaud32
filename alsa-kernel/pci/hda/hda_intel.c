@@ -255,16 +255,26 @@ enum {
  */
 
 struct azx_dev {
-	u32 *bdl;			/* virtual address of the BDL */
+#ifdef TARGET_OS2
+	volatile u32 *bdl;			/* virtual address of the BDL */
 	dma_addr_t bdl_addr;		/* physical address of the BDL */
-	u32 *posbuf;			/* position buffer pointer */
+	volatile u32 *posbuf;			/* position buffer pointer */
+#else /* !TARGET_OS2 */
+	u32 *bdl;		/* virtual address of the BDL */
+	dma_addr_t bdl_addr;	/* physical address of the BDL */
+	u32 *posbuf;		/* position buffer pointer */
+#endif /* !TARGET_OS2 */
 
 	unsigned int bufsize;		/* size of the play buffer in bytes */
 	unsigned int fragsize;		/* size of each period in bytes */
 	unsigned int frags;		/* number for period in the play buffer */
 	unsigned int fifo_size;		/* FIFO size */
 
-	void __iomem *sd_addr;		/* stream descriptor pointer */
+#ifdef TARGET_OS2
+	volatile void __iomem *sd_addr;		/* stream descriptor pointer */
+#else /* !TARGET_OS2 */
+	void __iomem *sd_addr;	/* stream descriptor pointer */
+#endif /* !TARGET_OS2 */
 
 	u32 sd_int_sta_mask;		/* stream int status mask */
 
@@ -282,7 +292,11 @@ struct azx_dev {
 
 /* CORB/RIRB */
 struct azx_rb {
+#ifdef TARGET_OS2
+	volatile u32 *buf;		/* CORB/RIRB buffer
+#else /* !TARGET_OS2 */
 	u32 *buf;		/* CORB/RIRB buffer
+#endif /* !TARGET_OS2 */
 				 * Each CORB entry is 4byte, RIRB is 8byte
 				 */
 	dma_addr_t addr;	/* physical address of CORB/RIRB buffer */
@@ -306,7 +320,11 @@ struct azx {
 
 	/* pci resources */
 	unsigned long addr;
+#ifdef TARGET_OS2
+	volatile void __iomem *remap_addr;
+#else /* !TARGET_OS2 */
 	void __iomem *remap_addr;
+#endif /* !TARGET_OS2 */
 	int irq;
 
 	/* locks */
@@ -879,7 +897,11 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id, struct pt_regs *regs)
  */
 static void azx_setup_periods(struct azx_dev *azx_dev)
 {
+#ifdef TARGET_OS2
+	volatile u32 *bdl = azx_dev->bdl;
+#else /* !TARGET_OS2 */
 	u32 *bdl = azx_dev->bdl;
+#endif /* !TARGET_OS2 */
 	dma_addr_t dma_addr = azx_dev->substream->runtime->dma_addr;
 	int idx;
 
@@ -1195,7 +1217,11 @@ static int azx_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	if (cmd == SNDRV_PCM_TRIGGER_PAUSE_PUSH ||
 	    cmd == SNDRV_PCM_TRIGGER_SUSPEND ||
 	    cmd == SNDRV_PCM_TRIGGER_STOP) {
+#ifndef TARGET_OS2
 		int timeout = 5000;
+#else /* TARGET_OS2 */
+		int timeout = 100000;
+#endif /* TARGET_OS2 */
 		while (azx_sd_readb(azx_dev, SD_CTL) & SD_CTL_DMA_START && --timeout)
 			;
 	}
@@ -1481,7 +1507,11 @@ static int azx_free(struct azx *chip)
 	if (chip->msi)
 		pci_disable_msi(chip->pci);
 	if (chip->remap_addr)
+#ifdef TARGET_OS2
+		iounmap((void *)chip->remap_addr);
+#else /* !TARGET_OS2 */
 		iounmap(chip->remap_addr);
+#endif /* !TARGET_OS2 */
 
 	if (chip->bdl.area)
 		snd_dma_free_pages(&chip->bdl);

@@ -1071,7 +1071,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
     snd_pcm_status_t    status;
     int                 ret, align, size1, ret1;
     LONG                transferred;
-    ULONG               position;
+    ULONG               position,i;
     char                *buf;
     int toret = 0;
 
@@ -1139,6 +1139,17 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
 
         while(TRUE) {
         again:
+            for ( i=0; i < 10000; i++)
+            {
+            ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+            if ( status.state != SNDRV_PCM_STATE_XRUN ) break;
+            }
+            if ( i > 9998 ) 
+            {
+                printk("timeout stat %x avail:%i:%i \n",status.state,samples_to_bytes(status.avail),status.avail);
+                ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
+                ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+            }
             ret = pHandle->file.f_op->write(&pHandle->file, (char *)buffer, size, &pHandle->file.f_pos);
             if(ret < 0) {
                 // check EAGAIN
@@ -1152,9 +1163,9 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
                 if(transferred > 0) {
                     printk("OSS32_WaveAddBuffer failed on partial transfer %x %i; ret = %i\n", buffer, size, ret);
                     *pTransferred = transferred;
-                    if (toret)
+                    if (toret > 4)
                         return OSSERR_SUCCESS; /* avoid infinite loop */
-                    toret = 1;
+                    toret++;
                     goto again;
                 }
 
