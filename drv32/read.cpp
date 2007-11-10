@@ -10,6 +10,11 @@ extern "C" {
 int   rdOffset= 0;
 int   wrOffset= 0;
 char  *szprintBuf= 0;
+#ifdef DEBUG
+int   max_buf_size= 0x100000;
+#else
+int   max_buf_size= 0x10000;
+#endif
 
 void * __ioremap(unsigned long physaddr, unsigned long size, unsigned long flags);
 void iounmap(void *addr);
@@ -32,7 +37,7 @@ ULONG StratRead(RP __far* _rp)
       
       if( rdOffset > wrOffset )
       {
-        diffCount= 0x10000 - rdOffset + wrOffset;
+        diffCount= max_buf_size - rdOffset + wrOffset;
       } else
       {
         diffCount= wrOffset - rdOffset;
@@ -41,9 +46,9 @@ ULONG StratRead(RP __far* _rp)
         transferCount= diffCount;
       
       rp->Count= transferCount;
-      if( (rdOffset + transferCount) > 0x10000 )
+      if( (rdOffset + transferCount) > max_buf_size )
       {
-        diffCount= 0x10000 - rdOffset;
+        diffCount= max_buf_size - rdOffset;
         memcpy( lin, szprintBuf + rdOffset, diffCount );
         transferCount= transferCount - diffCount;
         rdOffset= 0;
