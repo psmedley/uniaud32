@@ -38,6 +38,7 @@ int   DebugLevel = 1;
 
 extern int wrOffset;
 extern char *szprintBuf;
+extern int max_buf_size;
 
 char hextab[]="0123456789ABCDEF";
 
@@ -569,17 +570,17 @@ void StringOut(char *DbgStr)
 #endif
    if( szprintBuf == 0 )
    {
-      VMAlloc( 0x10000, VMDHA_FIXED, &szprintBuf );
+      VMAlloc( max_buf_size, VMDHA_FIXED, &szprintBuf );
       if( szprintBuf )
-         memset( szprintBuf, 0, 0x10000 );
+         memset( szprintBuf, 0, max_buf_size );
       wrOffset= 0;
    }
    if( szprintBuf )
    {
-       if( (len + wrOffset) > 0x10000 )
+       if( (len + wrOffset) > max_buf_size )
        {
           int cntr;
-          cntr= 0x10000 - wrOffset;
+          cntr= max_buf_size - wrOffset;
           memcpy( szprintBuf +  wrOffset, DbgStr, cntr );
           DbgStr+= cntr;
           len= len - cntr;
@@ -589,15 +590,18 @@ void StringOut(char *DbgStr)
        {
           memcpy( szprintBuf + wrOffset, DbgStr, len );
           wrOffset= wrOffset + len;
-          if( wrOffset >= 0x10000 )
+          if( wrOffset >= max_buf_size )
               wrOffset= 0;
        }
        if (fLineTerminate)
        {
-//           if( (wrOffset+1) >= 0x10000 )
+//           if( (wrOffset+1) >= max_buf_size )
 //               wrOffset= 0;
            szprintBuf[wrOffset]= CR;
-           if( ++wrOffset >= 0x10000 )
+           if( ++wrOffset >= max_buf_size )
+               wrOffset= 0;
+           szprintBuf[wrOffset]= LF;
+           if( ++wrOffset >= max_buf_size )
                wrOffset= 0;
        }
    }
