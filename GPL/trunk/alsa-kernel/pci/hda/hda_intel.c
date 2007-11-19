@@ -259,11 +259,11 @@ struct azx_dev {
 	volatile u32 *bdl;			/* virtual address of the BDL */
 	dma_addr_t bdl_addr;		/* physical address of the BDL */
 	volatile u32 *posbuf;			/* position buffer pointer */
-#else /* !TARGET_OS2 */
+#else
 	u32 *bdl;		/* virtual address of the BDL */
 	dma_addr_t bdl_addr;	/* physical address of the BDL */
 	u32 *posbuf;		/* position buffer pointer */
-#endif /* !TARGET_OS2 */
+#endif
 
 	unsigned int bufsize;		/* size of the play buffer in bytes */
 	unsigned int fragsize;		/* size of each period in bytes */
@@ -292,11 +292,7 @@ struct azx_dev {
 
 /* CORB/RIRB */
 struct azx_rb {
-#ifdef TARGET_OS2
-	volatile u32 *buf;		/* CORB/RIRB buffer
-#else /* !TARGET_OS2 */
-	u32 *buf;		/* CORB/RIRB buffer
-#endif /* !TARGET_OS2 */
+	volatile u32 *buf;	/* CORB/RIRB buffer
 				 * Each CORB entry is 4byte, RIRB is 8byte
 				 */
 	dma_addr_t addr;	/* physical address of CORB/RIRB buffer */
