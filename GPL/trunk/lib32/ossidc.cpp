@@ -109,11 +109,11 @@ OSSRET OSS32_Initialize(void)
         return OSSERR_INIT_FAILED;
     }
 
-    dprintf(("OSS32_Initialize. Start addrees: %X", OffsetBeginCS32));
+    dprintf(("OSS32_Initialize. Start address: %X", OffsetBeginCS32));
 //    DebugInt3();
 
     if(call_module_init(alsa_sound_init) != 0)       return OSSERR_INIT_FAILED;
-    dprintf(("OSS32_Initialize1"));
+    dprintf(("OSS32_Initialize1. Start address: %X", OffsetBeginCS32));
     if(call_module_init(alsa_pcm_init) != 0)         return OSSERR_INIT_FAILED;
     if(call_module_init(alsa_hwdep_init) != 0)       return OSSERR_INIT_FAILED;
     if(call_module_init(alsa_timer_init) != 0)       return OSSERR_INIT_FAILED;

@@ -41,6 +41,7 @@ void _cdecl DPD(int level, char *x, ...) ; /* not debugging: nothing */
 #define dprintf2(a)	if(DebugLevel > 1) DPE a
 #define dprintf3(a)	if(DebugLevel > 2) DPE a
 #define DebugInt3()	; //_asm int 3;
+#define DebInt3()	_asm int 3;
 #else // #ifndef DEBUG
 #define dprintf(a)
 #define dprintf2(a)
