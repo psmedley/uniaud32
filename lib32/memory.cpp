@@ -263,7 +263,7 @@ void *__get_free_dma_pages(unsigned long size, unsigned long flags)
                 if(startpage != endpage) {
                     //oops, this didn't work, fail
                     VMFree((LINEAR)addr);
-                    dprintf(("get_free_dma_pages failed, trying wasteful method instead"));
+                    dprintf(("get_free_dma_pages failed %x size:%x st:%x end:%x, trying wasteful method instead",physaddr,size,startpage,endpage));
                     return 0;
                 }
             }

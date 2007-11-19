@@ -2179,8 +2179,8 @@ static int snd_seq_do_ioctl(struct snd_seq_client *client, unsigned int cmd,
 	return -ENOTTY;
 }
 
-
-static int snd_seq_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+//PS++ static int snd_seq_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int snd_seq_ioctl(struct inode *inode, struct file *file,  unsigned int cmd, unsigned long arg)
 {
 	struct snd_seq_client *client = file->private_data;
 
