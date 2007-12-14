@@ -87,6 +87,8 @@ void snd_request_card(int card)
 {
     int locked;
 
+	if (! current->fs->root)
+		return;
     read_lock(&snd_card_rwlock);
     locked = snd_cards_lock & (1 << card);
     read_unlock(&snd_card_rwlock);
@@ -101,6 +103,8 @@ static void snd_request_other(int minor)
 {
     char *str;
 
+	if (! current->fs->root)
+		return;
     switch (minor) {
     case SNDRV_MINOR_SEQUENCER:	str = "snd-seq";	break;
     case SNDRV_MINOR_TIMER:		str = "snd-timer";	break;

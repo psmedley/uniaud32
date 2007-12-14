@@ -43,6 +43,9 @@ typedef struct _snd_kctl_ioctl {
 
 #define snd_kctl_ioctl(n) list_entry(n, snd_kctl_ioctl_t, list)
 
+/* find id without lock */
+static snd_kcontrol_t *_ctl_find_id(snd_card_t * card, snd_ctl_elem_id_t *id);
+
 static DECLARE_RWSEM(snd_ioctl_rwsem);
 static LIST_HEAD(snd_control_ioctls);
 

@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 //#include <linux/pci.h>
 #include <linux/slab.h>
+#include <linux/gameport.h>
 #include <sound/core.h>
 #include <sound/info.h>
 #include <sound/control.h>
@@ -78,6 +79,11 @@ MODULE_PARM_SYNTAX(fm_port, SNDRV_ENABLED ",allows:{{-1},{0x388},{0x3c8},{0x3e0}
 MODULE_PARM(soft_ac3, "1-" __MODULE_STRING(SNDRV_CARDS) "l");
 MODULE_PARM_DESC(soft_ac3, "Sofware-conversion of raw SPDIF packets (model 033 only).");
 MODULE_PARM_SYNTAX(soft_ac3, SNDRV_ENABLED "," SNDRV_BOOLEAN_TRUE_DESC);
+#endif
+#ifdef SUPPORT_JOYSTICK
+MODULE_PARM(joystick, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
+MODULE_PARM_DESC(joystick, "Enable joystick.");
+MODULE_PARM_SYNTAX(joystick, SNDRV_ENABLED "," SNDRV_BOOLEAN_FALSE_DESC);
 #endif
 
 #ifndef PCI_DEVICE_ID_CMEDIA_CM8738
@@ -348,6 +354,10 @@ MODULE_PARM_SYNTAX(soft_ac3, SNDRV_ENABLED "," SNDRV_BOOLEAN_TRUE_DESC);
 #define CM_EXTENT_CODEC	  0x100
 #define CM_EXTENT_MIDI	  0x2
 #define CM_EXTENT_SYNTH	  0x4
+
+/* fixed legacy joystick address */
+#define CM_JOYSTICK_ADDR	0x200
+  
 
 /*
  * pci ids
@@ -2301,7 +2311,7 @@ DEFINE_SWITCH_ARG(exchange_dac, CM_REG_MISC_CTRL, CM_XCHGDAC, CM_XCHGDAC, 0, 0);
 DEFINE_BIT_SWITCH_ARG(fourch, CM_REG_MISC_CTRL, CM_N4SPK3D, 0, 0);
 DEFINE_BIT_SWITCH_ARG(line_rear, CM_REG_MIXER1, CM_SPK4, 1, 0);
 DEFINE_BIT_SWITCH_ARG(line_bass, CM_REG_LEGACY_CTRL, CM_LINE_AS_BASS, 0, 0);
-DEFINE_BIT_SWITCH_ARG(joystick, CM_REG_FUNCTRL1, CM_JYSTK_EN, 0, 0);
+// DEFINE_BIT_SWITCH_ARG(joystick, CM_REG_FUNCTRL1, CM_JYSTK_EN, 0, 0); /* now module option */
 DEFINE_SWITCH_ARG(modem, CM_REG_MISC_CTRL, CM_FLINKON|CM_FLINKOFF, CM_FLINKON, 0, 0);
 
 //Can't compile in non-KEE mode without extra pointer in structure
@@ -2511,7 +2521,7 @@ static struct snd_kcontrol_new snd_cmipci_extra_mixer_switches[] __devinitdata =
 
 /* card control switches */
 static struct snd_kcontrol_new snd_cmipci_control_switches[] __devinitdata = {
-    DEFINE_CARD_SWITCH("Joystick", joystick),
+	// DEFINE_CARD_SWITCH("Joystick", joystick),
     DEFINE_CARD_SWITCH("Modem", modem),
 };
 
@@ -2972,6 +2982,15 @@ static int __devinit snd_cmipci_create(struct snd_card *card, struct pci_dev *pc
     snd_cmipci_set_bit(cm, CM_REG_MISC_CTRL, CM_SPDIF48K|CM_SPDF_AC97);
 #endif /* USE_VAR48KRATE */
 
+#ifdef SUPPORT_JOYSTICK
+	if (joystick[dev] &&
+	    (cm->res_joystick = request_region(CM_JOYSTICK_ADDR, 8, "CMIPCI gameport")) != NULL) {
+		cm->gameport.io = CM_JOYSTICK_ADDR;
+		snd_cmipci_set_bit(cm, CM_REG_FUNCTRL1, CM_JYSTK_EN);
+		gameport_register_port(&cm->gameport);
+	} else
+		snd_cmipci_clear_bit(cm, CM_REG_FUNCTRL1, CM_JYSTK_EN);
+#endif
     *rcmipci = cm;
     return 0;
 
@@ -3173,7 +3192,7 @@ module_exit(alsa_card_cmipci_exit)
 #ifndef MODULE
 
 /* format is: snd-cmipci=enable,index,id,
- mpu_port,fm_port */
+			 mpu_port,fm_port,soft_ac3,joystick */
 
 static int __init alsa_card_cmipci_setup(char *str)
 {
@@ -3184,8 +3203,15 @@ static int __init alsa_card_cmipci_setup(char *str)
     (void)(get_option(&str,&enable[nr_dev]) == 2 &&
            get_option(&str,&index[nr_dev]) == 2 &&
            get_id(&str,&id[nr_dev]) == 2 &&
-           get_option(&str,(int *)&mpu_port[nr_dev]) == 2 &&
-           get_option(&str,(int *)&fm_port[nr_dev]) == 2);
+	       get_option_long(&str,&mpu_port[nr_dev]) == 2 &&
+	       get_option_long(&str,&fm_port[nr_dev]) == 2
+#ifdef DO_SOFT_AC3
+	       && get_option(&str,&soft_ac3[nr_dev]) == 2
+#endif
+#ifdef SUPPORT_JOYSTICK
+	       && get_option(&str,&joystick[nr_dev]) == 2
+#endif
+	       );
     nr_dev++;
     return 1;
 }

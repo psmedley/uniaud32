@@ -43,6 +43,19 @@ MODULE_DEVICES("{{ALSA,Dummy soundcard}}");
 #define MAX_PCM_SUBSTREAMS	16
 #define MAX_MIDI_DEVICES	2
 
+#if 0 /* emu10k1 emulation */
+#define MAX_BUFFER_SIZE		(128 * 1024)
+static int emu10k1_playback_constraints(snd_pcm_runtime_t *runtime)
+{
+	int err;
+	if ((err = snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS)) < 0)
+		return err;
+	if ((err = snd_pcm_hw_constraint_minmax(runtime, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 256, UINT_MAX)) < 0)
+		return err;
+	return 0;
+}
+#define add_playback_constraints emu10k1_playback_constraints
+#endif
 
 #if 0 /* RME9652 emulation */
 #define MAX_BUFFER_SIZE		(26 * 64 * 1024)
@@ -104,6 +117,12 @@ MODULE_DEVICES("{{ALSA,Dummy soundcard}}");
 #endif
 #ifndef USE_PERIODS_MAX
 #define USE_PERIODS_MAX 	1024
+#endif
+#ifndef add_playback_constraints
+#define add_playback_constraints(x) 0
+#endif
+#ifndef add_capture_constraints
+#define add_capture_constraints(x) 0
 #endif
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
@@ -333,6 +352,7 @@ static int snd_card_dummy_playback_open(snd_pcm_substream_t * substream)
 {
     snd_pcm_runtime_t *runtime = substream->runtime;
     snd_card_dummy_pcm_t *dpcm;
+	int err;
 
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
@@ -355,6 +375,11 @@ static int snd_card_dummy_playback_open(snd_pcm_substream_t * substream)
     }
     if (substream->pcm->device & 2)
         runtime->hw.info &= ~(SNDRV_PCM_INFO_MMAP|SNDRV_PCM_INFO_MMAP_VALID);
+	if ((err = add_playback_constraints(runtime)) < 0) {
+		snd_magic_kfree(dpcm);
+		return err;
+	}
+
     return 0;
 }
 
@@ -362,6 +387,7 @@ static int snd_card_dummy_capture_open(snd_pcm_substream_t * substream)
 {
     snd_pcm_runtime_t *runtime = substream->runtime;
     snd_card_dummy_pcm_t *dpcm;
+	int err;
 
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
@@ -385,6 +411,11 @@ static int snd_card_dummy_capture_open(snd_pcm_substream_t * substream)
     }
     if (substream->pcm->device & 2)
         runtime->hw.info &= ~(SNDRV_PCM_INFO_MMAP|SNDRV_PCM_INFO_MMAP_VALID);
+	if ((err = add_capture_constraints(runtime)) < 0) {
+		snd_magic_kfree(dpcm);
+		return err;
+	}
+
     return 0;
 }
 

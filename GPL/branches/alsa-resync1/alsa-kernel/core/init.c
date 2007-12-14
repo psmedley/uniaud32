@@ -729,6 +729,7 @@ int snd_power_wait(struct snd_card *card, unsigned int power_state, struct file 
 		}
 #endif
 		set_current_state(TASK_UNINTERRUPTIBLE);
+		set_current_state(TASK_UNINTERRUPTIBLE);
 		snd_power_unlock(card);
 		schedule_timeout(30 * HZ);
 		snd_power_lock(card);

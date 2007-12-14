@@ -50,6 +50,9 @@ static long mpu_port[SNDRV_CARDS] = {REPEAT_SNDRV(-1)};
 #else
 static long fm_port[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = -1};
 static long mpu_port[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = -1};
+#ifdef SUPPORT_JOYSTICK
+static long joystick_port[SNDRV_CARDS];
+#endif
 #endif
 static int rear_switch[SNDRV_CARDS] = {1,1,1,1,1,1,1,1};
 
@@ -68,6 +71,11 @@ MODULE_PARM_SYNTAX(mpu_port, SNDRV_ENABLED);
 MODULE_PARM(fm_port, "1-" __MODULE_STRING(SNDRV_CARDS) "l");
 MODULE_PARM_DESC(fm_port, "FM OPL-3 Port.");
 MODULE_PARM_SYNTAX(fm_port, SNDRV_ENABLED);
+#ifdef SUPPORT_JOYSTICK
+MODULE_PARM(joystick_port, "1-" __MODULE_STRING(SNDRV_CARDS) "l");
+MODULE_PARM_DESC(joystick_port, "Joystick port address");
+MODULE_PARM_SYNTAX(joystick_port, SNDRV_ENABLED);
+#endif
 MODULE_PARM(rear_switch, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(rear_switch, "Enable shared rear/line-in switch");
 MODULE_PARM_SYNTAX(rear_switch, SNDRV_ENABLED "," SNDRV_BOOLEAN_FALSE_DESC);
@@ -91,6 +99,9 @@ static int __devinit snd_card_ymfpci_probe(struct pci_dev *pci,
 	snd_card_t *card;
 	struct resource *fm_res = NULL;
 	struct resource *mpu_res = NULL;
+#ifdef SUPPORT_JOYSTICK
+	struct resource *joystick_res = NULL;
+#endif
 	ymfpci_t *chip;
 	opl3_t *opl3;
 	char *str;
@@ -123,22 +134,32 @@ static int __devinit snd_card_ymfpci_probe(struct pci_dev *pci,
 #if 1
 
 	if (pci_id->device >= 0x0010) { /* YMF 744/754 */
-		if (fm_port[dev] < 0) {
+		if (fm_port[dev] <= 0) {
 			fm_port[dev] = pci_resource_start(pci, 1);
 		}
-		if (fm_port[dev] >= 0 &&
+		if (fm_port[dev] > 0 &&
 		    (fm_res = request_region(fm_port[dev], 4, "YMFPCI OPL3")) != NULL) {
 			legacy_ctrl |= YMFPCI_LEGACY_FMEN;
 			pci_write_config_word(pci, PCIR_DSXG_FMBASE, fm_port[dev]);
 		}
-		if (mpu_port[dev] < 0) {
+		if (mpu_port[dev] <= 0) {
 			mpu_port[dev] = pci_resource_start(pci, 1) + 0x20;
 		}
-		if (mpu_port[dev] >= 0 &&
+		if (mpu_port[dev] > 0 &&
 		    (mpu_res = request_region(mpu_port[dev], 2, "YMFPCI MPU401")) != NULL) {
 			legacy_ctrl |= YMFPCI_LEGACY_MEN;
 			pci_write_config_word(pci, PCIR_DSXG_MPU401BASE, mpu_port[dev]);
 		}
+#ifdef SUPPORT_JOYSTICK
+		if (joystick_port[dev] < 0) {
+			joystick_port[dev] = pci_resource_start(pci, 2);
+		}
+		if (joystick_port[dev] >= 0 &&
+		    (joystick_res = request_region(joystick_port[dev], 1, "YMFPCI gameport")) != NULL) {
+			legacy_ctrl |= YMFPCI_LEGACY_JPEN;
+			pci_write_config_word(pci, PCIR_DSXG_JOYBASE, joystick_port[dev]);
+		}
+#endif
 	} else {
 		switch (fm_port[dev]) {
 		case 0x388: legacy_ctrl2 |= 0; break;
@@ -168,6 +189,22 @@ static int __devinit snd_card_ymfpci_probe(struct pci_dev *pci,
 			legacy_ctrl2 &= ~YMFPCI_LEGACY2_MPUIO;
 			mpu_port[dev] = -1;
 		}
+#ifdef SUPPORT_JOYSTICK
+		switch (joystick_port[dev]) {
+		case 0x201: legacy_ctrl2 |= 0 << 6; break;
+		case 0x202: legacy_ctrl2 |= 1 << 6; break;
+		case 0x204: legacy_ctrl2 |= 2 << 6; break;
+		case 0x205: legacy_ctrl2 |= 3 << 6; break;
+		default: joystick_port[dev] = -1; break;
+		}
+		if (joystick_port[dev] > 0 &&
+		    (joystick_res = request_region(joystick_port[dev], 1, "YMFPCI gameport")) != NULL) {
+			legacy_ctrl |= YMFPCI_LEGACY_JPEN;
+		} else {
+			legacy_ctrl2 &= ~YMFPCI_LEGACY2_JSIO;
+			joystick_port[dev] = -1;
+		}
+#endif
 	}
 	if (mpu_res) {
 		legacy_ctrl |= YMFPCI_LEGACY_MIEN;
@@ -189,6 +226,12 @@ static int __devinit snd_card_ymfpci_probe(struct pci_dev *pci,
 			release_resource(fm_res);
 			kfree_nocheck(fm_res);
 		}
+#ifdef SUPPORT_JOYSTICK
+		if (joystick_res) {
+			release_resource(joystick_res);
+			kfree_nocheck(joystick_res);
+		}
+#endif
 		return err;
 	}
 	chip->fm_res = fm_res;
@@ -251,11 +294,18 @@ static int __devinit snd_card_ymfpci_probe(struct pci_dev *pci,
 		}
         }
 #endif
-#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
-	if ((err = snd_ymfpci_joystick(chip)) < 0) {
-		printk(KERN_WARNING "ymfpci: cannot initialize joystick, skipping...\n");
+#ifdef SUPPORT_JOYSTICK
+	if (chip->joystick_res) {
+		chip->gameport.io = joystick_port[dev];
+		gameport_register_port(&chip->gameport);
 	}
 #endif
+	strcpy(card->driver, str);
+	sprintf(card->shortname, "Yamaha DS-XG PCI (%s)", str);
+	sprintf(card->longname, "%s at 0x%lx, irq %i",
+		card->shortname,
+		chip->reg_area_phys,
+		chip->irq);
 
 	if ((err = snd_card_register(card)) < 0) {
 		snd_card_free(card);
@@ -320,8 +370,8 @@ static int __init alsa_card_ymfpci_setup(char *str)
 	(void)(get_option(&str,&enable[nr_dev]) == 2 &&
 	       get_option(&str,&index[nr_dev]) == 2 &&
 	       get_id(&str,&id[nr_dev]) == 2 &&
-	       get_option(&str,(int *)&fm_port[nr_dev]) == 2 &&
-	       get_option(&str,(int *)&mpu_port[nr_dev]) == 2);
+	       get_option_long(&str,&fm_port[nr_dev]) == 2 &&
+	       get_option_long(&str,&mpu_port[nr_dev]) == 2);
 	nr_dev++;
 	return 1;
 }

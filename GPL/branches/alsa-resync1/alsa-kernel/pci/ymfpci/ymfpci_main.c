@@ -2315,9 +2315,6 @@ int __devinit snd_ymfpci_create(snd_card_t * card,
     spin_lock_init(&chip->voice_lock);
     init_waitqueue_head(&chip->interrupt_sleep);
     atomic_set(&chip->interrupt_sleep_count, 0);
-#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
-	init_MUTEX(&chip->joystick_mutex);
-#endif
     chip->card = card;
     chip->pci = pci;
     chip->irq = -1;

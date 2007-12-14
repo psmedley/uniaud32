@@ -148,6 +148,8 @@ static snd_timer_t *snd_timer_find(snd_timer_id_t *tid)
 
 static void snd_timer_request(snd_timer_id_t *tid)
 {
+	if (! current->fs->root)
+		return;
     switch (tid->dev_class) {
     case SNDRV_TIMER_CLASS_GLOBAL:
         if (tid->device < timer_limit)
@@ -485,7 +487,7 @@ static int _snd_timer_stop(struct snd_timer_instance * timeri,
         goto __end;
     }
     timer = timeri->timer;
-    if (! timer)
+	if (!timer)
         return -EINVAL;
     spin_lock_irqsave(&timer->lock, flags);
     list_del_init(&timeri->ack_list);
@@ -1776,7 +1778,6 @@ static ssize_t snd_timer_user_read(struct file *file, char *buffer, size_t count
             spin_lock_irq(&tu->qlock);
 
             remove_wait_queue(&tu->qchange_sleep, &wait);
-			set_current_state(TASK_RUNNING);
 
             if (signal_pending(current)) {
                 err = -ERESTARTSYS;

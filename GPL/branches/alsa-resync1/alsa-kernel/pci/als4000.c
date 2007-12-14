@@ -63,6 +63,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
+#include <linux/gameport.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/rawmidi.h>
@@ -78,14 +79,15 @@ MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Avance Logic,ALS4000}}");
 
+#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
+#define SUPPORT_JOYSTICK 1
+#endif
+
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
-static int joystick_port[SNDRV_CARDS] =
-#ifdef CONFIG_ISA
-{0x200};	/* enable as default */
-#else
-{0};	/* disabled */
+#ifdef SUPPORT_JOYSTICK
+static int joystick_port[SNDRV_CARDS];
 #endif
 
 MODULE_PARM(index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
@@ -535,7 +537,7 @@ static int __devinit snd_als4000_pcm(struct snd_sb *chip, int device)
 
 /******************************************************************/
 
-static void __devinit snd_als4000_set_addr(unsigned long gcr,
+static void snd_als4000_set_addr(unsigned long gcr,
                                            unsigned int sb,
                                            unsigned int mpu,
                                            unsigned int opl,
@@ -609,6 +611,7 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
     opl3_t *opl3;
     unsigned short word;
     int err;
+	int joystick = 0;
 
     if (dev >= SNDRV_CARDS)
         return -ENODEV;
@@ -636,9 +639,6 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
     pci_write_config_word(pci, PCI_COMMAND, word | PCI_COMMAND_IO);
     pci_set_master(pci);
 
-    /* disable all legacy ISA stuff except for joystick */
-    snd_als4000_set_addr(gcr, 0, 0, 0, joystick_port[dev]);
-
     card = snd_card_new(index[dev], id[dev], THIS_MODULE,
                         sizeof( snd_card_als4000_t ) );
     if (card == NULL) {
@@ -650,6 +650,14 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
     acard->pci = pci;
     acard->gcr = gcr;
     card->private_free = snd_card_als4000_free;
+
+	/* disable all legacy ISA stuff except for joystick */
+#ifdef SUPPORT_JOYSTICK
+	if (joystick_port[dev] > 0 &&
+	    (acard->res_joystick = request_region(joystick_port[dev], 8, "ALS4000 gameport")) != NULL)
+		joystick = joystick_port[dev];
+#endif
+	snd_als4000_set_addr(gcr, 0, 0, 0, joystick);
 
     if ((err = snd_sbdsp_create(card,
                                 gcr + 0x10,
@@ -696,6 +704,12 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
         }
     }
 
+#ifdef SUPPORT_JOYSTICK
+	if (acard->res_joystick) {
+		acard->gameport.io = joystick;
+		gameport_register_port(&acard->gameport);
+	}
+#endif
     strcpy(card->driver, "ALS4000");
     strcpy(card->shortname, "Avance Logic ALS4000");
     sprintf(card->longname, "%s at 0x%lx, irq %i",
@@ -746,7 +760,7 @@ module_exit(alsa_card_als4000_exit)
 
 #ifndef MODULE
 
-/* format is: snd-als4000=enable,index,id */
+/* format is: snd-als4000=enable,index,id,joystick_port */
 
 static int __init alsa_card_als4000_setup(char *str)
 {
@@ -756,7 +770,11 @@ static int __init alsa_card_als4000_setup(char *str)
         return 0;
     (void)(get_option(&str,&enable[nr_dev]) == 2 &&
            get_option(&str,&index[nr_dev]) == 2 &&
-           get_id(&str,&id[nr_dev]) == 2);
+	       get_id(&str,&id[nr_dev]) == 2
+#ifdef SUPPORT_JOYSTICK
+	       && get_option(&str,&joystick_port[nr_dev]) == 2
+#endif
+	       );
     nr_dev++;
     return 1;
 }
