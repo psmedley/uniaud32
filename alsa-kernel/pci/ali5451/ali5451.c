@@ -26,15 +26,21 @@
  */
 
 #define __SNDRV_OSS_COMPAT__
-#define SNDRV_MAIN_OBJECT_FILE
 
-#include "sound/driver.h"
-#include "sound/pcm.h"
-#include "sound/info.h"
-#include "sound/ac97_codec.h"
-#include "sound/mpu401.h"
+#include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
+#include <linux/pci.h>
+#include <linux/slab.h>
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/info.h>
+#include <sound/ac97_codec.h>
+#include <sound/mpu401.h>
 #define SNDRV_GET_ID
-#include "sound/initval.h"
+#include <sound/initval.h>
 
 MODULE_AUTHOR("Matt Wu <Matt_Wu@acersoftech.com.cn>");
 MODULE_DESCRIPTION("ALI M5451");
@@ -1585,24 +1591,24 @@ static snd_pcm_uframes_t snd_ali_capture_pointer(snd_pcm_substream_t *substream)
 
 static snd_pcm_hardware_t snd_ali_playback =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_BLOCK_TRANSFER |
                                  SNDRV_PCM_INFO_MMAP_VALID |
                                  SNDRV_PCM_INFO_RESUME |
                                  SNDRV_PCM_INFO_SYNC_START),
-                                 /*	formats:	  */	(SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE |
+	.formats =		(SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE |
                                                                  SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U16_LE),
-                                                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                                                 /*	rate_min:	  */	4000,
-                                                                 /*	rate_max:	  */	48000,
-                                                                 /*	channels_min:	  */	1,
-                                                                 /*	channels_max:	  */	2,
-                                                                 /*	buffer_bytes_max:  */	(256*1024),
-                                                                 /*	period_bytes_min:  */	64,
-                                                                 /*	period_bytes_max:  */	(256*1024),
-                                                                 /*	periods_min:	  */	1,
-                                                                 /*	periods_max:	  */	1024,
-                                                                 /*	fifo_size:	  */	0,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(256*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(256*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 /*
@@ -1611,24 +1617,24 @@ static snd_pcm_hardware_t snd_ali_playback =
 
 static snd_pcm_hardware_t snd_ali_capture =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_BLOCK_TRANSFER |
                                  SNDRV_PCM_INFO_MMAP_VALID |
                                  SNDRV_PCM_INFO_RESUME |
                                  SNDRV_PCM_INFO_SYNC_START),
-                                 /*	formats:	  */	(SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE |
+	.formats =		(SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE |
                                                                  SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U16_LE),
-                                                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                                                 /*	rate_min:	  */	4000,
-                                                                 /*	rate_max:	  */	48000,
-                                                                 /*	channels_min:	  */	1,
-                                                                 /*	channels_max:	  */	2,
-                                                                 /*	buffer_bytes_max:  */	(128*1024),
-                                                                 /*	period_bytes_min:  */	64,
-                                                                 /*	period_bytes_max:  */	(128*1024),
-                                                                 /*	periods_min:	  */	1,
-                                                                 /*	periods_max:	  */	1024,
-                                                                 /*	fifo_size:	  */	0,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static void snd_ali_pcm_free_substream(snd_pcm_runtime_t *runtime)
@@ -1714,51 +1720,27 @@ static int snd_ali_capture_close(snd_pcm_substream_t * substream)
     return 0;
 }
 
-#ifdef TARGET_OS2
 static snd_pcm_ops_t snd_ali_playback_ops = {
-    snd_ali_playback_open,
-    snd_ali_playback_close,
-    snd_ali_ioctl,
-    snd_ali_playback_hw_params,
-    snd_ali_playback_hw_free,
-    snd_ali_playback_prepare,
-    snd_ali_trigger,
-    snd_ali_playback_pointer,0,0
+	.open =		snd_ali_playback_open,
+	.close =	snd_ali_playback_close,
+	.ioctl =	snd_ali_ioctl,
+	.hw_params =	snd_ali_playback_hw_params,
+	.hw_free =	snd_ali_playback_hw_free,
+	.prepare =	snd_ali_playback_prepare,
+	.trigger =	snd_ali_trigger,
+	.pointer =	snd_ali_playback_pointer,
 };
 
 static snd_pcm_ops_t snd_ali_capture_ops = {
-    snd_ali_capture_open,
-    snd_ali_capture_close,
-    snd_ali_ioctl,
-    snd_ali_capture_hw_params,
-    snd_ali_capture_hw_free,
-    snd_ali_capture_prepare,
-    snd_ali_trigger,
-    snd_ali_capture_pointer,0,0
+	.open =		snd_ali_capture_open,
+	.close =	snd_ali_capture_close,
+	.ioctl =	snd_ali_ioctl,
+	.hw_params =	snd_ali_capture_hw_params,
+	.hw_free =	snd_ali_capture_hw_free,
+	.prepare =	snd_ali_capture_prepare,
+	.trigger =	snd_ali_trigger,
+	.pointer =	snd_ali_capture_pointer,
 };
-#else
-static snd_pcm_ops_t snd_ali_playback_ops = {
-open:		snd_ali_playback_open,
-    close:		snd_ali_playback_close,
-    ioctl:		snd_ali_ioctl,
-    hw_params:	snd_ali_playback_hw_params,
-    hw_free:	snd_ali_playback_hw_free,
-    prepare:	snd_ali_playback_prepare,
-    trigger:	snd_ali_trigger,
-    pointer:	snd_ali_playback_pointer,
-};
-
-static snd_pcm_ops_t snd_ali_capture_ops = {
-open:		snd_ali_capture_open,
-    close:		snd_ali_capture_close,
-    ioctl:		snd_ali_ioctl,
-    hw_params:	snd_ali_capture_hw_params,
-    hw_free:	snd_ali_capture_hw_free,
-    prepare:	snd_ali_capture_prepare,
-    trigger:	snd_ali_trigger,
-    pointer:	snd_ali_capture_pointer,
-};
-#endif
 
 static void snd_ali_pcm_free(snd_pcm_t *pcm)
 {
@@ -1794,18 +1776,10 @@ static int __devinit snd_ali_pcm(ali_t * codec, int device, snd_pcm_t ** rpcm)
 	return 0;
 }
 
-
-#ifdef TARGET_OS2
 #define ALI5451_SPDIF(xname, xindex, value) \
-    { SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex,\
-    0, 0, snd_ali5451_spdif_info, snd_ali5451_spdif_get, \
-    snd_ali5451_spdif_put, 0, value}
-#else
-#define ALI5451_SPDIF(xname, xindex, value) \
-    { iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex,\
-    info: snd_ali5451_spdif_info, get: snd_ali5451_spdif_get, \
-    put: snd_ali5451_spdif_put, private_value: value}
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex,\
+.info = snd_ali5451_spdif_info, .get = snd_ali5451_spdif_get, \
+.put = snd_ali5451_spdif_put, .private_value = value}
 
 static int snd_ali5451_spdif_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t *uinfo)
 {
@@ -2310,10 +2284,10 @@ static void __devexit snd_ali_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-    0,0,0,"ALI 5451",
-    snd_ali_ids,
-    snd_ali_probe,
-    snd_ali_remove,
+	.name = "ALI 5451",
+	.id_table = snd_ali_ids,
+	.probe = snd_ali_probe,
+	.remove = __devexit_p(snd_ali_remove),
     SND_PCI_PM_CALLBACKS
 };
 
@@ -2323,7 +2297,7 @@ static int __init alsa_card_ali_init(void)
 
     if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-        //		snd_printk("ALi pci audio not found or device busy.\n");
+//		snd_printk(KERN_ERR "ALi pci audio not found or device busy.\n");
 #endif
         return err;
     }

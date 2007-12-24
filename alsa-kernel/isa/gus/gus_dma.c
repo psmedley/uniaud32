@@ -15,11 +15,14 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 
 void snd_gf1_dma_ack(snd_gus_card_t * gus)
@@ -34,7 +37,7 @@ void snd_gf1_dma_ack(snd_gus_card_t * gus)
 
 void snd_gf1_dma_program(snd_gus_card_t * gus,
 			 unsigned int addr,
-			 const void *buf,
+			 unsigned long buf_addr,
 			 unsigned int count,
 			 unsigned int cmd)
 {
@@ -73,7 +76,7 @@ void snd_gf1_dma_program(snd_gus_card_t * gus,
 		count &= ~1;	/* align */
 	}
 	snd_gf1_dma_ack(gus);
-	snd_dma_program(gus->gf1.dma1, buf, count, dma_cmd & SNDRV_GF1_DMA_READ ? DMA_MODE_READ : DMA_MODE_WRITE);
+	snd_dma_program(gus->gf1.dma1, buf_addr, count, dma_cmd & SNDRV_GF1_DMA_READ ? DMA_MODE_READ : DMA_MODE_WRITE);
 #if 0
 	snd_printk("address = 0x%x, count = 0x%x, dma_cmd = 0x%x\n", address << 1, count, dma_cmd);
 #endif
@@ -137,7 +140,7 @@ static void snd_gf1_dma_interrupt(snd_gus_card_t * gus)
 	}
 	block = snd_gf1_dma_next_block(gus);
 	spin_unlock(&gus->dma_lock);
-	snd_gf1_dma_program(gus, block->addr, block->buffer, block->count, (unsigned short) block->cmd);
+	snd_gf1_dma_program(gus, block->addr, block->buf_addr, block->count, (unsigned short) block->cmd);
 	kfree(block);
 #if 0
 	printk("program dma (IRQ) - addr = 0x%x, buffer = 0x%lx, count = 0x%x, cmd = 0x%x\n", addr, (long) buffer, count, cmd);
@@ -232,7 +235,7 @@ int snd_gf1_dma_transfer_block(snd_gus_card_t * gus,
 		spin_unlock_irqrestore(&gus->dma_lock, flags);
 		if (block == NULL)
 			return 0;
-		snd_gf1_dma_program(gus, block->addr, block->buffer, block->count, (unsigned short) block->cmd);
+		snd_gf1_dma_program(gus, block->addr, block->buf_addr, block->count, (unsigned short) block->cmd);
 		kfree(block);
 		return 0;
 	}

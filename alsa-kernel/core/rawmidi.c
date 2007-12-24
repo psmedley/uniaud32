@@ -19,7 +19,6 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 
 #define INCL_NOPMAPI
 #include <os2.h>
@@ -27,6 +26,13 @@
 #include <ossidc32.h>
 
 #include <sound/driver.h>
+#include <sound/core.h>
+#include <linux/major.h>
+#include <linux/init.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <linux/wait.h>
 #include <sound/rawmidi.h>
 #include <sound/info.h>
 #include <sound/control.h>
@@ -351,7 +357,7 @@ __error1:
 
 static int snd_rawmidi_open(struct inode *inode, struct file *file)
 {
-    int major = MAJOR(inode->i_rdev);
+	int maj = imajor(inode);
     int cardnum;
     snd_card_t *card;
     int device, subdevice;
@@ -364,7 +370,7 @@ static int snd_rawmidi_open(struct inode *inode, struct file *file)
     snd_ctl_file_t *kctl;
 
     printk("rawmidi open\n");
-    switch (major) {
+    switch (maj) {
     case CONFIG_SND_MAJOR:
         cardnum = SNDRV_MINOR_CARD(MINOR(inode->i_rdev));
         cardnum %= SNDRV_CARDS;
@@ -387,7 +393,7 @@ static int snd_rawmidi_open(struct inode *inode, struct file *file)
     if (rmidi == NULL)
         return -ENODEV;
 #ifdef CONFIG_SND_OSSEMUL
-    if (major == SOUND_MAJOR && !rmidi->ossreg)
+	if (maj == SOUND_MAJOR && !rmidi->ossreg)
         return -ENXIO;
 #endif
     if ((file->f_flags & O_APPEND) && !(file->f_flags & O_NONBLOCK))
@@ -397,7 +403,7 @@ static int snd_rawmidi_open(struct inode *inode, struct file *file)
     if (err < 0)
         return -ENODEV;
     fflags = snd_rawmidi_file_flags(file);
-    if ((file->f_flags & O_APPEND) || major != CONFIG_SND_MAJOR) /* OSS emul? */
+	if ((file->f_flags & O_APPEND) || maj != CONFIG_SND_MAJOR) /* OSS emul? */
         fflags |= SNDRV_RAWMIDI_LFLG_APPEND;
     fflags |= SNDRV_RAWMIDI_LFLG_NOOPENLOCK;
     rawmidi_file = kmalloc(sizeof(*rawmidi_file), GFP_KERNEL);
@@ -786,7 +792,7 @@ static int snd_rawmidi_ioctl(struct inode *inode, struct file *file,
         }
 #ifdef CONFIG_SND_DEBUG
     default:
-        snd_printk("rawmidi: unknown command = 0x%x\n", cmd);
+		snd_printk(KERN_WARNING "rawmidi: unknown command = 0x%x\n", cmd);
 #endif
     }
     return -ENOTTY;
@@ -1460,7 +1466,7 @@ static int snd_rawmidi_dev_free(snd_device_t *device)
     return snd_rawmidi_free(rmidi);
 }
 
-#ifdef CONFIG_SND_SEQUENCER
+#if defined(CONFIG_SND_SEQUENCER) || (defined(MODULE) && defined(CONFIG_SND_SEQUENCER_MODULE))
 static void snd_rawmidi_dev_seq_free(snd_seq_device_t *device)
 {
     snd_rawmidi_t *rmidi = device->private_data;
@@ -1488,7 +1494,7 @@ static int snd_rawmidi_dev_register(snd_device_t *device)
     if ((err = snd_register_device(SNDRV_DEVICE_TYPE_RAWMIDI,
                                    rmidi->card, rmidi->device,
                                    &snd_rawmidi_reg, name)) < 0) {
-        snd_printk("unable to register rawmidi device %i:%i\n", rmidi->card->number, rmidi->device);
+		snd_printk(KERN_ERR "unable to register rawmidi device %i:%i\n", rmidi->card->number, rmidi->device);
         snd_rawmidi_devices[idx] = NULL;
         up(&register_mutex);
         return err;
@@ -1505,7 +1511,7 @@ static int snd_rawmidi_dev_register(snd_device_t *device)
     if ((int)rmidi->device == midi_map[rmidi->card->number]) {
         if (snd_register_oss_device(SNDRV_OSS_DEVICE_TYPE_MIDI,
                                     rmidi->card, 0, &snd_rawmidi_reg, name) < 0) {
-            snd_printk("unable to register OSS rawmidi device %i:%i\n", rmidi->card->number, 0);
+			snd_printk(KERN_ERR "unable to register OSS rawmidi device %i:%i\n", rmidi->card->number, 0);
         } else {
             rmidi->ossreg++;
 #ifdef SNDRV_OSS_INFO_DEV_MIDI
@@ -1516,7 +1522,7 @@ static int snd_rawmidi_dev_register(snd_device_t *device)
     if ((int)rmidi->device == amidi_map[rmidi->card->number]) {
         if (snd_register_oss_device(SNDRV_OSS_DEVICE_TYPE_MIDI,
                                     rmidi->card, 1, &snd_rawmidi_reg, name) < 0) {
-            snd_printk("unable to register OSS rawmidi device %i:%i\n", rmidi->card->number, 1);
+			snd_printk(KERN_ERR "unable to register OSS rawmidi device %i:%i\n", rmidi->card->number, 1);
         } else {
             rmidi->ossreg++;
         }
@@ -1535,7 +1541,7 @@ static int snd_rawmidi_dev_register(snd_device_t *device)
         }
     }
     rmidi->proc_entry = entry;
-#ifdef CONFIG_SND_SEQUENCER
+#if defined(CONFIG_SND_SEQUENCER) || (defined(MODULE) && defined(CONFIG_SND_SEQUENCER_MODULE))
     if (!rmidi->ops || !rmidi->ops->dev_register) { /* own registration mechanism */
         if (snd_seq_device_new(rmidi->card, rmidi->device, SNDRV_SEQ_DEV_ID_MIDISYNTH, 0, &rmidi->seq_dev) >= 0) {
             rmidi->seq_dev->private_data = rmidi;
@@ -1590,7 +1596,7 @@ static int snd_rawmidi_dev_unregister(snd_device_t *device)
         rmidi->ops->dev_unregister(rmidi);
     snd_unregister_device(SNDRV_DEVICE_TYPE_RAWMIDI, rmidi->card, rmidi->device);
     up(&register_mutex);
-#ifdef CONFIG_SND_SEQUENCER
+#if defined(CONFIG_SND_SEQUENCER) || (defined(MODULE) && defined(CONFIG_SND_SEQUENCER_MODULE))
     if (rmidi->seq_dev) {
         snd_device_free(rmidi->card, rmidi->seq_dev);
         rmidi->seq_dev = NULL;
@@ -1629,15 +1635,15 @@ static int __init alsa_rawmidi_init(void)
 #ifdef CONFIG_SND_OSSEMUL
     { int i;
         /* check device map table */
-        for (i = 0; i < SNDRV_CARDS; i++) {
-            if (midi_map[i] < 0 || midi_map[i] >= SNDRV_RAWMIDI_DEVICES) {
-                snd_printk(KERN_ERR "invalid midi_map[%d] = %d\n", i, midi_map[i]);
-                midi_map[i] = 0;
-            }
-            if (amidi_map[i] < 0 || amidi_map[i] >= SNDRV_RAWMIDI_DEVICES) {
-                snd_printk(KERN_ERR "invalid amidi_map[%d] = %d\n", i, amidi_map[i]);
-                amidi_map[i] = 1;
-            }
+		for (i = 0; i < SNDRV_CARDS; i++) {
+			if (midi_map[i] < 0 || midi_map[i] >= SNDRV_RAWMIDI_DEVICES) {
+				snd_printk(KERN_ERR "invalid midi_map[%d] = %d\n", i, midi_map[i]);
+				midi_map[i] = 0;
+			}
+			if (amidi_map[i] < 0 || amidi_map[i] >= SNDRV_RAWMIDI_DEVICES) {
+				snd_printk(KERN_ERR "invalid amidi_map[%d] = %d\n", i, amidi_map[i]);
+				amidi_map[i] = 1;
+			}
         }
     }
 #endif /* CONFIG_SND_OSSEMUL */

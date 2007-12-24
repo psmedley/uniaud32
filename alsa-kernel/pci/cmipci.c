@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 //#include <linux/pci.h>
 #include <linux/slab.h>
+#include <linux/gameport.h>
 #include <sound/core.h>
 #include <sound/info.h>
 #include <sound/control.h>
@@ -78,6 +79,11 @@ MODULE_PARM_SYNTAX(fm_port, SNDRV_ENABLED ",allows:{{-1},{0x388},{0x3c8},{0x3e0}
 MODULE_PARM(soft_ac3, "1-" __MODULE_STRING(SNDRV_CARDS) "l");
 MODULE_PARM_DESC(soft_ac3, "Sofware-conversion of raw SPDIF packets (model 033 only).");
 MODULE_PARM_SYNTAX(soft_ac3, SNDRV_ENABLED "," SNDRV_BOOLEAN_TRUE_DESC);
+#endif
+#ifdef SUPPORT_JOYSTICK
+MODULE_PARM(joystick, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
+MODULE_PARM_DESC(joystick, "Enable joystick.");
+MODULE_PARM_SYNTAX(joystick, SNDRV_ENABLED "," SNDRV_BOOLEAN_FALSE_DESC);
 #endif
 
 #ifndef PCI_DEVICE_ID_CMEDIA_CM8738
@@ -348,6 +354,10 @@ MODULE_PARM_SYNTAX(soft_ac3, SNDRV_ENABLED "," SNDRV_BOOLEAN_TRUE_DESC);
 #define CM_EXTENT_CODEC	  0x100
 #define CM_EXTENT_MIDI	  0x2
 #define CM_EXTENT_SYNTH	  0x4
+
+/* fixed legacy joystick address */
+#define CM_JOYSTICK_ADDR	0x200
+  
 
 /*
  * pci ids
@@ -1001,11 +1011,11 @@ static int snd_cmipci_spdif_default_put(struct snd_kcontrol *kcontrol,
 
 static struct snd_kcontrol_new snd_cmipci_spdif_default __devinitdata =
 {
-    SNDRV_CTL_ELEM_IFACE_PCM,0,0,
-    SNDRV_CTL_NAME_IEC958("",PLAYBACK,DEFAULT),0,0,0,
-    snd_cmipci_spdif_default_info,
-    snd_cmipci_spdif_default_get,
-    snd_cmipci_spdif_default_put,0
+	.iface =	SNDRV_CTL_ELEM_IFACE_PCM,
+	.name =		SNDRV_CTL_NAME_IEC958("",PLAYBACK,DEFAULT),
+	.info =		snd_cmipci_spdif_default_info,
+	.get =		snd_cmipci_spdif_default_get,
+	.put =		snd_cmipci_spdif_default_put
 };
 
 static int snd_cmipci_spdif_mask_info(struct snd_kcontrol *kcontrol,
@@ -1028,11 +1038,11 @@ static int snd_cmipci_spdif_mask_get(struct snd_kcontrol *kcontrol,
 
 static struct snd_kcontrol_new snd_cmipci_spdif_mask __devinitdata =
 {
-    SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-    SNDRV_CTL_NAME_IEC958("",PLAYBACK,CON_MASK),0,
-    SNDRV_CTL_ELEM_ACCESS_READ,0,
-    snd_cmipci_spdif_mask_info,
-    snd_cmipci_spdif_mask_get,0,0
+	.access =	SNDRV_CTL_ELEM_ACCESS_READ,
+	.iface =	SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name =		SNDRV_CTL_NAME_IEC958("",PLAYBACK,CON_MASK),
+	.info =		snd_cmipci_spdif_mask_info,
+	.get =		snd_cmipci_spdif_mask_get,
 };
 
 static int snd_cmipci_spdif_stream_info(struct snd_kcontrol *kcontrol,
@@ -1075,12 +1085,12 @@ static int snd_cmipci_spdif_stream_put(struct snd_kcontrol *kcontrol,
 
 static struct snd_kcontrol_new snd_cmipci_spdif_stream __devinitdata =
 {
-    SNDRV_CTL_ELEM_IFACE_PCM,0,0,
-    SNDRV_CTL_NAME_IEC958("",PLAYBACK,PCM_STREAM),0,
-    SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_INACTIVE,0,
-    snd_cmipci_spdif_stream_info,
-    snd_cmipci_spdif_stream_get,
-    snd_cmipci_spdif_stream_put,0
+	.access =	SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_INACTIVE,
+	.iface =	SNDRV_CTL_ELEM_IFACE_PCM,
+	.name =		SNDRV_CTL_NAME_IEC958("",PLAYBACK,PCM_STREAM),
+	.info =		snd_cmipci_spdif_stream_info,
+	.get =		snd_cmipci_spdif_stream_get,
+	.put =		snd_cmipci_spdif_stream_put
 };
 
 /*
@@ -1838,11 +1848,10 @@ struct cmipci_sb_reg {
     ((lreg) | ((rreg) << 8) | (lshift << 16) | (rshift << 19) | (mask << 24) | (invert << 22) | (stereo << 23))
 
 #define CMIPCI_DOUBLE(xname, left_reg, right_reg, left_shift, right_shift, mask, invert, stereo) \
-    { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
-    0, 0, snd_cmipci_info_volume, \
-    snd_cmipci_get_volume, snd_cmipci_put_volume, \
-    0,\
-    COMPOSE_SB_REG(left_reg, right_reg, left_shift, right_shift, mask, invert, stereo), \
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+ .info = snd_cmipci_info_volume, \
+ .get = snd_cmipci_get_volume, .put = snd_cmipci_put_volume, \
+ .private_value = COMPOSE_SB_REG(left_reg, right_reg, left_shift, right_shift, mask, invert, stereo), \
     }
 
 #define CMIPCI_SB_VOL_STEREO(xname,reg,shift,mask) CMIPCI_DOUBLE(xname, reg, reg+1, shift, shift, mask, 0, 1)
@@ -1940,11 +1949,10 @@ static int snd_cmipci_put_volume(struct snd_kcontrol *kcontrol,
  * input route (left,right) -> (left,right)
  */
 #define CMIPCI_SB_INPUT_SW(xname, left_shift, right_shift) \
-    { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
-    0, 0, snd_cmipci_info_input_sw, \
-    snd_cmipci_get_input_sw, snd_cmipci_put_input_sw, \
-    0, \
-    COMPOSE_SB_REG(SB_DSP4_INPUT_LEFT, SB_DSP4_INPUT_RIGHT, left_shift, right_shift, 1, 0, 1), \
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+  .info = snd_cmipci_info_input_sw, \
+  .get = snd_cmipci_get_input_sw, .put = snd_cmipci_put_input_sw, \
+  .private_value = COMPOSE_SB_REG(SB_DSP4_INPUT_LEFT, SB_DSP4_INPUT_RIGHT, left_shift, right_shift, 1, 0, 1), \
     }
 static int snd_cmipci_info_input_sw(struct snd_kcontrol *kcontrol,
                                     struct snd_ctl_elem_info *uinfo)
@@ -2005,35 +2013,31 @@ static int snd_cmipci_put_input_sw(struct snd_kcontrol *kcontrol,
  */
 
 #define CMIPCI_MIXER_SW_STEREO(xname, reg, lshift, rshift, invert) \
-    { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
-    0, 0, snd_cmipci_info_native_mixer, \
-    snd_cmipci_get_native_mixer, snd_cmipci_put_native_mixer, \
-    0, \
-    COMPOSE_SB_REG(reg, reg, lshift, rshift, 1, invert, 1), \
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+  .info = snd_cmipci_info_native_mixer, \
+  .get = snd_cmipci_get_native_mixer, .put = snd_cmipci_put_native_mixer, \
+  .private_value = COMPOSE_SB_REG(reg, reg, lshift, rshift, 1, invert, 1), \
     }
 
 #define CMIPCI_MIXER_SW_MONO(xname, reg, shift, invert) \
-    { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
-    0, 0, snd_cmipci_info_native_mixer, \
-    snd_cmipci_get_native_mixer, snd_cmipci_put_native_mixer, \
-    0, \
-    COMPOSE_SB_REG(reg, reg, shift, shift, 1, invert, 0), \
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+  .info = snd_cmipci_info_native_mixer, \
+  .get = snd_cmipci_get_native_mixer, .put = snd_cmipci_put_native_mixer, \
+  .private_value = COMPOSE_SB_REG(reg, reg, shift, shift, 1, invert, 0), \
     }
 
 #define CMIPCI_MIXER_VOL_STEREO(xname, reg, lshift, rshift, mask) \
-    { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
-    0, 0, snd_cmipci_info_native_mixer, \
-    snd_cmipci_get_native_mixer, snd_cmipci_put_native_mixer, \
-    0, \
-    COMPOSE_SB_REG(reg, reg, lshift, rshift, mask, 0, 1), \
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+  .info = snd_cmipci_info_native_mixer, \
+  .get = snd_cmipci_get_native_mixer, .put = snd_cmipci_put_native_mixer, \
+  .private_value = COMPOSE_SB_REG(reg, reg, lshift, rshift, mask, 0, 1), \
     }
 
 #define CMIPCI_MIXER_VOL_MONO(xname, reg, shift, mask) \
-    { SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, \
-    0, 0, snd_cmipci_info_native_mixer, \
-    snd_cmipci_get_native_mixer, snd_cmipci_put_native_mixer, \
-    0, \
-    COMPOSE_SB_REG(reg, reg, shift, shift, mask, 0, 0), \
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+  .info = snd_cmipci_info_native_mixer, \
+  .get = snd_cmipci_get_native_mixer, .put = snd_cmipci_put_native_mixer, \
+  .private_value = COMPOSE_SB_REG(reg, reg, shift, shift, mask, 0, 0), \
     }
 
 static int snd_cmipci_info_native_mixer(struct snd_kcontrol *kcontrol,
@@ -2128,13 +2132,12 @@ static struct snd_kcontrol_new snd_cmipci_mixers[] __devinitdata = {
     CMIPCI_SB_VOL_STEREO("PCM Playback Volume", SB_DSP4_PCM_DEV, 3, 31),
     //CMIPCI_MIXER_SW_MONO("PCM Playback Switch", CM_REG_MIXER1, CM_WSMUTE_SHIFT, 1),
     { /* switch with sensitivity */
-        SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-        "PCM Playback Switch",0,0,0,
-        snd_cmipci_info_native_mixer,
-        snd_cmipci_get_native_mixer_sensitive,
-        snd_cmipci_put_native_mixer_sensitive,
-	0,
-        COMPOSE_SB_REG(CM_REG_MIXER1, CM_REG_MIXER1, CM_WSMUTE_SHIFT, CM_WSMUTE_SHIFT, 1, 1, 0),
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name = "PCM Playback Switch",
+		.info = snd_cmipci_info_native_mixer,
+		.get = snd_cmipci_get_native_mixer_sensitive,
+		.put = snd_cmipci_put_native_mixer_sensitive,
+		.private_value = COMPOSE_SB_REG(CM_REG_MIXER1, CM_REG_MIXER1, CM_WSMUTE_SHIFT, CM_WSMUTE_SHIFT, 1, 1, 0),
     },
     CMIPCI_MIXER_SW_STEREO("PCM Capture Switch", CM_REG_MIXER1, CM_WAVEINL_SHIFT, CM_WAVEINR_SHIFT, 0),
     CMIPCI_SB_VOL_STEREO("Synth Playback Volume", SB_DSP4_SYNTH_DEV, 3, 31),
@@ -2259,14 +2262,25 @@ static int snd_cmipci_uswitch_put(struct snd_kcontrol *kcontrol,
     return _snd_cmipci_uswitch_put(kcontrol, ucontrol, args);
 }
 
+#ifdef TARGET_OS2
 #define DEFINE_SWITCH_ARG(sname, xreg, xmask, xmask_on, xis_byte, xac3) \
     static struct cmipci_switch_args cmipci_switch_arg_##sname = { \
-    xreg, \
-    xmask, \
-    xmask_on, \
-    xis_byte, \
-    xac3, \
+  xreg, \
+  xmask, \
+  xmask_on, \
+  xis_byte, \
+  xac3, \
     }
+#else
+#define DEFINE_SWITCH_ARG(sname, xreg, xmask, xmask_on, xis_byte, xac3) \
+    static struct cmipci_switch_args cmipci_switch_arg_##sname = { \
+  .reg = xreg, \
+  .mask = xmask, \
+  .mask_on = xmask_on, \
+  .is_byte = xis_byte, \
+  .ac3_sensitive = xac3, \
+    }
+#endif
 
 #define DEFINE_BIT_SWITCH_ARG(sname, xreg, xmask, xis_byte, xac3) \
     DEFINE_SWITCH_ARG(sname, xreg, xmask, xmask, xis_byte, xac3)
@@ -2297,20 +2311,19 @@ DEFINE_SWITCH_ARG(exchange_dac, CM_REG_MISC_CTRL, CM_XCHGDAC, CM_XCHGDAC, 0, 0);
 DEFINE_BIT_SWITCH_ARG(fourch, CM_REG_MISC_CTRL, CM_N4SPK3D, 0, 0);
 DEFINE_BIT_SWITCH_ARG(line_rear, CM_REG_MIXER1, CM_SPK4, 1, 0);
 DEFINE_BIT_SWITCH_ARG(line_bass, CM_REG_LEGACY_CTRL, CM_LINE_AS_BASS, 0, 0);
-DEFINE_BIT_SWITCH_ARG(joystick, CM_REG_FUNCTRL1, CM_JYSTK_EN, 0, 0);
+// DEFINE_BIT_SWITCH_ARG(joystick, CM_REG_FUNCTRL1, CM_JYSTK_EN, 0, 0); /* now module option */
 DEFINE_SWITCH_ARG(modem, CM_REG_MISC_CTRL, CM_FLINKON|CM_FLINKOFF, CM_FLINKON, 0, 0);
 
 //Can't compile in non-KEE mode without extra pointer in structure
 //(watcom complains it can't convert a far ptr to ulong even though it's
 // safe to do so in this case)
 #define DEFINE_SWITCH(sname, stype, sarg) \
-    { stype, 0, 0, \
-    sname, 0, 0, 0, \
-    snd_cmipci_uswitch_info, \
-    snd_cmipci_uswitch_get, \
-    snd_cmipci_uswitch_put, \
-    0, \
-    (unsigned long)&cmipci_switch_arg_##sarg,\
+{ .name = sname, \
+  .iface = stype, \
+  .info = snd_cmipci_uswitch_info, \
+  .get = snd_cmipci_uswitch_get, \
+  .put = snd_cmipci_uswitch_put, \
+  .private_value = (unsigned long)&cmipci_switch_arg_##sarg,\
     }
 
 #define DEFINE_CARD_SWITCH(sname, sarg) DEFINE_SWITCH(sname, SNDRV_CTL_ELEM_IFACE_CARD, sarg)
@@ -2472,12 +2485,11 @@ static struct snd_kcontrol_new snd_cmipci_8738_mixer_switches[] __devinitdata = 
     DEFINE_MIXER_SWITCH("IEC958 Out To DAC", spdo2dac),
 #endif
     // DEFINE_MIXER_SWITCH("IEC958 Output Switch", spdif_enable),
-    {
-        SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-        "IEC958 Output Switch",0,0, 0,
-        snd_cmipci_uswitch_info,
-        snd_cmipci_spdout_enable_get,
-        snd_cmipci_spdout_enable_put,0
+	{ .name = "IEC958 Output Switch",
+	  .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	  .info = snd_cmipci_uswitch_info,
+	  .get = snd_cmipci_spdout_enable_get,
+	  .put = snd_cmipci_spdout_enable_put,
     },
     DEFINE_MIXER_SWITCH("IEC958 In Valid", spdi_valid),
     DEFINE_MIXER_SWITCH("IEC958 Copyright", spdif_copyright),
@@ -2509,7 +2521,7 @@ static struct snd_kcontrol_new snd_cmipci_extra_mixer_switches[] __devinitdata =
 
 /* card control switches */
 static struct snd_kcontrol_new snd_cmipci_control_switches[] __devinitdata = {
-    DEFINE_CARD_SWITCH("Joystick", joystick),
+	// DEFINE_CARD_SWITCH("Joystick", joystick),
     DEFINE_CARD_SWITCH("Modem", modem),
 };
 
@@ -2642,7 +2654,7 @@ static void __devinit snd_cmipci_proc_init(struct cmipci *cm)
         snd_info_set_text_ops(entry, cm, 1024, snd_cmipci_proc_read);
 }
 
-static struct pci_device_id snd_cmipci_ids[] __devinitdata = {
+static struct pci_device_id snd_cmipci_ids[] = {
     {PCI_VENDOR_ID_CMEDIA, PCI_DEVICE_ID_CMEDIA_CM8338A, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
     {PCI_VENDOR_ID_CMEDIA, PCI_DEVICE_ID_CMEDIA_CM8338B, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
     {PCI_VENDOR_ID_CMEDIA, PCI_DEVICE_ID_CMEDIA_CM8738, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
@@ -2970,6 +2982,15 @@ static int __devinit snd_cmipci_create(struct snd_card *card, struct pci_dev *pc
     snd_cmipci_set_bit(cm, CM_REG_MISC_CTRL, CM_SPDIF48K|CM_SPDF_AC97);
 #endif /* USE_VAR48KRATE */
 
+#ifdef SUPPORT_JOYSTICK
+	if (joystick[dev] &&
+	    (cm->res_joystick = request_region(CM_JOYSTICK_ADDR, 8, "CMIPCI gameport")) != NULL) {
+		cm->gameport.io = CM_JOYSTICK_ADDR;
+		snd_cmipci_set_bit(cm, CM_REG_FUNCTRL1, CM_JYSTK_EN);
+		gameport_register_port(&cm->gameport);
+	} else
+		snd_cmipci_clear_bit(cm, CM_REG_FUNCTRL1, CM_JYSTK_EN);
+#endif
     *rcmipci = cm;
     return 0;
 
@@ -3171,7 +3192,7 @@ module_exit(alsa_card_cmipci_exit)
 #ifndef MODULE
 
 /* format is: snd-cmipci=enable,index,id,
- mpu_port,fm_port */
+			 mpu_port,fm_port,soft_ac3,joystick */
 
 static int __init alsa_card_cmipci_setup(char *str)
 {
@@ -3182,8 +3203,15 @@ static int __init alsa_card_cmipci_setup(char *str)
     (void)(get_option(&str,&enable[nr_dev]) == 2 &&
            get_option(&str,&index[nr_dev]) == 2 &&
            get_id(&str,&id[nr_dev]) == 2 &&
-           get_option(&str,(int *)&mpu_port[nr_dev]) == 2 &&
-           get_option(&str,(int *)&fm_port[nr_dev]) == 2);
+	       get_option_long(&str,&mpu_port[nr_dev]) == 2 &&
+	       get_option_long(&str,&fm_port[nr_dev]) == 2
+#ifdef DO_SOFT_AC3
+	       && get_option(&str,&soft_ac3[nr_dev]) == 2
+#endif
+#ifdef SUPPORT_JOYSTICK
+	       && get_option(&str,&joystick[nr_dev]) == 2
+#endif
+	       );
     nr_dev++;
     return 1;
 }
