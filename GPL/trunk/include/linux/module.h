@@ -9,6 +9,9 @@
 
 /* Poke the use count of a module.  */
 
+#define __MOD_DEC_USE_COUNT(mod)		\
+	do {} while(0);
+
 #define MOD_INC_USE_COUNT
 #define MOD_DEC_USE_COUNT
 #define MOD_IN_USE
