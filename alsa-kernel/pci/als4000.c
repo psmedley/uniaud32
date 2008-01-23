@@ -59,6 +59,12 @@
  */
 
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/init.h>
+#include <linux/pci.h>
+#include <linux/slab.h>
+#include <linux/gameport.h>
+#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/rawmidi.h>
 #include <sound/mpu401.h>
@@ -67,19 +73,21 @@
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
+MODULE_AUTHOR("Bart Hartgers <bart@etpmod.phys.tue.nl>");
 MODULE_DESCRIPTION("Avance Logic ALS4000");
+MODULE_LICENSE("GPL");
 MODULE_CLASSES("{sound}");
 MODULE_DEVICES("{{Avance Logic,ALS4000}}");
+
+#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
+#define SUPPORT_JOYSTICK 1
+#endif
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
-static int joystick_port[SNDRV_CARDS] =
-#ifdef CONFIG_ISA
-{0x200};	/* enable as default */
-#else
-{0};	/* disabled */
+#ifdef SUPPORT_JOYSTICK
+static int joystick_port[SNDRV_CARDS];
 #endif
 
 MODULE_PARM(index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
@@ -397,83 +405,43 @@ static irqreturn_t snd_als4000_interrupt(int irq, void *dev_id, struct pt_regs *
 
 /*****************************************************************/
 
-#ifdef TARGET_OS2
 static snd_pcm_hardware_t snd_als4000_playback =
 {
-    /*	info:        	  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                                 SNDRV_PCM_INFO_MMAP_VALID),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
-                                 SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE,	/* formats */
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	4000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	65536,
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	65536,
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 /*	fifo_size:	  */	0
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+	.formats =		SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
+				SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE,	/* formats */
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	65536,
+	.period_bytes_min =	64,
+	.period_bytes_max =	65536,
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0
 };
 
 static snd_pcm_hardware_t snd_als4000_capture =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                                 SNDRV_PCM_INFO_MMAP_VALID),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
-                                 SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE,	/* formats */
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	4000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	65536,
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	65536,
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 /*	fifo_size:	  */	0
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+	.formats =		SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
+				SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE,	/* formats */
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	65536,
+	.period_bytes_min =	64,
+	.period_bytes_max =	65536,
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0
 };
-#else
-static snd_pcm_hardware_t snd_als4000_playback =
-{
-info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                         SNDRV_PCM_INFO_MMAP_VALID),
-    formats:		SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
-    SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE,	/* formats */
-    rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-    rate_min:		4000,
-    rate_max:		48000,
-    channels_min:		1,
-    channels_max:		2,
-    buffer_bytes_max:	65536,
-    period_bytes_min:	64,
-    period_bytes_max:	65536,
-    periods_min:		1,
-    periods_max:		1024,
-    fifo_size:		0
-};
-
-static snd_pcm_hardware_t snd_als4000_capture =
-{
-info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                         SNDRV_PCM_INFO_MMAP_VALID),
-    formats:		SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
-    SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE,	/* formats */
-    rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-    rate_min:		4000,
-    rate_max:		48000,
-    channels_min:		1,
-    channels_max:		2,
-    buffer_bytes_max:	65536,
-    period_bytes_min:	64,
-    period_bytes_max:	65536,
-    periods_min:		1,
-    periods_max:		1024,
-    fifo_size:		0
-};
-#endif
 
 /*****************************************************************/
 
@@ -517,51 +485,27 @@ static int snd_als4000_capture_close(snd_pcm_substream_t * substream)
 
 /******************************************************************/
 
-#ifdef TARGET_OS2
 static snd_pcm_ops_t snd_als4000_playback_ops = {
-    snd_als4000_playback_open,
-    snd_als4000_playback_close,
-    snd_pcm_lib_ioctl,
-    snd_als4000_hw_params,
-    snd_als4000_hw_free,
-    snd_als4000_playback_prepare,
-    snd_als4000_playback_trigger,
-    snd_als4000_playback_pointer,0,0
+	.open =		snd_als4000_playback_open,
+	.close =	snd_als4000_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_als4000_hw_params,
+	.hw_free =	snd_als4000_hw_free,
+	.prepare =	snd_als4000_playback_prepare,
+	.trigger =	snd_als4000_playback_trigger,
+	.pointer =	snd_als4000_playback_pointer
 };
 
 static snd_pcm_ops_t snd_als4000_capture_ops = {
-    snd_als4000_capture_open,
-    snd_als4000_capture_close,
-    snd_pcm_lib_ioctl,
-    snd_als4000_hw_params,
-    snd_als4000_hw_free,
-    snd_als4000_capture_prepare,
-    snd_als4000_capture_trigger,
-    snd_als4000_capture_pointer,0,0
+	.open =		snd_als4000_capture_open,
+	.close =	snd_als4000_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_als4000_hw_params,
+	.hw_free =	snd_als4000_hw_free,
+	.prepare =	snd_als4000_capture_prepare,
+	.trigger =	snd_als4000_capture_trigger,
+	.pointer =	snd_als4000_capture_pointer
 };
-#else
-static snd_pcm_ops_t snd_als4000_playback_ops = {
-open:		snd_als4000_playback_open,
-    close:		snd_als4000_playback_close,
-    ioctl:		snd_pcm_lib_ioctl,
-    hw_params:	snd_als4000_hw_params,
-    hw_free:	snd_als4000_hw_free,
-    prepare:	snd_als4000_playback_prepare,
-    trigger:	snd_als4000_playback_trigger,
-    pointer:	snd_als4000_playback_pointer
-};
-
-static snd_pcm_ops_t snd_als4000_capture_ops = {
-open:		snd_als4000_capture_open,
-    close:		snd_als4000_capture_close,
-    ioctl:		snd_pcm_lib_ioctl,
-    hw_params:	snd_als4000_hw_params,
-    hw_free:	snd_als4000_hw_free,
-    prepare:	snd_als4000_capture_prepare,
-    trigger:	snd_als4000_capture_trigger,
-    pointer:	snd_als4000_capture_pointer
-};
-#endif
 
 static void snd_als4000_pcm_free(snd_pcm_t *pcm)
 {
@@ -593,7 +537,7 @@ static int __devinit snd_als4000_pcm(struct snd_sb *chip, int device)
 
 /******************************************************************/
 
-static void __devinit snd_als4000_set_addr(unsigned long gcr,
+static void snd_als4000_set_addr(unsigned long gcr,
                                            unsigned int sb,
                                            unsigned int mpu,
                                            unsigned int opl,
@@ -667,6 +611,7 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
     opl3_t *opl3;
     unsigned short word;
     int err;
+	int joystick = 0;
 
     if (dev >= SNDRV_CARDS)
         return -ENODEV;
@@ -694,9 +639,6 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
     pci_write_config_word(pci, PCI_COMMAND, word | PCI_COMMAND_IO);
     pci_set_master(pci);
 
-    /* disable all legacy ISA stuff except for joystick */
-    snd_als4000_set_addr(gcr, 0, 0, 0, joystick_port[dev]);
-
     card = snd_card_new(index[dev], id[dev], THIS_MODULE,
                         sizeof( snd_card_als4000_t ) );
     if (card == NULL) {
@@ -708,6 +650,26 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
     acard->pci = pci;
     acard->gcr = gcr;
     card->private_free = snd_card_als4000_free;
+
+	/* disable all legacy ISA stuff except for joystick */
+#ifdef SUPPORT_JOYSTICK
+	if (joystick_port[dev] == 1) {
+		/* auto-detect */
+		long p;
+		for (p = 0x200; p <= 0x218; p += 8) {
+			if ((acard->res_joystick = request_region(p, 8, "ALS4000 gameport")) != NULL) {
+				joystick_port[dev] = p;
+				break;
+			}
+		}
+	} else if (joystick_port[dev] > 0)
+		acard->res_joystick = request_region(joystick_port[dev], 8, "ALS4000 gameport");
+	if (acard->res_joystick)
+		joystick = joystick_port[dev];
+	else
+		joystick = 0;
+#endif
+	snd_als4000_set_addr(gcr, 0, 0, 0, joystick);
 
     if ((err = snd_sbdsp_create(card,
                                 gcr + 0x10,
@@ -730,7 +692,7 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
                                    gcr+0x30, 1, pci->irq, 0,
                                    &chip->rmidi)) < 0) {
         snd_card_free(card);
-        snd_printk("no MPU-401device at 0x%lx ?\n", gcr+0x30);
+		printk(KERN_ERR "als4000: no MPU-401device at 0x%lx ?\n", gcr+0x30);
         return err;
     }
 
@@ -745,7 +707,7 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
 
     if (snd_opl3_create(card, gcr+0x10, gcr+0x12,
                         OPL3_HW_AUTO, 1, &opl3) < 0) {
-        snd_printk("no OPL device at 0x%lx-0x%lx ?\n",
+		printk(KERN_ERR "als4000: no OPL device at 0x%lx-0x%lx ?\n",
                    gcr+0x10, gcr+0x12 );
     } else {
         if ((err = snd_opl3_hwdep_new(opl3, 0, 1, NULL)) < 0) {
@@ -754,6 +716,12 @@ static int __devinit snd_card_als4000_probe(struct pci_dev *pci,
         }
     }
 
+#ifdef SUPPORT_JOYSTICK
+	if (acard->res_joystick) {
+		acard->gameport.io = joystick;
+		gameport_register_port(&acard->gameport);
+	}
+#endif
     strcpy(card->driver, "ALS4000");
     strcpy(card->shortname, "Avance Logic ALS4000");
     sprintf(card->longname, "%s at 0x%lx, irq %i",
@@ -774,21 +742,12 @@ static void __devexit snd_card_als4000_remove(struct pci_dev *pci)
     pci_set_drvdata(pci, NULL);
 }
 
-#ifdef TARGET_OS2
 static struct pci_driver driver = {
-    0,0,0,"ALS4000",
-    snd_als4000_ids,
-    snd_card_als4000_probe,
-    snd_card_als4000_remove,0,0
+	.name = "ALS4000",
+	.id_table = snd_als4000_ids,
+	.probe = snd_card_als4000_probe,
+	.remove = __devexit_p(snd_card_als4000_remove),
 };
-#else
-static struct pci_driver driver = {
-name: "ALS4000",
-    id_table: snd_als4000_ids,
-    probe: snd_card_als4k_probe,
-    remove: snd_card_als4k_remove,
-};
-#endif
 
 static int __init alsa_card_als4000_init(void)
 {
@@ -796,7 +755,7 @@ static int __init alsa_card_als4000_init(void)
 
     if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-        //		snd_printk("no ALS4000 based soundcards found or device busy\n");
+//		snd_printk(KERN_ERR "no ALS4000 based soundcards found or device busy\n");
 #endif
         return err;
     }
@@ -813,7 +772,7 @@ module_exit(alsa_card_als4000_exit)
 
 #ifndef MODULE
 
-/* format is: snd-als4000=enable,index,id */
+/* format is: snd-als4000=enable,index,id,joystick_port */
 
 static int __init alsa_card_als4000_setup(char *str)
 {
@@ -823,7 +782,11 @@ static int __init alsa_card_als4000_setup(char *str)
         return 0;
     (void)(get_option(&str,&enable[nr_dev]) == 2 &&
            get_option(&str,&index[nr_dev]) == 2 &&
-           get_id(&str,&id[nr_dev]) == 2);
+	       get_id(&str,&id[nr_dev]) == 2
+#ifdef SUPPORT_JOYSTICK
+	       && get_option(&str,&joystick_port[nr_dev]) == 2
+#endif
+	       );
     nr_dev++;
     return 1;
 }

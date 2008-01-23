@@ -25,11 +25,26 @@
  */
 
 #include <sound/driver.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/interrupt.h>
+#include <linux/pci.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/ymfpci.h>
+#include <sound/asoundef.h>
 #include <sound/mpu401.h>
+
+#include <asm/io.h>
+
+#ifdef TARGET_OS2
 #include <sound/timer.h>
+#endif /* TARGET_OS2 */
 
 /*
  *  constants
@@ -774,46 +789,46 @@ static irqreturn_t snd_ymfpci_interrupt(int irq, void *dev_id, struct pt_regs *r
 
 static snd_pcm_hardware_t snd_ymfpci_playback =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP |
-                                 SNDRV_PCM_INFO_MMAP_VALID |
-                                 SNDRV_PCM_INFO_INTERLEAVED |
-                                 SNDRV_PCM_INFO_BLOCK_TRANSFER |
-                                 SNDRV_PCM_INFO_PAUSE |
-                                 SNDRV_PCM_INFO_RESUME),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	8000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	256 * 1024, /* FIXME: enough? */
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	256 * 1024, /* FIXME: enough? */
-                                 /*	periods_min:	  */	3,
-                                 /*	periods_max:	  */	1024,
-                                 /*	fifo_size:	  */	0,
+	.info =			(SNDRV_PCM_INFO_MMAP |
+				 SNDRV_PCM_INFO_MMAP_VALID | 
+				 SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_PAUSE |
+				 SNDRV_PCM_INFO_RESUME),
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		8000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	256 * 1024, /* FIXME: enough? */
+	.period_bytes_min =	64,
+	.period_bytes_max =	256 * 1024, /* FIXME: enough? */
+	.periods_min =		3,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static snd_pcm_hardware_t snd_ymfpci_capture =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                  SNDRV_PCM_INFO_MMAP_VALID |
                                  SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_BLOCK_TRANSFER |
                                  SNDRV_PCM_INFO_PAUSE |
                                  SNDRV_PCM_INFO_RESUME),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	8000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	256 * 1024, /* FIXME: enough? */
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	256 * 1024, /* FIXME: enough? */
-                                 /*	periods_min:	  */	3,
-                                 /*	periods_max:	  */	1024,
-                                 /*	fifo_size:	  */	0,
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		8000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	256 * 1024, /* FIXME: enough? */
+	.period_bytes_min =	64,
+	.period_bytes_max =	256 * 1024, /* FIXME: enough? */
+	.periods_min =		3,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static void snd_ymfpci_pcm_free_substream(snd_pcm_runtime_t *runtime)
@@ -1042,25 +1057,25 @@ static int snd_ymfpci_capture_close(snd_pcm_substream_t * substream)
 }
 
 static snd_pcm_ops_t snd_ymfpci_playback_ops = {
-    snd_ymfpci_playback_open,
-    snd_ymfpci_playback_close,
-    snd_pcm_lib_ioctl,
-    snd_ymfpci_playback_hw_params,
-    snd_ymfpci_playback_hw_free,
-    snd_ymfpci_playback_prepare,
-    snd_ymfpci_playback_trigger,
-    snd_ymfpci_playback_pointer,0,0,0,0
+	.open =			snd_ymfpci_playback_open,
+	.close =		snd_ymfpci_playback_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =		snd_ymfpci_playback_hw_params,
+	.hw_free =		snd_ymfpci_playback_hw_free,
+	.prepare =		snd_ymfpci_playback_prepare,
+	.trigger =		snd_ymfpci_playback_trigger,
+	.pointer =		snd_ymfpci_playback_pointer,
 };
 
 static snd_pcm_ops_t snd_ymfpci_capture_rec_ops = {
-    snd_ymfpci_capture_rec_open,
-    snd_ymfpci_capture_close,
-    snd_pcm_lib_ioctl,
-    snd_ymfpci_capture_hw_params,
-    snd_ymfpci_capture_hw_free,
-    snd_ymfpci_capture_prepare,
-    snd_ymfpci_capture_trigger,
-    snd_ymfpci_capture_pointer,0,0,0,0
+	.open =			snd_ymfpci_capture_rec_open,
+	.close =		snd_ymfpci_capture_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =		snd_ymfpci_capture_hw_params,
+	.hw_free =		snd_ymfpci_capture_hw_free,
+	.prepare =		snd_ymfpci_capture_prepare,
+	.trigger =		snd_ymfpci_capture_trigger,
+	.pointer =		snd_ymfpci_capture_pointer,
 };
 
 static void snd_ymfpci_pcm_free(snd_pcm_t *pcm)
@@ -1100,14 +1115,14 @@ int __devinit snd_ymfpci_pcm(ymfpci_t *chip, int device, snd_pcm_t ** rpcm)
 
 
 static snd_pcm_ops_t snd_ymfpci_capture_ac97_ops = {
-    snd_ymfpci_capture_ac97_open,
-    snd_ymfpci_capture_close,
-    snd_pcm_lib_ioctl,
-    snd_ymfpci_capture_hw_params,
-    snd_ymfpci_capture_hw_free,
-    snd_ymfpci_capture_prepare,
-    snd_ymfpci_capture_trigger,
-    snd_ymfpci_capture_pointer,0,0
+	.open =			snd_ymfpci_capture_ac97_open,
+	.close =		snd_ymfpci_capture_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =		snd_ymfpci_capture_hw_params,
+	.hw_free =		snd_ymfpci_capture_hw_free,
+	.prepare =		snd_ymfpci_capture_prepare,
+	.trigger =		snd_ymfpci_capture_trigger,
+	.pointer =		snd_ymfpci_capture_pointer,
 };
 
 static void snd_ymfpci_pcm2_free(snd_pcm_t *pcm)
@@ -1147,14 +1162,14 @@ int __devinit snd_ymfpci_pcm2(ymfpci_t *chip, int device, snd_pcm_t ** rpcm)
 
 
 static snd_pcm_ops_t snd_ymfpci_playback_spdif_ops = {
-    snd_ymfpci_playback_spdif_open,
-    snd_ymfpci_playback_spdif_close,
-    snd_pcm_lib_ioctl,
-    snd_ymfpci_playback_hw_params,
-    snd_ymfpci_playback_hw_free,
-    snd_ymfpci_playback_prepare,
-    snd_ymfpci_playback_trigger,
-    snd_ymfpci_playback_pointer,0,0
+	.open =			snd_ymfpci_playback_spdif_open,
+	.close =		snd_ymfpci_playback_spdif_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =		snd_ymfpci_playback_hw_params,
+	.hw_free =		snd_ymfpci_playback_hw_free,
+	.prepare =		snd_ymfpci_playback_prepare,
+	.trigger =		snd_ymfpci_playback_trigger,
+	.pointer =		snd_ymfpci_playback_pointer,
 };
 
 static void snd_ymfpci_pcm_spdif_free(snd_pcm_t *pcm)
@@ -1192,14 +1207,14 @@ int __devinit snd_ymfpci_pcm_spdif(ymfpci_t *chip, int device, snd_pcm_t ** rpcm
 }
 
 static snd_pcm_ops_t snd_ymfpci_playback_4ch_ops = {
-    snd_ymfpci_playback_4ch_open,
-    snd_ymfpci_playback_4ch_close,
-    snd_pcm_lib_ioctl,
-    snd_ymfpci_playback_hw_params,
-    snd_ymfpci_playback_hw_free,
-    snd_ymfpci_playback_prepare,
-    snd_ymfpci_playback_trigger,
-    snd_ymfpci_playback_pointer,0,0,0,0
+	.open =			snd_ymfpci_playback_4ch_open,
+	.close =		snd_ymfpci_playback_4ch_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =		snd_ymfpci_playback_hw_params,
+	.hw_free =		snd_ymfpci_playback_hw_free,
+	.prepare =		snd_ymfpci_playback_prepare,
+	.trigger =		snd_ymfpci_playback_trigger,
+	.pointer =		snd_ymfpci_playback_pointer,
 };
 
 static void snd_ymfpci_pcm_4ch_free(snd_pcm_t *pcm)
@@ -1423,14 +1438,6 @@ static struct snd_kcontrol_new snd_ymfpci_drec_source __devinitdata = {
   .get = snd_ymfpci_get_single, .put = snd_ymfpci_put_single, \
   .private_value = ((reg) | ((shift) << 16)) }
 
-#if 0
-#define YMFPCI_SINGLE(xname, xindex, reg) \
-    { SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-    0, 0, snd_ymfpci_info_single, \
-    snd_ymfpci_get_single, snd_ymfpci_put_single, \
-    reg }
-
-#endif
 static int snd_ymfpci_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
     unsigned int mask = 1;

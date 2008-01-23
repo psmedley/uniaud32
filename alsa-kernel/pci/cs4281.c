@@ -26,6 +26,9 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
+#ifndef TARGET_OS2 //TODO: Implement linux/gameport.h
+#include <linux/gameport.h>
+#endif /* TARGET_OS2 */
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/pcm.h>
@@ -35,9 +38,6 @@
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
-#ifndef LINUX_2_2
-#include <linux/gameport.h>
-#endif
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Cirrus Logic CS4281");
@@ -881,54 +881,54 @@ static snd_pcm_uframes_t snd_cs4281_pointer(snd_pcm_substream_t * substream)
 
 static snd_pcm_hardware_t snd_cs4281_playback =
 {
-    /*	info:			*/	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                          SNDRV_PCM_INFO_INTERLEAVED |
                                          SNDRV_PCM_INFO_MMAP_VALID |
                                          SNDRV_PCM_INFO_PAUSE |
                                          SNDRV_PCM_INFO_RESUME |
                                          SNDRV_PCM_INFO_SYNC_START),
-                                         /*	formats:		*/	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S8 |
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S8 |
                                          SNDRV_PCM_FMTBIT_U16_LE | SNDRV_PCM_FMTBIT_S16_LE |
                                          SNDRV_PCM_FMTBIT_U16_BE | SNDRV_PCM_FMTBIT_S16_BE |
                                          SNDRV_PCM_FMTBIT_U32_LE | SNDRV_PCM_FMTBIT_S32_LE |
                                          SNDRV_PCM_FMTBIT_U32_BE | SNDRV_PCM_FMTBIT_S32_BE,
-                                         /*	rates:			*/	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                         /*	rate_min:		*/	4000,
-                                         /*	rate_max:		*/	48000,
-                                         /*	channels_min:		*/	1,
-                                         /*	channels_max:		*/	2,
-                                         /*	buffer_bytes_max:	*/	(512*1024),
-                                         /*	period_bytes_min:	*/	64,
-                                         /*	period_bytes_max:	*/	(512*1024),
-                                         /*	periods_min:		*/	1,
-                                         /*	periods_max:		*/	2,
-                                         /*	fifo_size:		*/	CS4281_FIFO_SIZE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(512*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(512*1024),
+	.periods_min =		1,
+	.periods_max =		2,
+	.fifo_size =		CS4281_FIFO_SIZE,
 };
 
 static snd_pcm_hardware_t snd_cs4281_capture =
 {
-    /*	info:			*/	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                          SNDRV_PCM_INFO_INTERLEAVED |
                                          SNDRV_PCM_INFO_MMAP_VALID |
                                          SNDRV_PCM_INFO_PAUSE |
                                          SNDRV_PCM_INFO_RESUME |
                                          SNDRV_PCM_INFO_SYNC_START),
-                                         /*	formats:		*/	//SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S8 |
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S8 |
                                          SNDRV_PCM_FMTBIT_U16_LE | SNDRV_PCM_FMTBIT_S16_LE |
                                          SNDRV_PCM_FMTBIT_U16_BE | SNDRV_PCM_FMTBIT_S16_BE |
                                          SNDRV_PCM_FMTBIT_U32_LE | SNDRV_PCM_FMTBIT_S32_LE |
                                          SNDRV_PCM_FMTBIT_U32_BE | SNDRV_PCM_FMTBIT_S32_BE,
-                                         /*	rates:			*/	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                         /*	rate_min:		*/	4000,
-                                         /*	rate_max:		*/	48000,
-                                         /*	channels_min:		*/	1,
-                                         /*	channels_max:		*/	2,
-                                         /*	buffer_bytes_max:	*/	(512*1024),
-                                         /*	period_bytes_min:	*/	64,
-                                         /*	period_bytes_max:	*/	(512*1024),
-                                         /*	periods_min:		*/	1,
-                                         /*	periods_max:		*/	2,
-                                         /*	fifo_size:		*/	CS4281_FIFO_SIZE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(512*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(512*1024),
+	.periods_min =		1,
+	.periods_max =		2,
+	.fifo_size =		CS4281_FIFO_SIZE,
 };
 
 static int snd_cs4281_playback_open(snd_pcm_substream_t * substream)
@@ -988,27 +988,25 @@ static int snd_cs4281_capture_close(snd_pcm_substream_t * substream)
 }
 
 static snd_pcm_ops_t snd_cs4281_playback_ops = {
-    /*	.open =	      */  snd_cs4281_playback_open,
-    /*	.close =      */  snd_cs4281_playback_close,
-    /*	.ioctl =      */  snd_pcm_lib_ioctl,
-    /*	.hw_params =  */  snd_cs4281_hw_params,
-    /*	.hw_free =    */  snd_cs4281_hw_free,
-    /*	.prepare =    */  snd_cs4281_playback_prepare,
-    /*	.trigger =    */  snd_cs4281_trigger,
-    /*	.pointer =    */  snd_cs4281_pointer,
-    0,0,0,0
+	.open =		snd_cs4281_playback_open,
+	.close =	snd_cs4281_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_cs4281_hw_params,
+	.hw_free =	snd_cs4281_hw_free,
+	.prepare =	snd_cs4281_playback_prepare,
+	.trigger =	snd_cs4281_trigger,
+	.pointer =	snd_cs4281_pointer,
 };
 
 static snd_pcm_ops_t snd_cs4281_capture_ops = {
-    /*	.open =	      */  snd_cs4281_capture_open,
-    /*	.close =      */  snd_cs4281_capture_close,
-    /*	.ioctl =      */  snd_pcm_lib_ioctl,
-    /*	.hw_params =  */  snd_cs4281_hw_params,
-    /*	.hw_free =    */  snd_cs4281_hw_free,
-    /*	.prepare =    */  snd_cs4281_capture_prepare,
-    /*	.trigger =    */  snd_cs4281_trigger,
-    /*	.pointer =    */  snd_cs4281_pointer,
-    0,0,0,0
+	.open =		snd_cs4281_capture_open,
+	.close =	snd_cs4281_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_cs4281_hw_params,
+	.hw_free =	snd_cs4281_hw_free,
+	.prepare =	snd_cs4281_capture_prepare,
+	.trigger =	snd_cs4281_trigger,
+	.pointer =	snd_cs4281_pointer,
 };
 
 static void snd_cs4281_pcm_free(snd_pcm_t *pcm)
@@ -1248,7 +1246,7 @@ static void __devinit snd_cs4281_proc_init(cs4281_t * chip)
  * joystick support
  */
 
-#ifndef LINUX_2_2
+#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
 
 typedef struct snd_cs4281_gameport {
     struct gameport info;
@@ -1343,7 +1341,7 @@ static void __devinit snd_cs4281_gameport(cs4281_t *chip)
 
 static int snd_cs4281_free(cs4281_t *chip)
 {
-#ifndef LINUX_2_2
+#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
     if (chip->gameport) {
         gameport_unregister_port(&chip->gameport->info);
         kfree(chip->gameport);
@@ -1392,15 +1390,9 @@ static int __devinit snd_cs4281_create(snd_card_t * card,
     cs4281_t *chip;
     unsigned int tmp;
     int err;
-#ifdef TARGET_OS2
     static snd_device_ops_t ops = {
-        snd_cs4281_dev_free,0,0,0
+		.dev_free =	snd_cs4281_dev_free,
     };
-#else
-    static snd_device_ops_t ops = {
-    dev_free:	snd_cs4281_dev_free,
-    };
-#endif
 
     *rchip = NULL;
     if ((err = pci_enable_device(pci)) < 0)
@@ -1737,7 +1729,7 @@ static int snd_cs4281_midi_output_open(snd_rawmidi_substream_t * substream)
     spin_lock_irq(&chip->reg_lock);
     chip->uartm |= CS4281_MODE_OUTPUT;
     chip->midcr |= BA0_MIDCR_TXE;
-    chip->midi_input = substream;
+	chip->midi_output = substream;
     if (!(chip->uartm & CS4281_MODE_INPUT)) {
         snd_cs4281_midi_reset(chip);
     } else {
@@ -1920,6 +1912,7 @@ static irqreturn_t snd_cs4281_interrupt(int irq, void *dev_id, struct pt_regs *r
 
     /* EOI to the PCI part... reenables interrupts */
     snd_cs4281_pokeBA0(chip, BA0_HICR, BA0_HICR_EOI);
+
     return IRQ_HANDLED;
 
 }
@@ -1998,9 +1991,9 @@ static int __devinit snd_cs4281_probe(struct pci_dev *pci,
         snd_card_free(card);
         return err;
     }
-#ifndef LINUX_2_2
+#ifndef TARGET_OS2
     snd_cs4281_gameport(chip);
-#endif
+#endif /* !TARGET_OS2 */
     strcpy(card->driver, "CS4281");
     strcpy(card->shortname, "Cirrus Logic CS4281");
     sprintf(card->longname, "%s at 0x%lx, irq %d",
@@ -2159,7 +2152,7 @@ module_exit(alsa_card_cs4281_exit)
 
 #ifndef MODULE
 
-/* format is: snd-cs4281=snd_enable,snd_index,snd_id */
+/* format is: snd-cs4281=enable,index,id */
 
 static int __init alsa_card_cs4281_setup(char *str)
 {

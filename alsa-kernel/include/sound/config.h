@@ -43,7 +43,6 @@ extern int this_module[64];
 #define SNDRV_LITTLE_ENDIAN
 #define EXPORT_SYMBOL(a)
 #define CONFIG_SOUND
-#define CONFIG_SND_VERSION	"0.0.1"
 #define ATTRIBUTE_UNUSED
 
 #undef interrupt
@@ -156,11 +155,6 @@ int pm_send(struct pm_dev *dev, pm_request_t rqst, void *data);
 #define set_current_state(a)
 #define try_inc_mod_count(x) 	        ++(*(unsigned long *)x)
 #define try_module_get(x) try_inc_mod_count(x)
-static inline void module_put(struct module *module)
-{
-    if (module)
-        do {} while(0);
-}
 
 #define rwlock_init(x) *(x) = RW_LOCK_UNLOCKED;
 

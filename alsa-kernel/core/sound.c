@@ -19,19 +19,21 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/minors.h>
 #include <sound/info.h>
 #include <sound/version.h>
 #include <sound/control.h>
 #include <sound/initval.h>
-#ifdef CONFIG_KMOD
 #include <linux/kmod.h>
-#endif
-#ifdef CONFIG_DEVFS_FS
+#ifndef TARGET_OS2
 #include <linux/devfs_fs_kernel.h>
-#endif
+#include <linux/device.h>
+#endif /* !TARGET_OS2 */
 
 #define SNDRV_OS_MINORS 256
 
@@ -53,6 +55,7 @@ MODULE_PARM_SYNTAX(major, "default:116,skill:devel");
 MODULE_PARM(cards_limit, "i");
 MODULE_PARM_DESC(cards_limit, "Count of auto-loadable soundcards.");
 MODULE_PARM_SYNTAX(cards_limit, "default:8,skill:advanced");
+MODULE_ALIAS_CHARDEV_MAJOR(CONFIG_SND_MAJOR);
 #ifdef CONFIG_DEVFS_FS
 MODULE_PARM(device_mode, "i");
 MODULE_PARM_DESC(device_mode, "Device file permission mask for devfs.");
@@ -86,6 +89,8 @@ void snd_request_card(int card)
 {
     int locked;
 
+	if (! current->fs->root)
+		return;
     read_lock(&snd_card_rwlock);
     locked = snd_cards_lock & (1 << card);
     read_unlock(&snd_card_rwlock);
@@ -100,6 +105,8 @@ static void snd_request_other(int minor)
 {
     char *str;
 
+	if (! current->fs->root)
+		return;
     switch (minor) {
     case SNDRV_MINOR_SEQUENCER:	str = "snd-seq";	break;
     case SNDRV_MINOR_TIMER:		str = "snd-timer";	break;
@@ -125,7 +132,7 @@ static struct snd_minor *snd_minor_search(int minor)
 
 static int snd_open(struct inode *inode, struct file *file)
 {
-    int minor = MINOR(inode->i_rdev);
+	int minor = iminor(inode);
     int card = SNDRV_MINOR_CARD(minor);
     int dev = SNDRV_MINOR_DEVICE(minor);
     snd_minor_t *mptr = NULL;
@@ -161,20 +168,13 @@ static int snd_open(struct inode *inode, struct file *file)
     return err;
 }
 
-#ifdef TARGET_OS2
 struct file_operations snd_fops =
 {
-	.open=	snd_open
+#ifndef TARGET_OS2
+	.owner =	THIS_MODULE,
+#endif /* !TARGET_OS2 */
+	.open =		snd_open
 };
-#else
-struct file_operations snd_fops =
-{
-#ifdef LINUX_2_3
-owner:		THIS_MODULE,
-#endif
-    open:		snd_open
-};
-#endif
 
 static int snd_kernel_minor(int type, struct snd_card * card, int dev)
 {
@@ -404,14 +404,14 @@ static int __init alsa_sound_init(void)
 
 static void __exit alsa_sound_exit(void)
 {
-#ifdef CONFIG_DEVFS_FS
+#ifndef TARGET_OS2
     short controlnum;
 
     for (controlnum = 0; controlnum < cards_limit; controlnum++) {
         devfs_remove("snd/controlC%d", controlnum);
         class_simple_device_remove(MKDEV(major, controlnum<<5));
     }
-#endif
+#endif /* !TARGET_OS2 */
 
 #ifdef CONFIG_SND_OSSEMUL
     snd_info_minor_unregister();

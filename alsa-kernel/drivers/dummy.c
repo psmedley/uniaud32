@@ -14,12 +14,19 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#ifndef TARGET_OS2 //TODO: Implement linux/jiffies.h
+#include <linux/jiffies.h>
+#endif /* !TARGET_OS2 */
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/pcm.h>
 #include <sound/rawmidi.h>
@@ -36,6 +43,19 @@ MODULE_DEVICES("{{ALSA,Dummy soundcard}}");
 #define MAX_PCM_SUBSTREAMS	16
 #define MAX_MIDI_DEVICES	2
 
+#if 0 /* emu10k1 emulation */
+#define MAX_BUFFER_SIZE		(128 * 1024)
+static int emu10k1_playback_constraints(snd_pcm_runtime_t *runtime)
+{
+	int err;
+	if ((err = snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS)) < 0)
+		return err;
+	if ((err = snd_pcm_hw_constraint_minmax(runtime, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 256, UINT_MAX)) < 0)
+		return err;
+	return 0;
+}
+#define add_playback_constraints emu10k1_playback_constraints
+#endif
 
 #if 0 /* RME9652 emulation */
 #define MAX_BUFFER_SIZE		(26 * 64 * 1024)
@@ -97,6 +117,12 @@ MODULE_DEVICES("{{ALSA,Dummy soundcard}}");
 #endif
 #ifndef USE_PERIODS_MAX
 #define USE_PERIODS_MAX 	1024
+#endif
+#ifndef add_playback_constraints
+#define add_playback_constraints(x) 0
+#endif
+#ifndef add_capture_constraints
+#define add_capture_constraints(x) 0
 #endif
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
@@ -284,36 +310,36 @@ static snd_pcm_hardware_t snd_card_dummy_playback =
 {
     /*	info:		  */   (SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
                                 SNDRV_PCM_INFO_MMAP_VALID),
-                                /*	formats:	  */    USE_FORMATS,
-                                /*	rates:		  */	USE_RATE,
-                                /*	rate_min:	  */	USE_RATE_MIN,
-                                /*	rate_max:	  */	USE_RATE_MAX,
-                                /*	channels_min:	  */	USE_CHANNELS_MIN,
-                                /*	channels_max:	  */	USE_CHANNELS_MAX,
-                                /*	buffer_bytes_max: */	MAX_BUFFER_SIZE,
-                                /*	period_bytes_min: */	64,
-                                /*	period_bytes_max: */	MAX_BUFFER_SIZE,
-                                /*	periods_min:	  */	USE_PERIODS_MIN,
-                                /*	periods_max:	  */	USE_PERIODS_MAX,
-                                /*	fifo_size:	  */	0,
+	.formats =		USE_FORMATS,
+	.rates =		USE_RATE,
+	.rate_min =		USE_RATE_MIN,
+	.rate_max =		USE_RATE_MAX,
+	.channels_min =		USE_CHANNELS_MIN,
+	.channels_max =		USE_CHANNELS_MAX,
+	.buffer_bytes_max =	MAX_BUFFER_SIZE,
+	.period_bytes_min =	64,
+	.period_bytes_max =	MAX_BUFFER_SIZE,
+	.periods_min =		USE_PERIODS_MIN,
+	.periods_max =		USE_PERIODS_MAX,
+	.fifo_size =		0,
 };
 
 static snd_pcm_hardware_t snd_card_dummy_capture =
 {
     /*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP_VALID),
-                                 /*	formats:	  */    USE_FORMATS,
-                                 /*	rates:		  */	USE_RATE,
-                                 /*	rate_min:	  */	USE_RATE_MIN,
-                                 /*	rate_max:	  */	USE_RATE_MAX,
-                                 /*	channels_min:	  */	USE_CHANNELS_MIN,
-                                 /*	channels_max:	  */	USE_CHANNELS_MAX,
-                                 /*	buffer_bytes_max: */	MAX_BUFFER_SIZE,
-                                 /*	period_bytes_min: */	64,
-                                 /*	period_bytes_max: */	MAX_BUFFER_SIZE,
-                                 /*	periods_min:	  */	USE_PERIODS_MIN,
-                                 /*	periods_max:	  */	USE_PERIODS_MAX,
-                                 /*	fifo_size:	  */	0,
+	.formats =		USE_FORMATS,
+	.rates =		USE_RATE,
+	.rate_min =		USE_RATE_MIN,
+	.rate_max =		USE_RATE_MAX,
+	.channels_min =		USE_CHANNELS_MIN,
+	.channels_max =		USE_CHANNELS_MAX,
+	.buffer_bytes_max =	MAX_BUFFER_SIZE,
+	.period_bytes_min =	64,
+	.period_bytes_max =	MAX_BUFFER_SIZE,
+	.periods_min =		USE_PERIODS_MIN,
+	.periods_max =		USE_PERIODS_MAX,
+	.fifo_size =		0,
 };
 
 static void snd_card_dummy_runtime_free(snd_pcm_runtime_t *runtime)
@@ -322,18 +348,16 @@ static void snd_card_dummy_runtime_free(snd_pcm_runtime_t *runtime)
     kfree(dpcm);
 }
 
-// 12 Jun 07 SHL fixme to be in some .h
-extern void * snd_malloc_pages_fallback(size_t size, unsigned int flags, size_t *res_size);
-
 static int snd_card_dummy_playback_open(snd_pcm_substream_t * substream)
 {
     snd_pcm_runtime_t *runtime = substream->runtime;
     snd_card_dummy_pcm_t *dpcm;
+	int err;
 
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
         return -ENOMEM;
-    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, &runtime->dma_bytes)) == NULL) {
+    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, (unsigned long *) &runtime->dma_bytes)) == NULL) {
         kfree(dpcm);
         return -ENOMEM;
     }
@@ -351,6 +375,11 @@ static int snd_card_dummy_playback_open(snd_pcm_substream_t * substream)
     }
     if (substream->pcm->device & 2)
         runtime->hw.info &= ~(SNDRV_PCM_INFO_MMAP|SNDRV_PCM_INFO_MMAP_VALID);
+	if ((err = add_playback_constraints(runtime)) < 0) {
+		snd_magic_kfree(dpcm);
+		return err;
+	}
+
     return 0;
 }
 
@@ -358,11 +387,12 @@ static int snd_card_dummy_capture_open(snd_pcm_substream_t * substream)
 {
     snd_pcm_runtime_t *runtime = substream->runtime;
     snd_card_dummy_pcm_t *dpcm;
+	int err;
 
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
         return -ENOMEM;
-    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, &runtime->dma_bytes)) == NULL) {
+    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, (unsigned long *) &runtime->dma_bytes)) == NULL) {
         kfree(dpcm);
         return -ENOMEM;
     }
@@ -381,6 +411,11 @@ static int snd_card_dummy_capture_open(snd_pcm_substream_t * substream)
     }
     if (substream->pcm->device & 2)
         runtime->hw.info &= ~(SNDRV_PCM_INFO_MMAP|SNDRV_PCM_INFO_MMAP_VALID);
+	if ((err = add_capture_constraints(runtime)) < 0) {
+		snd_magic_kfree(dpcm);
+		return err;
+	}
+
     return 0;
 }
 
@@ -612,7 +647,7 @@ static int __init alsa_card_dummy_init(void)
     for (dev = cards = 0; dev < SNDRV_CARDS && enable[dev]; dev++) {
         if (snd_card_dummy_probe(dev) < 0) {
 #ifdef MODULE
-            snd_printk("Dummy soundcard #%i not found or device busy\n", dev + 1);
+			printk(KERN_ERR "Dummy soundcard #%i not found or device busy\n", dev + 1);
 #endif
             break;
         }
@@ -620,7 +655,7 @@ static int __init alsa_card_dummy_init(void)
     }
     if (!cards) {
 #ifdef MODULE
-        snd_printk("Dummy soundcard not found or device busy\n");
+		printk(KERN_ERR "Dummy soundcard not found or device busy\n");
 #endif
         return -ENODEV;
     }
@@ -640,8 +675,8 @@ module_exit(alsa_card_dummy_exit)
 
 #ifndef MODULE
 
-/* format is: snd-card-dummy=snd_enable,snd_index,snd_id,
- snd_pcm_devs,snd_pcm_substreams */
+/* format is: snd-dummy=enable,index,id,
+			pcm_devs,pcm_substreams */
 
 static int __init alsa_card_dummy_setup(char *str)
 {

@@ -19,16 +19,18 @@
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/timer.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/minors.h>
 #include <sound/initval.h>
-#ifdef CONFIG_KMOD
 #include <linux/kmod.h>
-#endif
 #ifdef CONFIG_KERNELD
 #include <linux/kerneld.h>
 #endif
@@ -146,6 +148,8 @@ static snd_timer_t *snd_timer_find(snd_timer_id_t *tid)
 
 static void snd_timer_request(snd_timer_id_t *tid)
 {
+	if (! current->fs->root)
+		return;
     switch (tid->dev_class) {
     case SNDRV_TIMER_CLASS_GLOBAL:
         if (tid->device < timer_limit)
@@ -483,7 +487,7 @@ static int _snd_timer_stop(struct snd_timer_instance * timeri,
         goto __end;
     }
     timer = timeri->timer;
-    if (! timer)
+	if (!timer)
         return -EINVAL;
     spin_lock_irqsave(&timer->lock, flags);
     list_del_init(&timeri->ack_list);
@@ -1872,10 +1876,10 @@ static int __init alsa_timer_init(void)
     }
     snd_timer_proc_entry = entry;
     if ((err = snd_timer_register_system()) < 0)
-        snd_printk("unable to register system timer (%i)\n", err);
+		snd_printk(KERN_ERR "unable to register system timer (%i)\n", err);
     if ((err = snd_register_device(SNDRV_DEVICE_TYPE_TIMER,
                                    NULL, 0, &snd_timer_reg, "timer"))<0)
-        snd_printk("unable to register timer device (%i)\n", err);
+		snd_printk(KERN_ERR "unable to register timer device (%i)\n", err);
     return 0;
 }
 
@@ -1918,6 +1922,7 @@ EXPORT_SYMBOL(snd_timer_close);
 EXPORT_SYMBOL(snd_timer_resolution);
 EXPORT_SYMBOL(snd_timer_start);
 EXPORT_SYMBOL(snd_timer_stop);
+EXPORT_SYMBOL(snd_timer_del);
 EXPORT_SYMBOL(snd_timer_continue);
 EXPORT_SYMBOL(snd_timer_pause);
 EXPORT_SYMBOL(snd_timer_new);

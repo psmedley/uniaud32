@@ -33,6 +33,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
+#include <linux/gameport.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/ac97_codec.h>
@@ -1159,6 +1160,10 @@ static int snd_intel8x0_pcm_open(snd_pcm_substream_t * substream, struct ichdev 
 {
     struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
+	static unsigned int i, rates[] = {
+		/* ATTENTION: these values depend on the definition in pcm.h! */
+		5512, 8000, 11025, 16000, 22050, 32000, 44100, 48000
+	};
     int err;
 
     ichdev->substream = substream;
@@ -3234,7 +3239,6 @@ static int __devinit snd_intel8x0_joystick_probe(struct pci_dev *pci,
     return 0;
 }
 
-#if 0 // fixme to be gone?
 static void __devexit snd_intel8x0_joystick_remove(struct pci_dev *pci)
 {
     u16 val;
@@ -3250,7 +3254,6 @@ static void __devexit snd_intel8x0_joystick_remove(struct pci_dev *pci)
     val &= ~0x120;
     pci_write_config_word(pci, 0xe6, val);
 }
-#endif // fixme to be gone
 
 static struct pci_device_id snd_intel8x0_joystick_ids[] = {
     { 0x8086, 0x2410, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* 82801AA */
@@ -3268,12 +3271,12 @@ static struct pci_device_id snd_intel8x0_joystick_ids[] = {
 };
 
 static struct pci_driver joystick_driver = {
-    0, 0, 0,
-    /*	name:     */ "Intel ICH Joystick",
-    /*	id_table: */ snd_intel8x0_joystick_ids,
-    /*	probe:    */ snd_intel8x0_joystick_probe,
-    0,0,0
+	.name = "Intel ICH Joystick",
+	.id_table = snd_intel8x0_joystick_ids,
+	.probe = snd_intel8x0_joystick_probe,
+	.remove = __devexit_p(snd_intel8x0_joystick_remove),
 };
+
 static int have_joystick;
 #endif
 
