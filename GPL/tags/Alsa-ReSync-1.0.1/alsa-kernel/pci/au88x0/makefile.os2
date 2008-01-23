@@ -1,0 +1,50 @@
+CINCLUDES = ..\..\..\include;..\..\include;$(%WATCOM)\H
+AINCLUDES = $(DDK_BASE)\H
+
+CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
+
+32BIT=1
+!include ..\..\..\..\makefile.inc
+
+
+#===================================================================
+#
+#   List of source files
+#
+#===================================================================
+#FILE1    = au8810.obj au8810_core.obj au8810_pcm.obj au8810_mixer.obj au8810_mpu401.obj au8810_eq.obj
+FILE2    = au8820.obj au8820_core.obj au8820_pcm.obj au8820_mixer.obj au8820_mpu401.obj au8820_synth.obj
+#FILE3    = au8830.obj au8830_core.obj au8830_pcm.obj au8830_mixer.obj au8830_mpu401.obj au8830_eq.obj au8830_synth.obj
+FILE5    = 
+FILE6    = 
+FILE7    = 
+FILE8    = 
+FILELAST =
+FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10) $(FILE11) $(FILE12)
+
+TARGET   = au88xx
+
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
+
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: $(OBJDIR)\$(TARGET).lib 
+
+
+$(LNKFILE): makefile.os2
+    @%create $(LNKFILE)
+    @for %f in ($(FILES)) do @%append $(LNKFILE) -+$(OBJDIR)\%f
+
+$(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
+    $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
+    copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB) 
+
+clean: .SYMBOLIC
+    -@rm  *.err 2>nul
+    @cd $(OBJDIR)
+    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+    @cd ..\..
