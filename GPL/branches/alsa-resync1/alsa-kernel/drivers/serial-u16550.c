@@ -63,6 +63,9 @@ static char *adaptor_names[] = {
 	"Generic"
 };
 
+#define SNDRV_SERIAL_NORMALBUFF 0 /* Normal blocking buffer operation */
+#define SNDRV_SERIAL_DROPBUFF   1 /* Non-blocking discard operation */
+
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE; /* Enable this card */
@@ -74,12 +77,14 @@ static int base[SNDRV_CARDS] = {REPEAT_SNDRV(115200)}; /* baud base */
 static int outs[SNDRV_CARDS] = {REPEAT_SNDRV(1)};	/* 1 to 16 */
 static int ins[SNDRV_CARDS] = {REPEAT_SNDRV(1)};	/* 1 to 16 */
 static int adaptor[SNDRV_CARDS] = {REPEAT_SNDRV(SNDRV_SERIAL_SOUNDCANVAS)};
+static int droponfull[SNDRV_CARDS] = {REPEAT_SNDRV(SNDRV_SERIAL_NORMALBUFF)};
 #else
 static int speed[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 38400}; /* 9600,19200,38400,57600,115200 */
 static int base[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 115200}; /* baud base */
 static int outs[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 1};	 /* 1 to 16 */
 static int ins[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 1};	/* 1 to 16 */
 static int adaptor[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = SNDRV_SERIAL_SOUNDCANVAS};
+static int droponfull[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS -1)] = SNDRV_SERIAL_NORMALBUFF };
 #endif
 
 MODULE_PARM(index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
@@ -107,6 +112,9 @@ MODULE_PARM(outs, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(outs, "Number of MIDI outputs.");
 MODULE_PARM(ins, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(ins, "Number of MIDI inputs.");
+MODULE_PARM(droponfull, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
+MODULE_PARM_DESC(droponfull, "Flag to enable drop-on-full buffer mode");
+MODULE_PARM_SYNTAX(droponfull, SNDRV_ENABLED "," SNDRV_BOOLEAN_FALSE_DESC);
 
 MODULE_PARM_SYNTAX(outs, SNDRV_ENABLED ",allows:{{1,16}},dialog:list");
 MODULE_PARM_SYNTAX(ins, SNDRV_ENABLED ",allows:{{1,16}},dialog:list");
@@ -171,6 +179,7 @@ typedef struct _snd_uart16550 {
     int buff_in_count;
     int buff_in;
     int buff_out;
+        int drop_on_full;
 
     // wait timer
     unsigned int timer_running:1;
@@ -202,12 +211,14 @@ inline static void snd_uart16550_del_timer(snd_uart16550_t *uart)
 inline static void snd_uart16550_buffer_output(snd_uart16550_t *uart)
 {
     unsigned short buff_out = uart->buff_out;
+	if( uart->buff_in_count > 0 ) {
     outb(uart->tx_buff[buff_out], uart->base + UART_TX);
     uart->fifo_count++;
     buff_out++;
     buff_out &= TX_BUFF_MASK;
     uart->buff_out = buff_out;
     uart->buff_in_count--;
+	}
 }
 
 /* This loop should be called with interrupts disabled
@@ -265,9 +276,11 @@ static void snd_uart16550_io_loop(snd_uart16550_t * uart)
 	   || uart->adaptor == SNDRV_SERIAL_GENERIC) {
         /* Can't use FIFO, must send only when CTS is true */
         status = inb(uart->base + UART_MSR);
-        if (uart->fifo_count == 0 && (status & UART_MSR_CTS)
-            && uart->buff_in_count > 0)
+		while( (uart->fifo_count == 0) && (status & UART_MSR_CTS) &&
+		      (uart->buff_in_count > 0) ) {
             snd_uart16550_buffer_output(uart);
+		       status = inb( uart->base + UART_MSR );
+		}
     } else {
         /* Write loop */
         while (uart->fifo_count < uart->fifo_limit	/* Can we write ? */
@@ -584,19 +597,31 @@ static int snd_uart16550_output_close(snd_rawmidi_substream_t * substream)
     return 0;
 };
 
-inline static void snd_uart16550_write_buffer(snd_uart16550_t *uart, unsigned char byte)
+inline static int snd_uart16550_buffer_can_write( snd_uart16550_t *uart, int Num )
+{
+	if( uart->buff_in_count + Num < TX_BUFF_SIZE )
+		return 1;
+	else
+		return 0;
+}
+
+inline static int snd_uart16550_write_buffer(snd_uart16550_t *uart, unsigned char byte)
 {
     unsigned short buff_in = uart->buff_in;
+	if( uart->buff_in_count < TX_BUFF_SIZE ) {
     uart->tx_buff[buff_in] = byte;
     buff_in++;
     buff_in &= TX_BUFF_MASK;
     uart->buff_in = buff_in;
     uart->buff_in_count++;
     if (uart->irq < 0) /* polling mode */
-        snd_uart16550_add_timer(uart);
+			snd_uart16550_add_timer(uart);
+		return 1;
+	} else
+		return 0;
 }
 
-static void snd_uart16550_output_byte(snd_uart16550_t *uart, snd_rawmidi_substream_t * substream, unsigned char midi_byte)
+static int snd_uart16550_output_byte(snd_uart16550_t *uart, snd_rawmidi_substream_t * substream, unsigned char midi_byte)
 {
     if (uart->buff_in_count == 0                            /* Buffer empty? */
 	    && ((uart->adaptor != SNDRV_SERIAL_MS124W_SA &&
@@ -619,13 +644,14 @@ static void snd_uart16550_output_byte(snd_uart16550_t *uart, snd_rawmidi_substre
             }
         }
     } else {
-        if (uart->buff_in_count >= TX_BUFF_SIZE) {
+		if( !snd_uart16550_write_buffer(uart, midi_byte) ) {
             snd_printk("%s: Buffer overrun on device at 0x%lx\n",
                        uart->rmidi->name, uart->base);
-            return;
-        }
-        snd_uart16550_write_buffer(uart, midi_byte);
-    }
+			return 0;
+		}
+	}
+
+	return 1;
 }
 
 static void snd_uart16550_output_write(snd_rawmidi_substream_t * substream)
@@ -669,18 +695,13 @@ static void snd_uart16550_output_write(snd_rawmidi_substream_t * substream)
         }
     } else {
         first = 0;
-        while (1) {
-            if (snd_rawmidi_transmit(substream, &midi_byte, 1) != 1)
-                break;
+		while( 1 == snd_rawmidi_transmit_peek(substream, &midi_byte, 1) ) {
 			/* Also send F5 after 3 seconds with no data to handle device disconnect */
 			if (first == 0 && (uart->adaptor == SNDRV_SERIAL_SOUNDCANVAS ||
 				uart->adaptor == SNDRV_SERIAL_GENERIC) &&
 			   (uart->prev_out != substream->number || jiffies-lasttime > 3*HZ)) {
 
-				/* We will need three bytes of data here (worst case). */
-				if (uart->buff_in_count >= TX_BUFF_SIZE - 3)
-					break;
-
+				if( snd_uart16550_buffer_can_write( uart, 3 ) ) {
                 /* Roland Soundcanvas part selection */
                 /* If this substream of the data is different previous
                  substream in this uart, send the change part event */
@@ -692,17 +713,20 @@ static void snd_uart16550_output_write(snd_rawmidi_substream_t * substream)
                 /* If midi_byte is a data byte, send the previous status byte */
 				if ((midi_byte < 0x80) && (uart->adaptor == SNDRV_SERIAL_SOUNDCANVAS))
                     snd_uart16550_output_byte(uart, substream, uart->prev_status[uart->prev_out]);
-            }
+				} else if( !uart->drop_on_full )
+					break;
 
-			/* buffer full? */
-			if (uart->buff_in_count >= TX_BUFF_SIZE)
-				break;
+			}
 
             /* send midi byte */
-            snd_uart16550_output_byte(uart, substream, midi_byte);
+			if( !snd_uart16550_output_byte(uart, substream, midi_byte) && !uart->drop_on_full )
+				break;
+
             if (midi_byte >= 0x80 && midi_byte < 0xf0)
                 uart->prev_status[uart->prev_out] = midi_byte;
             first = 1;
+
+			snd_rawmidi_transmit_ack( substream, 1 );
         }
 		lasttime = jiffies;
     }
@@ -779,6 +803,7 @@ static int __init snd_uart16550_create(snd_card_t * card,
                                        unsigned int speed,
                                        unsigned int base,
                                        int adaptor,
+				       int droponfull,
                                        snd_uart16550_t **ruart)
 {
     static snd_device_ops_t ops = {
@@ -795,6 +820,7 @@ static int __init snd_uart16550_create(snd_card_t * card,
     spin_lock_init(&uart->open_lock);
     uart->irq = -1;
     uart->base = iobase;
+	uart->drop_on_full = droponfull;
 
 	if ((err = snd_uart16550_detect(uart)) <= 0) {
 		printk(KERN_ERR "no UART detected at 0x%lx\n", iobase);
@@ -924,6 +950,7 @@ static int __init snd_serial_probe(int dev)
 					speed[dev],
 					base[dev],
 					adaptor[dev],
+					droponfull[dev],
                                     &uart)) < 0) {
         snd_card_free(card);
         return err;
@@ -934,7 +961,7 @@ static int __init snd_serial_probe(int dev)
         return err;
     }
 
-	sprintf(card->longname, "%s at 0x%lx, irq %d speed %d div %d outs %d ins %d adaptor %s",
+	sprintf(card->longname, "%s at 0x%lx, irq %d speed %d div %d outs %d ins %d adaptor %s droponfull %d",
             card->shortname,
             uart->base,
             uart->irq,
@@ -942,7 +969,8 @@ static int __init snd_serial_probe(int dev)
             (int)uart->divisor,
 		outs[dev],
 		ins[dev],
-            adaptor_names[uart->adaptor]);
+		adaptor_names[uart->adaptor],
+		uart->drop_on_full);
 
     if ((err = snd_card_register(card)) < 0) {
         snd_card_free(card);
@@ -988,7 +1016,7 @@ module_exit(alsa_card_serial_exit)
 
 /* format is: snd-serial=enable,index,id,
 			 port,irq,speed,base,outs,
- 			 ins,adaptor */
+ 			 ins,adaptor,droponfull */
 
 static int __init alsa_card_serial_setup(char *str)
 {
@@ -1005,7 +1033,8 @@ static int __init alsa_card_serial_setup(char *str)
 	       get_option(&str,&base[nr_dev]) == 2 &&
 	       get_option(&str,&outs[nr_dev]) == 2 &&
 	       get_option(&str,&ins[nr_dev]) == 2 &&
-	       get_option(&str,&adaptor[nr_dev]) == 2);
+	       get_option(&str,&adaptor[nr_dev]) == 2 &&
+	       get_option(&str,&droponfull[nr_dev]) == 2 );
     nr_dev++;
     return 1;
 }

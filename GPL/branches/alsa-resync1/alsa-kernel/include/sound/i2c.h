@@ -43,7 +43,7 @@ struct _snd_i2c_bus {
 	snd_card_t *card;	/* card which I2C belongs to */
 	char name[32];		/* some useful label */
 
-	spinlock_t lock;
+	struct semaphore lock_mutex;
 
 	struct list_head devices; /* attached devices */
 

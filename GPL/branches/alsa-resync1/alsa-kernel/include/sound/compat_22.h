@@ -162,16 +162,13 @@ struct tasklet_struct {
   #define try_inc_mod_count(x) 1
 #endif
 
-#define try_module_get(x) try_inc_mod_count(x)
-
-static inline void module_put(struct module *module)
-{
-    if (module)
-        do {} while(0);
-}
-
-#define MODULE_GENERIC_TABLE(gtype,name)        
-#define MODULE_DEVICE_TABLE(type,name)         
+#define MODULE_GENERIC_TABLE(gtype,name)        \
+static const unsigned long __module_##gtype##_size \
+  __attribute__ ((unused)) = sizeof(struct gtype##_id); \
+static const struct gtype##_id * __module_##gtype##_table \
+  __attribute__ ((unused)) = name
+#define MODULE_DEVICE_TABLE(type,name)          \
+  MODULE_GENERIC_TABLE(type##_device,name)
 
 /**
  * list_for_each        -       iterate over a list
@@ -239,6 +236,7 @@ int snd_compat_release_resource(struct resource *resource);
 
 #undef pci_enable_device
 #define pci_enable_device snd_pci_compat_enable_device
+#define pci_disable_device snd_pci_compat_disable_device
 #define pci_register_driver snd_pci_compat_register_driver
 #define pci_unregister_driver snd_pci_compat_unregister_driver
 //#define pci_set_power_state snd_pci_compat_set_power_state
@@ -272,6 +270,11 @@ int snd_compat_release_resource(struct resource *resource);
 #undef pci_resource_flags
 #define pci_resource_flags(dev,bar) (snd_pci_compat_get_flags((dev),(bar)))
 
+#define pci_request_region(dev,bar,name) snd_pci_compat_request_region(dev,bar,name)
+#define pci_release_region(dev,bar) snd_pci_compat_release_region(dev,bar)
+#define pci_request_regions(dev,name) snd_pci_compat_request_regions(dev,name)
+#define pci_release_regions(dev) snd_pci_compat_release_regions(dev)
+
 struct pci_device_id {
 	unsigned int vendor, device;		/* Vendor and device ID or PCI_ANY_ID */
 	unsigned int subvendor, subdevice;	/* Subsystem ID's or PCI_ANY_ID */
@@ -302,6 +305,7 @@ unsigned long snd_pci_compat_get_size (struct pci_dev *dev, int n_base);
 int snd_pci_compat_get_flags (struct pci_dev *dev, int n_base);
 int snd_pci_compat_set_power_state(struct pci_dev *dev, int new_state);
 int snd_pci_compat_enable_device(struct pci_dev *dev);
+void snd_pci_compat_disable_device(struct pci_dev *dev);
 int snd_pci_compat_find_capability(struct pci_dev *dev, int cap);
 void *snd_pci_compat_alloc_consistent(struct pci_dev *, long, dma_addr_t *);
 void snd_pci_compat_free_consistent(struct pci_dev *, long, void *, dma_addr_t);
@@ -310,6 +314,11 @@ unsigned long snd_pci_compat_get_dma_mask(struct pci_dev *);
 int snd_pci_compat_set_dma_mask(struct pci_dev *, unsigned long mask);
 void * snd_pci_compat_get_driver_data (struct pci_dev *dev);
 void snd_pci_compat_set_driver_data (struct pci_dev *dev, void *driver_data);
+int snd_pci_compat_request_region(struct pci_dev *pdev, int bar, char *res_name);
+void snd_pci_compat_release_region(struct pci_dev *pdev, int bar);
+int snd_pci_compat_request_regions(struct pci_dev *pdev, char *res_name);
+void snd_pci_compat_release_regions(struct pci_dev *pdev);
+
 static inline int pci_module_init(struct pci_driver *drv)
 {
 	int res = snd_pci_compat_register_driver(drv);

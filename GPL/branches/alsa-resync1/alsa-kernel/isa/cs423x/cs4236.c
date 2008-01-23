@@ -334,7 +334,7 @@ static int __devinit snd_card_cs4236_pnp(int dev, struct snd_card_cs4236 *acard,
 	pnp_init_resource_table(cfg);
 	if (port[dev] != SNDRV_AUTO_PORT)
 		pnp_resource_change(&cfg->port_resource[0], port[dev], 4);
-	if (fm_port[dev] != SNDRV_AUTO_PORT && fm_port[dev] >= 0)
+	if (fm_port[dev] != SNDRV_AUTO_PORT && fm_port[dev] > 0)
 		pnp_resource_change(&cfg->port_resource[1], fm_port[dev], 4);
 	if (sb_port[dev] != SNDRV_AUTO_PORT)
 		pnp_resource_change(&cfg->port_resource[2], sb_port[dev], 16);
@@ -354,7 +354,7 @@ static int __devinit snd_card_cs4236_pnp(int dev, struct snd_card_cs4236 *acard,
 		return -EBUSY;
 	}
 	port[dev] = pnp_port_start(pdev, 0);
-	if (fm_port[dev] >= 0)
+	if (fm_port[dev] > 0)
 		fm_port[dev] = pnp_port_start(pdev, 1);
 	sb_port[dev] = pnp_port_start(pdev, 2);
 	irq[dev] = pnp_irq(pdev, 0);
@@ -365,7 +365,7 @@ static int __devinit snd_card_cs4236_pnp(int dev, struct snd_card_cs4236 *acard,
 	snd_printdd("isapnp WSS: irq=%i, dma1=%i, dma2=%i\n",
 			irq[dev], dma1[dev], dma2[dev]);
 	/* CTRL initialization */
-	if (acard->ctrl && cport[dev] >= 0) {
+	if (acard->ctrl && cport[dev] > 0) {
 	pdev = acard->ctrl;
 		pnp_init_resource_table(cfg);
 		if (cport[dev] != SNDRV_AUTO_PORT)
@@ -383,12 +383,13 @@ static int __devinit snd_card_cs4236_pnp(int dev, struct snd_card_cs4236 *acard,
 		snd_printdd("isapnp CTRL: control port=0x%lx\n", cport[dev]);
 	}
 	/* MPU initialization */
-	if (acard->mpu && mpu_port[dev] >= 0) {
+	if (acard->mpu && mpu_port[dev] > 0) {
 		pdev = acard->mpu;
 		pnp_init_resource_table(cfg);
 		if (mpu_port[dev] != SNDRV_AUTO_PORT)
 			pnp_resource_change(&cfg->port_resource[0], mpu_port[dev], 2);
-		if (mpu_irq[dev] != SNDRV_AUTO_IRQ && mpu_irq[dev] >= 0)
+		if (mpu_irq[dev] != SNDRV_AUTO_IRQ && mpu_irq[dev] >= 0 &&
+		    pnp_irq_valid(pdev, 0))
 			pnp_resource_change(&cfg->irq_resource[0], mpu_irq[dev], 1);
 		err = pnp_manual_config_dev(pdev, cfg, 0);
 		if (err < 0)
@@ -400,7 +401,8 @@ static int __devinit snd_card_cs4236_pnp(int dev, struct snd_card_cs4236 *acard,
 			mpu_irq[dev] = SNDRV_AUTO_IRQ;
 		} else {
 			mpu_port[dev] = pnp_port_start(pdev, 0);
-			if (pnp_irq_valid(pdev, 0) && pnp_irq(pdev, 0) >= 0) {
+			if (mpu_irq[dev] >= 0 &&
+			    pnp_irq_valid(pdev, 0) && pnp_irq(pdev, 0) >= 0) {
 				mpu_irq[dev] = pnp_irq(pdev, 0);
 			} else {
 				mpu_irq[dev] = -1;	/* disable interrupt */
@@ -462,13 +464,7 @@ static int __devinit snd_card_cs423x_probe(int dev, struct pnp_card_link *pcard,
 		return -ENXIO;
 	}
 #endif
-	if (mpu_port[dev] < 0)
-		mpu_port[dev] = SNDRV_AUTO_PORT;
-	if (fm_port[dev] < 0)
-		fm_port[dev] = SNDRV_AUTO_PORT;
-	if (sb_port[dev] < 0)
-		sb_port[dev] = SNDRV_AUTO_PORT;
-	if (sb_port[dev] != SNDRV_AUTO_PORT)
+	if (sb_port[dev] > 0 && sb_port[dev] != SNDRV_AUTO_PORT)
 		if ((acard->res_sb_port = request_region(sb_port[dev], 16, IDENT " SB")) == NULL) {
 			printk(KERN_ERR IDENT ": unable to register SB port at 0x%lx\n", sb_port[dev]);
 			snd_card_free(card);
@@ -525,7 +521,7 @@ static int __devinit snd_card_cs423x_probe(int dev, struct pnp_card_link *pcard,
 		return err;
 	}
 
-	if (fm_port[dev] != SNDRV_AUTO_PORT) {
+	if (fm_port[dev] > 0 && fm_port[dev] != SNDRV_AUTO_PORT) {
 		if (snd_opl3_create(card,
 				    fm_port[dev], fm_port[dev] + 2,
 				    OPL3_HW_OPL3_CS, 0, &opl3) < 0) {
@@ -538,7 +534,9 @@ static int __devinit snd_card_cs423x_probe(int dev, struct pnp_card_link *pcard,
 		}
 	}
 
-	if (mpu_port[dev] != SNDRV_AUTO_PORT) {
+	if (mpu_port[dev] > 0 && mpu_port[dev] != SNDRV_AUTO_PORT) {
+		if (mpu_irq[dev] == SNDRV_AUTO_IRQ)
+			mpu_irq[dev] = -1;
 		if (snd_mpu401_uart_new(card, 0, MPU401_HW_CS4232,
 					mpu_port[dev], 0,
 					mpu_irq[dev],
@@ -573,7 +571,7 @@ static int __devinit snd_cs423x_pnp_detect(struct pnp_card_link *card,
 	int res;
 
 	for ( ; dev < SNDRV_CARDS; dev++) {
-		if (!enable[dev])
+		if (!enable[dev] || !isapnp[dev])
 			continue;
 		res = snd_card_cs423x_probe(dev, card, id);
 		if (res < 0)

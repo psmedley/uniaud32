@@ -241,12 +241,12 @@ static int __devinit snd_interwave_detect_stb(struct snd_interwave *iwcard,
 				break;
 			port += 0x10;
 		}
-		if (port > 0x380)
-			return -ENODEV;
 	} else {
-		if ((iwcard->i2c_res = request_region(port, 1, "InterWave (I2C bus)")) != NULL)
-			return -ENODEV;
+		iwcard->i2c_res = request_region(port, 1, "InterWave (I2C bus)");
 	}
+	if (iwcard->i2c_res == NULL)
+		return -ENODEV;
+
 	sprintf(name, "InterWave-%i", card->number);
 	if ((err = snd_i2c_bus_create(card, name, NULL, &bus)) < 0)
 		return err;
@@ -638,7 +638,7 @@ static int __devinit snd_interwave_pnp(int dev, struct snd_interwave *iwcard,
 		return -ENOENT;
 	}
 	port[dev] = pnp_port_start(pdev, 0);
-	dma1[dev] = pnp_dma(pdev, 1);
+	dma1[dev] = pnp_dma(pdev, 0);
 	if (dma2[dev] >= 0)
 		dma2[dev] = pnp_dma(pdev, 1);
 	irq[dev] = pnp_irq(pdev, 0);

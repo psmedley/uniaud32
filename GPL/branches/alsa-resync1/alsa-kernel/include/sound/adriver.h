@@ -240,6 +240,56 @@ struct work_struct {
 int snd_compat_schedule_work(struct work_struct *work);
 #define schedule_work(w) snd_compat_schedule_work(w)
 
+/* 2.5 new modules */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 0)
+#define try_module_get(x) try_inc_mod_count(x)
+static inline void module_put(struct module *module)
+{
+	if (module)
+		__MOD_DEC_USE_COUNT(module);
+}
+#endif /* 2.5.0 */
+
+/* gameport - 2.4 has different defines */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 0)
+#ifdef CONFIG_INPUT_GAMEPORT
+#define CONFIG_GAMEPORT
+#endif
+#ifdef CONFIG_INPUT_GAMEPORT_MODULE
+#define CONFIG_GAMEPORT_MODULE
+#endif
+#endif /* 2.5.0 */
+
+/* vmalloc_to_page wrapper */
+#ifndef CONFIG_HAVE_VMALLOC_TO_PAGE
+struct page *snd_compat_vmalloc_to_page(void *addr);
+#define vmalloc_to_page(addr) snd_compat_vmalloc_to_page(addr)
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 69)
+#include <linux/vmalloc.h>
+static inline void *snd_compat_vmap(struct page **pages, unsigned int count, unsigned long flags, pgprot_t prot)
+{
+	return vmap(pages, count);
+}
+#undef vmap
+#define vmap snd_compat_vmap
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 0) /* correct version? */
+#define EXPORT_NO_SYMBOLS
+#endif
+
+/* MODULE_ALIAS & co. */
+#ifndef MODULE_ALIAS
+#define MODULE_ALIAS(x)
+#define MODULE_ALIAS_CHARDEV_MAJOR(x)
+#endif
+
+#ifndef CONFIG_HAVE_PCI_CONSISTENT_DMA_MASK
+#define pci_set_consistent_dma_mask(p,x) pci_set_dma_mask(p,x)
+#endif
+
 #ifndef CONFIG_HAVE_MSLEEP_INTERRUPTIBLE
 #include <linux/delay.h>
 unsigned long snd_compat_msleep_interruptible(unsigned int msecs);
