@@ -561,17 +561,6 @@ int snd_ac97_put_volsw(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value 
 	}
 	err = snd_ac97_update_bits(ac97, reg, val_mask, val);
         snd_ac97_page_restore(ac97, page_save);
-#ifdef CONFIG_SND_AC97_POWER_SAVE
-	/* check analog mixer power-down */
-	if ((val_mask & 0x8000) &&
-	    (kcontrol->private_value & (1<<30))) {
-		if (val & 0x8000)
-			ac97->power_up &= ~(1 << (reg>>1));
-		else
-                    ac97->power_up |= 1 << (reg>>1);
-                update_power_regs(ac97);
-	}
-#endif
 	return err;
 }
 
@@ -2274,8 +2263,14 @@ int snd_ac97_mixer(struct snd_ac97_bus *bus, struct snd_ac97_template *template,
 		}
 	}
         /* make sure the proper powerdown bits are cleared */
-        if (ac97_is_audio(ac97))
-            update_power_regs(ac97);
+	if (ac97->scaps && ac97_is_audio(ac97)) {
+		reg = snd_ac97_read(ac97, AC97_EXTENDED_STATUS);
+		if (ac97->scaps & AC97_SCAP_SURROUND_DAC)
+			reg &= ~AC97_EA_PRJ;
+		if (ac97->scaps & AC97_SCAP_CENTER_LFE_DAC)
+			reg &= ~(AC97_EA_PRI | AC97_EA_PRK);
+		snd_ac97_write_cache(ac97, AC97_EXTENDED_STATUS, reg);
+	}
 	snd_ac97_proc_init(ac97);
 	if ((err = snd_device_new(card, SNDRV_DEV_CODEC, ac97, &ops)) < 0) {
 		snd_ac97_free(ac97);
