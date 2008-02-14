@@ -1,4 +1,3 @@
-/* $Id: debug.c,v 1.1.1.1 2003/07/02 13:57:02 eleph Exp $ */
 /*
  * COM port debugging functions
  *
@@ -549,16 +548,16 @@ static unsigned _strnlen(const char *psz, unsigned cchMax)
 void StringOut(char *DbgStr)
 {
    int len;
-#ifdef DEBUG
+#ifdef DEBUG9
    int i;
-#endif /* DEBUG */
+#endif /* DEBUG9 */
    
    len= _strnlen( DbgStr, 1024 );
 /*   
    while (*DbgStr)
       CharOut(*DbgStr++);
       */
-#ifdef DEBUG
+#ifdef DEBUG9
    for( i= 0; i < len; i++ )
       CharOut( DbgStr[i] );
 
@@ -597,6 +596,8 @@ void StringOut(char *DbgStr)
        {
 //           if( (wrOffset+1) >= max_buf_size )
 //               wrOffset= 0;
+       if( szprintBuf[wrOffset-1] == LF )
+           wrOffset = wrOffset - 1;
            szprintBuf[wrOffset]= CR;
            if( ++wrOffset >= max_buf_size )
                wrOffset= 0;
