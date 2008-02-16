@@ -86,7 +86,7 @@ void snd_compat_request_module(const char *name, ...);
 #include <linux/pm.h>
 #include <asm/page.h>
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 3)
-#define pci_set_dma_mask(pci, mask) pci->dma_mask = mask
+#define pci_set_dma_mask(pci, mask) (pci->dma_mask = mask, 0)
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 7)
 #define PCI_OLD_SUSPEND
@@ -156,24 +156,19 @@ static inline struct proc_dir_entry *PDE(const struct inode *inode)
 #endif
 #endif
 
-#if defined(CONFIG_ISAPNP) || (defined(CONFIG_ISAPNP_MODULE) && defined(MODULE))
-#ifdef TARGET_OS2
-#include "isapnp.h"
-#else /* !TARGET_OS2 */
-#include <linux/isapnp.h>
-#endif /* !TARGET_OS2 */
-#ifndef CONFIG_PNP
-#define CONFIG_PNP
+/* isapnp support for 2.2 kernels */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 0)
+#undef CONFIG_ISAPNP
+#ifdef CONFIG_SND_ISAPNP
+#define CONFIG_ISAPNP
 #endif
-#if (defined(CONFIG_ISAPNP_KERNEL) && defined(ALSA_BUILD)) || (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 3, 30) && !defined(ALSA_BUILD))
-#define isapnp_dev pci_dev
-#define isapnp_card pci_bus
 #endif
-#undef __ISAPNP__
-#define __ISAPNP__
-#else
+
+/* support of pnp compatible layer for 2.2/2.4 kernels */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 0)
 #undef CONFIG_PNP
+#ifdef CONFIG_SND_PNP
+#define CONFIG_PNP
 #endif
 #endif
 
@@ -287,7 +282,14 @@ static inline void *snd_compat_vmap(struct page **pages, unsigned int count, uns
 #endif
 
 #ifndef CONFIG_HAVE_PCI_CONSISTENT_DMA_MASK
-#define pci_set_consistent_dma_mask(p,x) pci_set_dma_mask(p,x)
+#define pci_set_consistent_dma_mask(p,x) 0 /* success */
+#endif
+
+/* sysfs */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 2)
+struct class_simple;
+static inline void class_simple_device_add(struct class_simple *class, int devnum, ...) { return; }
+static inline void class_simple_device_remove(int devnum) { return; }
 #endif
 
 #ifndef CONFIG_HAVE_MSLEEP_INTERRUPTIBLE
@@ -297,6 +299,10 @@ unsigned long snd_compat_msleep_interruptible(unsigned int msecs);
 #ifndef ssleep
 #define ssleep(x) msleep((unsigned int)(x) * 1000)
 #endif
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)
+#define snd_card_set_dev(card,dev) /* no struct device */
 #endif
 
 /* pm_message_t type */

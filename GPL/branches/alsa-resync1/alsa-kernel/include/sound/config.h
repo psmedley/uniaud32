@@ -174,10 +174,6 @@ int pm_send(struct pm_dev *dev, pm_request_t rqst, void *data);
 	unsigned long name[((bits)+BITS_PER_LONG-1)/BITS_PER_LONG]
 #endif
 
-#ifndef snd_card_set_dev
-#define snd_card_set_dev(card,devptr) ((card)->dev = (devptr))
-#endif
-
 /* for easier backward-porting */
 #if defined(CONFIG_GAMEPORT) || defined(CONFIG_GAMEPORT_MODULE)
 #ifndef gameport_set_dev_parent

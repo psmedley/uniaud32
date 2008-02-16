@@ -505,10 +505,6 @@ static __inline__ void list_del_init(struct list_head *entry)
 #define local_irq_restore(flags) \
 	{ restore_flags(flags); }
 
-#ifndef CONFIG_HAVE_PCI_CONSISTENT_DMA_MASK
-#define pci_set_consistent_dma_mask(p,x) pci_set_dma_mask(p,x)
-#endif
-
 struct completion {
         unsigned int done;
         wait_queue_head_t wait;

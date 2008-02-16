@@ -1548,6 +1548,7 @@ static int snd_cmipci_playback_open(struct snd_pcm_substream *substream)
     runtime->hw = snd_cmipci_playback;
     runtime->hw.channels_max = cm->max_channels;
     snd_pcm_hw_constraint_minmax(runtime, SNDRV_PCM_HW_PARAM_BUFFER_SIZE, 0, 0x10000);
+	cm->dig_pcm_status = cm->dig_status;
     return 0;
 }
 
@@ -3004,6 +3005,8 @@ static int __devinit snd_cmipci_create(struct snd_card *card, struct pci_dev *pc
 		snd_cmipci_clear_bit(cm, CM_REG_FUNCTRL1, CM_JYSTK_EN);
 	}
 #endif
+	snd_card_set_dev(card, &pci->dev);
+
     *rcmipci = cm;
     return 0;
 
@@ -3205,7 +3208,7 @@ module_exit(alsa_card_cmipci_exit)
 #ifndef MODULE
 
 /* format is: snd-cmipci=enable,index,id,
-			 mpu_port,fm_port,soft_ac3,joystick */
+			 mpu_port,fm_port,soft_ac3,joystick_port */
 
 static int __init alsa_card_cmipci_setup(char *str)
 {
@@ -3222,7 +3225,7 @@ static int __init alsa_card_cmipci_setup(char *str)
 	       && get_option(&str,&soft_ac3[nr_dev]) == 2
 #endif
 #ifdef SUPPORT_JOYSTICK
-	       && get_option(&str,&joystick[nr_dev]) == 2
+	       && get_option(&str,&joystick_port[nr_dev]) == 2
 #endif
 	       );
     nr_dev++;

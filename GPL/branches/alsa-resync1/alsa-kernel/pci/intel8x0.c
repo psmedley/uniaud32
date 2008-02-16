@@ -777,6 +777,23 @@ static void snd_intel8x0_setup_periods(struct intel8x0 *chip, struct ichdev *ich
     iputbyte(chip, port + ichdev->roff_sr, ICH_FIFOE | ICH_BCIS | ICH_LVBCI);
 }
 
+#ifdef __i386__
+/*
+ * Intel 82443MX running a 100MHz processor system bus has a hardware bug,
+ * which aborts PCI busmaster for audio transfer.  A workaround is to set
+ * the pages as non-cached.  For details, see the errata in
+ *	http://www.intel.com/design/chipsets/specupdt/245051.htm
+ */
+static void fill_nocache(void *buf, int size, int nocache)
+{
+	size = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	change_page_attr(virt_to_page(buf), size, nocache ? PAGE_KERNEL_NOCACHE : PAGE_KERNEL);
+	global_flush_tlb();
+}
+#else
+#define fill_nocache(buf,size,nocache)
+#endif
+
 /*
  *  Interrupt handler
  */
@@ -979,12 +996,18 @@ static int snd_intel8x0_hw_params(snd_pcm_substream_t * substream,
 {
     struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     struct ichdev *ichdev = get_ichdev(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	size_t size = params_buffer_bytes(hw_params);
     int dbl = params_rate(hw_params) > 48000;
     int err;
 
+	if (chip->fix_nocache && runtime->dma_area && runtime->dma_bytes < size)
+		fill_nocache(runtime->dma_area, runtime->dma_bytes, 0); /* clear */
     err = snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params));
     if (err < 0)
         return err;
+	if (chip->fix_nocache && err > 0)
+		fill_nocache(runtime->dma_area, runtime->dma_bytes, 1);
     if (ichdev->pcm_open_flag) {
         snd_ac97_pcm_close(ichdev->pcm);
         ichdev->pcm_open_flag = 0;
@@ -1003,12 +1026,15 @@ static int snd_intel8x0_hw_params(snd_pcm_substream_t * substream,
 
 static int snd_intel8x0_hw_free(snd_pcm_substream_t * substream)
 {
+	struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     struct ichdev *ichdev = get_ichdev(substream);
 
     if (ichdev->pcm_open_flag) {
         snd_ac97_pcm_close(ichdev->pcm);
         ichdev->pcm_open_flag = 0;
     }
+	if (chip->fix_nocache && substream->runtime->dma_area)
+		fill_nocache(substream->runtime->dma_area, substream->runtime->dma_bytes, 0);
     return snd_pcm_lib_free_pages(substream);
 }
 
@@ -2957,7 +2983,9 @@ port_inited:
     }
     /* tables must be aligned to 8 bytes here, but the kernel pages
      are much bigger, so we don't care (on i386) */
-
+	/* workaround for 440MX */
+	if (chip->fix_nocache)
+		fill_nocache(chip->bdbars, chip->bdbars_count * sizeof(u32) * ICH_MAX_FRAGS * 2, 1);
     int_sta_masks = 0;
     for (i = 0; i < chip->bdbars_count; i++) {
         ichdev = &chip->ichd[i];
@@ -3017,6 +3045,8 @@ port_inited:
         snd_intel8x0_free(chip);
         return err;
     }
+
+	snd_card_set_dev(card, &pci->dev);
 
     *r_intel8x0 = chip;
 #ifdef DEBUG

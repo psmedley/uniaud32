@@ -181,6 +181,15 @@ static inline int snd_pcm_update_hw_ptr_post(snd_pcm_substream_t *substream,
             snd_pcm_drain_done(substream);
         else
             xrun(substream);
+#ifdef CONFIG_SND_DEBUG
+		if (substream->pstr->xrun_debug) {
+			snd_printd(KERN_DEBUG "XRUN: pcmC%dD%d%c\n",
+				   substream->pcm->card->number,
+				   substream->pcm->device,
+				   substream->stream ? 'c' : 'p');
+			dump_stack();
+		}
+#endif
         return -EPIPE;
     }
     if (avail >= runtime->control->avail_min)

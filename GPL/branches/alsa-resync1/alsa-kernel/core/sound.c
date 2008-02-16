@@ -40,9 +40,7 @@
 static int major = CONFIG_SND_MAJOR;
 int snd_major;
 static int cards_limit = 1;
-#ifdef CONFIG_DEVFS_FS
 static int device_mode = S_IFCHR | S_IRUGO | S_IWUGO;
-#endif
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
 MODULE_DESCRIPTION("Advanced Linux Sound Architecture driver for soundcards.");
@@ -72,9 +70,8 @@ static struct list_head snd_minors_hash[SNDRV_CARDS];
 
 static DECLARE_MUTEX(sound_mutex);
 
-#ifdef CONFIG_DEVFS_FS
 extern struct class_simple *sound_class;
-#endif
+
 
 #ifdef CONFIG_KMOD
 
@@ -239,7 +236,7 @@ int snd_register_device(int type, struct snd_card * card, int dev, snd_minor_t *
         return -EBUSY;
     }
     list_add_tail(&preg->list, &snd_minors_hash[SNDRV_MINOR_CARD(minor)]);
-#ifdef CONFIG_DEVFS_FS
+#ifndef TARGET_OS2
     if (strncmp(name, "controlC", 8) || card->number >= cards_limit) {
         devfs_mk_cdev(MKDEV(major, minor), S_IFCHR | device_mode, "snd/%s", name);
         if (card)
@@ -275,8 +272,8 @@ int snd_unregister_device(int type, struct snd_card * card, int dev)
         up(&sound_mutex);
         return -EINVAL;
     }
-#ifdef CONFIG_DEVFS_FS
-    if (strncmp(name, "controlC", 8) || card->number >= cards_limit) {
+#ifndef TARGET_OS2
+	if (strncmp(mptr->name, "controlC", 8) || card->number >= cards_limit) { /* created in sound.c */
         devfs_remove("snd/%s", mptr->name);
         class_simple_device_remove(MKDEV(major, minor));
     }
@@ -346,9 +343,7 @@ int __exit snd_minor_info_done(void)
 
 static int __init alsa_sound_init(void)
 {
-#ifdef CONFIG_DEVFS_FS
     short controlnum;
-#endif
 #ifdef CONFIG_SND_OSSEMUL
     int err;
 #endif
@@ -390,7 +385,7 @@ static int __init alsa_sound_init(void)
 #ifdef CONFIG_SND_OSSEMUL
     snd_info_minor_register();
 #endif
-#ifdef CONFIG_DEVFS_FS
+#ifndef TARGET_OS2
     for (controlnum = 0; controlnum < cards_limit; controlnum++) {
         devfs_mk_cdev(MKDEV(major, controlnum<<5), S_IFCHR | device_mode, "snd/controlC%d", controlnum);
         class_simple_device_add(sound_class, MKDEV(major, controlnum<<5), NULL, "controlC%d", controlnum);

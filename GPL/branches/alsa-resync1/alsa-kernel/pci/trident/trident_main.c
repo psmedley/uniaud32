@@ -3539,11 +3539,11 @@ int __devinit snd_trident_create(snd_card_t * card,
     if ((err = pci_enable_device(pci)) < 0)
         return err;
     /* check, if we can restrict PCI DMA transfers to 30 bits */
-    if (!pci_dma_supported(pci, 0x3fffffff)) {
+	if (pci_set_dma_mask(pci, 0x3fffffff) < 0 ||
+	    pci_set_consistent_dma_mask(pci, 0x3fffffff) < 0) {
         snd_printk("architecture does not support 30bit PCI busmaster DMA\n");
         return -ENXIO;
     }
-    pci_set_dma_mask(pci, 0x3fffffff);
 
     trident = kcalloc(1, sizeof(*trident), GFP_KERNEL);
     if (trident == NULL)
@@ -3639,6 +3639,7 @@ int __devinit snd_trident_create(snd_card_t * card,
         snd_trident_free(trident);
         return err;
     }
+	snd_card_set_dev(card, &pci->dev);
     *rtrident = trident;
     return 0;
 }
