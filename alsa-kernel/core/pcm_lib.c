@@ -21,6 +21,9 @@
  */
 
 #include <sound/driver.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
@@ -178,6 +181,15 @@ static inline int snd_pcm_update_hw_ptr_post(snd_pcm_substream_t *substream,
             snd_pcm_drain_done(substream);
         else
             xrun(substream);
+#ifdef CONFIG_SND_DEBUG
+		if (substream->pstr->xrun_debug) {
+			snd_printd(KERN_DEBUG "XRUN: pcmC%dD%d%c\n",
+				   substream->pcm->card->number,
+				   substream->pcm->device,
+				   substream->stream ? 'c' : 'p');
+			dump_stack();
+		}
+#endif
         return -EPIPE;
     }
     if (avail >= runtime->control->avail_min)
@@ -896,7 +908,7 @@ int snd_pcm_hw_rule_add(snd_pcm_runtime_t *runtime, unsigned int cond,
     va_start(args, dep);
 
 #ifdef DEBUG
-            dprintf(("snd_pcm_hw_rule_add. func() = %x, var = %d",func, var));
+    //        dprintf(("snd_pcm_hw_rule_add. func() = %x, var = %d",func, var));
 #endif
     if (constrs->rules_num >= constrs->rules_all) {
         snd_pcm_hw_rule_t *new;
@@ -2688,4 +2700,8 @@ EXPORT_SYMBOL(snd_pcm_lib_preallocate_pci_pages_for_all);
 EXPORT_SYMBOL(snd_pcm_lib_preallocate_sg_pages);
 EXPORT_SYMBOL(snd_pcm_lib_preallocate_sg_pages_for_all);
 EXPORT_SYMBOL(snd_pcm_sgbuf_ops_page);
+#endif
+#ifdef CONFIG_SBUS
+EXPORT_SYMBOL(snd_pcm_lib_preallocate_sbus_pages);
+EXPORT_SYMBOL(snd_pcm_lib_preallocate_sbus_pages_for_all);
 #endif

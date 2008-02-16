@@ -1,5 +1,5 @@
-#ifndef __PCM_OSS_H
-#define __PCM_OSS_H
+#ifndef __SOUND_PCM_OSS_H
+#define __SOUND_PCM_OSS_H
 
 /*
  *  Digital Audio (PCM) - OSS compatibility abstract layer
@@ -18,12 +18,11 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#include "pcm_plugin.h"
-
+typedef struct _snd_pcm_plugin snd_pcm_plugin_t;
 typedef struct _snd_pcm_oss_setup snd_pcm_oss_setup_t;
 
 struct _snd_pcm_oss_setup {
@@ -31,7 +30,9 @@ struct _snd_pcm_oss_setup {
 	unsigned int disable:1,
 		     direct:1,
 		     block:1,
-		     nonblock:1;
+		     nonblock:1,
+		     partialfrag:1,
+		     nosilence:1;
 	unsigned int periods;
 	unsigned int period_size;
 	snd_pcm_oss_setup_t *next;
@@ -49,12 +50,13 @@ typedef struct _snd_pcm_oss_runtime {
 	unsigned int maxfrags;
 	unsigned int subdivision;		/* requested subdivision */
 	size_t period_bytes;			/* requested period size */
+	size_t period_ptr;			/* actual write pointer to period */
 	unsigned int periods;
-	size_t buffer_bytes;			/* requested period size */
+	size_t buffer_bytes;			/* requested buffer size */
 	size_t bytes;				/* total # bytes processed */
 	size_t mmap_bytes;
 	char *buffer;				/* vmallocated period */
-	size_t buffer_used;			/* used length from buffer */
+	size_t buffer_used;			/* used length from period buffer */
 	snd_pcm_plugin_t *plugin_first;
 	snd_pcm_plugin_t *plugin_last;
 	unsigned int prev_hw_ptr_interrupt;
@@ -78,6 +80,7 @@ typedef struct _snd_pcm_oss_stream {
 
 typedef struct _snd_pcm_oss {
 	int reg;
+	unsigned int reg_mask;
 } snd_pcm_oss_t;
 
-#endif /* __PCM_OSS_H */
+#endif /* __SOUND_PCM_OSS_H */

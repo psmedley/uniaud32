@@ -21,13 +21,17 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/gus.h>
+#include <sound/pcm_params.h>
 #include "gus_tables.h"
 
 #define chip_t snd_gus_card_t
@@ -44,7 +48,7 @@ typedef struct {
 	snd_gus_card_t * gus;
 	snd_pcm_substream_t * substream;
 	spinlock_t lock;
-	int voices;
+	unsigned int voices;
 	snd_gus_voice_t *pvoices[2];
 	unsigned int memory;
 	unsigned short flags;
@@ -90,6 +94,7 @@ static int snd_gf1_pcm_block_change(snd_pcm_substream_t * substream,
 		block.cmd |= SNDRV_GF1_DMA_16BIT;
 	block.addr = addr & ~31;
 	block.buffer = runtime->dma_area + offset;
+	block.buf_addr = runtime->dma_addr + offset;
 	block.count = count;
 	block.private_data = pcmp;
 	block.ack = snd_gf1_pcm_block_change_ack;
@@ -181,7 +186,7 @@ static void snd_gf1_pcm_interrupt_wave(snd_gus_card_t * gus, snd_gus_voice_t *pv
 	gus_pcm_private_t * pcmp;
 	snd_pcm_runtime_t * runtime;
 	unsigned char voice_ctrl, ramp_ctrl;
-	int idx;
+	unsigned int idx;
 	unsigned int end, step;
 
 	if (!pvoice->private_data) {
@@ -329,9 +334,11 @@ static int snd_gf1_pcm_poke_block(snd_gus_card_t *gus, unsigned char *buf,
 					snd_gf1_poke(gus, pos++, *buf++ ^ invert);
 			}
 		}
-		schedule_timeout(1);
-		if (signal_pending(current))
-			return -EAGAIN;
+		if (count > 0 && !in_interrupt()) {
+			schedule_timeout(1);
+			if (signal_pending(current))
+				return -EAGAIN;
+		}
 	}
 	return 0;
 }
@@ -524,31 +531,17 @@ static snd_pcm_uframes_t snd_gf1_pcm_playback_pointer(snd_pcm_substream_t * subs
 	return pos;
 }
 
-#ifdef TARGET_OS2
 static ratnum_t clock = {
-	9878400/16,
-	2,
-	257,
-	1,
+	.num = 9878400/16,
+	.den_min = 2,
+	.den_max = 257,
+	.den_step = 1,
 };
 
 static snd_pcm_hw_constraint_ratnums_t hw_constraints_clocks  = {
-	1,
-	&clock,
+	.nrats = 1,
+	.rats = &clock,
 };
-#else
-static ratnum_t clock = {
-	num: 9878400/16,
-	den_min: 2,
-	den_max: 257,
-	den_step: 1,
-};
-
-static snd_pcm_hw_constraint_ratnums_t hw_constraints_clocks  = {
-	nrats: 1,
-	rats: &clock,
-};
-#endif
 
 static int snd_gf1_pcm_capture_hw_params(snd_pcm_substream_t * substream,
 					 snd_pcm_hw_params_t * hw_params)
@@ -581,7 +574,7 @@ static int snd_gf1_pcm_capture_prepare(snd_pcm_substream_t * substream)
 	snd_gf1_i_write8(gus, SNDRV_GF1_GB_RECORD_RATE, runtime->rate_den - 2);
 	snd_gf1_i_write8(gus, SNDRV_GF1_GB_REC_DMA_CONTROL, 0);	/* disable sampling */
 	snd_gf1_i_look8(gus, SNDRV_GF1_GB_REC_DMA_CONTROL);	/* Sampling Control Register */
-	snd_dma_program(gus->gf1.dma2, &runtime->dma_area, gus->c_period_size, DMA_MODE_READ);
+	snd_dma_program(gus->gf1.dma2, runtime->dma_addr, gus->c_period_size, DMA_MODE_READ);
 	return 0;
 }
 
@@ -609,7 +602,7 @@ static int snd_gf1_pcm_capture_trigger(snd_pcm_substream_t * substream,
 static snd_pcm_uframes_t snd_gf1_pcm_capture_pointer(snd_pcm_substream_t * substream)
 {
 	snd_gus_card_t *gus = snd_pcm_substream_chip(substream);
-	int pos = gus->c_period_size - snd_dma_residue(gus->gf1.dma2);
+	int pos = snd_dma_pointer(gus->gf1.dma2, gus->c_period_size);
 	pos = bytes_to_frames(substream->runtime, (gus->c_pos + pos) % gus->c_dma_size);
 	return pos;
 }
@@ -626,79 +619,41 @@ static void snd_gf1_pcm_interrupt_dma_read(snd_gus_card_t * gus)
 	}
 }
 
-#ifdef TARGET_OS2
 static snd_pcm_hardware_t snd_gf1_pcm_playback =
 {
-/*	info:		  */	SNDRV_PCM_INFO_NONINTERLEAVED,
-/*	formats:	  */	(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
+	.info =			SNDRV_PCM_INFO_NONINTERLEAVED,
+	.formats		= (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
 			  	 SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE),
-/*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
-/*	rate_min:	  */	5510,
-/*	rate_max:	  */	48000,
-/*	channels_min:	  */	1,
-/*	channels_max:	  */	2,
-/*	buffer_bytes_max:  */	(128*1024),
-/*	period_bytes_min:  */	64,
-/*	period_bytes_max:  */	(128*1024),
-/*	periods_min:	  */	1,
-/*	periods_max:	  */	1024,
-/*	fifo_size:	  */	0,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		5510,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static snd_pcm_hardware_t snd_gf1_pcm_capture =
 {
-/*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_MMAP_VALID),
-/*	formats:	  */	SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8,
-/*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
-/*	rate_min:	  */	5510,
-/*	rate_max:	  */	44100,
-/*	channels_min:	  */	1,
-/*	channels_max:	  */	2,
-/*	buffer_bytes_max:  */	(128*1024),
-/*	period_bytes_min:  */	64,
-/*	period_bytes_max:  */	(128*1024),
-/*	periods_min:	  */	1,
-/*	periods_max:	  */	1024,
-/*	fifo_size:	  */	0,
+	.formats =		SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
+	.rate_min =		5510,
+	.rate_max =		44100,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
-#else
-static snd_pcm_hardware_t snd_gf1_pcm_playback =
-{
-	info:			SNDRV_PCM_INFO_NONINTERLEAVED,
-	formats:		(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8 |
-				 SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_U16_LE),
-	rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
-	rate_min:		5510,
-	rate_max:		48000,
-	channels_min:		1,
-	channels_max:		2,
-	buffer_bytes_max:	(128*1024),
-	period_bytes_min:	64,
-	period_bytes_max:	(128*1024),
-	periods_min:		1,
-	periods_max:		1024,
-	fifo_size:		0,
-};
-
-static snd_pcm_hardware_t snd_gf1_pcm_capture =
-{
-	info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-				 SNDRV_PCM_INFO_MMAP_VALID),
-	formats:		SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_U8,
-	rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
-	rate_min:		5510,
-	rate_max:		44100,
-	channels_min:		1,
-	channels_max:		2,
-	buffer_bytes_max:	(128*1024),
-	period_bytes_min:	64,
-	period_bytes_max:	(128*1024),
-	periods_min:		1,
-	periods_max:		1024,
-	fifo_size:		0,
-};
-#endif
 
 static void snd_gf1_pcm_playback_free(snd_pcm_runtime_t *runtime)
 {
@@ -813,7 +768,8 @@ static int snd_gf1_pcm_volume_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 {
 	snd_gus_card_t *gus = snd_kcontrol_chip(kcontrol);
 	unsigned long flags;
-	int change, idx;
+	int change;
+	unsigned int idx;
 	unsigned short val1, val2, vol;
 	gus_pcm_private_t *pcmp;
 	snd_gus_voice_t *pvoice;
@@ -850,73 +806,47 @@ static int snd_gf1_pcm_volume_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 	return change;
 }
 
-#ifdef TARGET_OS2
 static snd_kcontrol_new_t snd_gf1_pcm_volume_control =
 {
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"PCM Playback Volume",0,0, 0,
-	snd_gf1_pcm_volume_info,
-	snd_gf1_pcm_volume_get,
-	snd_gf1_pcm_volume_put,0
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "PCM Playback Volume",
+	.info = snd_gf1_pcm_volume_info,
+	.get = snd_gf1_pcm_volume_get,
+	.put = snd_gf1_pcm_volume_put
+};
+
+static snd_kcontrol_new_t snd_gf1_pcm_volume_control1 =
+{
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "GPCM Playback Volume",
+	.info = snd_gf1_pcm_volume_info,
+	.get = snd_gf1_pcm_volume_get,
+	.put = snd_gf1_pcm_volume_put
 };
 
 static snd_pcm_ops_t snd_gf1_pcm_playback_ops = {
-	snd_gf1_pcm_playback_open,
-	snd_gf1_pcm_playback_close,
-	snd_pcm_lib_ioctl,
-	snd_gf1_pcm_playback_hw_params,
-	snd_gf1_pcm_playback_hw_free,
-	snd_gf1_pcm_playback_prepare,
-	snd_gf1_pcm_playback_trigger,
-	snd_gf1_pcm_playback_pointer,
-	snd_gf1_pcm_playback_copy,
-	snd_gf1_pcm_playback_silence
+	.open =		snd_gf1_pcm_playback_open,
+	.close =	snd_gf1_pcm_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_gf1_pcm_playback_hw_params,
+	.hw_free =	snd_gf1_pcm_playback_hw_free,
+	.prepare =	snd_gf1_pcm_playback_prepare,
+	.trigger =	snd_gf1_pcm_playback_trigger,
+	.pointer =	snd_gf1_pcm_playback_pointer,
+	.copy =		snd_gf1_pcm_playback_copy,
+	.silence =	snd_gf1_pcm_playback_silence,
 };
 
 static snd_pcm_ops_t snd_gf1_pcm_capture_ops = {
-	snd_gf1_pcm_capture_open,
-	snd_gf1_pcm_capture_close,
-	snd_pcm_lib_ioctl,
-	snd_gf1_pcm_capture_hw_params,
-	snd_gf1_pcm_capture_hw_free,
-	snd_gf1_pcm_capture_prepare,
-	snd_gf1_pcm_capture_trigger,
-	snd_gf1_pcm_capture_pointer,0,0
+	.open =		snd_gf1_pcm_capture_open,
+	.close =	snd_gf1_pcm_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_gf1_pcm_capture_hw_params,
+	.hw_free =	snd_gf1_pcm_capture_hw_free,
+	.prepare =	snd_gf1_pcm_capture_prepare,
+	.trigger =	snd_gf1_pcm_capture_trigger,
+	.pointer =	snd_gf1_pcm_capture_pointer,
 };
-#else
-static snd_kcontrol_new_t snd_gf1_pcm_volume_control =
-{
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "PCM Playback Volume",
-	info: snd_gf1_pcm_volume_info,
-	get: snd_gf1_pcm_volume_get,
-	put: snd_gf1_pcm_volume_put
-};
-
-static snd_pcm_ops_t snd_gf1_pcm_playback_ops = {
-	open:		snd_gf1_pcm_playback_open,
-	close:		snd_gf1_pcm_playback_close,
-	ioctl:		snd_pcm_lib_ioctl,
-	hw_params:	snd_gf1_pcm_playback_hw_params,
-	hw_free:	snd_gf1_pcm_playback_hw_free,
-	prepare:	snd_gf1_pcm_playback_prepare,
-	trigger:	snd_gf1_pcm_playback_trigger,
-	pointer:	snd_gf1_pcm_playback_pointer,
-	copy:		snd_gf1_pcm_playback_copy,
-	silence:	snd_gf1_pcm_playback_silence,
-};
-
-static snd_pcm_ops_t snd_gf1_pcm_capture_ops = {
-	open:		snd_gf1_pcm_capture_open,
-	close:		snd_gf1_pcm_capture_close,
-	ioctl:		snd_pcm_lib_ioctl,
-	hw_params:	snd_gf1_pcm_capture_hw_params,
-	hw_free:	snd_gf1_pcm_capture_hw_free,
-	prepare:	snd_gf1_pcm_capture_prepare,
-	trigger:	snd_gf1_pcm_capture_trigger,
-	pointer:	snd_gf1_pcm_capture_pointer,
-};
-#endif
 
 int snd_gf1_pcm_new(snd_gus_card_t * gus, int pcm_dev, int control_index, snd_pcm_t ** rpcm)
 {
@@ -924,16 +854,17 @@ int snd_gf1_pcm_new(snd_gus_card_t * gus, int pcm_dev, int control_index, snd_pc
 	snd_kcontrol_t *kctl;
 	snd_pcm_t *pcm;
 	snd_pcm_substream_t *substream;
-	int err;
+	int capture, err;
 
 	if (rpcm)
 		*rpcm = NULL;
 	card = gus->card;
+	capture = !gus->interwave && !gus->ess_flag && !gus->ace_flag ? 1 : 0;
 	err = snd_pcm_new(card,
 			  gus->interwave ? "AMD InterWave" : "GF1",
 			  pcm_dev,
 			  gus->gf1.pcm_channels / 2,
-			  !gus->interwave && !gus->ess_flag ? 1 : 0,
+			  capture,
 			  &pcm);
 	if (err < 0)
 		return err;
@@ -943,16 +874,15 @@ int snd_gf1_pcm_new(snd_gus_card_t * gus, int pcm_dev, int control_index, snd_pc
 	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &snd_gf1_pcm_playback_ops);
 
 	for (substream = pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream; substream; substream = substream->next)
-		snd_pcm_lib_preallocate_pages(substream, 64*1024, gus->gf1.dma1 > 3 ? 128*1024 : 64*1024, GFP_KERNEL|GFP_DMA);
+		snd_pcm_lib_preallocate_isa_pages(substream, 64*1024, gus->gf1.dma1 > 3 ? 128*1024 : 64*1024);
 	
 	pcm->info_flags = 0;
 	pcm->dev_subclass = SNDRV_PCM_SUBCLASS_GENERIC_MIX;
-	if (gus->interwave && !gus->ess_flag && !gus->ace_flag) {
-		/* capture setup */
+	if (capture) {
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &snd_gf1_pcm_capture_ops);
 		if (gus->gf1.dma2 == gus->gf1.dma1)
 			pcm->info_flags |= SNDRV_PCM_INFO_HALF_DUPLEX;
-		snd_pcm_lib_preallocate_pages(pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream, 64*1024, gus->gf1.dma2 > 3 ? 128*1024 : 64*1024, GFP_KERNEL|GFP_DMA);
+		snd_pcm_lib_preallocate_isa_pages(pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream, 64*1024, gus->gf1.dma2 > 3 ? 128*1024 : 64*1024);
 	}
 	strcpy(pcm->name, pcm->id);
 	if (gus->interwave) {
@@ -961,7 +891,11 @@ int snd_gf1_pcm_new(snd_gus_card_t * gus, int pcm_dev, int control_index, snd_pc
 	strcat(pcm->name, " (synth)");
 	gus->pcm = pcm;
 
-	if ((err = snd_ctl_add(card, kctl = snd_ctl_new1(&snd_gf1_pcm_volume_control, gus))) < 0)
+	if (gus->codec_flag)
+		kctl = snd_ctl_new1(&snd_gf1_pcm_volume_control1, gus);
+	else
+		kctl = snd_ctl_new1(&snd_gf1_pcm_volume_control, gus);
+	if ((err = snd_ctl_add(card, kctl)) < 0)
 		return err;
 	kctl->id.index = control_index;
 

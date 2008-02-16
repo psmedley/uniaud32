@@ -555,3 +555,4 @@ module_init(alsa_virmidi_init)
 module_exit(alsa_virmidi_exit)
 
 EXPORT_SYMBOL(snd_virmidi_new);
+EXPORT_SYMBOL(snd_virmidi_receive);

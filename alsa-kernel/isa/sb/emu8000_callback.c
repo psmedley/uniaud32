@@ -16,26 +16,27 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
 #include "emu8000_local.h"
+#include <sound/asoundef.h>
 
 /*
  * prototypes
  */
 static snd_emux_voice_t *get_voice(snd_emux_t *emu, snd_emux_port_t *port);
-static void start_voice(snd_emux_voice_t *vp);
+static int start_voice(snd_emux_voice_t *vp);
 static void trigger_voice(snd_emux_voice_t *vp);
 static void release_voice(snd_emux_voice_t *vp);
 static void update_voice(snd_emux_voice_t *vp, int update);
 static void reset_voice(snd_emux_t *emu, int ch);
 static void terminate_voice(snd_emux_voice_t *vp);
 static void sysex(snd_emux_t *emu, char *buf, int len, int parsed, snd_midi_channel_set_t *chset);
-#ifdef CONFIG_SND_OSSEMUL
+#ifdef CONFIG_SND_SEQUENCER_OSS
 static int oss_ioctl(snd_emux_t *emu, int cmd, int p1, int p2);
 #endif
-static int load_fx(snd_emux_t *emu, int type, int mode, const void *buf, long len);
+static int load_fx(snd_emux_t *emu, int type, int mode, const void __user *buf, long len);
 
 static void set_pitch(emu8000_t *hw, snd_emux_voice_t *vp);
 static void set_volume(emu8000_t *hw, snd_emux_voice_t *vp);
@@ -57,46 +58,24 @@ static void snd_emu8000_tweak_voice(emu8000_t *emu, int ch);
 /*
  * set up operators
  */
-#ifdef TARGET_OS2
 static snd_emux_operators_t emu8000_ops = {
-	THIS_MODULE,
-	get_voice,
-	start_voice,
-	trigger_voice,
-	release_voice,
-	update_voice,
-	terminate_voice,
-        0,
-	reset_voice,
-	snd_emu8000_sample_new,
-	snd_emu8000_sample_free,
-	snd_emu8000_sample_reset,
-	load_fx,
-	sysex,
-#ifdef CONFIG_SND_OSSEMUL
-	oss_ioctl,
+	.owner =	THIS_MODULE,
+	.get_voice =	get_voice,
+	.prepare =	start_voice,
+	.trigger =	trigger_voice,
+	.release =	release_voice,
+	.update =	update_voice,
+	.terminate =	terminate_voice,
+	.reset =	reset_voice,
+	.sample_new =	snd_emu8000_sample_new,
+	.sample_free =	snd_emu8000_sample_free,
+	.sample_reset = snd_emu8000_sample_reset,
+	.load_fx =	load_fx,
+	.sysex =	sysex,
+#ifdef CONFIG_SND_SEQUENCER_OSS
+	.oss_ioctl =	oss_ioctl,
 #endif
 };
-#else
-static snd_emux_operators_t emu8000_ops = {
-	owner:		THIS_MODULE,
-	get_voice:	get_voice,
-	prepare:	start_voice,
-	trigger:	trigger_voice,
-	release:	release_voice,
-	update:		update_voice,
-	terminate:	terminate_voice,
-	reset:		reset_voice,
-	sample_new:	snd_emu8000_sample_new,
-	sample_free:	snd_emu8000_sample_free,
-	sample_reset:	snd_emu8000_sample_reset,
-	load_fx:	load_fx,
-	sysex:		sysex,
-#ifdef CONFIG_SND_OSSEMUL
-	oss_ioctl:	oss_ioctl,
-#endif
-};
-#endif
 
 void
 snd_emu8000_ops_setup(emu8000_t *hw)
@@ -207,7 +186,8 @@ get_voice(snd_emux_t *emu, snd_emux_port_t *port)
 
 		if (state == SNDRV_EMUX_ST_OFF)
 			bp = best + OFF;
-		else if (state == SNDRV_EMUX_ST_RELEASED) {
+		else if (state == SNDRV_EMUX_ST_RELEASED ||
+			 state == SNDRV_EMUX_ST_PENDING) {
 			bp = best + RELEASED;
 			val = (EMU8000_CVCF_READ(hw, vp->ch) >> 16) & 0xffff;
 			if (! val)
@@ -246,7 +226,7 @@ get_voice(snd_emux_t *emu, snd_emux_port_t *port)
 
 /*
  */
-static void
+static int
 start_voice(snd_emux_voice_t *vp)
 {
 	unsigned int temp;
@@ -255,7 +235,7 @@ start_voice(snd_emux_voice_t *vp)
 	snd_midi_channel_t *chan;
 	emu8000_t *hw;
 
-	hw = snd_magic_cast(emu8000_t, vp->hw, return);
+	hw = snd_magic_cast(emu8000_t, vp->hw, return -EINVAL);
 	ch = vp->ch;
 	chan = vp->chan;
 
@@ -319,6 +299,8 @@ start_voice(snd_emux_voice_t *vp)
 	temp = vp->vtarget << 16;
 	EMU8000_VTFT_WRITE(hw, ch, temp | vp->ftarget);
 	EMU8000_CVCF_WRITE(hw, ch, temp | 0xff00);
+
+	return 0;
 }
 
 /*
@@ -491,7 +473,7 @@ sysex(snd_emux_t *emu, char *buf, int len, int parsed, snd_midi_channel_set_t *c
 }
 
 
-#ifdef CONFIG_SND_OSSEMUL
+#ifdef CONFIG_SND_SEQUENCER_OSS
 /*
  * OSS ioctl callback
  */
@@ -541,7 +523,7 @@ oss_ioctl(snd_emux_t *emu, int cmd, int p1, int p2)
  */
 
 static int
-load_fx(snd_emux_t *emu, int type, int mode, const void *buf, long len)
+load_fx(snd_emux_t *emu, int type, int mode, const void __user *buf, long len)
 {
 	emu8000_t *hw;
 	hw = snd_magic_cast(emu8000_t, emu->hw, return -EINVAL);

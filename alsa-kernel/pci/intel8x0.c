@@ -33,6 +33,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
+#include <linux/gameport.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/ac97_codec.h>
@@ -776,6 +777,23 @@ static void snd_intel8x0_setup_periods(struct intel8x0 *chip, struct ichdev *ich
     iputbyte(chip, port + ichdev->roff_sr, ICH_FIFOE | ICH_BCIS | ICH_LVBCI);
 }
 
+#ifdef __i386__
+/*
+ * Intel 82443MX running a 100MHz processor system bus has a hardware bug,
+ * which aborts PCI busmaster for audio transfer.  A workaround is to set
+ * the pages as non-cached.  For details, see the errata in
+ *	http://www.intel.com/design/chipsets/specupdt/245051.htm
+ */
+static void fill_nocache(void *buf, int size, int nocache)
+{
+	size = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	change_page_attr(virt_to_page(buf), size, nocache ? PAGE_KERNEL_NOCACHE : PAGE_KERNEL);
+	global_flush_tlb();
+}
+#else
+#define fill_nocache(buf,size,nocache)
+#endif
+
 /*
  *  Interrupt handler
  */
@@ -978,12 +996,18 @@ static int snd_intel8x0_hw_params(snd_pcm_substream_t * substream,
 {
     struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     struct ichdev *ichdev = get_ichdev(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	size_t size = params_buffer_bytes(hw_params);
     int dbl = params_rate(hw_params) > 48000;
     int err;
 
+	if (chip->fix_nocache && runtime->dma_area && runtime->dma_bytes < size)
+		fill_nocache(runtime->dma_area, runtime->dma_bytes, 0); /* clear */
     err = snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params));
     if (err < 0)
         return err;
+	if (chip->fix_nocache && err > 0)
+		fill_nocache(runtime->dma_area, runtime->dma_bytes, 1);
     if (ichdev->pcm_open_flag) {
         snd_ac97_pcm_close(ichdev->pcm);
         ichdev->pcm_open_flag = 0;
@@ -1002,12 +1026,15 @@ static int snd_intel8x0_hw_params(snd_pcm_substream_t * substream,
 
 static int snd_intel8x0_hw_free(snd_pcm_substream_t * substream)
 {
+	struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     struct ichdev *ichdev = get_ichdev(substream);
 
     if (ichdev->pcm_open_flag) {
         snd_ac97_pcm_close(ichdev->pcm);
         ichdev->pcm_open_flag = 0;
     }
+	if (chip->fix_nocache && substream->runtime->dma_area)
+		fill_nocache(substream->runtime->dma_area, substream->runtime->dma_bytes, 0);
     return snd_pcm_lib_free_pages(substream);
 }
 
@@ -1159,6 +1186,10 @@ static int snd_intel8x0_pcm_open(snd_pcm_substream_t * substream, struct ichdev 
 {
     struct intel8x0 *chip = snd_pcm_substream_chip(substream);
     snd_pcm_runtime_t *runtime = substream->runtime;
+	static unsigned int i, rates[] = {
+		/* ATTENTION: these values depend on the definition in pcm.h! */
+		5512, 8000, 11025, 16000, 22050, 32000, 44100, 48000
+	};
     int err;
 
     ichdev->substream = substream;
@@ -2952,7 +2983,9 @@ port_inited:
     }
     /* tables must be aligned to 8 bytes here, but the kernel pages
      are much bigger, so we don't care (on i386) */
-
+	/* workaround for 440MX */
+	if (chip->fix_nocache)
+		fill_nocache(chip->bdbars, chip->bdbars_count * sizeof(u32) * ICH_MAX_FRAGS * 2, 1);
     int_sta_masks = 0;
     for (i = 0; i < chip->bdbars_count; i++) {
         ichdev = &chip->ichd[i];
@@ -3012,6 +3045,8 @@ port_inited:
         snd_intel8x0_free(chip);
         return err;
     }
+
+	snd_card_set_dev(card, &pci->dev);
 
     *r_intel8x0 = chip;
 #ifdef DEBUG
@@ -3234,7 +3269,6 @@ static int __devinit snd_intel8x0_joystick_probe(struct pci_dev *pci,
     return 0;
 }
 
-#if 0 // fixme to be gone?
 static void __devexit snd_intel8x0_joystick_remove(struct pci_dev *pci)
 {
     u16 val;
@@ -3250,7 +3284,6 @@ static void __devexit snd_intel8x0_joystick_remove(struct pci_dev *pci)
     val &= ~0x120;
     pci_write_config_word(pci, 0xe6, val);
 }
-#endif // fixme to be gone
 
 static struct pci_device_id snd_intel8x0_joystick_ids[] = {
     { 0x8086, 0x2410, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* 82801AA */
@@ -3268,12 +3301,12 @@ static struct pci_device_id snd_intel8x0_joystick_ids[] = {
 };
 
 static struct pci_driver joystick_driver = {
-    0, 0, 0,
-    /*	name:     */ "Intel ICH Joystick",
-    /*	id_table: */ snd_intel8x0_joystick_ids,
-    /*	probe:    */ snd_intel8x0_joystick_probe,
-    0,0,0
+	.name = "Intel ICH Joystick",
+	.id_table = snd_intel8x0_joystick_ids,
+	.probe = snd_intel8x0_joystick_probe,
+	.remove = __devexit_p(snd_intel8x0_joystick_remove),
 };
+
 static int have_joystick;
 #endif
 

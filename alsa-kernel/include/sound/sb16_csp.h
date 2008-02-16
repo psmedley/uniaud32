@@ -1,5 +1,5 @@
-#ifndef __SB16_CSP_H
-#define __SB16_CSP_H
+#ifndef __SOUND_SB16_CSP_H
+#define __SOUND_SB16_CSP_H
 
 /*
  *  Copyright (c) 1999 by Uros Bizjak <uros@kss-loka.si>
@@ -19,7 +19,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -159,10 +159,9 @@ struct snd_sb_csp {
 	snd_kcontrol_t *qsound_space;
 
 	struct semaphore access_mutex;	/* locking */
-	snd_info_entry_t *proc;	/* proc interface */
 };
 
 int snd_sb_csp_new(sb_t *chip, int device, snd_hwdep_t ** rhwdep);
 #endif
 
-#endif
+#endif /* __SOUND_SB16_CSP */

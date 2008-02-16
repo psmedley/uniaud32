@@ -17,16 +17,17 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include "emu8000_local.h"
+#include <linux/init.h>
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
-MODULE_CLASSES("{sound}");
 MODULE_AUTHOR("Takashi Iwai, Steve Ratcliffe");
+MODULE_DESCRIPTION("Emu8000 synth plug-in routine");
+MODULE_LICENSE("GPL");
+MODULE_CLASSES("{sound}");
 
 /*----------------------------------------------------------------*/
 
@@ -69,6 +70,8 @@ static int snd_emu8000_new_device(snd_seq_device_t *dev)
 	emu->memhdr = hw->memhdr;
 	emu->midi_ports = hw->seq_ports < 2 ? hw->seq_ports : 2; /* number of virmidi ports */
 	emu->midi_devidx = 1;
+	emu->linear_panning = 1;
+	emu->hwdep_idx = 2; /* FIXED */
 
 	if (snd_emux_register(emu, dev->card, hw->index, "Emu8000") < 0) {
 		snd_emux_free(emu);
@@ -77,6 +80,9 @@ static int snd_emu8000_new_device(snd_seq_device_t *dev)
 		hw->memhdr = NULL;
 		return -ENOMEM;
 	}
+
+	if (hw->mem_size > 0)
+		snd_emu8000_pcm_new(dev->card, hw, 1);
 
 	dev->driver_data = hw;
 
@@ -95,6 +101,8 @@ static int snd_emu8000_delete_device(snd_seq_device_t *dev)
 		return 0; /* no synth was allocated actually */
 
 	hw = dev->driver_data;
+	if (hw->pcm)
+		snd_device_free(dev->card, hw->pcm);
 	if (hw->emu)
 		snd_emux_free(hw->emu);
 	if (hw->memhdr)

@@ -48,6 +48,11 @@
  */
 
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/snd_wavefront.h>
 
 static inline int 
@@ -372,6 +377,7 @@ static void snd_wavefront_midi_output_trigger(snd_rawmidi_substream_t * substrea
 	if (up) {
 		if ((midi->mode[mpu] & MPU401_MODE_OUTPUT_TRIGGER) == 0) {
 			if (!midi->istimer) {
+				init_timer(&midi->timer);
 				midi->timer.function = snd_wavefront_midi_output_timer;
 				midi->timer.data = (unsigned long) substream->rmidi->card->private_data;
 				midi->timer.expires = 1 + jiffies;
@@ -472,7 +478,7 @@ snd_wavefront_midi_disable_virtual (snd_wavefront_card_t *card)
 	spin_unlock_irqrestore (&card->wavefront.midi.virtual, flags);
 }
 
-int
+int __init
 snd_wavefront_midi_start (snd_wavefront_card_t *card)
 
 {
@@ -554,15 +560,15 @@ snd_wavefront_midi_start (snd_wavefront_card_t *card)
 
 snd_rawmidi_ops_t snd_wavefront_midi_output =
 {
-	open:		snd_wavefront_midi_output_open,
-	close:		snd_wavefront_midi_output_close,
-	trigger:	snd_wavefront_midi_output_trigger,
+	.open =		snd_wavefront_midi_output_open,
+	.close =	snd_wavefront_midi_output_close,
+	.trigger =	snd_wavefront_midi_output_trigger,
 };
 
 snd_rawmidi_ops_t snd_wavefront_midi_input =
 {
-	open:		snd_wavefront_midi_input_open,
-	close:		snd_wavefront_midi_input_close,
-	trigger:	snd_wavefront_midi_input_trigger,
+	.open =		snd_wavefront_midi_input_open,
+	.close =	snd_wavefront_midi_input_close,
+	.trigger =	snd_wavefront_midi_input_trigger,
 };
 
