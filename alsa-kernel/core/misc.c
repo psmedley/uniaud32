@@ -591,7 +591,7 @@ int queue_delayed_work(struct workqueue_struct *wq, struct work_struct *work, un
 	struct timer_list *timer = &work->timer;
 
 	if (!test_and_set_bit(0, &work->pending)) {
-		work->wq_data = work;
+		work->wq_data = wq;
 		timer->expires = jiffies + delay;
 		timer->data = (unsigned long)work;
 		timer->function = delayed_work_timer_fn;

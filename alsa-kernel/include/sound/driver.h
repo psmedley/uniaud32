@@ -71,6 +71,8 @@
 #define IRQ_RETVAL(x) ((x) != 0)  /*void*/
 typedef int irqreturn_t;
 
+int queue_delayed_work(struct workqueue_struct *wq, struct work_struct *work, unsigned long delay);
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 2, 3)
 #error "This driver requires Linux 2.2.3 and higher."
 #endif
