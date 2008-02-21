@@ -24,10 +24,8 @@
 
 #include <linux/sched.h>		/* wake_up() */
 #include <asm/semaphore.h>
-#ifndef TARGET_OS2 //TODO: implement linux/rwsem.h, workqueue.h
 #include <linux/rwsem.h>		/* struct rw_semaphore */
 #include <linux/workqueue.h>		/* struct workqueue_struct */
-#endif /* !TARGET_OS2 */
 #include <sound/typedefs.h>
 
 /* Typedef's */
