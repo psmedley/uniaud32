@@ -566,6 +566,36 @@ static int update_timestamp_of_queue(struct snd_seq_event *event,
 
 
 /*
+ * expand a quoted event.
+ */
+static int expand_quoted_event(snd_seq_event_t *event)
+{
+	snd_seq_event_t *quoted;
+
+	quoted = event->data.quote.event;
+	if (quoted == NULL) {
+		snd_printd("seq: quoted event is NULL\n");
+		return -EINVAL;
+	}
+
+	event->type = quoted->type;
+	event->tag = quoted->tag;
+	event->source = quoted->source;
+	/* don't use quoted destination */
+	event->data = quoted->data;
+	/* use quoted timestamp only if subscription/port didn't update it */
+	if (event->queue == SNDRV_SEQ_QUEUE_DIRECT) {
+		event->flags = quoted->flags;
+		event->queue = quoted->queue;
+		event->time = quoted->time;
+	} else {
+		event->flags = (event->flags & SNDRV_SEQ_TIME_STAMP_MASK)
+			| (quoted->flags & ~SNDRV_SEQ_TIME_STAMP_MASK);
+	}
+	return 0;
+}
+
+/*
  * deliver an event to the specified destination.
  * if filter is non-zero, client filter bitmap is tested.
  *

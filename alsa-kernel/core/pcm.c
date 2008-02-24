@@ -20,6 +20,10 @@
  */
 
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/minors.h>
 #include <sound/pcm.h>
 #include <sound/control.h>
@@ -324,6 +328,7 @@ static void snd_pcm_substream_proc_hw_params_read(snd_info_entry_t *entry, snd_i
         snd_iprintf(buffer, "OSS rate: %u\n", runtime->oss.rate);
         snd_iprintf(buffer, "OSS period bytes: %lu\n", (unsigned long)runtime->oss.period_bytes);
         snd_iprintf(buffer, "OSS periods: %u\n", runtime->oss.periods);
+		snd_iprintf(buffer, "OSS period frames: %lu\n", (unsigned long)runtime->oss.period_frames);
     }
 #endif
     snd_pcm_stream_unlock_irq(substream);
@@ -563,51 +568,51 @@ static int snd_pcm_substream_proc_done(snd_pcm_substream_t *substream)
  */
 int snd_pcm_new_stream(snd_pcm_t *pcm, int stream, int substream_count)
 {
-    int idx, err;
+	int idx, err;
     snd_pcm_str_t *pstr = &pcm->streams[stream];
     struct snd_pcm_substream *substream, *prev;
 
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
-    init_MUTEX(&pstr->oss.setup_mutex);
+	init_MUTEX(&pstr->oss.setup_mutex);
 #endif
-    pstr->stream = stream;
-    pstr->pcm = pcm;
-    pstr->substream_count = substream_count;
-    pstr->reg = &snd_pcm_reg[stream];
-    if (substream_count > 0) {
-        err = snd_pcm_stream_proc_init(pstr);
-        if (err < 0)
-            return err;
-    }
-    prev = NULL;
-    for (idx = 0, prev = NULL; idx < substream_count; idx++) {
-        substream = (struct snd_pcm_substream *)kzalloc(sizeof(*substream), GFP_KERNEL);
-        if (substream == NULL)
-            return -ENOMEM;
-        substream->pcm = pcm;
-        substream->pstr = pstr;
-        substream->number = idx;
-        substream->stream = stream;
-        sprintf(substream->name, "subdevice #%i", idx);
-        substream->buffer_bytes_max = UINT_MAX;
-        if (prev == NULL)
-            pstr->substream = substream;
-        else
-            prev->next = substream;
-        err = snd_pcm_substream_proc_init(substream);
-        if (err < 0) {
-            kfree(substream);
-            return err;
-        }
-        substream->group = &substream->self_group;
-        spin_lock_init(&substream->self_group.lock);
-        INIT_LIST_HEAD(&substream->self_group.substreams);
-        list_add_tail(&substream->link_list, &substream->self_group.substreams);
-        spin_lock_init(&substream->timer_lock);
-        prev = substream;
-    }
-    return 0;
-}
+	pstr->stream = stream;
+	pstr->pcm = pcm;
+	pstr->substream_count = substream_count;
+	pstr->reg = &snd_pcm_reg[stream];
+	if (substream_count > 0) {
+		err = snd_pcm_stream_proc_init(pstr);
+		if (err < 0)
+			return err;
+	}
+	prev = NULL;
+	for (idx = 0, prev = NULL; idx < substream_count; idx++) {
+		substream = (struct snd_pcm_substream *)kzalloc(sizeof(*substream), GFP_KERNEL);
+		if (substream == NULL)
+			return -ENOMEM;
+		substream->pcm = pcm;
+		substream->pstr = pstr;
+		substream->number = idx;
+		substream->stream = stream;
+		sprintf(substream->name, "subdevice #%i", idx);
+		substream->buffer_bytes_max = UINT_MAX;
+		if (prev == NULL)
+			pstr->substream = substream;
+		else
+			prev->next = substream;
+		err = snd_pcm_substream_proc_init(substream);
+		if (err < 0) {
+			kfree(substream);
+			return err;
+		}
+		substream->group = &substream->self_group;
+		spin_lock_init(&substream->self_group.lock);
+		INIT_LIST_HEAD(&substream->self_group.substreams);
+		list_add_tail(&substream->link_list, &substream->self_group.substreams);
+		spin_lock_init(&substream->timer_lock);
+		prev = substream;
+	}
+	return 0;
+}				
 
 /**
  * snd_pcm_new - create a new PCM instance
@@ -626,35 +631,35 @@ int snd_pcm_new_stream(snd_pcm_t *pcm, int stream, int substream_count)
  * Returns zero if successful, or a negative error code on failure.
  */
 int snd_pcm_new(snd_card_t * card, char *id, int device,
-                int playback_count, int capture_count,
-                snd_pcm_t ** rpcm)
+	        int playback_count, int capture_count,
+	        snd_pcm_t ** rpcm)
 {
-    snd_pcm_t *pcm;
-    int err;
-    static snd_device_ops_t ops = {
-        snd_pcm_dev_free,
-        snd_pcm_dev_register,
-        snd_pcm_dev_disconnect,
-        snd_pcm_dev_unregister
-    };
+	snd_pcm_t *pcm;
+	int err;
+	static snd_device_ops_t ops = {
+		snd_pcm_dev_free,
+		snd_pcm_dev_register,
+		snd_pcm_dev_disconnect,
+		snd_pcm_dev_unregister
+	};
 
-    snd_assert(rpcm != NULL, return -EINVAL);
-    *rpcm = NULL;
-    snd_assert(card != NULL, return -ENXIO);
-    pcm = kzalloc(sizeof(*pcm), GFP_KERNEL);
-    if (pcm == NULL)
-        return -ENOMEM;
-    pcm->card = card;
-    pcm->device = device;
-    if (id) {
-        strlcpy(pcm->id, id, sizeof(pcm->id));
-    }
-    if ((err = snd_pcm_new_stream(pcm, SNDRV_PCM_STREAM_PLAYBACK, playback_count)) < 0) {
-        snd_pcm_free(pcm);
-        return err;
-    }
-    if ((err = snd_pcm_new_stream(pcm, SNDRV_PCM_STREAM_CAPTURE, capture_count)) < 0) {
-        snd_pcm_free(pcm);
+	snd_assert(rpcm != NULL, return -EINVAL);
+	*rpcm = NULL;
+	snd_assert(card != NULL, return -ENXIO);
+	pcm = kzalloc(sizeof(*pcm), GFP_KERNEL);
+	if (pcm == NULL)
+		return -ENOMEM;
+	pcm->card = card;
+	pcm->device = device;
+	if (id) {
+		strlcpy(pcm->id, id, sizeof(pcm->id));
+	}
+	if ((err = snd_pcm_new_stream(pcm, SNDRV_PCM_STREAM_PLAYBACK, playback_count)) < 0) {
+		snd_pcm_free(pcm);
+		return err;
+	}
+	if ((err = snd_pcm_new_stream(pcm, SNDRV_PCM_STREAM_CAPTURE, capture_count)) < 0) {
+		snd_pcm_free(pcm);
         return err;
     }
     init_MUTEX(&pcm->open_mutex);

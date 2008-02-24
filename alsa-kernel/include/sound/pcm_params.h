@@ -1,5 +1,5 @@
-#ifndef __PCM_PARAMS_H
-#define __PCM_PARAMS_H
+#ifndef __SOUND_PCM_PARAMS_H
+#define __SOUND_PCM_PARAMS_H
 
 /*
  *  PCM params helpers
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -36,12 +36,12 @@ extern int _snd_pcm_hw_param_set(snd_pcm_hw_params_t *params,
 				 snd_pcm_hw_param_t var, unsigned int val, int dir);
 
 #define INLINE static inline
-#define SNDRV_MASK_BITS 64      /* we use so far 64bits only */
-#define SNDRV_MASK_SIZE (SNDRV_MASK_BITS / 32)
-#define MASK_OFS(i)     ((i) >> 5)
-#define MASK_BIT(i)     (1U << ((i) & 31))
+#define assert(a) (void)(a)
 
-#define assert(a)
+#define SNDRV_MASK_BITS	64	/* we use so far 64bits only */
+#define SNDRV_MASK_SIZE	(SNDRV_MASK_BITS / 32)
+#define MASK_OFS(i)	((i) >> 5)
+#define MASK_BIT(i)	(1U << ((i) & 31))
 
 INLINE unsigned int ld2(u_int32_t v)
 {
@@ -362,4 +362,5 @@ INLINE unsigned int sub(unsigned int a, unsigned int b)
 #undef INLINE
 #undef assert
 
-#endif
+#endif /* __SOUND_PCM_PARAMS_H */
+

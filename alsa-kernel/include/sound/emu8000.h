@@ -1,5 +1,5 @@
-#ifndef __EMU8000_H
-#define __EMU8000_H
+#ifndef __SOUND_EMU8000_H
+#define __SOUND_EMU8000_H
 /*
  *  Defines for the emu8000 (AWE32/64)
  *
@@ -18,10 +18,9 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#include "driver.h"
 #include "emux_synth.h"
 #include "seq_kernel.h"
 
@@ -114,8 +113,7 @@ void snd_emu8000_init_fm(emu8000_t *emu);
 void snd_emu8000_update_chorus_mode(emu8000_t *emu);
 void snd_emu8000_update_reverb_mode(emu8000_t *emu);
 void snd_emu8000_update_equalizer(emu8000_t *emu);
-int snd_emu8000_load_chorus_fx(emu8000_t *emu, int mode, const void *buf, long len);
-int snd_emu8000_load_reverb_fx(emu8000_t *emu, int mode, const void *buf, long len);
+int snd_emu8000_load_chorus_fx(emu8000_t *emu, int mode, const void __user *buf, long len);
+int snd_emu8000_load_reverb_fx(emu8000_t *emu, int mode, const void __user *buf, long len);
 
-
-#endif
+#endif /* __SOUND_EMU8000_H */

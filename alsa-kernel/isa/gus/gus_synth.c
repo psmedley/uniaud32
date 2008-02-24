@@ -15,14 +15,20 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #include <sound/seq_device.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_DESCRIPTION("Routines for Gravis UltraSound soundcards - Synthesizer");
+MODULE_LICENSE("GPL");
 
 /*
  *
@@ -45,7 +51,7 @@ static int snd_gus_synth_use(void *private_data, snd_seq_port_subscribe_t *info)
 	snd_gus_port_t * port = (snd_gus_port_t *)private_data;
 	snd_gus_card_t * gus = port->gus;
 	snd_gus_voice_t * voice;
-	int idx;
+	unsigned int idx;
 
 	if (info->voices > 32)
 		return -EINVAL;
@@ -58,6 +64,7 @@ static int snd_gus_synth_use(void *private_data, snd_seq_port_subscribe_t *info)
 		voice = snd_gf1_alloc_voice(gus, SNDRV_GF1_VOICE_TYPE_SYNTH, info->sender.client, info->sender.port);
 		if (voice == NULL) {
 			snd_gus_synth_free_voices(gus, info->sender.client, info->sender.port);
+			snd_gus_use_dec(gus);
 			up(&gus->register_mutex);
 			return -EBUSY;
 		}
@@ -74,6 +81,7 @@ static int snd_gus_synth_unuse(void *private_data, snd_seq_port_subscribe_t *inf
 
 	down(&gus->register_mutex);
 	snd_gus_synth_free_voices(gus, info->sender.client, info->sender.port);
+	snd_gus_use_dec(gus);
 	up(&gus->register_mutex);
 	return 0;
 }
@@ -125,7 +133,7 @@ static void snd_gus_synth_instr_notify(void *private_data,
 				       snd_seq_kinstr_t *instr,
 				       int what)
 {
-	int idx;
+	unsigned int idx;
 	snd_gus_card_t *gus = snd_magic_cast(snd_gus_card_t, private_data, return);
 	snd_gus_voice_t *pvoice;
 	unsigned long flags;
@@ -184,9 +192,6 @@ static int snd_gus_synth_create_port(snd_gus_card_t * gus, int idx)
 	p->chset->port = snd_seq_event_port_attach(gus->gf1.seq_client,
 						   &callbacks,
 						   SNDRV_SEQ_PORT_CAP_WRITE | SNDRV_SEQ_PORT_CAP_SUBS_WRITE,
-						   SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC |
-						   SNDRV_SEQ_PORT_TYPE_MIDI_GM |
-						   SNDRV_SEQ_PORT_TYPE_MIDI_GS |
 						   SNDRV_SEQ_PORT_TYPE_DIRECT_SAMPLE |
 						   SNDRV_SEQ_PORT_TYPE_SYNTH,
 						   16, 0,

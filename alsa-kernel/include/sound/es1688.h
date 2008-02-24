@@ -1,5 +1,5 @@
-#ifndef __ES1688_H
-#define __ES1688_H
+#ifndef __SOUND_ES1688_H
+#define __SOUND_ES1688_H
 
 /*
  *  Header file for ES488/ES1688
@@ -18,12 +18,13 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include "control.h"
 #include "pcm.h"
+#include <linux/interrupt.h>
 
 #define ES1688_HW_AUTO		0x0000
 #define ES1688_HW_688		0x0001
@@ -109,7 +110,7 @@ typedef struct _snd_es1688 es1688_t;
 void snd_es1688_mixer_write(es1688_t *chip, unsigned char reg, unsigned char data);
 unsigned char snd_es1688_mixer_read(es1688_t *chip, unsigned char reg);
 
-void snd_es1688_interrupt(int irq, void *dev_id, struct pt_regs *regs);
+irqreturn_t snd_es1688_interrupt(int irq, void *dev_id, struct pt_regs *regs);
 
 int snd_es1688_create(snd_card_t * card,
 		      unsigned long port,
@@ -122,4 +123,4 @@ int snd_es1688_create(snd_card_t * card,
 int snd_es1688_pcm(es1688_t *chip, int device, snd_pcm_t ** rpcm);
 int snd_es1688_mixer(es1688_t *chip);
 
-#endif				/* __ES1688_H */
+#endif /* __SOUND_ES1688_H */
