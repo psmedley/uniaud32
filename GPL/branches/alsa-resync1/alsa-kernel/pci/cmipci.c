@@ -2983,7 +2983,7 @@ static int __devinit snd_cmipci_create(struct snd_card *card, struct pci_dev *pc
 #ifdef SUPPORT_JOYSTICK
 	if (joystick_port[dev] > 0) {
 		if (joystick_port[dev] == 1) { /* auto-detect */
-			static int ports[] = { 0x200, 0x201, 0 };
+			static int ports[] = { 0x201, 0x200, 0 }; /* FIXME: majority is 0x201? */
 			int i;
 			for (i = 0; ports[i]; i++) {
 				joystick_port[dev] = ports[i];

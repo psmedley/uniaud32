@@ -195,6 +195,13 @@ int snd_compat_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
 #define vsnprintf(buf,size,fmt,args) snd_compat_vsnprintf(buf,size,fmt,args)
 #endif
 
+#ifndef TARGET_OS2
+#ifndef CONFIG_HAVE_SCNPRINTF
+#define scnprintf(buf,size,fmt,args...) snprintf(buf,size,fmt,##args)
+#define vscnprintf(buf,size,fmt,args) vsnprintf(buf,size,fmt,args)
+#endif
+#endif /* !TARGET_OS2 */
+
 #if defined(__alpha__) && LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 14)
 #include <asm/io.h>
 #undef writeb

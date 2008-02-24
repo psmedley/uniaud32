@@ -328,6 +328,7 @@ static void snd_pcm_substream_proc_hw_params_read(snd_info_entry_t *entry, snd_i
         snd_iprintf(buffer, "OSS rate: %u\n", runtime->oss.rate);
         snd_iprintf(buffer, "OSS period bytes: %lu\n", (unsigned long)runtime->oss.period_bytes);
         snd_iprintf(buffer, "OSS periods: %u\n", runtime->oss.periods);
+		snd_iprintf(buffer, "OSS period frames: %lu\n", (unsigned long)runtime->oss.period_frames);
     }
 #endif
     snd_pcm_stream_unlock_irq(substream);

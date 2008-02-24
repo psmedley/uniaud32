@@ -45,6 +45,49 @@ void release_and_free_resource(struct resource *res)
         }
 }
 
+#ifdef CONFIG_SND_VERBOSE_PRINTK
+void snd_verbose_printk(const char *file, int line, const char *format, ...)
+{
+	va_list args;
+	char tmpbuf[512];
+	
+	if (format[0] == '<' && format[1] >= '0' && format[1] <= '9' && format[2] == '>') {
+		char tmp[] = "<0>";
+		tmp[1] = format[1];
+		printk("%sALSA %s:%d: ", tmp, file, line);
+		format += 3;
+	} else {
+		printk("ALSA %s:%d: ", file, line);
+	}
+	va_start(args, format);
+	vsnprintf(tmpbuf, sizeof(tmpbuf), format, args);
+	va_end(args);
+	printk(tmpbuf);
+}
+#endif
+
+#if defined(CONFIG_SND_DEBUG) && defined(CONFIG_SND_VERBOSE_PRINTK)
+void snd_verbose_printd(const char *file, int line, const char *format, ...)
+{
+	va_list args;
+	char tmpbuf[512];
+	
+	if (format[0] == '<' && format[1] >= '0' && format[1] <= '9' && format[2] == '>') {
+		char tmp[] = "<0>";
+		tmp[1] = format[1];
+		printk("%sALSA %s:%d: ", tmp, file, line);
+		format += 3;
+	} else {
+		printk(KERN_DEBUG "ALSA %s:%d: ", file, line);
+	}
+	va_start(args, format);
+	vsnprintf(tmpbuf, sizeof(tmpbuf), format, args);
+	va_end(args);
+	printk(tmpbuf);
+
+}
+#endif
+
 /**
  * snd_pci_quirk_lookup - look up a PCI SSID quirk list
  * @pci: pci_dev handle

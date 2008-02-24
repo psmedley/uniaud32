@@ -3811,7 +3811,7 @@ static char *hdsp_channel_buffer_location(hdsp_t *hdsp,
 {
 	int mapped_channel;
 
-        snd_assert(channel >= 0 || channel < hdsp->max_channels, return NULL);
+        snd_assert(channel >= 0 && channel < hdsp->max_channels, return NULL);
         
 	if ((mapped_channel = hdsp->channel_map[channel]) < 0) {
 		return NULL;
