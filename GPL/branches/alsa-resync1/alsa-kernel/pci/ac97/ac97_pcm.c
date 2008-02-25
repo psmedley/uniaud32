@@ -230,7 +230,9 @@ static int set_spdif_rate(struct snd_ac97 *ac97, unsigned short rate)
 		}
 		ac97->spdif_status = sbits;
 		/* update the internal spdif bits */
+#ifndef TARGET_OS2
 		spin_lock(&ac97->reg_lock);
+#endif /* !TARGET_OS2 */
 		sbits = ac97->spdif_status;
 		if (sbits & IEC958_AES0_PROFESSIONAL) {
 			sbits &= ~IEC958_AES0_PRO_FS;
@@ -248,7 +250,9 @@ static int set_spdif_rate(struct snd_ac97 *ac97, unsigned short rate)
 			}
 		}
 		ac97->spdif_status = sbits;
+#ifndef TARGET_OS2
 		spin_unlock(&ac97->reg_lock);
+#endif /* TARGET_OS2 */
 	}
 	snd_ac97_update_bits_nolock(ac97, AC97_EXTENDED_STATUS, AC97_EA_SPDIF, AC97_EA_SPDIF);
 	up(&ac97->reg_mutex);
