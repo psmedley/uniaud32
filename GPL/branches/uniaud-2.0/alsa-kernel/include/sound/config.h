@@ -573,4 +573,6 @@ static inline void list_move_tail(struct list_head *list,
 #define dump_stack()
 #endif
 
+#define pci_dev_present(x) snd_pci_dev_present(x)
+
 #endif //__ALSA_CONFIG_H__
