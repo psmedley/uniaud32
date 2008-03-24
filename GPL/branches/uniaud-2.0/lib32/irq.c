@@ -197,8 +197,13 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
             if(pSlot && pSlot->irqHandlers[u].handler )
             {
                 fInInterrupt = TRUE;
+#if 0
                 rc = pSlot->irqHandlers[u].handler(pSlot->irqNo,
                                                    pSlot->irqHandlers[u].x2, 0);
+#else
+                rc = pSlot->irqHandlers[u].handler(pSlot->irqNo,
+                                                   pSlot->irqHandlers[u].x2);
+#endif
                 if (rc == 1) eoi_irq(pSlot->irqNo);
                 rc = (eoiIrq[pSlot->irqNo] > 0);
                 fInInterrupt = FALSE;

@@ -28,10 +28,14 @@
 #define MAX_IRQ_SLOTS		8
 
 
-typedef int (NEAR * IRQHANDLER)(int, void *, struct pt_regs *);
+typedef int irqreturn_t;
+typedef irqreturn_t (*snd_irq_handler_t)(int, void *);
+#define irq_handler_t snd_irq_handler_t
+#undef irq_handler_t
+#define irq_handler_t snd_irq_handler_t
 
 typedef struct {
-  IRQHANDLER handler;
+  irq_handler_t handler;
   ULONG x0;
   char *x1;
   void *x2;
