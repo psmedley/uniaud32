@@ -629,10 +629,14 @@ unsigned long pci_get_dma_mask (struct pci_dev *dev)
 }
 //******************************************************************************
 //******************************************************************************
-void pci_set_dma_mask (struct pci_dev *dev, unsigned long mask)
+int pci_set_dma_mask (struct pci_dev *dev, unsigned long mask)
 {
     if (dev)
-        dev->dma_mask = mask;
+    { 
+        dev->dma_mask = mask; 
+ 	        return 0; 
+    } 
+    return -1; 
 }
 //******************************************************************************
 //******************************************************************************
