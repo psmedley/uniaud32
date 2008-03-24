@@ -132,7 +132,11 @@ extern struct hda_ctl_ops snd_hda_bind_sw;	/* for bind-switch */
 
 struct hda_bind_ctls {
 	struct hda_ctl_ops *ops;
+#ifndef TARGET_OS2
 	long values[];
+#else
+	unsigned long values[];
+#endif
 };
 
 int snd_hda_mixer_bind_ctls_info(struct snd_kcontrol *kcontrol,

@@ -579,4 +579,20 @@ static inline void list_move_tail(struct list_head *list,
 
 #define pci_dev_present(x) snd_pci_dev_present(x)
 
+/* definitions for functions in pci_iomap_compat.c */
+#ifndef fastcall
+#define fastcall
+#endif
+
+unsigned int fastcall ioread8(void __iomem *addr);
+unsigned int fastcall ioread16(void __iomem *addr);
+unsigned int fastcall ioread32(void __iomem *addr);
+void fastcall iowrite8(u8 val, void __iomem *addr);
+void fastcall iowrite16(u16 val, void __iomem *addr);
+void fastcall iowrite32(u32 val, void __iomem *addr);
+void __iomem *ioport_map(unsigned long port, unsigned int nr);
+void ioport_unmap(void __iomem *addr);
+void __iomem *pci_iomap(struct pci_dev *dev, int bar, unsigned long maxlen);
+void pci_iounmap(struct pci_dev *dev, void __iomem * addr);
+
 #endif //__ALSA_CONFIG_H__
