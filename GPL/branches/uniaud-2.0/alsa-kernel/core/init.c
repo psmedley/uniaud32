@@ -42,7 +42,11 @@ spinlock_t shutdown_lock = SPIN_LOCK_UNLOCKED;
 #endif
 static LIST_HEAD(shutdown_files);
 
+#ifndef TARGET_OS2
 static const struct file_operations snd_shutdown_f_ops;
+#else
+static struct file_operations snd_shutdown_f_ops;
+#endif
 
 static unsigned int snd_cards_lock;	/* locked for registering/using */
 struct snd_card *snd_cards[SNDRV_CARDS];
@@ -299,7 +303,11 @@ static int snd_disconnect_fasync(int fd, struct file *file, int on)
 	return -ENODEV;
 }
 
+#ifndef TARGET_OS2
 static const struct file_operations snd_shutdown_f_ops =
+#else
+static struct file_operations snd_shutdown_f_ops =
+#endif
 {
 #ifndef TARGET_OS2
 	.owner = 	THIS_MODULE,

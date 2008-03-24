@@ -1375,7 +1375,11 @@ static void snd_rawmidi_proc_info_read(struct snd_info_entry *entry,
  *  Register functions
  */
 
+#ifndef TARGET_OS2
 static const struct file_operations snd_rawmidi_f_ops =
+#else
+static struct file_operations snd_rawmidi_f_ops =
+#endif
 {
 #ifndef TARGET_OS2
 	.owner =	THIS_MODULE,

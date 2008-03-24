@@ -2554,7 +2554,11 @@ void snd_seq_info_clients_read(struct snd_info_entry *entry,
  *  REGISTRATION PART
  */
 
+#ifndef TARGET_OS2
 static const struct file_operations snd_seq_f_ops =
+#else
+static struct file_operations snd_seq_f_ops =
+#endif
 {
 #ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
