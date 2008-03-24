@@ -258,13 +258,11 @@ OSSRET OSS32_Initialize(void)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_azx_exit);
     }
-#if 0
     if((ForceCard == CARD_NONE || ForceCard == CARD_BT87X) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_bt87x_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_bt87x_exit);
     }
-#endif
 #endif
     fStrategyInit = FALSE;
 

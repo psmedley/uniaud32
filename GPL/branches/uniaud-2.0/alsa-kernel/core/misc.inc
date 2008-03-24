@@ -250,20 +250,6 @@ static void complete_and_exit(struct completion *comp, long code)
 /* workqueue-alike; 2.5.45 */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 45)
 
-static int work_caller(void *data)
-{
-	struct work_struct *works = data;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 8)
-	reparent_to_init();
-#endif
-	strcpy(current->comm, "snd"); /* FIXME: different names? */
-
-	works->func(works->data);
-
-	return 0;
-}
-
 #ifndef TARGET_OS2
 int snd_compat_schedule_work(struct work_struct *works)
 {
@@ -334,26 +320,6 @@ void snd_compat_destroy_workqueue(struct workqueue_struct *wq)
 		wait_for_completion(&wq->thread_exited);
 #endif
 	kfree(wq);
-}
-
-static int xworker_thread(void *data)
-{
-	struct workqueue_struct *wq = data;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 8)
-	reparent_to_init();
-#endif
-	strcpy(current->comm, wq->name);
-
-	do {
-		run_workqueue(wq);
-		wait_event_interruptible(wq->more_work, !list_empty(&wq->worklist));
-	} while (!signal_pending(current));
-
-	complete_and_exit(&wq->thread_exited, 0);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
-	return 0;
-#endif
 }
 
 struct workqueue_struct *snd_compat_create_workqueue(const char *name)

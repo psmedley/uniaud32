@@ -1945,7 +1945,11 @@ static int snd_timer_user_ioctl_old(struct inode *inode, struct file * file,
 }
 #endif
 
+#ifndef TARGET_OS2
 static const struct file_operations snd_timer_f_ops =
+#else
+static struct file_operations snd_timer_f_ops =
+#endif
 {
 #ifndef TARGET_OS2
 	.owner =	THIS_MODULE,

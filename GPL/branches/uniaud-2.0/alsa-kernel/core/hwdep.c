@@ -342,7 +342,11 @@ static int snd_hwdep_ioctl_old(struct inode *inode, struct file * file,
 
  */
 
+#ifndef TARGET_OS2
 static const struct file_operations snd_hwdep_f_ops =
+#else
+static struct file_operations snd_hwdep_f_ops =
+#endif
 {
 #ifndef TARGET_OS2
 	.owner = 	THIS_MODULE,

@@ -97,4 +97,6 @@ struct sysinfo {
 	char _f[20-2*sizeof(long)-sizeof(int)];	/* Padding: libc5 uses this.. */
 };
 
+static void complete_and_exit(struct completion *, long);
+
 #endif

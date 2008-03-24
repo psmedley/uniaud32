@@ -2859,6 +2859,7 @@ static ssize_t snd_pcm_write(struct file *file, const char __user *buf,
 	return result;
 }
 
+#ifdef SND_PCM_USE_READV
 #ifdef SND_PCM_USE_AIO
 static ssize_t snd_pcm_aio_read(struct kiocb *iocb, const struct iovec *iov,
 			     unsigned long nr_segs, loff_t pos)
@@ -2948,6 +2949,7 @@ static ssize_t snd_pcm_writev(struct file *file, const struct iovec *iov,
  end:
 	return result;
 }
+#endif /* SND_PCM_USE_READV */
 
 static unsigned int snd_pcm_playback_poll(struct file *file, poll_table * wait)
 {
@@ -3458,7 +3460,11 @@ out:
  *  Register section
  */
 
+#ifndef TARGET_OS2
 const struct file_operations snd_pcm_f_ops[2] = {
+#else
+struct file_operations snd_pcm_f_ops[2] = {
+#endif
 	{
 #ifndef TARGET_OS2
 		.owner =		THIS_MODULE,

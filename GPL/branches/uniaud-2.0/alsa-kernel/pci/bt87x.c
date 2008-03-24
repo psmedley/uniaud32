@@ -21,6 +21,9 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
+#ifdef TARGET_OS2
+#include <asm/bitops.h>
+#endif
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/pci.h>
@@ -40,8 +43,13 @@ MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{Brooktree,Bt878},"
 		"{Brooktree,Bt879}}");
 
+#ifndef TARGET_OS2
 static int index[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = -2}; /* Exclude the first card */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
+#else
+static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
+static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
+#endif
 static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
 static int digital_rate[SNDRV_CARDS];	/* digital input rate */
 static int load_all;	/* allow to load the non-whitelisted cards */
@@ -817,7 +825,7 @@ static struct pci_device_id snd_bt87x_ids[] = {
 	BT_DEVICE(PCI_DEVICE_ID_BROOKTREE_878, 0x1554, 0x4011, GENERIC),
 	/* Pinnacle  Studio PCTV rave */
 	BT_DEVICE(PCI_DEVICE_ID_BROOKTREE_878, 0xbd11, 0x1200, GENERIC),
-	{ }
+	{0}
 };
 MODULE_DEVICE_TABLE(pci, snd_bt87x_ids);
 
@@ -846,21 +854,48 @@ static int __devinit snd_bt87x_detect_card(struct pci_dev *pci)
 {
 	int i;
 	const struct pci_device_id *supported;
+#ifdef TARGET_OS2
+	u16 subsystem_vendor, subsystem_device;
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 13)
 	supported = pci_match_id(snd_bt87x_ids, pci);
+#else
+	supported = pci_match_device(snd_bt87x_ids, pci);
+#endif
 	if (supported && supported->driver_data > 0)
 		return supported->driver_data;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 3, 0)
+	subsystem_vendor = pci->subsystem_vendor;
+	subsystem_device = pci->subsystem_device;
+#else
+	pci_read_config_word(pci, PCI_SUBSYSTEM_VENDOR_ID, &subsystem_vendor);
+	pci_read_config_word(pci, PCI_SUBSYSTEM_ID, &subsystem_device);
+#endif
 	for (i = 0; i < ARRAY_SIZE(blacklist); ++i)
+#ifndef TARGET_OS2
 		if (blacklist[i].subvendor == pci->subsystem_vendor &&
 		    blacklist[i].subdevice == pci->subsystem_device) {
+#else
+		if (blacklist[i].subvendor == subsystem_vendor &&
+		    blacklist[i].subdevice == subsystem_device) {
+#endif
 			snd_printdd(KERN_INFO "card %#04x-%#04x:%#04x has no audio\n",
+#ifndef TARGET_OS2
 				    pci->device, pci->subsystem_vendor, pci->subsystem_device);
+#else
+				    pci->device, subsystem_vendor, subsystem_device);
+#endif
 			return -EBUSY;
 		}
 
 	snd_printk(KERN_INFO "unknown card %#04x-%#04x:%#04x\n",
+#ifndef TARGET_OS2
 		   pci->device, pci->subsystem_vendor, pci->subsystem_device);
+#else
+		   pci->device, subsystem_vendor, subsystem_device);
+#endif
 	snd_printk(KERN_DEBUG "please mail id, board name, and, "
 		   "if it works, the correct digital_rate option to "
 		   "<alsa-devel@alsa-project.org>\n");
@@ -964,7 +999,7 @@ static void __devexit snd_bt87x_remove(struct pci_dev *pci)
 static struct pci_device_id snd_bt87x_default_ids[] __devinitdata = {
 	BT_DEVICE(PCI_DEVICE_ID_BROOKTREE_878, PCI_ANY_ID, PCI_ANY_ID, UNKNOWN),
 	BT_DEVICE(PCI_DEVICE_ID_BROOKTREE_879, PCI_ANY_ID, PCI_ANY_ID, UNKNOWN),
-	{ }
+	{0}
 };
 
 static struct pci_driver driver = {
