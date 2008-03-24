@@ -62,9 +62,9 @@ typedef struct {
     ULONG               reccaps;
     int                 idxRecCaps[OSS32_MIX_RECSRC_MAX];
     int                 rectype;
-    snd_ctl_card_info_t info;	//mixer information
-    snd_ctl_elem_list_t list;	//element list
-    snd_ctl_elem_id_t  *pids;   //array of mixer elements
+    struct snd_ctl_card_info info;	//mixer information
+    struct snd_ctl_elem_list list;	//element list
+    struct snd_ctl_elem_id  *pids;   //array of mixer elements
     mixcontrol          controls[OSS_MIXER_NRDEVICES]; //array of standard mixer controls
 } mixerhandle;
 

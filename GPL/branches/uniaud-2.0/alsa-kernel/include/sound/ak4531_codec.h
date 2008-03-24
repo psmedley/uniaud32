@@ -2,7 +2,7 @@
 #define __SOUND_AK4531_CODEC_H
 
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Universal interface for Audio Codec '97
  *
  *  For more details look to AC '97 component specification revision 2.1
@@ -71,7 +71,7 @@ struct snd_ak4531 {
 	void (*private_free) (struct snd_ak4531 *ak4531);
 	/* --- */
 	unsigned char regs[0x20];
-	struct semaphore reg_mutex;
+	struct mutex reg_mutex;
 };
 
 int snd_ak4531_mixer(struct snd_card *card, struct snd_ak4531 *_ak4531,

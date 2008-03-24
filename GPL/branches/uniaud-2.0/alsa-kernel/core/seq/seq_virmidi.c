@@ -35,10 +35,8 @@
  *
  */
 
-#include <sound/driver.h>
 #include <linux/init.h>
 #include <linux/wait.h>
-#include <linux/sched.h>
 #include <linux/slab.h>
 #include <sound/core.h>
 #include <sound/rawmidi.h>
@@ -81,13 +79,11 @@ static int snd_virmidi_dev_receive_event(struct snd_virmidi_dev *rdev,
 					 struct snd_seq_event *ev)
 {
 	struct snd_virmidi *vmidi;
-	struct list_head *list;
 	unsigned char msg[4];
 	int len;
 
 	read_lock(&rdev->filelist_lock);
-	list_for_each(list, &rdev->filelist) {
-		vmidi = list_entry(list, struct snd_virmidi, list);
+	list_for_each_entry(vmidi, &rdev->filelist, list, struct snd_virmidi) {
 		if (!vmidi->trigger)
 			continue;
 		if (ev->type == SNDRV_SEQ_EVENT_SYSEX) {
@@ -167,7 +163,7 @@ static void snd_virmidi_output_trigger(struct snd_rawmidi_substream *substream, 
 			return;		/* ignored */
 		}
 		if (vmidi->event.type != SNDRV_SEQ_EVENT_NONE) {
-			if (snd_seq_kernel_client_dispatch(vmidi->client, &vmidi->event, 0, 0) < 0)
+			if (snd_seq_kernel_client_dispatch(vmidi->client, &vmidi->event, in_atomic(), 0) < 0)
 				return;
 			vmidi->event.type = SNDRV_SEQ_EVENT_NONE;
 		}
@@ -186,7 +182,7 @@ static void snd_virmidi_output_trigger(struct snd_rawmidi_substream *substream, 
 				pbuf += res;
 				count -= res;
 				if (vmidi->event.type != SNDRV_SEQ_EVENT_NONE) {
-					if (snd_seq_kernel_client_dispatch(vmidi->client, &vmidi->event, 0, 0) < 0)
+					if (snd_seq_kernel_client_dispatch(vmidi->client, &vmidi->event, in_atomic(), 0) < 0)
 						return;
 					vmidi->event.type = SNDRV_SEQ_EVENT_NONE;
 				}
@@ -359,49 +355,39 @@ static struct snd_rawmidi_ops snd_virmidi_output_ops = {
 static int snd_virmidi_dev_attach_seq(struct snd_virmidi_dev *rdev)
 {
 	int client;
-	struct snd_seq_client_callback callbacks;
 	struct snd_seq_port_callback pcallbacks;
-	struct snd_seq_client_info *info;
 	struct snd_seq_port_info *pinfo;
 	int err;
 
 	if (rdev->client >= 0)
 		return 0;
 
-	info = kmalloc(sizeof(*info), GFP_KERNEL);
-	pinfo = kmalloc(sizeof(*pinfo), GFP_KERNEL);
-	if (! info || ! pinfo) {
+	pinfo = kzalloc(sizeof(*pinfo), GFP_KERNEL);
+	if (!pinfo) {
 		err = -ENOMEM;
 		goto __error;
 	}
 
-	memset(&callbacks, 0, sizeof(callbacks));
-	callbacks.private_data = rdev;
-	callbacks.allow_input = 1;
-	callbacks.allow_output = 1;
-	client = snd_seq_create_kernel_client(rdev->card, rdev->device, &callbacks);
+	client = snd_seq_create_kernel_client(rdev->card, rdev->device,
+					      "%s %d-%d", rdev->rmidi->name,
+					      rdev->card->number,
+					      rdev->device);
 	if (client < 0) {
 		err = client;
 		goto __error;
 	}
 	rdev->client = client;
 
-	/* set client name */
-	memset(info, 0, sizeof(*info));
-	info->client = client;
-	info->type = KERNEL_CLIENT;
-	sprintf(info->name, "%s %d-%d", rdev->rmidi->name, rdev->card->number, rdev->device);
-	snd_seq_kernel_client_ctl(client, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, info);
-
 	/* create a port */
-	memset(pinfo, 0, sizeof(*pinfo));
 	pinfo->addr.client = client;
 	sprintf(pinfo->name, "VirMIDI %d-%d", rdev->card->number, rdev->device);
 	/* set all capabilities */
 	pinfo->capability |= SNDRV_SEQ_PORT_CAP_WRITE | SNDRV_SEQ_PORT_CAP_SYNC_WRITE | SNDRV_SEQ_PORT_CAP_SUBS_WRITE;
 	pinfo->capability |= SNDRV_SEQ_PORT_CAP_READ | SNDRV_SEQ_PORT_CAP_SYNC_READ | SNDRV_SEQ_PORT_CAP_SUBS_READ;
 	pinfo->capability |= SNDRV_SEQ_PORT_CAP_DUPLEX;
-	pinfo->type = SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC;
+	pinfo->type = SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC
+		| SNDRV_SEQ_PORT_TYPE_SOFTWARE
+		| SNDRV_SEQ_PORT_TYPE_PORT;
 	pinfo->midi_channels = 16;
 	memset(&pcallbacks, 0, sizeof(pcallbacks));
 	pcallbacks.owner = THIS_MODULE;
@@ -423,7 +409,6 @@ static int snd_virmidi_dev_attach_seq(struct snd_virmidi_dev *rdev)
 	err = 0; /* success */
 
  __error:
-	kfree(info);
 	kfree(pinfo);
 	return err;
 }

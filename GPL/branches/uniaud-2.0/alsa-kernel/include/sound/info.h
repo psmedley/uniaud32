@@ -3,7 +3,7 @@
 
 /*
  *  Header file for info interface
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -27,9 +27,9 @@
 /* buffer for information */
 struct snd_info_buffer {
 	char *buffer;		/* pointer to begin of buffer */
-	char *curr;		/* current position in buffer */
-	unsigned long size;	/* current size */
-	unsigned long len;	/* total length of buffer */
+	unsigned int curr;	/* current position in buffer */
+	unsigned int size;	/* current size */
+	unsigned int len;	/* total length of buffer */
 	int stop;		/* stop flag */
 	int error;		/* error code */
 };
@@ -40,8 +40,6 @@ struct snd_info_buffer {
 struct snd_info_entry;
 
 struct snd_info_entry_text {
-	unsigned long read_size;
-	unsigned long write_size;
 	void (*read) (struct snd_info_entry *entry, struct snd_info_buffer *buffer);
 	void (*write) (struct snd_info_entry *entry, struct snd_info_buffer *buffer);
 };
@@ -73,7 +71,6 @@ struct snd_info_entry {
 	mode_t mode;
 	long size;
 	unsigned short content;
-	unsigned short disconnected: 1;
 	union {
 		struct snd_info_entry_text text;
 		struct snd_info_entry_ops *ops;
@@ -84,10 +81,10 @@ struct snd_info_entry {
 	void *private_data;
 	void (*private_free)(struct snd_info_entry *entry);
 	struct proc_dir_entry *p;
-	struct semaphore access;
+	struct mutex access;
+	struct list_head children;
+	struct list_head list;
 };
-
-int snd_info_check_reserved_words(const char *str);
 
 #if defined(CONFIG_SND_OSSEMUL) && defined(CONFIG_PROC_FS)
 int snd_info_minor_register(void);
@@ -103,11 +100,17 @@ int snd_info_minor_unregister(void);
 extern struct snd_info_entry *snd_seq_root;
 #ifdef CONFIG_SND_OSSEMUL
 extern struct snd_info_entry *snd_oss_root;
+void snd_card_info_read_oss(struct snd_info_buffer *buffer);
 #else
 #define snd_oss_root NULL
+static inline void snd_card_info_read_oss(struct snd_info_buffer *buffer) {}
 #endif
 
+#ifndef TARGET_OS2
+int snd_iprintf(struct snd_info_buffer * buffer, char *fmt,...) __attribute__ ((format (printf, 2, 3)));
+#else
 int snd_iprintf(struct snd_info_buffer * buffer, char *fmt,...);
+#endif
 int snd_info_init(void);
 int snd_info_done(void);
 
@@ -126,22 +129,21 @@ int snd_info_restore_text(struct snd_info_entry * entry);
 int snd_info_card_create(struct snd_card * card);
 int snd_info_card_register(struct snd_card * card);
 int snd_info_card_free(struct snd_card * card);
+void snd_info_card_disconnect(struct snd_card * card);
 int snd_info_register(struct snd_info_entry * entry);
-int snd_info_unregister(struct snd_info_entry * entry);
 
 /* for card drivers */
 int snd_card_proc_new(struct snd_card *card, const char *name, struct snd_info_entry **entryp);
 
 static inline void snd_info_set_text_ops(struct snd_info_entry *entry, 
 					 void *private_data,
-					 long read_size,
 					 void (*read)(struct snd_info_entry *, struct snd_info_buffer *))
 {
 	entry->private_data = private_data;
-	entry->c.text.read_size = read_size;
 	entry->c.text.read = read;
 }
 
+int snd_info_check_reserved_words(const char *str);
 
 #else
 
@@ -161,11 +163,16 @@ static inline void snd_info_free_entry(struct snd_info_entry * entry) { ; }
 static inline int snd_info_card_create(struct snd_card * card) { return 0; }
 static inline int snd_info_card_register(struct snd_card * card) { return 0; }
 static inline int snd_info_card_free(struct snd_card * card) { return 0; }
+static inline void snd_info_card_disconnect(struct snd_card * card) { }
 static inline int snd_info_register(struct snd_info_entry * entry) { return 0; }
-static inline int snd_info_unregister(struct snd_info_entry * entry) { return 0; }
 
-#define snd_card_proc_new(card,name,entryp)  0 /* always success */
-#define snd_info_set_text_ops(entry,private_data,read_size,read) /*NOP*/
+static inline int snd_card_proc_new(struct snd_card *card, const char *name,
+				    struct snd_info_entry **entryp) { return -EINVAL; }
+static inline void snd_info_set_text_ops(struct snd_info_entry *entry __attribute__((unused)),
+					 void *private_data,
+					 void (*read)(struct snd_info_entry *, struct snd_info_buffer *)) {}
+
+static inline int snd_info_check_reserved_words(const char *str) { return 1; }
 
 #endif
 

@@ -15,11 +15,13 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #include "gus_tables.h"
 
@@ -134,7 +136,7 @@ static void do_volume_envelope(snd_gus_card_t *gus, snd_gus_voice_t *voice)
 		snd_gf1_select_voice(gus, voice->number);
 		snd_gf1_ctrl_stop(gus, SNDRV_GF1_VB_VOLUME_CONTROL);
 		snd_gf1_write16(gus, SNDRV_GF1_VW_VOLUME, voice->gf1_volume);
-		printk("gf1_volume = 0x%x\n", voice->gf1_volume);
+		/* printk("gf1_volume = 0x%x\n", voice->gf1_volume); */
 		spin_unlock_irqrestore(&gus->reg_lock, flags);
 		return;
 	}

@@ -31,7 +31,8 @@ KEE=1
 #   List of source files
 #
 #===================================================================
-FILE1    = dummy.obj virmidi.obj serial-u16550.obj
+#FILE1    = dummy.obj virmidi.obj serial-u16550.obj
+FILE1    = 
 FILE2    = 
 FILE3    = 
 FILE4    = 

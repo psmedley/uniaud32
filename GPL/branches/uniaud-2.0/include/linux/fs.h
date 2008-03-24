@@ -186,6 +186,10 @@ struct inode {
 #ifdef TARGET_OS2
 	kdev_t			i_rdev;
         struct semaphore        i_sem;
+	union {
+		void		*generic_ip;
+	} u;
+
 #else
 	 void *	i_hash;
 	 void *	i_list;

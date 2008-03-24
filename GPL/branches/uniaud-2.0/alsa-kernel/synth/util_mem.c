@@ -18,7 +18,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#include <sound/driver.h>
+#include <linux/mutex.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <sound/core.h>
@@ -42,7 +42,7 @@ snd_util_memhdr_new(int memsize)
 	if (hdr == NULL)
 		return NULL;
 	hdr->size = memsize;
-	init_MUTEX(&hdr->block_mutex);
+	mutex_init(&hdr->block_mutex);
 	INIT_LIST_HEAD(&hdr->block);
 
 	return hdr;
@@ -115,7 +115,7 @@ __snd_util_memblk_new(struct snd_util_memhdr *hdr, unsigned int units,
 	if (blk == NULL)
 		return NULL;
 
-	if (! prev || prev == &hdr->block)
+	if (prev == &hdr->block)
 		blk->offset = 0;
 	else {
 		struct snd_util_memblk *p = get_memblk(prev);
@@ -136,9 +136,9 @@ struct snd_util_memblk *
 snd_util_mem_alloc(struct snd_util_memhdr *hdr, int size)
 {
 	struct snd_util_memblk *blk;
-	down(&hdr->block_mutex);
+	mutex_lock(&hdr->block_mutex);
 	blk = __snd_util_mem_alloc(hdr, size);
-	up(&hdr->block_mutex);
+	mutex_unlock(&hdr->block_mutex);
 	return blk;
 }
 
@@ -163,9 +163,9 @@ int snd_util_mem_free(struct snd_util_memhdr *hdr, struct snd_util_memblk *blk)
 {
 	snd_assert(hdr && blk, return -EINVAL);
 
-	down(&hdr->block_mutex);
+	mutex_lock(&hdr->block_mutex);
 	__snd_util_mem_free(hdr, blk);
-	up(&hdr->block_mutex);
+	mutex_unlock(&hdr->block_mutex);
 	return 0;
 }
 
@@ -175,9 +175,9 @@ int snd_util_mem_free(struct snd_util_memhdr *hdr, struct snd_util_memblk *blk)
 int snd_util_mem_avail(struct snd_util_memhdr *hdr)
 {
 	unsigned int size;
-	down(&hdr->block_mutex);
+	mutex_lock(&hdr->block_mutex);
 	size = hdr->size - hdr->used;
-	up(&hdr->block_mutex);
+	mutex_unlock(&hdr->block_mutex);
 	return size;
 }
 

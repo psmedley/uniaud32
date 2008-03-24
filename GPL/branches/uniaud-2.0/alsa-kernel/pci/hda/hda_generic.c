@@ -20,10 +20,8 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#include <sound/driver.h>
 #include <linux/init.h>
 #include <linux/slab.h>
-#include <linux/pci.h>
 #include <sound/core.h>
 #include "hda_codec.h"
 #include "hda_local.h"
@@ -71,6 +69,13 @@ struct hda_gspec {
 	struct hda_pcm pcm_rec;		/* PCM information */
 
 	struct list_head nid_list;	/* list of widgets */
+
+#ifdef CONFIG_SND_HDA_POWER_SAVE
+#define MAX_LOOPBACK_AMPS	7
+	struct hda_loopback_check loopback;
+	int num_loopbacks;
+	struct hda_amp_list loopback_list[MAX_LOOPBACK_AMPS + 1];
+#endif
 };
 
 /*
@@ -89,13 +94,12 @@ struct hda_gspec {
 static void snd_hda_generic_free(struct hda_codec *codec)
 {
 	struct hda_gspec *spec = codec->spec;
-	struct list_head *p, *n;
+	struct hda_gnode *node, *n;
 
 	if (! spec)
 		return;
 	/* free all widgets */
-	list_for_each_safe(p, n, &spec->nid_list) {
-		struct hda_gnode *node = list_entry(p, struct hda_gnode, list);
+	list_for_each_entry_safe(node, n, &spec->nid_list, list, struct hda_gnode) {
 		if (node->conn_list != node->slist)
 			kfree(node->conn_list);
 		kfree(node);
@@ -134,7 +138,7 @@ static int add_new_node(struct hda_codec *codec, struct hda_gspec *spec, hda_nid
 			return -ENOMEM;
 		}
 	}
-	memcpy(node->conn_list, conn_list, nconns);
+	memcpy(node->conn_list, conn_list, nconns * sizeof(hda_nid_t));
 	node->nconns = nconns;
 	node->wid_caps = get_wcaps(codec, nid);
 	node->type = (node->wid_caps & AC_WCAP_TYPE) >> AC_WCAP_TYPE_SHIFT;
@@ -197,11 +201,9 @@ static int build_afg_tree(struct hda_codec *codec)
 /* FIXME: should avoid the braindead linear search */
 static struct hda_gnode *hda_get_node(struct hda_gspec *spec, hda_nid_t nid)
 {
-	struct list_head *p;
 	struct hda_gnode *node;
 
-	list_for_each(p, &spec->nid_list) {
-		node = list_entry(p, struct hda_gnode, list);
+	list_for_each_entry(node, &spec->nid_list, list, struct hda_gnode) {
 		if (node->nid == nid)
 			return node;
 	}
@@ -219,9 +221,8 @@ static int unmute_output(struct hda_codec *codec, struct hda_gnode *node)
 	ofs = (node->amp_out_caps & AC_AMPCAP_OFFSET) >> AC_AMPCAP_OFFSET_SHIFT;
 	if (val >= ofs)
 		val -= ofs;
-	val |= AC_AMP_SET_LEFT | AC_AMP_SET_RIGHT;
-	val |= AC_AMP_SET_OUTPUT;
-	return snd_hda_codec_write(codec, node->nid, 0, AC_VERB_SET_AMP_GAIN_MUTE, val);
+	snd_hda_codec_amp_stereo(codec, node->nid, HDA_OUTPUT, 0, 0xff, val);
+	return 0;
 }
 
 /*
@@ -235,11 +236,8 @@ static int unmute_input(struct hda_codec *codec, struct hda_gnode *node, unsigne
 	ofs = (node->amp_in_caps & AC_AMPCAP_OFFSET) >> AC_AMPCAP_OFFSET_SHIFT;
 	if (val >= ofs)
 		val -= ofs;
-	val |= AC_AMP_SET_LEFT | AC_AMP_SET_RIGHT;
-	val |= AC_AMP_SET_INPUT;
-	// awk added - fixed to allow unmuting of indexed amps
-	val |= index << AC_AMP_SET_INDEX_SHIFT;
-	return snd_hda_codec_write(codec, node->nid, 0, AC_VERB_SET_AMP_GAIN_MUTE, val);
+	snd_hda_codec_amp_stereo(codec, node->nid, HDA_INPUT, index, 0xff, val);
+	return 0;
 }
 
 /*
@@ -249,7 +247,8 @@ static int select_input_connection(struct hda_codec *codec, struct hda_gnode *no
 				   unsigned int index)
 {
 	snd_printdd("CONNECT: NID=0x%x IDX=0x%x\n", node->nid, index);
-	return snd_hda_codec_write(codec, node->nid, 0, AC_VERB_SET_CONNECT_SEL, index);
+	return snd_hda_codec_write_cache(codec, node->nid, 0,
+					 AC_VERB_SET_CONNECT_SEL, index);
 }
 
 /*
@@ -257,11 +256,9 @@ static int select_input_connection(struct hda_codec *codec, struct hda_gnode *no
  */
 static void clear_check_flags(struct hda_gspec *spec)
 {
-	struct list_head *p;
 	struct hda_gnode *node;
 
-	list_for_each(p, &spec->nid_list) {
-		node = list_entry(p, struct hda_gnode, list);
+	list_for_each_entry(node, &spec->nid_list, list, struct hda_gnode) {
 		node->checked = 0;
 	}
 }
@@ -344,12 +341,10 @@ static struct hda_gnode *parse_output_jack(struct hda_codec *codec,
 					   struct hda_gspec *spec,
 					   int jack_type)
 {
-	struct list_head *p;
 	struct hda_gnode *node;
 	int err;
 
-	list_for_each(p, &spec->nid_list) {
-		node = list_entry(p, struct hda_gnode, list);
+	list_for_each_entry(node, &spec->nid_list, list, struct hda_gnode) {
 		if (node->type != AC_WID_PIN)
 			continue;
 		/* output capable? */
@@ -380,7 +375,7 @@ static struct hda_gnode *parse_output_jack(struct hda_codec *codec,
 			/* unmute the PIN output */
 			unmute_output(codec, node);
 			/* set PIN-Out enable */
-			snd_hda_codec_write(codec, node->nid, 0,
+			snd_hda_codec_write_cache(codec, node->nid, 0,
 					    AC_VERB_SET_PIN_WIDGET_CONTROL,
 					    AC_PINCTL_OUT_EN |
 					    ((node->pin_caps & AC_PINCAP_HP_DRV) ?
@@ -485,13 +480,13 @@ static const char *get_input_type(struct hda_gnode *node, unsigned int *pinctl)
 			return "Front Aux";
 		return "Aux";
 	case AC_JACK_MIC_IN:
-            if (pinctl &&
-                (node->pin_caps &
-                 (AC_PINCAP_VREF_80 << AC_PINCAP_VREF_SHIFT)))
-                *pinctl |= AC_PINCTL_VREF_80;
-            if ((location & 0x0f) == AC_JACK_LOC_FRONT)
-                return "Front Mic";
-            return "Mic";
+	if (pinctl &&
+	    (node->pin_caps &
+	     (AC_PINCAP_VREF_80 << AC_PINCAP_VREF_SHIFT)))
+		*pinctl |= AC_PINCTL_VREF_80;
+	if ((location & 0x0f) == AC_JACK_LOC_FRONT)
+		return "Front Mic";
+	return "Mic";
 	case AC_JACK_SPDIF_IN:
 		return "SPDIF";
 	case AC_JACK_DIG_OTHER_IN:
@@ -571,7 +566,8 @@ static int parse_adc_sub_nodes(struct hda_codec *codec, struct hda_gspec *spec,
 	/* unmute the PIN external input */
 	unmute_input(codec, node, 0); /* index = 0? */
 	/* set PIN-In enable */
-	snd_hda_codec_write(codec, node->nid, 0, AC_VERB_SET_PIN_WIDGET_CONTROL, pinctl);
+	snd_hda_codec_write_cache(codec, node->nid, 0,
+				  AC_VERB_SET_PIN_WIDGET_CONTROL, pinctl);
 
 	return 1; /* found */
 }
@@ -660,7 +656,6 @@ static int parse_input_path(struct hda_codec *codec, struct hda_gnode *adc_node)
 static int parse_input(struct hda_codec *codec)
 {
 	struct hda_gspec *spec = codec->spec;
-	struct list_head *p;
 	struct hda_gnode *node;
 	int err;
 
@@ -669,8 +664,7 @@ static int parse_input(struct hda_codec *codec)
 	 * If it reaches to certain input PINs, we take it as the
 	 * input path.
 	 */
-	list_for_each(p, &spec->nid_list) {
-		node = list_entry(p, struct hda_gnode, list);
+	list_for_each_entry(node, &spec->nid_list, list, struct hda_gnode) {
 		if (node->wid_caps & AC_WCAP_DIGITAL)
 			continue; /* skip SPDIF */
 		if (node->type == AC_WID_AUD_IN) {
@@ -686,11 +680,33 @@ static int parse_input(struct hda_codec *codec)
 }
 
 
+#ifdef CONFIG_SND_HDA_POWER_SAVE
+static void add_input_loopback(struct hda_codec *codec, hda_nid_t nid,
+			       int dir, int idx)
+{
+	struct hda_gspec *spec = codec->spec;
+	struct hda_amp_list *p;
+
+	if (spec->num_loopbacks >= MAX_LOOPBACK_AMPS) {
+		snd_printk(KERN_ERR "hda_generic: Too many loopback ctls\n");
+		return;
+	}
+	p = &spec->loopback_list[spec->num_loopbacks++];
+	p->nid = nid;
+	p->dir = dir;
+	p->idx = idx;
+	spec->loopback.amplist = spec->loopback_list;
+}
+#else
+#define add_input_loopback(codec,nid,dir,idx)
+#endif
+
 /*
  * create mixer controls if possible
  */
 static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
-			unsigned int index, const char *type, const char *dir_sfx)
+			unsigned int index, const char *type,
+			const char *dir_sfx, int is_loopback)
 {
 	char name[32];
 	int err;
@@ -703,28 +719,33 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		sprintf(name, "%s Switch", dir_sfx);
 	if ((node->wid_caps & AC_WCAP_IN_AMP) &&
 	    (node->amp_in_caps & AC_AMPCAP_MUTE)) {
-            /*knew = (struct snd_kcontrol_new)HDA_CODEC_MUTE(name, node->nid, index, HDA_INPUT);*/
-            knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-            knew.name = name;
-            knew.info = snd_hda_mixer_amp_switch_info;
-            knew.get = snd_hda_mixer_amp_switch_get;
-            knew.put = snd_hda_mixer_amp_switch_put;
-            knew.private_value = (node->nid | (3 << 16) | (HDA_INPUT << 18) | (index << 19));
+		/*knew = (struct snd_kcontrol_new)HDA_CODEC_MUTE(name, node->nid, index, HDA_INPUT);*/
+		knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+		knew.index = index;
+		knew.name = name;
+		knew.info = snd_hda_mixer_amp_switch_info;
+		knew.get = snd_hda_mixer_amp_switch_get;
+		knew.put = snd_hda_mixer_amp_switch_put;
+		knew.private_value = (node->nid | (3 << 16) | (HDA_INPUT << 18) | (index << 19));
 
+		if (is_loopback)
+			add_input_loopback(codec, node->nid, HDA_INPUT, index);
 		snd_printdd("[%s] NID=0x%x, DIR=IN, IDX=0x%x\n", name, node->nid, index);
 		if ((err = snd_ctl_add(codec->bus->card, snd_ctl_new1(&knew, codec))) < 0)
 			return err;
 		created = 1;
 	} else if ((node->wid_caps & AC_WCAP_OUT_AMP) &&
 		   (node->amp_out_caps & AC_AMPCAP_MUTE)) {
-            /*knew = (struct snd_kcontrol_new)HDA_CODEC_MUTE(name, node->nid, 0, HDA_OUTPUT);*/
-        knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-        knew.name = name;
-        knew.info = snd_hda_mixer_amp_switch_info;
-        knew.get = snd_hda_mixer_amp_switch_get;
-        knew.put = snd_hda_mixer_amp_switch_put;
-        knew.private_value = (node->nid | (3 << 16) | (HDA_OUTPUT << 18) | (0 << 19));
-
+		/*knew = (struct snd_kcontrol_new)HDA_CODEC_MUTE(name, node->nid, 0, HDA_OUTPUT);*/
+		knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+		knew.index = index;
+		knew.name = name;
+		knew.info = snd_hda_mixer_amp_switch_info;
+		knew.get = snd_hda_mixer_amp_switch_get;
+		knew.put = snd_hda_mixer_amp_switch_put;
+		knew.private_value = (node->nid | (3 << 16) | (HDA_OUTPUT << 18) | (0 << 19));
+		if (is_loopback)
+			add_input_loopback(codec, node->nid, HDA_OUTPUT, 0);
 		snd_printdd("[%s] NID=0x%x, DIR=OUT\n", name, node->nid);
 		if ((err = snd_ctl_add(codec->bus->card, snd_ctl_new1(&knew, codec))) < 0)
 			return err;
@@ -737,14 +758,13 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		sprintf(name, "%s Volume", dir_sfx);
 	if ((node->wid_caps & AC_WCAP_IN_AMP) &&
 	    (node->amp_in_caps & AC_AMPCAP_NUM_STEPS)) {
-            /*knew = (struct snd_kcontrol_new)HDA_CODEC_VOLUME(name, node->nid, index, HDA_INPUT);*/
-        knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-        knew.name = name;
-        knew.info = snd_hda_mixer_amp_volume_info;
-        knew.get = snd_hda_mixer_amp_volume_get;
-        knew.put = snd_hda_mixer_amp_volume_put;
-        knew.private_value = (node->nid | (3 << 16) | (HDA_INPUT << 18) | (index << 19));
-
+		/*knew = (struct snd_kcontrol_new)HDA_CODEC_VOLUME(name, node->nid, index, HDA_INPUT);*/
+		knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+		knew.name = name;
+		knew.info = snd_hda_mixer_amp_volume_info;
+		knew.get = snd_hda_mixer_amp_volume_get;
+		knew.put = snd_hda_mixer_amp_volume_put;
+		knew.private_value = ( node->nid | ( 3 << 16) | (HDA_INPUT << 18) | (index << 19));
 		snd_printdd("[%s] NID=0x%x, DIR=IN, IDX=0x%x\n", name, node->nid, index);
 		if ((err = snd_ctl_add(codec->bus->card, snd_ctl_new1(&knew, codec))) < 0)
 			return err;
@@ -796,7 +816,7 @@ static int create_output_mixers(struct hda_codec *codec, const char **names)
 	for (i = 0; i < spec->pcm_vol_nodes; i++) {
 		err = create_mixer(codec, spec->pcm_vol[i].node,
 				   spec->pcm_vol[i].index,
-				   names[i], "Playback");
+				   names[i], "Playback", 0);
 		if (err < 0)
 			return err;
 	}
@@ -813,7 +833,7 @@ static int build_output_controls(struct hda_codec *codec)
 	case 1:
 		return create_mixer(codec, spec->pcm_vol[0].node,
 				    spec->pcm_vol[0].index,
-				    "Master", "Playback");
+				    "Master", "Playback", 0);
 	case 2:
 		if (defcfg_type(spec->out_pin_node[0]) == AC_JACK_SPEAKER)
 			return create_output_mixers(codec, types_speaker);
@@ -849,7 +869,7 @@ static int build_input_controls(struct hda_codec *codec)
 	if (spec->input_mux.num_items == 1) {
 		err = create_mixer(codec, adc_node,
 				   spec->input_mux.items[0].index,
-				   NULL, "Capture");
+				   NULL, "Capture", 0);
 		if (err < 0)
 			return err;
 		return 0;
@@ -926,7 +946,8 @@ static int parse_loopback_path(struct hda_codec *codec, struct hda_gspec *spec,
 			return err;
 		else if (err >= 1) {
 			if (err == 1) {
-				err = create_mixer(codec, node, i, type, "Playback");
+				err = create_mixer(codec, node, i, type,
+						   "Playback", 1);
 				if (err < 0)
 					return err;
 				if (err > 0)
@@ -951,7 +972,6 @@ static int parse_loopback_path(struct hda_codec *codec, struct hda_gspec *spec,
 static int build_loopback_controls(struct hda_codec *codec)
 {
 	struct hda_gspec *spec = codec->spec;
-	struct list_head *p;
 	struct hda_gnode *node;
 	int err;
 	const char *type;
@@ -959,8 +979,7 @@ static int build_loopback_controls(struct hda_codec *codec)
 	if (! spec->out_pin_node[0])
 		return 0;
 
-	list_for_each(p, &spec->nid_list) {
-		node = list_entry(p, struct hda_gnode, list);
+	list_for_each_entry(node, &spec->nid_list, list, struct hda_gnode) {
 		if (node->type != AC_WID_PIN)
 			continue;
 		/* input capable? */
@@ -1062,6 +1081,14 @@ static int build_generic_pcms(struct hda_codec *codec)
 	return 0;
 }
 
+#ifdef CONFIG_SND_HDA_POWER_SAVE
+static int generic_check_power_status(struct hda_codec *codec, hda_nid_t nid)
+{
+	struct hda_gspec *spec = codec->spec;
+	return snd_hda_check_amp_list_power(codec, &spec->loopback, nid);
+}
+#endif
+
 
 /*
  */
@@ -1069,6 +1096,9 @@ static struct hda_codec_ops generic_patch_ops = {
 	.build_controls = build_generic_controls,
 	.build_pcms = build_generic_pcms,
 	.free = snd_hda_generic_free,
+#ifdef CONFIG_SND_HDA_POWER_SAVE
+	.check_power_status = generic_check_power_status,
+#endif
 };
 
 /*

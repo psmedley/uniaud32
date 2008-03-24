@@ -22,7 +22,7 @@
  *
  */
 
-#include <sound/driver.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
@@ -30,6 +30,7 @@
 #include <sound/minors.h>
 #include <sound/asequencer.h>
 #include <sound/seqmid.h>
+#include <sound/seq_kernel.h>
 #include <linux/file.h>
 #include <linux/soundcard.h>
 
@@ -47,7 +48,7 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
 {
     midihandle                      *pHandle;
     int                              ret, i;
-    struct snd_seq_port_subscribe  subs;
+    struct snd_seq_port_subscribe	subs;
     struct snd_seq_client_info     clientinfo;
     struct snd_seq_port_info       portinfo;
 
@@ -178,8 +179,10 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
         }
         pHandle->state |= MIDISTATE_SUBSCRIBED;
         
+#if 0
         //Load FM instruments (only done once)
         OSS32_FMMidiLoadInstruments((ULONG)pHandle);
+#endif
 
     }//if FM
 #endif
@@ -203,7 +206,6 @@ OSSRET OSS32_MidiClose(OSSSTREAMID streamid)
     //unsubscribe
     if(pHandle->state & MIDISTATE_SUBSCRIBED) {
         struct snd_seq_port_subscribe  subs;
-
         memset(&subs, 0, sizeof(subs));
         subs.dest.client   = pHandle->destclient;
         subs.dest.port     = pHandle->destport;

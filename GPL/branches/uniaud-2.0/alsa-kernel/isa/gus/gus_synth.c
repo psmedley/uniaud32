@@ -15,14 +15,20 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #include <sound/seq_device.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_DESCRIPTION("Routines for Gravis UltraSound soundcards - Synthesizer");
+MODULE_LICENSE("GPL");
 
 /*
  *
@@ -45,7 +51,7 @@ static int snd_gus_synth_use(void *private_data, snd_seq_port_subscribe_t *info)
 	snd_gus_port_t * port = (snd_gus_port_t *)private_data;
 	snd_gus_card_t * gus = port->gus;
 	snd_gus_voice_t * voice;
-	int idx;
+	unsigned int idx;
 
 	if (info->voices > 32)
 		return -EINVAL;
@@ -58,6 +64,7 @@ static int snd_gus_synth_use(void *private_data, snd_seq_port_subscribe_t *info)
 		voice = snd_gf1_alloc_voice(gus, SNDRV_GF1_VOICE_TYPE_SYNTH, info->sender.client, info->sender.port);
 		if (voice == NULL) {
 			snd_gus_synth_free_voices(gus, info->sender.client, info->sender.port);
+			snd_gus_use_dec(gus);
 			up(&gus->register_mutex);
 			return -EBUSY;
 		}
@@ -74,6 +81,7 @@ static int snd_gus_synth_unuse(void *private_data, snd_seq_port_subscribe_t *inf
 
 	down(&gus->register_mutex);
 	snd_gus_synth_free_voices(gus, info->sender.client, info->sender.port);
+	snd_gus_use_dec(gus);
 	up(&gus->register_mutex);
 	return 0;
 }
@@ -91,10 +99,11 @@ static void snd_gus_synth_free_private_instruments(snd_gus_port_t *p, int client
 	snd_seq_instr_list_free_cond(p->gus->gf1.ilist, &ifree, client, 0);
 }
  
-int snd_gus_synth_event_input(snd_seq_event_t *ev, int direct, void *private_data, int atomic, int hop)
+static int snd_gus_synth_event_input(snd_seq_event_t *ev, int direct,
+				     void *private_data, int atomic, int hop)
 {
 	snd_gus_port_t * p = (snd_gus_port_t *) private_data;
-
+	
 	snd_assert(p != NULL, return -EINVAL);
 	if (ev->type >= SNDRV_SEQ_EVENT_SAMPLE &&
 	    ev->type <= SNDRV_SEQ_EVENT_SAMPLE_PRIVATE1) {
@@ -125,8 +134,8 @@ static void snd_gus_synth_instr_notify(void *private_data,
 				       snd_seq_kinstr_t *instr,
 				       int what)
 {
-	int idx;
-	snd_gus_card_t *gus = snd_magic_cast(snd_gus_card_t, private_data, return);
+	unsigned int idx;
+	snd_gus_card_t *gus = private_data;
 	snd_gus_voice_t *pvoice;
 	unsigned long flags;
 	
@@ -184,9 +193,6 @@ static int snd_gus_synth_create_port(snd_gus_card_t * gus, int idx)
 	p->chset->port = snd_seq_event_port_attach(gus->gf1.seq_client,
 						   &callbacks,
 						   SNDRV_SEQ_PORT_CAP_WRITE | SNDRV_SEQ_PORT_CAP_SUBS_WRITE,
-						   SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC |
-						   SNDRV_SEQ_PORT_TYPE_MIDI_GM |
-						   SNDRV_SEQ_PORT_TYPE_MIDI_GS |
 						   SNDRV_SEQ_PORT_TYPE_DIRECT_SAMPLE |
 						   SNDRV_SEQ_PORT_TYPE_SYNTH,
 						   16, 0,
@@ -209,7 +215,7 @@ static int snd_gus_synth_new_device(snd_seq_device_t *dev)
 	snd_gus_card_t *gus;
 	int client, i;
 	snd_seq_client_callback_t callbacks;
-	snd_seq_client_info_t cinfo;
+	snd_seq_client_info_t *cinfo;
 	snd_seq_port_subscribe_t sub;
 	snd_iwffff_ops_t *iwops;
 	snd_gf1_ops_t *gf1ops;
@@ -222,21 +228,28 @@ static int snd_gus_synth_new_device(snd_seq_device_t *dev)
 	init_MUTEX(&gus->register_mutex);
 	gus->gf1.seq_client = -1;
 	
+	cinfo = kmalloc(sizeof(*cinfo), GFP_KERNEL);
+	if (! cinfo)
+		return -ENOMEM;
+
 	/* allocate new client */
 	memset(&callbacks, 0, sizeof(callbacks));
 	callbacks.private_data = gus;
 	callbacks.allow_output = callbacks.allow_input = 1;
 	client = gus->gf1.seq_client =
 			snd_seq_create_kernel_client(gus->card, 1, &callbacks);
-	if (client < 0)
+	if (client < 0) {
+		kfree(cinfo);
 		return client;
+	}
 
 	/* change name of client */
-	memset(&cinfo, 0, sizeof(cinfo));
-	cinfo.client = client;
-	cinfo.type = KERNEL_CLIENT;
-	sprintf(cinfo.name, gus->interwave ? "AMD InterWave" : "GF1");
-	snd_seq_kernel_client_ctl(client, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, &cinfo);
+	memset(cinfo, 0, sizeof(*cinfo));
+	cinfo->client = client;
+	cinfo->type = KERNEL_CLIENT;
+	sprintf(cinfo->name, gus->interwave ? "AMD InterWave" : "GF1");
+	snd_seq_kernel_client_ctl(client, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, cinfo);
+	kfree(cinfo);
 
 	for (i = 0; i < 4; i++)
 		snd_gus_synth_create_port(gus, i);

@@ -20,7 +20,7 @@
  *
  */
 
-#include <sound/driver.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
@@ -28,7 +28,7 @@
 #include <sound/minors.h>
 #include <sound/asequencer.h>
 #include <sound/asound_fm.h>
-#include <sound/ainstr_fm.h>
+//#include <sound/ainstr_fm.h>
 #include <sound/seq_kernel.h>
 #include <sound/instr.h>
 #include <linux/file.h>
@@ -180,9 +180,9 @@ show_op (fm_instrument_t * fm_instr) {
  */
 static int load_patch (midihandle *pHandle, struct fm_instrument * fm_instr, int bank, int prg, char *name)
 {
-    snd_seq_instr_header_t *put;
-    snd_seq_instr_t id;
-    snd_seq_event_t ev;
+    struct sndrv_seq_instr_header *put;
+    struct sndrv_seq_instr id;
+    struct sndrv_seq_event ev;
 
     size_t size;
     int err;
@@ -310,7 +310,7 @@ int snd_instr_fm_convert_to_stream(snd_instr_fm_t *fm,
 				   snd_instr_header_t **__data,
 				   size_t *__size)
 {
-	snd_instr_header_t *put;
+	struct snd_instr_header *put;
 	struct fm_instrument *instr;
 	fm_xinstrument_t *xinstr;
 	int idx;
@@ -415,7 +415,8 @@ void snd_instr_header_set_format(snd_instr_header_t *info, const char *format)
 void snd_instr_header_set_id(snd_instr_header_t *info, const snd_seq_instr_t *id)
 {
 	assert(info && id);
-	info->id.instr = *(struct snd_seq_instr *)id;
+//	info->id.instr = *(struct snd_seq_instr *)id;
+	info->id.instr = *id;
 }
 
 /**

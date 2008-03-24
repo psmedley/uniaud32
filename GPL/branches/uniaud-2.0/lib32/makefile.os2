@@ -18,7 +18,8 @@ CDEFINES += -DIBM_BUILD
 #===================================================================
 FILE1    = spinlock.obj malloc.obj pci.obj irq.obj ioctl.obj
 FILE2    = memory.obj debug.obj sound.obj soundmixer.obj soundmidi.obj 
-FILE3    = ossidc.obj semaphore.obj waitqueue.obj misc.obj fminstrload.obj
+#FILE3    = ossidc.obj semaphore.obj waitqueue.obj misc.obj fminstrload.obj
+FILE3    = ossidc.obj semaphore.obj waitqueue.obj misc.obj 
 FILE4    = strncpy.obj task.obj 
 FILE5    = strncmp.obj timer.obj
 FILE6    = instropl2.obj instropl3.obj vsprintf.obj

@@ -19,7 +19,6 @@
  *
  */
 
-#include <sound/driver.h>
 #include <sound/core.h>
 #include <linux/slab.h>
 #include "seq_fifo.h"
@@ -33,7 +32,7 @@ struct snd_seq_fifo *snd_seq_fifo_new(int poolsize)
 {
 	struct snd_seq_fifo *f;
 
-	f = (struct snd_seq_fifo *)kzalloc(sizeof(*f), GFP_KERNEL);
+	f = kzalloc(sizeof(*f), GFP_KERNEL);
 	if (f == NULL) {
 		snd_printd("malloc failed for snd_seq_fifo_new() \n");
 		return NULL;

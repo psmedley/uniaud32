@@ -31,11 +31,10 @@ KEE=1
 #   List of source files
 #
 #===================================================================
-FILE1    = cmipci.obj ens1370.obj ens1371.obj cs4281.obj  es1938.obj
-FILE2    = es1968.obj intel8x0.obj maestro3.obj via82xx.obj als4000.obj
-FILE3    = fm801.obj atiixp.obj bt87x.obj
-#ice1712.obj fm801.obj  rme96.obj sonicvibes.obj 
-FILE4    = 
+FILE1    = pci_iomap_compat.obj ens1370.obj ens1371.obj cs4281.obj  es1938.obj
+FILE2    = es1968.obj intel8x0.obj maestro3.obj via82xx.obj 
+FILE3    = fm801.obj atiixp.obj 
+#FILE4    = als4000.obj cmipci.obj
 FILE5    = 
 FILE6    = 
 FILE7    = 
@@ -84,7 +83,7 @@ subdirs: .SYMBOLIC
     @cd ..
     @echo BUILDING emu10k1
     @cd emu10k1
-    @wmake $(NMAKEOPTS)
+#    @wmake $(NMAKEOPTS)
     @cd ..
     @echo BUILDING ca0106
     @cd ca0106
@@ -143,10 +142,10 @@ clean: .SYMBOLIC
     @cd ca0106
     @wmake $(NMAKEOPTS) clean
     @cd ..
-    @echo CLEANING korg1212
-    @cd korg1212
-    @wmake $(NMAKEOPTS) clean
-    @cd ..
+#    @echo CLEANING korg1212
+#    @cd korg1212
+#    @wmake $(NMAKEOPTS) clean
+#    @cd ..
     @echo CLEANING nm256
     @cd nm256
     @wmake $(NMAKEOPTS) clean
@@ -163,10 +162,10 @@ clean: .SYMBOLIC
     @cd ymfpci
     @wmake $(NMAKEOPTS) clean
     @cd ..
-    @echo CLEANING vortex
-    @cd au88x0
-    @wmake $(NMAKEOPTS) clean
-    @cd ..
+#    @echo CLEANING vortex
+#    @cd au88x0
+#    @wmake $(NMAKEOPTS) clean
+#    @cd ..
 #    @echo CLEANING wavefront
 #    @cd wavefront
 #    @nmake $(NMAKEOPTS) clean

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Routines for Sound Blaster mixer control
  *
  *
@@ -19,7 +19,6 @@
  *
  */
 
-#include <sound/driver.h>
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/time.h>
@@ -453,10 +452,8 @@ int snd_sbmixer_add_ctl(struct snd_sb *chip, const char *name, int index, int ty
 	strlcpy(ctl->id.name, name, sizeof(ctl->id.name));
 	ctl->id.index = index;
 	ctl->private_value = value;
-	if ((err = snd_ctl_add(chip->card, ctl)) < 0) {
-		snd_ctl_free_one(ctl);
+	if ((err = snd_ctl_add(chip->card, ctl)) < 0)
 		return err;
-	}
 	return 0;
 }
 
@@ -823,6 +820,7 @@ int snd_sbmixer_new(struct snd_sb *chip)
 		break;
 	case SB_HW_16:
 	case SB_HW_ALS100:
+	case SB_HW_CS5530:
 		if ((err = snd_sbmixer_init(chip,
 					    snd_sb16_controls,
 					    ARRAY_SIZE(snd_sb16_controls),
@@ -952,6 +950,7 @@ void snd_sbmixer_suspend(struct snd_sb *chip)
 		break;
 	case SB_HW_16:
 	case SB_HW_ALS100:
+	case SB_HW_CS5530:
 		save_mixer(chip, sb16_saved_regs, ARRAY_SIZE(sb16_saved_regs));
 		break;
 	case SB_HW_ALS4000:
@@ -977,6 +976,7 @@ void snd_sbmixer_resume(struct snd_sb *chip)
 		break;
 	case SB_HW_16:
 	case SB_HW_ALS100:
+	case SB_HW_CS5530:
 		restore_mixer(chip, sb16_saved_regs, ARRAY_SIZE(sb16_saved_regs));
 		break;
 	case SB_HW_ALS4000:

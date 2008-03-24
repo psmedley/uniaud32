@@ -1,3 +1,4 @@
+/* $Id: init.c,v 1.1.1.1 2003/07/02 13:56:56 eleph Exp $ */
 /*
  * Init strategy handler
  *
@@ -48,7 +49,7 @@ const char ERR_INIT[]    = "Initialization failed\r\r\n";
 const char ERR_NAMES[]    = "Query names failed\r\r\n";
 const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"\r\nBased on ALSA "ALSA_VERSION"\r\n";
 
-//const char szCopyRight1[]= "Copyright 2000-2002 InnoTek Systemberatung GmbH\r\n";
+const char szCopyRight1[]= "Copyright 2000-2002 InnoTek Systemberatung GmbH\r\n";
 const char szCopyRight2[]= "Copyright 2000-2007 The ALSA Project\r\n\r\n";
 const char szCopyRight3[]= "Copyright 2005-2007 Netlabs http://www.netlabs.org\r\n";
 //const char szCopyRight3[]= "Maintained by http://os2.kiev.ua/en/uniaud.php\r\n\r\n";

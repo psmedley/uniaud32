@@ -1,3 +1,4 @@
+/* $Id: pci.c,v 1.1.1.1 2003/07/02 13:57:02 eleph Exp $ */
 /*
  * OS/2 implementation of Linux PCI functions (using direct port I/O)
  *
@@ -30,7 +31,7 @@
 #include <asm/hardirq.h>
 #include <asm/io.h>
 #include <sound/config.h>
-#include <sound/driver.h>
+#include <sound/core.h>
 #include <sound/asound.h>
 
 #define LINUX
@@ -628,14 +629,10 @@ unsigned long pci_get_dma_mask (struct pci_dev *dev)
 }
 //******************************************************************************
 //******************************************************************************
-int pci_set_dma_mask (struct pci_dev *dev, unsigned long mask)
+void pci_set_dma_mask (struct pci_dev *dev, unsigned long mask)
 {
     if (dev)
-    {
         dev->dma_mask = mask;
-        return 0;
-    }
-    return -1;
 }
 //******************************************************************************
 //******************************************************************************

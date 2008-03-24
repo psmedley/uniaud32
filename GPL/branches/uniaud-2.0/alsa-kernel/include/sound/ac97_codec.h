@@ -2,7 +2,7 @@
 #define __SOUND_AC97_CODEC_H
 
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Universal interface for Audio Codec '97
  *
  *  For more details look to AC '97 component specification revision 2.1
@@ -26,12 +26,12 @@
  */
 
 #include <linux/bitops.h>
-//#include <linux/device.h>
+#include <linux/device.h>
+#include <linux/workqueue.h>
 #include "pcm.h"
 #include "control.h"
 #include "info.h"
 
-#define CONFIG_SND_AC97_POWER_SAVE /* experimental !!! */
 /*
  *  AC'97 codec registers
  */
@@ -321,7 +321,7 @@
 /* S/PDIF input status 2 bit defines */
 #define AC97_ALC650_SOUCE_MASK      0x000f  /* Source number */
 #define AC97_ALC650_CHANNEL_MASK    0x00f0  /* Channel number */
-#define AC97_ALC650_CHANNEL_SHIFT   4
+#define AC97_ALC650_CHANNEL_SHIFT   4 
 #define AC97_ALC650_SPSR_MASK       0x0f00  /* S/PDIF Sample Rate bits */
 #define AC97_ALC650_SPSR_SHIFT      8
 #define AC97_ALC650_SPSR_44K        0x0000  /* Use 44.1kHz Sample rate */
@@ -345,9 +345,9 @@
 #define AC97_ALC650_GPIO_STATUS		0x78
 #define AC97_ALC650_CLOCK		0x7a
 
-/* specific - Yamaha YMF753 */
-#define AC97_YMF753_DIT_CTRL2	0x66	/* DIT Control 2 */
-#define AC97_YMF753_3D_MODE_SEL	0x68	/* 3D Mode Select */
+/* specific - Yamaha YMF7x3 */
+#define AC97_YMF7X3_DIT_CTRL	0x66	/* DIT Control (YMF743) / 2 (YMF753) */
+#define AC97_YMF7X3_3D_MODE_SEL	0x68	/* 3D Mode Select */
 
 /* specific - C-Media */
 #define AC97_CM9738_VENDOR_CTRL	0x5a
@@ -425,8 +425,8 @@ struct snd_ac97_build_ops {
 };
 
 struct snd_ac97_bus_ops {
-    void (*reset) (struct snd_ac97 *ac97);
-    void (*warm_reset)(struct snd_ac97 *ac97);
+	void (*reset) (struct snd_ac97 *ac97);
+	void (*warm_reset)(struct snd_ac97 *ac97);
 	void (*write) (struct snd_ac97 *ac97, unsigned short reg, unsigned short val);
 	unsigned short (*read) (struct snd_ac97 *ac97, unsigned short reg);
 	void (*wait) (struct snd_ac97 *ac97);
@@ -455,8 +455,8 @@ struct snd_ac97_bus {
 
 /* static resolution table */
 struct snd_ac97_res_table {
-    unsigned short reg;     /* register */
-    unsigned short bits;    /* resolution bitmask */
+	unsigned short reg;	/* register */
+	unsigned short bits;	/* resolution bitmask */
 };
 
 struct snd_ac97_template {
@@ -466,7 +466,7 @@ struct snd_ac97_template {
 	unsigned short num;	/* number of codec: 0 = primary, 1 = secondary */
 	unsigned short addr;	/* physical address of codec [0-3] */
 	unsigned int scaps;	/* driver capabilities */
-        const struct snd_ac97_res_table *res_table;     /* static resolution */
+	const struct snd_ac97_res_table *res_table;	/* static resolution */
 };
 
 struct snd_ac97 {
@@ -481,15 +481,15 @@ struct snd_ac97 {
 	struct snd_info_entry *proc_regs;
 	unsigned short subsystem_vendor;
 	unsigned short subsystem_device;
-	struct semaphore reg_mutex;
-	struct semaphore page_mutex;	/* mutex for AD18xx multi-codecs and paging (2.3) */
+	struct mutex reg_mutex;
+	struct mutex page_mutex;	/* mutex for AD18xx multi-codecs and paging (2.3) */
 	unsigned short num;	/* number of codec: 0 = primary, 1 = secondary */
 	unsigned short addr;	/* physical address of codec [0-3] */
 	unsigned int id;	/* identification of codec */
 	unsigned short caps;	/* capabilities (register 0) */
 	unsigned short ext_id;	/* extended feature identification (register 28) */
-        unsigned short ext_mid;	/* extended modem ID (register 3C) */
-        const struct snd_ac97_res_table *res_table;     /* static resolution */
+	unsigned short ext_mid;	/* extended modem ID (register 3C) */
+	const struct snd_ac97_res_table *res_table;	/* static resolution */
 	unsigned int scaps;	/* driver capabilities */
 	unsigned int flags;	/* specific code */
 	unsigned int rates[6];	/* see AC97_RATES_* defines */
@@ -502,19 +502,18 @@ struct snd_ac97 {
 			unsigned short chained[3];	// 0 = C34, 1 = C79, 2 = C69
 			unsigned short id[3];		// codec IDs (lower 16-bit word)
 			unsigned short pcmreg[3];	// PCM registers
-                        unsigned short codec_cfg[3];	// CODEC_CFG bits
-                        unsigned char swap_mic_linein;	// AD1986/AD1986A only
+			unsigned short codec_cfg[3];	// CODEC_CFG bits
+			unsigned char swap_mic_linein;	// AD1986/AD1986A only
 		} ad18xx;
 		unsigned int dev_flags;		/* device specific */
 	} spec;
 	/* jack-sharing info */
 	unsigned char indep_surround;
-        unsigned char channel_mode;
+	unsigned char channel_mode;
 
 #ifdef CONFIG_SND_AC97_POWER_SAVE
 	unsigned int power_up;	/* power states */
-	struct workqueue_struct *power_workq;
-	struct work_struct power_work;
+	struct delayed_work power_work;
 #endif
 	struct device dev;
 };
@@ -611,21 +610,21 @@ enum ac97_pcm_cfg {
 };
 
 struct ac97_pcm {
-    struct snd_ac97_bus *bus;
-#if 0
+	struct snd_ac97_bus *bus;
+#ifndef TARGET_OS2
 	unsigned int stream: 1,	   	   /* stream type: 1 = capture */
 		     exclusive: 1,	   /* exclusive mode, don't override with other pcms */
 		     copy_flag: 1,	   /* lowlevel driver must fill all entries */
-    spdif: 1;		   /* spdif pcm */
+		     spdif: 1;		   /* spdif pcm */
 #else
-    unsigned int stream;	   	   /* stream type: 1 = capture */
-    unsigned int exclusive;	   /* exclusive mode, don't override with other pcms */
-    unsigned int copy_flag;	   /* lowlevel driver must fill all entries */
-    unsigned int spdif;		   /* spdif pcm */
+	unsigned int stream;	   	   /* stream type: 1 = capture */
+	unsigned int exclusive;	   /* exclusive mode, don't override with other pcms */
+	unsigned int copy_flag;	   /* lowlevel driver must fill all entries */
+	unsigned int spdif;		   /* spdif pcm */
 #endif
-    unsigned short aslots;		   /* active slots */
-    unsigned short cur_dbl;		   /* current double-rate state */
-    unsigned int rates;		   /* available rates */
+	unsigned short aslots;		   /* active slots */
+	unsigned short cur_dbl;		   /* current double-rate state */
+	unsigned int rates;		   /* available rates */
 	struct {
 		unsigned short slots;	   /* driver input: requested AC97 slot numbers */
 		unsigned short rslots[4];  /* allocated slots per codecs */

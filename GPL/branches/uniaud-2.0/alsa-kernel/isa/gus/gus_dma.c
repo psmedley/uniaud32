@@ -1,6 +1,6 @@
 /*
  *  Routines for GF1 DMA control
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -15,14 +15,16 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#include <sound/driver.h>
+#include <asm/dma.h>
+#include <linux/slab.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 
-void snd_gf1_dma_ack(snd_gus_card_t * gus)
+static void snd_gf1_dma_ack(struct snd_gus_card * gus)
 {
 	unsigned long flags;
 
@@ -32,11 +34,11 @@ void snd_gf1_dma_ack(snd_gus_card_t * gus)
 	spin_unlock_irqrestore(&gus->reg_lock, flags);
 }
 
-void snd_gf1_dma_program(snd_gus_card_t * gus,
-			 unsigned int addr,
-			 const void *buf,
-			 unsigned int count,
-			 unsigned int cmd)
+static void snd_gf1_dma_program(struct snd_gus_card * gus,
+				unsigned int addr,
+				unsigned long buf_addr,
+				unsigned int count,
+				unsigned int cmd)
 {
 	unsigned long flags;
 	unsigned int address;
@@ -73,7 +75,7 @@ void snd_gf1_dma_program(snd_gus_card_t * gus,
 		count &= ~1;	/* align */
 	}
 	snd_gf1_dma_ack(gus);
-	snd_dma_program(gus->gf1.dma1, buf, count, dma_cmd & SNDRV_GF1_DMA_READ ? DMA_MODE_READ : DMA_MODE_WRITE);
+	snd_dma_program(gus->gf1.dma1, buf_addr, count, dma_cmd & SNDRV_GF1_DMA_READ ? DMA_MODE_READ : DMA_MODE_WRITE);
 #if 0
 	snd_printk("address = 0x%x, count = 0x%x, dma_cmd = 0x%x\n", address << 1, count, dma_cmd);
 #endif
@@ -88,9 +90,9 @@ void snd_gf1_dma_program(snd_gus_card_t * gus,
 	spin_unlock_irqrestore(&gus->reg_lock, flags);
 }
 
-static snd_gf1_dma_block_t *snd_gf1_dma_next_block(snd_gus_card_t * gus)
+static struct snd_gf1_dma_block *snd_gf1_dma_next_block(struct snd_gus_card * gus)
 {
-	snd_gf1_dma_block_t *block;
+	struct snd_gf1_dma_block *block;
 
 	/* PCM block have bigger priority than synthesizer one */
 	if (gus->gf1.dma_data_pcm) {
@@ -120,9 +122,9 @@ static snd_gf1_dma_block_t *snd_gf1_dma_next_block(snd_gus_card_t * gus)
 }
 
 
-static void snd_gf1_dma_interrupt(snd_gus_card_t * gus)
+static void snd_gf1_dma_interrupt(struct snd_gus_card * gus)
 {
-	snd_gf1_dma_block_t *block;
+	struct snd_gf1_dma_block *block;
 
 	snd_gf1_dma_ack(gus);
 	if (gus->gf1.dma_ack)
@@ -137,19 +139,19 @@ static void snd_gf1_dma_interrupt(snd_gus_card_t * gus)
 	}
 	block = snd_gf1_dma_next_block(gus);
 	spin_unlock(&gus->dma_lock);
-	snd_gf1_dma_program(gus, block->addr, block->buffer, block->count, (unsigned short) block->cmd);
+	snd_gf1_dma_program(gus, block->addr, block->buf_addr, block->count, (unsigned short) block->cmd);
 	kfree(block);
 #if 0
 	printk("program dma (IRQ) - addr = 0x%x, buffer = 0x%lx, count = 0x%x, cmd = 0x%x\n", addr, (long) buffer, count, cmd);
 #endif
 }
 
-int snd_gf1_dma_init(snd_gus_card_t * gus)
+int snd_gf1_dma_init(struct snd_gus_card * gus)
 {
-	down(&gus->dma_mutex);
+	mutex_lock(&gus->dma_mutex);
 	gus->gf1.dma_shared++;
 	if (gus->gf1.dma_shared > 1) {
-		up(&gus->dma_mutex);
+		mutex_unlock(&gus->dma_mutex);
 		return 0;
 	}
 	gus->gf1.interrupt_handler_dma_write = snd_gf1_dma_interrupt;
@@ -157,15 +159,15 @@ int snd_gf1_dma_init(snd_gus_card_t * gus)
 	gus->gf1.dma_data_pcm_last =
 	gus->gf1.dma_data_synth = 
 	gus->gf1.dma_data_synth_last = NULL;
-	up(&gus->dma_mutex);
+	mutex_unlock(&gus->dma_mutex);
 	return 0;
 }
 
-int snd_gf1_dma_done(snd_gus_card_t * gus)
+int snd_gf1_dma_done(struct snd_gus_card * gus)
 {
-	snd_gf1_dma_block_t *block;
+	struct snd_gf1_dma_block *block;
 
-	down(&gus->dma_mutex);
+	mutex_lock(&gus->dma_mutex);
 	gus->gf1.dma_shared--;
 	if (!gus->gf1.dma_shared) {
 		snd_dma_disable(gus->gf1.dma1);
@@ -182,21 +184,21 @@ int snd_gf1_dma_done(snd_gus_card_t * gus)
 		gus->gf1.dma_data_pcm_last =
 		gus->gf1.dma_data_synth_last = NULL;
 	}
-	up(&gus->dma_mutex);
+	mutex_unlock(&gus->dma_mutex);
 	return 0;
 }
 
-int snd_gf1_dma_transfer_block(snd_gus_card_t * gus,
-			       snd_gf1_dma_block_t * __block,
+int snd_gf1_dma_transfer_block(struct snd_gus_card * gus,
+			       struct snd_gf1_dma_block * __block,
 			       int atomic,
 			       int synth)
 {
 	unsigned long flags;
-	snd_gf1_dma_block_t *block;
+	struct snd_gf1_dma_block *block;
 
 	block = kmalloc(sizeof(*block), atomic ? GFP_ATOMIC : GFP_KERNEL);
 	if (block == NULL) {
-		snd_printk("gf1: DMA transfer failure; not enough memory\n");
+		snd_printk(KERN_ERR "gf1: DMA transfer failure; not enough memory\n");
 		return -ENOMEM;
 	}
 	*block = *__block;
@@ -232,7 +234,7 @@ int snd_gf1_dma_transfer_block(snd_gus_card_t * gus,
 		spin_unlock_irqrestore(&gus->dma_lock, flags);
 		if (block == NULL)
 			return 0;
-		snd_gf1_dma_program(gus, block->addr, block->buffer, block->count, (unsigned short) block->cmd);
+		snd_gf1_dma_program(gus, block->addr, block->buf_addr, block->count, (unsigned short) block->cmd);
 		kfree(block);
 		return 0;
 	}

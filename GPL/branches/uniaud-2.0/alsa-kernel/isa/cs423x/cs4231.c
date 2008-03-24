@@ -1,6 +1,6 @@
 /*
  *  Generic driver for CS4231 chips
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Originally the CS4232/CS4232A driver, modified for use on CS4231 by
  *  Tugrul Galatali <galatalt@stuy.edu>
  *
@@ -16,190 +16,190 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
-#include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/err.h>
+#include <linux/isa.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <linux/moduleparam.h>
+#include <sound/core.h>
 #include <sound/cs4231.h>
 #include <sound/mpu401.h>
-#define SNDRV_GET_ID
 #include <sound/initval.h>
 
-#define chip_t cs4231_t
+#define CRD_NAME "Generic CS4231"
+#define DEV_NAME "cs4231"
 
-EXPORT_NO_SYMBOLS;
-MODULE_DESCRIPTION("Generic CS4231");
-MODULE_CLASSES("{sound}");
-MODULE_DEVICES("{{Crystal Semiconductors,CS4231}}");
+MODULE_DESCRIPTION(CRD_NAME);
+MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
+MODULE_LICENSE("GPL");
+MODULE_SUPPORTED_DEVICE("{{Crystal Semiconductors,CS4231}}");
 
-static int snd_index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
-static char *snd_id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
-static long snd_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
-static long snd_mpu_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
-static int snd_irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;	/* 5,7,9,11,12,15 */
-static int snd_mpu_irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;	/* 9,11,12,15 */
-static int snd_dma1[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;	/* 0,1,3,5,6,7 */
-static int snd_dma2[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;	/* 0,1,3,5,6,7 */
+static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
+static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static long port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
+static long mpu_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
+static int irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;	/* 5,7,9,11,12,15 */
+static int mpu_irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;	/* 9,11,12,15 */
+static int dma1[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;	/* 0,1,3,5,6,7 */
+static int dma2[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;	/* 0,1,3,5,6,7 */
 
-MODULE_PARM(snd_index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_index, "Index value for CS4231 soundcard.");
-MODULE_PARM_SYNTAX(snd_index, SNDRV_INDEX_DESC);
-MODULE_PARM(snd_id, "1-" __MODULE_STRING(SNDRV_CARDS) "s");
-MODULE_PARM_DESC(snd_id, "ID string for CS4231 soundcard.");
-MODULE_PARM_SYNTAX(snd_id, SNDRV_ID_DESC);
-MODULE_PARM(snd_enable, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_enable, "Enable CS4231 soundcard.");
-MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
-MODULE_PARM(snd_port, "1-" __MODULE_STRING(SNDRV_CARDS) "l");
-MODULE_PARM_DESC(snd_port, "Port # for CS4231 driver.");
-MODULE_PARM_SYNTAX(snd_port, SNDRV_PORT12_DESC);
-MODULE_PARM(snd_mpu_port, "1-" __MODULE_STRING(SNDRV_CARDS) "l");
-MODULE_PARM_DESC(snd_mpu_port, "MPU-401 port # for CS4231 driver.");
-MODULE_PARM_SYNTAX(snd_mpu_port, SNDRV_PORT12_DESC);
-MODULE_PARM(snd_irq, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_irq, "IRQ # for CS4231 driver.");
-MODULE_PARM_SYNTAX(snd_irq, SNDRV_IRQ_DESC);
-MODULE_PARM(snd_mpu_irq, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_mpu_irq, "MPU-401 IRQ # for CS4231 driver.");
-MODULE_PARM_SYNTAX(snd_mpu_irq, SNDRV_IRQ_DESC);
-MODULE_PARM(snd_dma1, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_dma1, "DMA1 # for CS4231 driver.");
-MODULE_PARM_SYNTAX(snd_dma1, SNDRV_DMA_DESC);
-MODULE_PARM(snd_dma2, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_dma2, "DMA2 # for CS4231 driver.");
-MODULE_PARM_SYNTAX(snd_dma2, SNDRV_DMA_DESC);
+module_param_array(index, int, NULL, 0444);
+MODULE_PARM_DESC(index, "Index value for " CRD_NAME " soundcard.");
+module_param_array(id, charp, NULL, 0444);
+MODULE_PARM_DESC(id, "ID string for " CRD_NAME " soundcard.");
+module_param_array(enable, bool, NULL, 0444);
+MODULE_PARM_DESC(enable, "Enable " CRD_NAME " soundcard.");
+module_param_array(port, long, NULL, 0444);
+MODULE_PARM_DESC(port, "Port # for " CRD_NAME " driver.");
+module_param_array(mpu_port, long, NULL, 0444);
+MODULE_PARM_DESC(mpu_port, "MPU-401 port # for " CRD_NAME " driver.");
+module_param_array(irq, int, NULL, 0444);
+MODULE_PARM_DESC(irq, "IRQ # for " CRD_NAME " driver.");
+module_param_array(mpu_irq, int, NULL, 0444);
+MODULE_PARM_DESC(mpu_irq, "MPU-401 IRQ # for " CRD_NAME " driver.");
+module_param_array(dma1, int, NULL, 0444);
+MODULE_PARM_DESC(dma1, "DMA1 # for " CRD_NAME " driver.");
+module_param_array(dma2, int, NULL, 0444);
+MODULE_PARM_DESC(dma2, "DMA2 # for " CRD_NAME " driver.");
 
-static snd_card_t *snd_cs4231_cards[SNDRV_CARDS] = SNDRV_DEFAULT_PTR;
-
-
-static int __init snd_card_cs4231_probe(int dev)
+static int __devinit snd_cs4231_match(struct device *dev, unsigned int n)
 {
-	snd_card_t *card;
-	struct snd_card_cs4231 *acard;
-	snd_pcm_t *pcm = NULL;
-	cs4231_t *chip;
-	int err;
+	if (!enable[n])
+		return 0;
 
-	if (snd_port[dev] == SNDRV_AUTO_PORT) {
-		snd_printk("specify snd_port\n");
-		return -EINVAL;
+	if (port[n] == SNDRV_AUTO_PORT) {
+		snd_printk(KERN_ERR "%s: please specify port\n", dev->bus_id);
+		return 0;
 	}
-	if (snd_irq[dev] == SNDRV_AUTO_IRQ) {
-		snd_printk("specify snd_irq\n");
-		return -EINVAL;
+	if (irq[n] == SNDRV_AUTO_IRQ) {
+		snd_printk(KERN_ERR "%s: please specify irq\n", dev->bus_id);
+		return 0;
 	}
-	if (snd_dma1[dev] == SNDRV_AUTO_DMA) {
-		snd_printk("specify snd_dma1\n");
-		return -EINVAL;
+	if (dma1[n] == SNDRV_AUTO_DMA) {
+		snd_printk(KERN_ERR "%s: please specify dma1\n", dev->bus_id);
+		return 0;
 	}
-	card = snd_card_new(snd_index[dev], snd_id[dev], THIS_MODULE, 0);
-	if (card == NULL)
-		return -ENOMEM;
-	acard = (struct snd_card_cs4231 *)card->private_data;
-	if (snd_mpu_port[dev] < 0)
-		snd_mpu_port[dev] = SNDRV_AUTO_PORT;
-	if ((err = snd_cs4231_create(card, snd_port[dev], -1,
-				     snd_irq[dev],
-				     snd_dma1[dev],
-				     snd_dma2[dev],
-				     CS4231_HW_DETECT,
-				     0, &chip)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
+	return 1;
+}
 
-	if ((err = snd_cs4231_pcm(chip, 0, &pcm)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
-	if ((err = snd_cs4231_mixer(chip)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
-	if ((err = snd_cs4231_timer(chip, 0, NULL)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
+static int __devinit snd_cs4231_probe(struct device *dev, unsigned int n)
+{
+	struct snd_card *card;
+	struct snd_cs4231 *chip;
+	struct snd_pcm *pcm;
+	int error;
 
-	if (snd_mpu_irq[dev] >= 0 && snd_mpu_irq[dev] != SNDRV_AUTO_IRQ) {
-		if (snd_mpu401_uart_new(card, 0, MPU401_HW_CS4232,
-					snd_mpu_port[dev], 0,
-					snd_mpu_irq[dev], SA_INTERRUPT,
-					NULL) < 0)
-			snd_printk("MPU401 not detected\n");
-	}
+	card = snd_card_new(index[n], id[n], THIS_MODULE, 0);
+	if (!card)
+		return -EINVAL;
+
+	error = snd_cs4231_create(card, port[n], -1, irq[n], dma1[n], dma2[n],
+			CS4231_HW_DETECT, 0, &chip);
+	if (error < 0)
+		goto out;
+
+	card->private_data = chip;
+
+	error = snd_cs4231_pcm(chip, 0, &pcm);
+	if (error < 0)
+		goto out;
+
 	strcpy(card->driver, "CS4231");
 	strcpy(card->shortname, pcm->name);
+
 	sprintf(card->longname, "%s at 0x%lx, irq %d, dma %d",
-		pcm->name, chip->port, snd_irq[dev], snd_dma1[dev]);
-	if (snd_dma2[dev] >= 0)
-		sprintf(card->longname + strlen(card->longname), "&%d", snd_dma2[dev]);
-	if ((err = snd_card_register(card)) < 0) {
-		snd_card_free(card);
-		return err;
+		pcm->name, chip->port, irq[n], dma1[n]);
+	if (dma2[n] >= 0)
+		sprintf(card->longname + strlen(card->longname), "&%d", dma2[n]);
+
+	error = snd_cs4231_mixer(chip);
+	if (error < 0)
+		goto out;
+
+	error = snd_cs4231_timer(chip, 0, NULL);
+	if (error < 0)
+		goto out;
+
+	if (mpu_port[n] > 0 && mpu_port[n] != SNDRV_AUTO_PORT) {
+		if (mpu_irq[n] == SNDRV_AUTO_IRQ)
+			mpu_irq[n] = -1;
+		if (snd_mpu401_uart_new(card, 0, MPU401_HW_CS4232,
+					mpu_port[n], 0, mpu_irq[n],
+					mpu_irq[n] >= 0 ? IRQF_DISABLED : 0,
+					NULL) < 0)
+			printk(KERN_WARNING "%s: MPU401 not detected\n", dev->bus_id);
 	}
-	snd_cs4231_cards[dev] = card;
+
+	snd_card_set_dev(card, dev);
+
+	error = snd_card_register(card);
+	if (error < 0)
+		goto out;
+
+	dev_set_drvdata(dev, card);
+	return 0;
+
+out:	snd_card_free(card);
+	return error;
+}
+
+static int __devexit snd_cs4231_remove(struct device *dev, unsigned int n)
+{
+	snd_card_free(dev_get_drvdata(dev));
+	dev_set_drvdata(dev, NULL);
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int snd_cs4231_suspend(struct device *dev, unsigned int n, pm_message_t state)
+{
+	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_cs4231 *chip = card->private_data;
+
+	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
+	chip->suspend(chip);
+	return 0;
+}
+
+static int snd_cs4231_resume(struct device *dev, unsigned int n)
+{
+	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_cs4231 *chip = card->private_data;
+
+	chip->resume(chip);
+	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
+	return 0;
+}
+#endif
+
+static struct isa_driver snd_cs4231_driver = {
+	.match		= snd_cs4231_match,
+	.probe		= snd_cs4231_probe,
+	.remove		= __devexit_p(snd_cs4231_remove),
+#ifdef CONFIG_PM
+	.suspend	= snd_cs4231_suspend,
+	.resume		= snd_cs4231_resume,
+#endif
+	.driver		= {
+		.name	= DEV_NAME
+	}
+};
+
 static int __init alsa_card_cs4231_init(void)
 {
-	int dev, cards;
-
-	for (dev = cards = 0; dev < SNDRV_CARDS && snd_enable[dev]; dev++) {
-		if (snd_card_cs4231_probe(dev) >= 0)
-			cards++;
-	}
-	if (!cards) {
-#ifdef MODULE
-		snd_printk("CS4231 soundcard not found or device busy\n");
-#endif
-		return -ENODEV;
-	}
-	return 0;
+	return isa_register_driver(&snd_cs4231_driver, SNDRV_CARDS);
 }
 
 static void __exit alsa_card_cs4231_exit(void)
 {
-	int idx;
-
-	for (idx = 0; idx < SNDRV_CARDS; idx++)
-		snd_card_free(snd_cs4231_cards[idx]);
+	isa_unregister_driver(&snd_cs4231_driver);
 }
 
-module_init(alsa_card_cs4231_init)
-module_exit(alsa_card_cs4231_exit)
-
-#ifndef MODULE
-
-/* format is: snd-card-cs4231=snd_enable,snd_index,snd_id,
-			      snd_port,snd_mpu_port,snd_irq,snd_mpu_irq,
-			      snd_dma1,snd_dma2 */
-
-static int __init alsa_card_cs4231_setup(char *str)
-{
-	static unsigned __initdata nr_dev = 0;
-	int __attribute__ ((__unused__)) pnp = INT_MAX;
-
-	if (nr_dev >= SNDRV_CARDS)
-		return 0;
-	(void)(get_option(&str,&snd_enable[nr_dev]) == 2 &&
-	       get_option(&str,&snd_index[nr_dev]) == 2 &&
-	       get_id(&str,&snd_id[nr_dev]) == 2 &&
-	       get_option(&str,&pnp) == 2 &&
-	       get_option(&str,(int *)&snd_port[nr_dev]) == 2 &&
-	       get_option(&str,(int *)&snd_mpu_port[nr_dev]) == 2 &&
-	       get_option(&str,&snd_irq[nr_dev]) == 2 &&
-	       get_option(&str,&snd_mpu_irq[nr_dev]) == 2 &&
-	       get_option(&str,&snd_dma1[nr_dev]) == 2 &&
-	       get_option(&str,&snd_dma2[nr_dev]) == 2);
-	nr_dev++;
-	return 1;
-}
-
-__setup("snd-card-cs4231=", alsa_card_cs4231_setup);
-
-#endif /* ifndef MODULE */
+module_init(alsa_card_cs4231_init);
+module_exit(alsa_card_cs4231_exit);

@@ -19,7 +19,6 @@
  *
  */
 
-#include <sound/driver.h>
 #include <linux/init.h>
 #include <linux/moduleparam.h>
 #include <sound/core.h>
@@ -36,9 +35,13 @@
 #include <sound/seq_device.h>
 
 #if defined(CONFIG_SND_SEQ_DUMMY_MODULE)
-int seq_client_load[64] = {[0] = SNDRV_SEQ_CLIENT_DUMMY, [1 ... 63] = -1};
+int seq_client_load[15] = {[0] = SNDRV_SEQ_CLIENT_DUMMY, [1 ... 14] = -1};
 #else
-int seq_client_load[64] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+#ifndef TARGET_OS2
+int seq_client_load[15] = {[0 ... 14] = -1};
+#else
+int seq_client_load[15] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+#endif
 #endif
 int seq_default_timer_class = SNDRV_TIMER_CLASS_GLOBAL;
 int seq_default_timer_sclass = SNDRV_TIMER_SCLASS_NONE;
@@ -53,23 +56,23 @@ int seq_default_timer_device =
 int seq_default_timer_subdevice = 0;
 int seq_default_timer_resolution = 0;	/* Hz */
 
-MODULE_AUTHOR("Frank van de Pol <fvdpol@coil.demon.nl>, Jaroslav Kysela <perex@suse.cz>");
+MODULE_AUTHOR("Frank van de Pol <fvdpol@coil.demon.nl>, Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Advanced Linux Sound Architecture sequencer.");
 MODULE_LICENSE("GPL");
 
-//module_param_array(seq_client_load, int, NULL, 0444);
+module_param_array(seq_client_load, int, NULL, 0444);
 MODULE_PARM_DESC(seq_client_load, "The numbers of global (system) clients to load through kmod.");
-//module_param(seq_default_timer_class, int, 0644);
+module_param(seq_default_timer_class, int, 0644);
 MODULE_PARM_DESC(seq_default_timer_class, "The default timer class.");
-//module_param(seq_default_timer_sclass, int, 0644);
+module_param(seq_default_timer_sclass, int, 0644);
 MODULE_PARM_DESC(seq_default_timer_sclass, "The default timer slave class.");
-//module_param(seq_default_timer_card, int, 0644);
+module_param(seq_default_timer_card, int, 0644);
 MODULE_PARM_DESC(seq_default_timer_card, "The default timer card number.");
-//module_param(seq_default_timer_device, int, 0644);
+module_param(seq_default_timer_device, int, 0644);
 MODULE_PARM_DESC(seq_default_timer_device, "The default timer device number.");
-//module_param(seq_default_timer_subdevice, int, 0644);
+module_param(seq_default_timer_subdevice, int, 0644);
 MODULE_PARM_DESC(seq_default_timer_subdevice, "The default timer subdevice number.");
-//module_param(seq_default_timer_resolution, int, 0644);
+module_param(seq_default_timer_resolution, int, 0644);
 MODULE_PARM_DESC(seq_default_timer_resolution, "The default timer resolution in Hz.");
 
 /*
@@ -129,25 +132,3 @@ static void __exit alsa_seq_exit(void)
 
 module_init(alsa_seq_init)
 module_exit(alsa_seq_exit)
-
-  /* seq_clientmgr.c */
-EXPORT_SYMBOL(snd_seq_create_kernel_client);
-EXPORT_SYMBOL(snd_seq_delete_kernel_client);
-EXPORT_SYMBOL(snd_seq_kernel_client_enqueue);
-EXPORT_SYMBOL(snd_seq_kernel_client_enqueue_blocking);
-EXPORT_SYMBOL(snd_seq_kernel_client_dispatch);
-EXPORT_SYMBOL(snd_seq_kernel_client_ctl);
-EXPORT_SYMBOL(snd_seq_kernel_client_write_poll);
-EXPORT_SYMBOL(snd_seq_set_queue_tempo);
-  /* seq_memory.c */
-EXPORT_SYMBOL(snd_seq_expand_var_event);
-EXPORT_SYMBOL(snd_seq_dump_var_event);
-  /* seq_ports.c */
-EXPORT_SYMBOL(snd_seq_event_port_attach);
-EXPORT_SYMBOL(snd_seq_event_port_detach);
-  /* seq_lock.c */
-#if defined(CONFIG_SMP) || defined(CONFIG_SND_DEBUG)
-/*EXPORT_SYMBOL(snd_seq_sleep_in_lock);*/
-/*EXPORT_SYMBOL(snd_seq_sleep_timeout_in_lock);*/
-EXPORT_SYMBOL(snd_use_lock_sync_helper);
-#endif

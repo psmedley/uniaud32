@@ -35,7 +35,6 @@
  *     - Addition of experimental sync support.
  */
 
-#include <sound/driver.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <sound/core.h>
@@ -49,7 +48,11 @@
 
 /* list of allocated queues */
 static struct snd_seq_queue *queue_list[SNDRV_SEQ_MAX_QUEUES];
+#ifndef TARGET_OS2
+static DEFINE_SPINLOCK(queue_list_lock);
+#else
 static spinlock_t queue_list_lock = SPIN_LOCK_UNLOCKED;
+#endif
 /* number of queues allocated */
 static int num_queues;
 
@@ -111,7 +114,7 @@ static struct snd_seq_queue *queue_new(int owner, int locked)
 {
 	struct snd_seq_queue *q;
 
-	q = (struct snd_seq_queue *)kzalloc(sizeof(*q), GFP_KERNEL);
+	q = kzalloc(sizeof(*q), GFP_KERNEL);
 	if (q == NULL) {
 		snd_printd("malloc failed for snd_seq_queue_new()\n");
 		return NULL;
@@ -119,7 +122,7 @@ static struct snd_seq_queue *queue_new(int owner, int locked)
 
 	spin_lock_init(&q->owner_lock);
 	spin_lock_init(&q->check_lock);
-	init_MUTEX(&q->timer_mutex);
+	mutex_init(&q->timer_mutex);
 	snd_use_lock_init(&q->use_lock);
 	q->queue = -1;
 
@@ -516,7 +519,7 @@ int snd_seq_queue_use(int queueid, int client, int use)
 	queue = queueptr(queueid);
 	if (queue == NULL)
 		return -EINVAL;
-	down(&queue->timer_mutex);
+	mutex_lock(&queue->timer_mutex);
 	if (use) {
 		if (!test_and_set_bit(client, queue->clients_bitmap))
 			queue->clients++;
@@ -531,7 +534,7 @@ int snd_seq_queue_use(int queueid, int client, int use)
 	} else {
 		snd_seq_timer_close(queue);
 	}
-	up(&queue->timer_mutex);
+	mutex_unlock(&queue->timer_mutex);
 	queuefree(queue);
 	return 0;
 }
@@ -756,6 +759,7 @@ int snd_seq_control_queue(struct snd_seq_event *ev, int atomic, int hop)
 
 /*----------------------------------------------------------------*/
 
+#ifdef CONFIG_PROC_FS
 /* exported to seq_info.c */
 void snd_seq_info_queues_read(struct snd_info_entry *entry, 
 			      struct snd_info_buffer *buffer)
@@ -789,3 +793,5 @@ void snd_seq_info_queues_read(struct snd_info_entry *entry,
 		queuefree(q);
 	}
 }
+#endif /* CONFIG_PROC_FS */
+

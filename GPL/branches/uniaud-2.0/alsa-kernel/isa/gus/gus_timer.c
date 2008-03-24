@@ -1,6 +1,6 @@
 /*
  *  Routines for Gravis UltraSound soundcards - Timers
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *  GUS have similar timers as AdLib (OPL2/OPL3 chips).
  *
@@ -17,25 +17,24 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#include <sound/driver.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
-
-#define chip_t snd_gus_card_t
 
 /*
  *  Timer 1 - 80us
  */
 
-static int snd_gf1_timer1_start(snd_timer_t * timer)
+static int snd_gf1_timer1_start(struct snd_timer * timer)
 {
 	unsigned long flags;
 	unsigned char tmp;
 	unsigned int ticks;
-	snd_gus_card_t *gus;
+	struct snd_gus_card *gus;
 
 	gus = snd_timer_chip(timer);
 	spin_lock_irqsave(&gus->reg_lock, flags);
@@ -48,11 +47,11 @@ static int snd_gf1_timer1_start(snd_timer_t * timer)
 	return 0;
 }
 
-static int snd_gf1_timer1_stop(snd_timer_t * timer)
+static int snd_gf1_timer1_stop(struct snd_timer * timer)
 {
 	unsigned long flags;
 	unsigned char tmp;
-	snd_gus_card_t *gus;
+	struct snd_gus_card *gus;
 
 	gus = snd_timer_chip(timer);
 	spin_lock_irqsave(&gus->reg_lock, flags);
@@ -66,12 +65,12 @@ static int snd_gf1_timer1_stop(snd_timer_t * timer)
  *  Timer 2 - 320us
  */
 
-static int snd_gf1_timer2_start(snd_timer_t * timer)
+static int snd_gf1_timer2_start(struct snd_timer * timer)
 {
 	unsigned long flags;
 	unsigned char tmp;
 	unsigned int ticks;
-	snd_gus_card_t *gus;
+	struct snd_gus_card *gus;
 
 	gus = snd_timer_chip(timer);
 	spin_lock_irqsave(&gus->reg_lock, flags);
@@ -84,11 +83,11 @@ static int snd_gf1_timer2_start(snd_timer_t * timer)
 	return 0;
 }
 
-static int snd_gf1_timer2_stop(snd_timer_t * timer)
+static int snd_gf1_timer2_stop(struct snd_timer * timer)
 {
 	unsigned long flags;
 	unsigned char tmp;
-	snd_gus_card_t *gus;
+	struct snd_gus_card *gus;
 
 	gus = snd_timer_chip(timer);
 	spin_lock_irqsave(&gus->reg_lock, flags);
@@ -102,18 +101,18 @@ static int snd_gf1_timer2_stop(snd_timer_t * timer)
 
  */
 
-static void snd_gf1_interrupt_timer1(snd_gus_card_t * gus)
+static void snd_gf1_interrupt_timer1(struct snd_gus_card * gus)
 {
-	snd_timer_t *timer = gus->gf1.timer1;
+	struct snd_timer *timer = gus->gf1.timer1;
 
 	if (timer == NULL)
 		return;
 	snd_timer_interrupt(timer, timer->sticks);
 }
 
-static void snd_gf1_interrupt_timer2(snd_gus_card_t * gus)
+static void snd_gf1_interrupt_timer2(struct snd_gus_card * gus)
 {
-	snd_timer_t *timer = gus->gf1.timer2;
+	struct snd_timer *timer = gus->gf1.timer2;
 
 	if (timer == NULL)
 		return;
@@ -124,62 +123,40 @@ static void snd_gf1_interrupt_timer2(snd_gus_card_t * gus)
 
  */
 
-#ifdef TARGET_OS2
-static struct _snd_timer_hardware snd_gf1_timer1 =
+static struct snd_timer_hardware snd_gf1_timer1 =
 {
-	SNDRV_TIMER_HW_STOP,
-	80000,
-	256,
-        0,0,0,
-	snd_gf1_timer1_start,
-	snd_gf1_timer1_stop,
+	.flags =	SNDRV_TIMER_HW_STOP,
+	.resolution =	80000,
+	.ticks =	256,
+	.start =	snd_gf1_timer1_start,
+	.stop =		snd_gf1_timer1_stop,
 };
 
-static struct _snd_timer_hardware snd_gf1_timer2 =
+static struct snd_timer_hardware snd_gf1_timer2 =
 {
-	SNDRV_TIMER_HW_STOP,
-	320000,
-	256,
-        0,0,0,
-	snd_gf1_timer2_start,
-	snd_gf1_timer2_stop,
-};
-#else
-static struct _snd_timer_hardware snd_gf1_timer1 =
-{
-	flags:          SNDRV_TIMER_HW_STOP,
-	resolution:     80000,
-	ticks:          256,
-	start:          snd_gf1_timer1_start,
-	stop:           snd_gf1_timer1_stop,
+	.flags =	SNDRV_TIMER_HW_STOP,
+	.resolution =	320000,
+	.ticks =	256,
+	.start =	snd_gf1_timer2_start,
+	.stop =		snd_gf1_timer2_stop,
 };
 
-static struct _snd_timer_hardware snd_gf1_timer2 =
+static void snd_gf1_timer1_free(struct snd_timer *timer)
 {
-	flags:          SNDRV_TIMER_HW_STOP,
-	resolution:     320000,
-	ticks:          256,
-	start:          snd_gf1_timer2_start,
-	stop:           snd_gf1_timer2_stop,
-};
-#endif
-
-static void snd_gf1_timer1_free(snd_timer_t *timer)
-{
-	snd_gus_card_t *gus = snd_magic_cast(snd_gus_card_t, timer->private_data, return);
+	struct snd_gus_card *gus = timer->private_data;
 	gus->gf1.timer1 = NULL;
 }
 
-static void snd_gf1_timer2_free(snd_timer_t *timer)
+static void snd_gf1_timer2_free(struct snd_timer *timer)
 {
-	snd_gus_card_t *gus = snd_magic_cast(snd_gus_card_t, timer->private_data, return);
+	struct snd_gus_card *gus = timer->private_data;
 	gus->gf1.timer2 = NULL;
 }
 
-void snd_gf1_timers_init(snd_gus_card_t * gus)
+void snd_gf1_timers_init(struct snd_gus_card * gus)
 {
-	snd_timer_t *timer;
-	snd_timer_id_t tid;
+	struct snd_timer *timer;
+	struct snd_timer_id tid;
 
 	if (gus->gf1.timer1 != NULL || gus->gf1.timer2 != NULL)
 		return;
@@ -212,7 +189,7 @@ void snd_gf1_timers_init(snd_gus_card_t * gus)
 	gus->gf1.timer2 = timer;
 }
 
-void snd_gf1_timers_done(snd_gus_card_t * gus)
+void snd_gf1_timers_done(struct snd_gus_card * gus)
 {
 	snd_gf1_set_default_handlers(gus, SNDRV_GF1_HANDLER_TIMER1 | SNDRV_GF1_HANDLER_TIMER2);
 	if (gus->gf1.timer1) {

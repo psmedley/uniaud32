@@ -429,38 +429,38 @@ typedef struct wf_sample {
     struct wf_sample_offset loopStartOffset;
     struct wf_sample_offset loopEndOffset;
     struct wf_sample_offset sampleEndOffset;
-    INT16 FrequencyBias;
-    UCHAR8 SampleResolution:2;  /* sample_format */
-    UCHAR8 Unused1:1;
-    UCHAR8 Loop:1;
-    UCHAR8 Bidirectional:1;
-    UCHAR8 Unused2:1;
-    UCHAR8 Reverse:1;
-    UCHAR8 Unused3:1;
+    s16 FrequencyBias;
+    u8 SampleResolution:2;  /* sample_format */
+    u8 Unused1:1;
+    u8 Loop:1;
+    u8 Bidirectional:1;
+    u8 Unused2:1;
+    u8 Reverse:1;
+    u8 Unused3:1;
 } wavefront_sample;
 
 typedef struct wf_multisample {
-    INT16 NumberOfSamples;   /* log2 of the number of samples */
-    INT16 SampleNumber[NUM_MIDIKEYS];
+    s16 NumberOfSamples;   /* log2 of the number of samples */
+    s16 SampleNumber[NUM_MIDIKEYS];
 } wavefront_multisample;
 
 typedef struct wf_alias {
-    INT16 OriginalSample __attribute__ ((packed));
+    s16 OriginalSample;
 
-    struct wf_sample_offset sampleStartOffset __attribute__ ((packed));
-    struct wf_sample_offset loopStartOffset __attribute__ ((packed));
-    struct wf_sample_offset sampleEndOffset __attribute__ ((packed));
-    struct wf_sample_offset loopEndOffset __attribute__ ((packed));
+    struct wf_sample_offset sampleStartOffset;
+    struct wf_sample_offset loopStartOffset;
+    struct wf_sample_offset sampleEndOffset;
+    struct wf_sample_offset loopEndOffset;
 
-    INT16  FrequencyBias __attribute__ ((packed));
+    s16  FrequencyBias;
 
-    UCHAR8 SampleResolution:2  __attribute__ ((packed));
-    UCHAR8 Unused1:1  __attribute__ ((packed));
-    UCHAR8 Loop:1 __attribute__ ((packed));
-    UCHAR8 Bidirectional:1  __attribute__ ((packed));
-    UCHAR8 Unused2:1 __attribute__ ((packed));
-    UCHAR8 Reverse:1 __attribute__ ((packed));
-    UCHAR8 Unused3:1 __attribute__ ((packed)); 
+    u8 SampleResolution:2;
+    u8 Unused1:1;
+    u8 Loop:1;
+    u8 Bidirectional:1;
+    u8 Unused2:1;
+    u8 Reverse:1;
+    u8 Unused3:1;
     
     /* This structure is meant to be padded only to 16 bits on their
        original. Of course, whoever wrote their documentation didn't
@@ -471,19 +471,19 @@ typedef struct wf_alias {
        standard 16->32 bit issues.
     */
 
-    UCHAR8 sixteen_bit_padding __attribute__ ((packed));
-} wavefront_alias;
+    u8 sixteen_bit_padding;
+} __attribute__((packed)) wavefront_alias;
 
 typedef struct wf_drum {
-    UCHAR8 PatchNumber;
-    UCHAR8 MixLevel:7;
-    UCHAR8 Unmute:1;
-    UCHAR8 Group:4;
-    UCHAR8 Unused1:4;
-    UCHAR8 PanModSource:2;
-    UCHAR8 PanModulated:1;
-    UCHAR8 PanAmount:4;
-    UCHAR8 Unused2:1;
+    u8 PatchNumber;
+    u8 MixLevel:7;
+    u8 Unmute:1;
+    u8 Group:4;
+    u8 Unused1:4;
+    u8 PanModSource:2;
+    u8 PanModulated:1;
+    u8 PanAmount:4;
+    u8 Unused2:1;
 } wavefront_drum;
 
 typedef struct wf_drumkit {

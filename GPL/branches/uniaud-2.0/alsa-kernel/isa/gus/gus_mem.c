@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  GUS's memory allocation routines / bottom layer
  *
  *
@@ -15,34 +15,36 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#include <sound/driver.h>
+#include <linux/slab.h>
+#include <linux/string.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 #include <sound/info.h>
 
 #ifdef CONFIG_SND_DEBUG
-static void snd_gf1_mem_info_read(snd_info_entry_t *entry, 
-				  snd_info_buffer_t * buffer);
+static void snd_gf1_mem_info_read(struct snd_info_entry *entry, 
+				  struct snd_info_buffer *buffer);
 #endif
 
-void snd_gf1_mem_lock(snd_gf1_mem_t * alloc, int xup)
+void snd_gf1_mem_lock(struct snd_gf1_mem * alloc, int xup)
 {
 	if (!xup) {
-		down(&alloc->memory_mutex);
+		mutex_lock(&alloc->memory_mutex);
 	} else {
-		up(&alloc->memory_mutex);
+		mutex_unlock(&alloc->memory_mutex);
 	}
 }
 
-snd_gf1_mem_block_t *snd_gf1_mem_xalloc(snd_gf1_mem_t * alloc,
-				        snd_gf1_mem_block_t * block)
+static struct snd_gf1_mem_block *snd_gf1_mem_xalloc(struct snd_gf1_mem * alloc,
+					       struct snd_gf1_mem_block * block)
 {
-	snd_gf1_mem_block_t *pblock, *nblock;
+	struct snd_gf1_mem_block *pblock, *nblock;
 
-	nblock = (snd_gf1_mem_block_t *) kmalloc(sizeof(snd_gf1_mem_block_t), GFP_KERNEL);
+	nblock = kmalloc(sizeof(struct snd_gf1_mem_block), GFP_KERNEL);
 	if (nblock == NULL)
 		return NULL;
 	*nblock = *block;
@@ -56,8 +58,8 @@ snd_gf1_mem_block_t *snd_gf1_mem_xalloc(snd_gf1_mem_t * alloc,
 				alloc->first = nblock;
 			else
 				nblock->prev->next = nblock;
-			up(&alloc->memory_mutex);
-			return 0;
+			mutex_unlock(&alloc->memory_mutex);
+			return NULL;
 		}
 		pblock = pblock->next;
 	}
@@ -73,11 +75,11 @@ snd_gf1_mem_block_t *snd_gf1_mem_xalloc(snd_gf1_mem_t * alloc,
 	return nblock;
 }
 
-int snd_gf1_mem_xfree(snd_gf1_mem_t * alloc, snd_gf1_mem_block_t * block)
+int snd_gf1_mem_xfree(struct snd_gf1_mem * alloc, struct snd_gf1_mem_block * block)
 {
 	if (block->share) {	/* ok.. shared block */
 		block->share--;
-		up(&alloc->memory_mutex);
+		mutex_unlock(&alloc->memory_mutex);
 		return 0;
 	}
 	if (alloc->first == block) {
@@ -98,16 +100,15 @@ int snd_gf1_mem_xfree(snd_gf1_mem_t * alloc, snd_gf1_mem_block_t * block)
 		if (block->prev)
 			block->prev->next = block->next;
 	}
-	if (block->name)
-		kfree(block->name);
+	kfree(block->name);
 	kfree(block);
 	return 0;
 }
 
-snd_gf1_mem_block_t *snd_gf1_mem_look(snd_gf1_mem_t * alloc,
-				      unsigned int address)
+static struct snd_gf1_mem_block *snd_gf1_mem_look(struct snd_gf1_mem * alloc,
+					     unsigned int address)
 {
-	snd_gf1_mem_block_t *block;
+	struct snd_gf1_mem_block *block;
 
 	for (block = alloc->first; block; block = block->next) {
 		if (block->ptr == address) {
@@ -117,10 +118,10 @@ snd_gf1_mem_block_t *snd_gf1_mem_look(snd_gf1_mem_t * alloc,
 	return NULL;
 }
 
-snd_gf1_mem_block_t *snd_gf1_mem_share(snd_gf1_mem_t * alloc,
-				       unsigned int *share_id)
+static struct snd_gf1_mem_block *snd_gf1_mem_share(struct snd_gf1_mem * alloc,
+					      unsigned int *share_id)
 {
-	snd_gf1_mem_block_t *block;
+	struct snd_gf1_mem_block *block;
 
 	if (!share_id[0] && !share_id[1] &&
 	    !share_id[2] && !share_id[3])
@@ -131,19 +132,18 @@ snd_gf1_mem_block_t *snd_gf1_mem_share(snd_gf1_mem_t * alloc,
 	return NULL;
 }
 
-static int snd_gf1_mem_find(snd_gf1_mem_t * alloc,
-			    snd_gf1_mem_block_t * block,
+static int snd_gf1_mem_find(struct snd_gf1_mem * alloc,
+			    struct snd_gf1_mem_block * block,
 			    unsigned int size, int w_16, int align)
 {
-	snd_gf1_bank_info_t *info = w_16 ? alloc->banks_16 : alloc->banks_8;
+	struct snd_gf1_bank_info *info = w_16 ? alloc->banks_16 : alloc->banks_8;
 	unsigned int idx, boundary;
 	int size1;
-	snd_gf1_mem_block_t *pblock;
+	struct snd_gf1_mem_block *pblock;
 	unsigned int ptr1, ptr2;
 
-	align--;
-	if (w_16 && align < 1)
-		align = 1;
+	if (w_16 && align < 2)
+		align = 2;
 	block->flags = w_16 ? SNDRV_GF1_MEM_BLOCK_16BIT : 0;
 	block->owner = SNDRV_GF1_MEM_OWNER_DRIVER;
 	block->share = 0;
@@ -163,11 +163,11 @@ static int snd_gf1_mem_find(snd_gf1_mem_t * alloc,
 			if (pblock->next->ptr < boundary)
 				ptr2 = pblock->next->ptr;
 		}
-		ptr1 = (pblock->ptr + pblock->size + align) & ~align;
+		ptr1 = ALIGN(pblock->ptr + pblock->size, align);
 		if (ptr1 >= ptr2)
 			continue;
 		size1 = ptr2 - ptr1;
-		if (size <= size1) {
+		if ((int)size <= size1) {
 			block->ptr = ptr1;
 			block->size = size;
 			return 0;
@@ -184,19 +184,19 @@ static int snd_gf1_mem_find(snd_gf1_mem_t * alloc,
 	return -ENOMEM;
 }
 
-snd_gf1_mem_block_t *snd_gf1_mem_alloc(snd_gf1_mem_t * alloc, int owner,
+struct snd_gf1_mem_block *snd_gf1_mem_alloc(struct snd_gf1_mem * alloc, int owner,
 				       char *name, int size, int w_16, int align,
 				       unsigned int *share_id)
 {
-	snd_gf1_mem_block_t block, *nblock;
+	struct snd_gf1_mem_block block, *nblock;
 
 	snd_gf1_mem_lock(alloc, 0);
 	if (share_id != NULL) {
 		nblock = snd_gf1_mem_share(alloc, share_id);
 		if (nblock != NULL) {
-			if (size != nblock->size) {
+			if (size != (int)nblock->size) {
 				/* TODO: remove in the future */
-				snd_printk("snd_gf1_mem_alloc - share: sizes differ\n");
+				snd_printk(KERN_ERR "snd_gf1_mem_alloc - share: sizes differ\n");
 				goto __std;
 			}
 			nblock->share++;
@@ -212,16 +212,16 @@ snd_gf1_mem_block_t *snd_gf1_mem_alloc(snd_gf1_mem_t * alloc, int owner,
 	if (share_id != NULL)
 		memcpy(&block.share_id, share_id, sizeof(block.share_id));
 	block.owner = owner;
-	block.name = snd_kmalloc_strdup(name, GFP_KERNEL);
+	block.name = kstrdup(name, GFP_KERNEL);
 	nblock = snd_gf1_mem_xalloc(alloc, &block);
 	snd_gf1_mem_lock(alloc, 1);
 	return nblock;
 }
 
-int snd_gf1_mem_free(snd_gf1_mem_t * alloc, unsigned int address)
+int snd_gf1_mem_free(struct snd_gf1_mem * alloc, unsigned int address)
 {
 	int result;
-	snd_gf1_mem_block_t *block;
+	struct snd_gf1_mem_block *block;
 
 	snd_gf1_mem_lock(alloc, 0);
 	if ((block = snd_gf1_mem_look(alloc, address)) != NULL) {
@@ -233,16 +233,16 @@ int snd_gf1_mem_free(snd_gf1_mem_t * alloc, unsigned int address)
 	return -EINVAL;
 }
 
-int snd_gf1_mem_init(snd_gus_card_t * gus)
+int snd_gf1_mem_init(struct snd_gus_card * gus)
 {
-	snd_gf1_mem_t *alloc;
-	snd_gf1_mem_block_t block;
+	struct snd_gf1_mem *alloc;
+	struct snd_gf1_mem_block block;
 #ifdef CONFIG_SND_DEBUG
-	snd_info_entry_t *entry;
+	struct snd_info_entry *entry;
 #endif
 
 	alloc = &gus->gf1.mem_alloc;
-	init_MUTEX(&alloc->memory_mutex);
+	mutex_init(&alloc->memory_mutex);
 	alloc->first = alloc->last = NULL;
 	if (!gus->gf1.memory)
 		return 0;
@@ -252,37 +252,26 @@ int snd_gf1_mem_init(snd_gus_card_t * gus)
 	if (gus->gf1.enh_mode) {
 		block.ptr = 0;
 		block.size = 1024;
-		block.name = snd_kmalloc_strdup("InterWave LFOs", GFP_KERNEL);
+		block.name = kstrdup("InterWave LFOs", GFP_KERNEL);
 		if (snd_gf1_mem_xalloc(alloc, &block) == NULL)
 			return -ENOMEM;
 	}
 	block.ptr = gus->gf1.default_voice_address;
 	block.size = 4;
-	block.name = snd_kmalloc_strdup("Voice default (NULL's)", GFP_KERNEL);
+	block.name = kstrdup("Voice default (NULL's)", GFP_KERNEL);
 	if (snd_gf1_mem_xalloc(alloc, &block) == NULL)
 		return -ENOMEM;
 #ifdef CONFIG_SND_DEBUG
-	alloc->info_entry = NULL;
-	entry = snd_info_create_card_entry(gus->card, "gusmem", gus->card->proc_root);
-	if (entry) {
-		entry->content = SNDRV_INFO_CONTENT_TEXT;
-		entry->c.text.read_size = 256 * 1024;
-		entry->c.text.read = snd_gf1_mem_info_read;
-		entry->private_data = gus;
-		if (snd_info_register(entry) < 0) {
-			snd_info_free_entry(entry);
-			entry = NULL;
-		}
-	}
-	alloc->info_entry = entry;
+	if (! snd_card_proc_new(gus->card, "gusmem", &entry))
+		snd_info_set_text_ops(entry, gus, snd_gf1_mem_info_read);
 #endif
 	return 0;
 }
 
-int snd_gf1_mem_done(snd_gus_card_t * gus)
+int snd_gf1_mem_done(struct snd_gus_card * gus)
 {
-	snd_gf1_mem_t *alloc;
-	snd_gf1_mem_block_t *block, *nblock;
+	struct snd_gf1_mem *alloc;
+	struct snd_gf1_mem_block *block, *nblock;
 
 	alloc = &gus->gf1.mem_alloc;
 	block = alloc->first;
@@ -291,26 +280,22 @@ int snd_gf1_mem_done(snd_gus_card_t * gus)
 		snd_gf1_mem_xfree(alloc, block);
 		block = nblock;
 	}
-#ifdef CONFIG_SND_DEBUG
-	if (alloc->info_entry)
-		snd_info_unregister(alloc->info_entry);
-#endif
 	return 0;
 }
 
 #ifdef CONFIG_SND_DEBUG
-static void snd_gf1_mem_info_read(snd_info_entry_t *entry, 
-				  snd_info_buffer_t * buffer)
+static void snd_gf1_mem_info_read(struct snd_info_entry *entry, 
+				  struct snd_info_buffer *buffer)
 {
-	snd_gus_card_t *gus;
-	snd_gf1_mem_t *alloc;
-	snd_gf1_mem_block_t *block;
+	struct snd_gus_card *gus;
+	struct snd_gf1_mem *alloc;
+	struct snd_gf1_mem_block *block;
 	unsigned int total, used;
 	int i;
 
-	gus = snd_magic_cast(snd_gus_card_t, entry->private_data, return);
+	gus = entry->private_data;
 	alloc = &gus->gf1.mem_alloc;
-	down(&alloc->memory_mutex);
+	mutex_lock(&alloc->memory_mutex);
 	snd_iprintf(buffer, "8-bit banks       : \n    ");
 	for (i = 0; i < 4; i++)
 		snd_iprintf(buffer, "0x%06x (%04ik)%s", alloc->banks_8[i].address, alloc->banks_8[i].size >> 10, i + 1 < 4 ? "," : "");
@@ -354,7 +339,7 @@ static void snd_gf1_mem_info_read(snd_info_entry_t *entry,
 	}
 	snd_iprintf(buffer, "  Total: memory = %i, used = %i, free = %i\n",
 		    total, used, total - used);
-	up(&alloc->memory_mutex);
+	mutex_unlock(&alloc->memory_mutex);
 #if 0
 	ultra_iprintf(buffer, "  Verify: free = %i, max 8-bit block = %i, max 16-bit block = %i\n",
 		      ultra_memory_free_size(card, &card->gf1.mem_alloc),

@@ -1,7 +1,7 @@
 /*
  *  ALSA sequencer Memory Manager
  *  Copyright (c) 1998 by Frank van de Pol <fvdpol@coil.demon.nl>
- *                        Jaroslav Kysela <perex@suse.cz>
+ *                        Jaroslav Kysela <perex@perex.cz>
  *                2000 by Takashi Iwai <tiwai@suse.de>
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -20,7 +20,6 @@
  *
  */
 
-#include <sound/driver.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
@@ -31,10 +30,6 @@
 #include "seq_queue.h"
 #include "seq_info.h"
 #include "seq_lock.h"
-
-/* semaphore in struct file record */
-#define semaphore_of(fp)	((fp)->f_dentry->d_inode->i_sem)
-
 
 static inline int snd_seq_pool_available(struct snd_seq_pool *pool)
 {
@@ -122,6 +117,8 @@ int snd_seq_dump_var_event(const struct snd_seq_event *event,
 	return 0;
 }
 
+EXPORT_SYMBOL(snd_seq_dump_var_event);
+
 
 /*
  * exported:
@@ -153,7 +150,7 @@ int snd_seq_expand_var_event(const struct snd_seq_event *event, int count, char 
 		return len;
 	newlen = len;
 	if (size_aligned > 0)
-		newlen = ((len + size_aligned - 1) / size_aligned) * size_aligned;
+		newlen = roundup(len, size_aligned);
 	if (count < newlen)
 		return -EAGAIN;
 
@@ -171,6 +168,7 @@ int snd_seq_expand_var_event(const struct snd_seq_event *event, int count, char 
 	return err < 0 ? err : newlen;
 }
 
+EXPORT_SYMBOL(snd_seq_expand_var_event);
 
 /*
  * release this cell, free extended data if available
@@ -431,7 +429,12 @@ int snd_seq_pool_done(struct snd_seq_pool *pool)
 			snd_printk(KERN_WARNING "snd_seq_pool_done timeout: %d cells remain\n", atomic_read(&pool->counter));
 			break;
 		}
+#ifndef TARGET_OS2
 		schedule_timeout_uninterruptible(1);
+#else
+		set_current_state(TASK_UNINTERRUPTIBLE); 
+		schedule_timeout(1);
+#endif
 		max_count--;
 	}
 	
@@ -459,7 +462,7 @@ struct snd_seq_pool *snd_seq_pool_new(int poolsize)
 	struct snd_seq_pool *pool;
 
 	/* create pool block */
-	pool = (struct snd_seq_pool *)kzalloc(sizeof(*pool), GFP_KERNEL);
+	pool = kzalloc(sizeof(*pool), GFP_KERNEL);
 	if (pool == NULL) {
 		snd_printd("seq: malloc failed for pool\n");
 		return NULL;

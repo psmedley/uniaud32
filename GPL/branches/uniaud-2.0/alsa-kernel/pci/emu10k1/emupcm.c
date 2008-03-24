@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *                   Creative Labs, Inc.
  *  Routines for control of EMU10K1 chips / PCM routines
  *  Multichannel PCM support Copyright (c) Lee Revell <rlrevell@joe-job.com>
@@ -26,7 +26,6 @@
  *
  */
 
-#include <sound/driver.h>
 #include <linux/pci.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
@@ -358,7 +357,7 @@ static void snd_emu10k1_pcm_init_voice(struct snd_emu10k1 *emu,
 	snd_emu10k1_ptr_write(emu, PTRX, voice, (send_amount[0] << 8) | send_amount[1]);
 	snd_emu10k1_ptr_write(emu, DSL, voice, end_addr | (send_amount[3] << 24));
 	snd_emu10k1_ptr_write(emu, PSST, voice, start_addr | (send_amount[2] << 24));
-	if (emu->card_capabilities->emu1010)
+	if (emu->card_capabilities->emu_model)
 		pitch_target = PITCH_48000; /* Disable interpolators on emu1010 card */
 	else 
 		pitch_target = emu10k1_calc_pitch_target(runtime->rate);
@@ -701,7 +700,7 @@ static void snd_emu10k1_playback_trigger_voice(struct snd_emu10k1 *emu, struct s
 	voice = evoice->number;
 
 	pitch = snd_emu10k1_rate_to_pitch(runtime->rate) >> 8;
-	if (emu->card_capabilities->emu1010)
+	if (emu->card_capabilities->emu_model)
 		pitch_target = PITCH_48000; /* Disable interpolators on emu1010 card */
 	else 
 		pitch_target = emu10k1_calc_pitch_target(runtime->rate);
@@ -1232,25 +1231,27 @@ static int snd_emu10k1_capture_efx_open(struct snd_pcm_substream *substream)
 	runtime->hw.rates = SNDRV_PCM_RATE_48000;
 	runtime->hw.rate_min = runtime->hw.rate_max = 48000;
 	spin_lock_irq(&emu->reg_lock);
-	if (emu->card_capabilities->emu1010) {
-		/* TODO 
+	if (emu->card_capabilities->emu_model) {
+		/*  Nb. of channels has been increased to 16 */
+		/* TODO
 		 * SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE
 		 * SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000 |
 		 * SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000 |
 		 * SNDRV_PCM_RATE_176400 | SNDRV_PCM_RATE_192000
 		 * rate_min = 44100,
 		 * rate_max = 192000,
-		 * channels_min = 8,
-		 * channels_max = 8,
+		 * channels_min = 16,
+		 * channels_max = 16,
 		 * Need to add mixer control to fix sample rate
 		 *                 
-		 * There are 16 mono channels of 16bits each.
+		 * There are 32 mono channels of 16bits each.
 		 * 24bit Audio uses 2x channels over 16bit
 		 * 96kHz uses 2x channels over 48kHz
 		 * 192kHz uses 4x channels over 48kHz
-		 * So, for 48kHz 24bit, one has 8 channels
-		 * for 96kHz 24bit, one has 4 channels
-		 * for 192kHz 24bit, one has 2 channels
+		 * So, for 48kHz 24bit, one has 16 channels
+		 * for 96kHz 24bit, one has 8 channels
+		 * for 192kHz 24bit, one has 4 channels
+		 *
 		 */
 #if 1
 		switch (emu->emu1010.internal_clock) {
@@ -1258,13 +1259,15 @@ static int snd_emu10k1_capture_efx_open(struct snd_pcm_substream *substream)
 			/* For 44.1kHz */
 			runtime->hw.rates = SNDRV_PCM_RATE_44100;
 			runtime->hw.rate_min = runtime->hw.rate_max = 44100;
-			runtime->hw.channels_min = runtime->hw.channels_max = 8;
+			runtime->hw.channels_min =
+				runtime->hw.channels_max = 16;
 			break;
 		case 1:
 			/* For 48kHz */
 			runtime->hw.rates = SNDRV_PCM_RATE_48000;
 			runtime->hw.rate_min = runtime->hw.rate_max = 48000;
-			runtime->hw.channels_min = runtime->hw.channels_max = 8;
+			runtime->hw.channels_min =
+				runtime->hw.channels_max = 16;
 			break;
 		};
 #endif
@@ -1282,7 +1285,7 @@ static int snd_emu10k1_capture_efx_open(struct snd_pcm_substream *substream)
 #endif
 		runtime->hw.formats = SNDRV_PCM_FMTBIT_S32_LE;
 		/* efx_voices_mask[0] is expected to be zero
- 		 * efx_voices_mask[1] is expected to have 16bits set
+ 		 * efx_voices_mask[1] is expected to have 32bits set
 		 */
 	} else {
 		runtime->hw.channels_min = runtime->hw.channels_max = 0;
@@ -1787,11 +1790,24 @@ int __devinit snd_emu10k1_pcm_efx(struct snd_emu10k1 * emu, int device, struct s
 	/* emu->efx_voices_mask[0] = FXWC_DEFAULTROUTE_C | FXWC_DEFAULTROUTE_A; */
 	if (emu->audigy) {
 		emu->efx_voices_mask[0] = 0;
-		emu->efx_voices_mask[1] = 0xffff;
+		if (emu->card_capabilities->emu_model)
+			/* Pavel Hofman - 32 voices will be used for
+			 * capture (write mode) -
+			 * each bit = corresponding voice
+			 */
+			emu->efx_voices_mask[1] = 0xffffffff;
+		else
+			emu->efx_voices_mask[1] = 0xffff;
 	} else {
 		emu->efx_voices_mask[0] = 0xffff0000;
 		emu->efx_voices_mask[1] = 0;
 	}
+	/* For emu1010, the control has to set 32 upper bits (voices)
+	 * out of the 64 bits (voices) to true for the 16-channels capture
+	 * to work correctly. Correct A_FXWC2 initial value (0xffffffff)
+	 * is already defined but the snd_emu10k1_pcm_efx_voices_mask
+	 * control can override this register's value.
+	 */
 	kctl = snd_ctl_new1(&snd_emu10k1_pcm_efx_voices_mask, emu);
 	if (!kctl)
 		return -ENOMEM;

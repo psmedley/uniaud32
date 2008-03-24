@@ -1,11 +1,4 @@
-/*
- * Includes fixes from Helper script MapSym.cmd by Knut (aka bird).
- *
- * Copyright (c) 2002 knut st. osmundsen (bird@anduin.net)
- *
- * Project Odin Software License can be found in LICENSE.TXT
- *
- */
+/* $Id: wat2map.cmd,v 1.1.1.1 2003/07/02 13:57:04 eleph Exp $ */
 
 /* SCCSID = %W% %E% */
 /****************************************************************************
@@ -53,25 +46,24 @@
 */
 /* <End of helpText> - don't modify this string - used to flag end of help. */
 /****************************************************************************/
+CALL RXFUNCADD 'sysloadfuncs','rexxutil','sysloadfuncs'
+call sysloadfuncs
 
-Parse arg arg1 arg2
-
+Parse Arg arg1 arg2 rest
 If (Length( arg1 ) = 0) | (Verify( arg1, '/-?' ) = 0) Then Do;
    Do i = 1 to 1000
       helpText = Sourceline(i)
       If Pos( '<End of helpText>', helpText ) <> 0 Then Leave;       /* quit loop */
       Say helpText
    End;
-   Return 1
+   Return
 End;
-
-If Length( arg2 ) == 0 Then Do;
+If Length( arg2 ) = 0 Then Do;
    Say " Way to go Beaver... How about an out-put file name ?"
-   Return 2
+   Return
 End;
 mapFile = arg1          /* Can be Null, in which case we pull from stdin. */
 outFile = arg2
-fFlatMode = 0;
 
 /* erase outfile */  /* kill the old map file */
 rc=SysFileDelete(outfile)
@@ -80,22 +72,18 @@ rc=SysFileDelete(outfile)
 /*--- 1.  Find & translate module name.  ---*/
 Do While Lines( mapFile ) <> 0
    watcomText = LineIn( mapFile )
-   /*Parse Value watcomText With "Executable Image: " fileName "." fileExt*/
-   Parse Value watcomText With "Executable Image: " sFilename
-   If (sFilename <> '') Then Do;
-      sFilename = filespec('name', sFilename);
-      Parse Var sFilename fileName "." fileExt
-      If fileName <> "" Then Do;   /* Found match */
-         call lineout outfile ,' '
-         call lineout outfile ,' ' || fileName
-         call lineout outfile ,' '
-         Leave;                    /* Break from loop. */
-      End;
+   Parse Value watcomText With "Executable Image: " fileName "." fileExt
+
+   If fileName <> "" Then Do;   /* Found match */
+      call lineout outfile ,' '
+      call lineout outfile ,' ' || fileName
+      call lineout outfile ,' '
+      Leave;                    /* Break from loop. */
    End;
 End
 If Lines( mapFile ) = 0 Then Do;        /* If end of file ... */
    Say "Error:  Expected to find line with text 'Executable Image:' "
-   Return 3
+   Return
 End
 
 /*--- 2.  Skip the group definitions - Rob's notes say we don't need them. -*/
@@ -108,35 +96,18 @@ Do While Lines( mapFile ) <> 0
 End
 If Lines( mapFile ) = 0 Then Do;        /* If end of file ... */
    Say "Error:  Expected to find line with text 'Segments ... Size' "
-   Return 4
+   Return
 End
+junk = LineIn( mapFile )       /* Discard a couple lines of formatting. */
+junk = LineIn( mapFile )
 
-
-junk = LineIn( mapFile )      /* Discard a couple lines of formatting. */
-junk = LineIn( mapFile )      /* Discard a couple lines of formatting. */
 /*--- 4.  Translate segment table.  ---*/
-/*"Segment                Class          Group          Address         Size"*/
-iClass = pos('Class', watcomText);
-iGroup = pos('Group', watcomText);
-iAddress = pos('Address', watcomText);
-iSize = pos('Size', watcomText);
-
-call lineout outfile , " Start         Length     Name                   Class"  /* bird bird bird fixed!!! */
+call lineout outfile , " Start     Length     Name                   Class"
 Do While Lines( mapFile ) <> 0
    watcomText = LineIn( mapFile )
-   /* do it the hard way to make sure we support spaces segment names. */
-   segName = strip(substr(watcomText, 1, iClass-1));
+   Parse Value watcomText With segName className groupName address size .
    If segName = "" Then Leave;          /* Empty line, break from loop. */
-   className = strip(substr(watcomText, iClass, iGroup-iClass));
-   groupName = strip(substr(watcomText, iGroup, iAddress-iGroup));
-   address = strip(substr(watcomText, iAddress, iSize-iAddress));
-   size = strip(substr(watcomText, iSize));
-   if (pos(':', address) <= 0) then     /* NT binaries doesn't have a segment number. */
-   do
-      fFlatMode = 1;
-      address = '0001:'||address;
-   end
-   length = right(strip(strip(size), 'L', '0'), 9, '0') || 'H     '
+   length = Substr( size, 4, 5 ) || 'H     '
    segName = Left( segName, 23 )
    call lineout outfile ,' ' || address || ' ' || length || segName || className
 End
@@ -152,20 +123,10 @@ call lineout outfile ,'  Address         Publics by Value'
 
 Do While Lines( mapFile ) <> 0
    watcomText = LineIn( mapFile )
-   Parse Value watcomText With seg ':' ofs 14 . 16 declaration
-   if (fFlatMode) then
-   do
-      seg = '0001';
-      Parse Value watcomText With ofs 9 . 16 declaration
-   end
-   else
-   do  /* kso: more workarounds */
-       if (is_Hex(seg) & length(ofs) > 4 & \is_Hex(substr(ofs,5,1))) then
-           ofs = '0000'||left(ofs,4);
-   end
-   /*say ofs  '-'declaration*/
+   Parse Value watcomText With seg ':' ofs 10 . 16 declaration
    is_Adress = (is_Hex(seg) = 1) & (is_Hex(ofs) = 1)
-   If ((is_Adress = 1) & (seg <> '0000')) Then Do;          /* bird: skip symbols with segment 0. (__DOSseg__) */
+   If (is_Adress = 1) Then Do;
+
       /*--- Haven't done the work to xlate operator symbols - skip the line. */
       If Pos( '::operator', declaration ) <> 0 Then Iterate;
 
@@ -196,23 +157,9 @@ Do While Lines( mapFile ) <> 0
 
       call lineout outfile ,' ' || seg || ':' || ofs || '       ' || declaration
    End;
-
-   /* check for entry point, if found we add it and quit. */
-   if (pos('Entry point address', watcomText) > 0) then
-   do
-       parse var watcomText 'Entry point address:' sEntryPoint
-       if (pos(':', sEntryPoint) <= 0) then
-           sEntryPoint = '0001:'||strip(sEntryPoint);
-       call lineout outfile, ''
-       call lineout outfile, 'Program entry point at' strip(sEntryPoint)
-       leave;
-   end
 End; /* End While through symbol section, end of input file. */
 
-call stream outfile, 'c', 'close';
-call stream mapfile, 'c', 'close';
-
-Return 0;  /* End of program.  */
+Return;  /* End of program.  */
 
 /*--- Helper subroutines. ---*/
 
@@ -236,7 +183,7 @@ StripMatchedParen:
       string = StripMatchedParen( first ) || rest
       Return StripMatchedParen( string )
    End;
-return;
+End;
 
 ReplaceSubstr:
 /* Replaces oldPat (old pattern) with newPat (new pattern) in string. */
@@ -250,10 +197,10 @@ ReplaceSubstr:
       string = first || newPat || rest
    End;
    Return string
-return;
+End;
 
 is_Hex:
 /* Returns 1 if String is valid hex number, 0 otherwise. */
    Parse Arg string
    Return (Length(string) > 0) &  (Verify( string, '0123456789abcdefABCDEF' ) = 0)
-return;
+End;

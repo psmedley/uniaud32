@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Routines for control of ICS 2101 chip and "mixer" in GF1 chip
  *
  *
@@ -15,46 +15,31 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#include <sound/driver.h>
+#include <linux/time.h>
+#include <linux/wait.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/gus.h>
-
-#define chip_t snd_gus_card_t
 
 /*
  *
  */
 
-#ifdef TARGET_OS2
 #define GF1_SINGLE(xname, xindex, shift, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_gf1_info_single, \
-  snd_gf1_get_single, snd_gf1_put_single, \
-  shift | (invert << 8) }
-#else
-#define GF1_SINGLE(xname, xindex, shift, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_gf1_info_single, \
-  get: snd_gf1_get_single, put: snd_gf1_put_single, \
-  private_value: shift | (invert << 8) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_gf1_info_single, \
+  .get = snd_gf1_get_single, .put = snd_gf1_put_single, \
+  .private_value = shift | (invert << 8) }
 
-static int snd_gf1_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
-{
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
-	uinfo->count = 1;
-	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = 1;
-	return 0;
-}
+#define snd_gf1_info_single	snd_ctl_boolean_mono_info
 
-static int snd_gf1_get_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
+static int snd_gf1_get_single(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
-	snd_gus_card_t *gus = snd_kcontrol_chip(kcontrol);
+	struct snd_gus_card *gus = snd_kcontrol_chip(kcontrol);
 	int shift = kcontrol->private_value & 0xff;
 	int invert = (kcontrol->private_value >> 8) & 1;
 	
@@ -64,9 +49,9 @@ static int snd_gf1_get_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * 
 	return 0;
 }
 
-static int snd_gf1_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
+static int snd_gf1_put_single(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
-	snd_gus_card_t *gus = snd_kcontrol_chip(kcontrol);
+	struct snd_gus_card *gus = snd_kcontrol_chip(kcontrol);
 	unsigned long flags;
 	int shift = kcontrol->private_value & 0xff;
 	int invert = (kcontrol->private_value >> 8) & 1;
@@ -87,21 +72,13 @@ static int snd_gf1_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * 
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define ICS_DOUBLE(xname, xindex, addr) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_ics_info_double, \
-  snd_ics_get_double, snd_ics_put_double, \
-  addr }
-#else
-#define ICS_DOUBLE(xname, xindex, addr) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_ics_info_double, \
-  get: snd_ics_get_double, put: snd_ics_put_double, \
-  private_value: addr }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
+  .info = snd_ics_info_double, \
+  .get = snd_ics_get_double, .put = snd_ics_put_double, \
+  .private_value = addr }
 
-static int snd_ics_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
+static int snd_ics_info_double(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_info *uinfo)
 {
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = 2;
@@ -110,9 +87,9 @@ static int snd_ics_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * u
 	return 0;
 }
 
-static int snd_ics_get_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
+static int snd_ics_get_double(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
-	snd_gus_card_t *gus = snd_kcontrol_chip(kcontrol);
+	struct snd_gus_card *gus = snd_kcontrol_chip(kcontrol);
 	unsigned long flags;
 	int addr = kcontrol->private_value & 0xff;
 	unsigned char left, right;
@@ -126,9 +103,9 @@ static int snd_ics_get_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * 
 	return 0;
 }
 
-static int snd_ics_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol)
+static int snd_ics_put_double(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
-	snd_gus_card_t *gus = snd_kcontrol_chip(kcontrol);
+	struct snd_gus_card *gus = snd_kcontrol_chip(kcontrol);
 	unsigned long flags;
 	int addr = kcontrol->private_value & 0xff;
 	int change;
@@ -161,17 +138,13 @@ static int snd_ics_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * 
 	return change;
 }
 
-#define GF1_CONTROLS (sizeof(snd_gf1_controls)/sizeof(snd_kcontrol_new_t))
-
-static snd_kcontrol_new_t snd_gf1_controls[] = {
+static struct snd_kcontrol_new snd_gf1_controls[] = {
 GF1_SINGLE("Master Playback Switch", 0, 1, 1),
 GF1_SINGLE("Line Switch", 0, 0, 1),
 GF1_SINGLE("Mic Switch", 0, 2, 0)
 };
 
-#define ICS_CONTROLS (sizeof(snd_ics_controls)/sizeof(snd_kcontrol_new_t))
-
-static snd_kcontrol_new_t snd_ics_controls[] = {
+static struct snd_kcontrol_new snd_ics_controls[] = {
 GF1_SINGLE("Master Playback Switch", 0, 1, 1),
 ICS_DOUBLE("Master Playback Volume", 0, SNDRV_ICS_MASTER_DEV),
 ICS_DOUBLE("Synth Playback Volume", 0, SNDRV_ICS_GF1_DEV),
@@ -182,10 +155,11 @@ ICS_DOUBLE("Mic Playback Volume", 0, SNDRV_ICS_MIC_DEV),
 ICS_DOUBLE("CD Playback Volume", 0, SNDRV_ICS_CD_DEV)
 };
 
-int snd_gf1_new_mixer(snd_gus_card_t * gus)
+int snd_gf1_new_mixer(struct snd_gus_card * gus)
 {
-	snd_card_t *card;
-	int idx, err, max;
+	struct snd_card *card;
+	unsigned int idx, max;
+	int err;
 
 	snd_assert(gus != NULL, return -EINVAL);
 	card = gus->card;
@@ -202,13 +176,13 @@ int snd_gf1_new_mixer(snd_gus_card_t * gus)
 	}
 
 	if (!gus->ics_flag) {
-		max = gus->ess_flag ? 1 : GF1_CONTROLS;
+		max = gus->ess_flag ? 1 : ARRAY_SIZE(snd_gf1_controls);
 		for (idx = 0; idx < max; idx++) {
 			if ((err = snd_ctl_add(card, snd_ctl_new1(&snd_gf1_controls[idx], gus))) < 0)
 				return err;
 		}
 	} else {
-		for (idx = 0; idx < ICS_CONTROLS; idx++) {
+		for (idx = 0; idx < ARRAY_SIZE(snd_ics_controls); idx++) {
 			if ((err = snd_ctl_add(card, snd_ctl_new1(&snd_ics_controls[idx], gus))) < 0)
 				return err;
 		}

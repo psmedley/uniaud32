@@ -24,7 +24,6 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
   
-#include <sound/driver.h>
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -65,45 +64,32 @@ static int vaio_hack;			/* disabled */
 static int reset_workaround;
 static int reset_workaround_2;
 
-//module_param(index, int, 0444);
+module_param(index, int, 0444);
 MODULE_PARM_DESC(index, "Index value for " CARD_NAME " soundcard.");
-//module_param(id, charp, 0444);
+module_param(id, charp, 0444);
 MODULE_PARM_DESC(id, "ID string for " CARD_NAME " soundcard.");
-//module_param(playback_bufsize, int, 0444);
+module_param(playback_bufsize, int, 0444);
 MODULE_PARM_DESC(playback_bufsize, "DAC frame size in kB for " CARD_NAME " soundcard.");
-//module_param(capture_bufsize, int, 0444);
+module_param(capture_bufsize, int, 0444);
 MODULE_PARM_DESC(capture_bufsize, "ADC frame size in kB for " CARD_NAME " soundcard.");
-//module_param(force_ac97, bool, 0444);
+module_param(force_ac97, bool, 0444);
 MODULE_PARM_DESC(force_ac97, "Force to use AC97 codec for " CARD_NAME " soundcard.");
-//module_param(buffer_top, int, 0444);
+module_param(buffer_top, int, 0444);
 MODULE_PARM_DESC(buffer_top, "Set the top address of audio buffer for " CARD_NAME " soundcard.");
-//module_param(use_cache, bool, 0444);
+module_param(use_cache, bool, 0444);
 MODULE_PARM_DESC(use_cache, "Enable the cache for coefficient table access.");
-//module_param(vaio_hack, bool, 0444);
+module_param(vaio_hack, bool, 0444);
 MODULE_PARM_DESC(vaio_hack, "Enable workaround for Sony VAIO notebooks.");
-//module_param(reset_workaround, bool, 0444);
+module_param(reset_workaround, bool, 0444);
 MODULE_PARM_DESC(reset_workaround, "Enable AC97 RESET workaround for some laptops.");
-//module_param(reset_workaround_2, bool, 0444);
+module_param(reset_workaround_2, bool, 0444);
 MODULE_PARM_DESC(reset_workaround_2, "Enable extended AC97 RESET workaround for some other laptops.");
 
 /* just for backward compatibility */
 static int enable;
-//module_param(enable, bool, 0444);
+module_param(enable, bool, 0444);
 
 
-/* nm256 */
-#ifndef PCI_VENDOR_ID_NEOMAGIC
-#define PCI_VENDOR_ID_NEOMEGIC          0x10c8
-#endif
-#ifndef PCI_DEVICE_ID_NEOMAGIC_NM256AV_AUDIO
-#define PCI_DEVICE_ID_NEOMAGIC_NM256AV_AUDIO 0x8005
-#endif
-#ifndef PCI_DEVICE_ID_NEOMAGIC_NM256ZX_AUDIO
-#define PCI_DEVICE_ID_NEOMAGIC_NM256ZX_AUDIO 0x8006
-#endif
-#ifndef PCI_DEVICE_ID_NEOMAGIC_NM256XL_PLUS_AUDIO
-#define PCI_DEVICE_ID_NEOMAGIC_NM256XL_PLUS_AUDIO 0x8016
-#endif
 
 /*
  * hw definitions
@@ -249,7 +235,7 @@ struct nm256 {
 
 	int irq;
 	int irq_acks;
-	irqreturn_t (*interrupt)(int, void *, struct pt_regs *);
+	irq_handler_t interrupt;
 	int badintrcount;		/* counter to check bogus interrupts */
 	struct mutex irq_mutex;
 
@@ -478,7 +464,7 @@ static int snd_nm256_acquire_irq(struct nm256 *chip)
 {
 	mutex_lock(&chip->irq_mutex);
 	if (chip->irq < 0) {
-		if (request_irq(chip->pci->irq, chip->interrupt, SA_INTERRUPT|SA_SHIRQ,
+		if (request_irq(chip->pci->irq, chip->interrupt, IRQF_SHARED,
 				chip->card->driver, chip)) {
 			snd_printk(KERN_ERR "unable to grab IRQ %d\n", chip->pci->irq);
 			mutex_unlock(&chip->irq_mutex);
@@ -855,7 +841,6 @@ static void snd_nm256_setup_stream(struct nm256 *chip, struct nm256_stream *s,
 	runtime->private_data = s;
 	s->substream = substream;
 
-	snd_pcm_set_sync(substream);
 	snd_pcm_hw_constraint_list(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
 				   &constraints_rates);
 }
@@ -1017,7 +1002,7 @@ snd_nm256_intr_check(struct nm256 *chip)
  */
 
 static irqreturn_t
-snd_nm256_interrupt(int irq, void *dev_id, struct pt_regs *dummy)
+snd_nm256_interrupt(int irq, void *dev_id)
 {
 	struct nm256 *chip = dev_id;
 	u16 status;
@@ -1082,7 +1067,7 @@ snd_nm256_interrupt(int irq, void *dev_id, struct pt_regs *dummy)
  */
 
 static irqreturn_t
-snd_nm256_interrupt_zx(int irq, void *dev_id, struct pt_regs *dummy)
+snd_nm256_interrupt_zx(int irq, void *dev_id)
 {
 	struct nm256 *chip = dev_id;
 	u32 status;
@@ -1403,6 +1388,7 @@ static int nm256_suspend(struct pci_dev *pci, pm_message_t state)
 	chip->coeffs_current = 0;
 	pci_disable_device(pci);
 	pci_save_state(pci);
+	pci_set_power_state(pci, pci_choose_state(pci, state));
 	return 0;
 }
 
@@ -1414,8 +1400,17 @@ static int nm256_resume(struct pci_dev *pci)
 
 	/* Perform a full reset on the hardware */
 	chip->in_resume = 1;
+
+	pci_set_power_state(pci, PCI_D0);
 	pci_restore_state(pci);
-	pci_enable_device(pci);
+	if (pci_enable_device(pci) < 0) {
+		printk(KERN_ERR "nm256: pci_enable_device failed, "
+		       "disabling device\n");
+		snd_card_disconnect(card);
+		return -EIO;
+	}
+	pci_set_master(pci);
+
 	snd_nm256_init_chip(chip);
 
 	/* restore ac97 */
@@ -1536,7 +1531,8 @@ snd_nm256_create(struct snd_card *card, struct pci_dev *pci,
 				printk(KERN_ERR "  force the driver to load by "
 				       "passing in the module parameter\n");
 				printk(KERN_ERR "    force_ac97=1\n");
-				printk(KERN_ERR "  or try sb16 or cs423x drivers instead.\n");
+				printk(KERN_ERR "  or try sb16, opl3sa2, or "
+				       "cs423x drivers instead.\n");
 				err = -ENXIO;
 				goto __error;
 			}
@@ -1631,23 +1627,15 @@ __error:
 }
 
 
-struct nm256_quirk {
-	unsigned short vendor;
-	unsigned short device;
-	int type;
-};
-
 enum { NM_BLACKLISTED, NM_RESET_WORKAROUND, NM_RESET_WORKAROUND_2 };
 
-static struct nm256_quirk nm256_quirks[] __devinitdata = {
+static struct snd_pci_quirk nm256_quirks[] __devinitdata = {
 	/* HP omnibook 4150 has cs4232 codec internally */
-	{ .vendor = 0x103c, .device = 0x0007, .type = NM_BLACKLISTED },
-	/* Sony PCG-F305 */
-	{ .vendor = 0x104d, .device = 0x8041, .type = NM_RESET_WORKAROUND },
-	/* Dell Latitude LS */
-	{ .vendor = 0x1028, .device = 0x0080, .type = NM_RESET_WORKAROUND },
-	/* Dell Latitude CSx */
-	{ .vendor = 0x1028, .device = 0x0091, .type = NM_RESET_WORKAROUND_2 },
+	SND_PCI_QUIRK(0x103c, 0x0007, "HP omnibook 4150", NM_BLACKLISTED),
+	/* Reset workarounds to avoid lock-ups */
+	SND_PCI_QUIRK(0x104d, 0x8041, "Sony PCG-F305", NM_RESET_WORKAROUND),
+	SND_PCI_QUIRK(0x1028, 0x0080, "Dell Latitude LS", NM_RESET_WORKAROUND),
+	SND_PCI_QUIRK(0x1028, 0x0091, "Dell Latitude CSx", NM_RESET_WORKAROUND_2),
 	{0} /* terminator */
 };
 
@@ -1658,26 +1646,24 @@ static int __devinit snd_nm256_probe(struct pci_dev *pci,
 	struct snd_card *card;
 	struct nm256 *chip;
 	int err;
-	struct nm256_quirk *q;
-	u16 subsystem_vendor, subsystem_device;
+	const struct snd_pci_quirk *q;
 
-	pci_read_config_word(pci, PCI_SUBSYSTEM_VENDOR_ID, &subsystem_vendor);
-	pci_read_config_word(pci, PCI_SUBSYSTEM_ID, &subsystem_device);
-
-	for (q = nm256_quirks; q->vendor; q++) {
-		if (q->vendor == subsystem_vendor && q->device == subsystem_device) {
-			switch (q->type) {
-			case NM_BLACKLISTED:
-				printk(KERN_INFO "nm256: The device is blacklisted. "
-				       "Loading stopped\n");
-				return -ENODEV;
-			case NM_RESET_WORKAROUND_2:
-				reset_workaround_2 = 1;
-				/* Fall-through */
-			case NM_RESET_WORKAROUND:
-				reset_workaround = 1;
-				break;
-			}
+	q = snd_pci_quirk_lookup(pci, nm256_quirks);
+	if (q) {
+#ifndef TARGET_OS2
+		snd_printdd(KERN_INFO "nm256: Enabled quirk for %s.\n", q->name);
+#endif
+		switch (q->value) {
+		case NM_BLACKLISTED:
+			printk(KERN_INFO "nm256: The device is blacklisted. "
+			       "Loading stopped\n");
+			return -ENODEV;
+		case NM_RESET_WORKAROUND_2:
+			reset_workaround_2 = 1;
+			/* Fall-through */
+		case NM_RESET_WORKAROUND:
+			reset_workaround = 1;
+			break;
 		}
 	}
 
@@ -1759,7 +1745,7 @@ static struct pci_driver driver = {
 	.name = "NeoMagic 256",
 	.id_table = snd_nm256_ids,
 	.probe = snd_nm256_probe,
-	.remove = snd_nm256_remove,
+	.remove = __devexit_p(snd_nm256_remove),
 #ifdef CONFIG_PM
 	.suspend = nm256_suspend,
 	.resume = nm256_resume,

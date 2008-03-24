@@ -1,6 +1,6 @@
 /*
  *  Hardware dependent layer
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -19,312 +19,349 @@
  *
  */
 
-#include <sound/driver.h>
+#ifdef TARGET_OS2
+#include <sound/core.h>
+#endif
+#include <linux/major.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <linux/mutex.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/minors.h>
 #include <sound/hwdep.h>
 #include <sound/info.h>
 
-MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Hardware dependent layer");
 MODULE_LICENSE("GPL");
 
-snd_hwdep_t *snd_hwdep_devices[SNDRV_CARDS * SNDRV_MINOR_HWDEPS];
+static LIST_HEAD(snd_hwdep_devices);
+static DEFINE_MUTEX(register_mutex);
 
-static DECLARE_MUTEX(register_mutex);
+static int snd_hwdep_free(struct snd_hwdep *hwdep);
+static int snd_hwdep_dev_free(struct snd_device *device);
+static int snd_hwdep_dev_register(struct snd_device *device);
+static int snd_hwdep_dev_disconnect(struct snd_device *device);
 
-static int snd_hwdep_free(snd_hwdep_t *hwdep);
-static int snd_hwdep_dev_free(snd_device_t *device);
-static int snd_hwdep_dev_register(snd_device_t *device);
-static int snd_hwdep_dev_unregister(snd_device_t *device);
 
-/*
+static struct snd_hwdep *snd_hwdep_search(struct snd_card *card, int device)
+{
+	struct snd_hwdep *hwdep;
 
-*/
+	list_for_each_entry(hwdep, &snd_hwdep_devices, list, struct snd_hwdep)
+		if (hwdep->card == card && hwdep->device == device)
+			return hwdep;
+	return NULL;
+}
 
 static loff_t snd_hwdep_llseek(struct file * file, loff_t offset, int orig)
 {
-    snd_hwdep_t *hw = file->private_data;
-    if (hw->ops.llseek)
-        return hw->ops.llseek(hw, file, offset, orig);
-    return -ENXIO;
+	struct snd_hwdep *hw = file->private_data;
+	if (hw->ops.llseek)
+		return hw->ops.llseek(hw, file, offset, orig);
+	return -ENXIO;
 }
 
-static ssize_t snd_hwdep_read(struct file * file, char *buf, size_t count, loff_t *offset)
+static ssize_t snd_hwdep_read(struct file * file, char __user *buf,
+			      size_t count, loff_t *offset)
 {
-    snd_hwdep_t *hw = file->private_data;
-    if (hw->ops.read)
-        return hw->ops.read(hw, buf, count, offset);
-    return -ENXIO;
+	struct snd_hwdep *hw = file->private_data;
+	if (hw->ops.read)
+		return hw->ops.read(hw, buf, count, offset);
+	return -ENXIO;
 }
 
-static ssize_t snd_hwdep_write(struct file * file, const char *buf, size_t count, loff_t *offset)
+static ssize_t snd_hwdep_write(struct file * file, const char __user *buf,
+			       size_t count, loff_t *offset)
 {
-    snd_hwdep_t *hw = file->private_data;
-    if (hw->ops.write)
-        return hw->ops.write(hw, buf, count, offset);
-    return -ENXIO;
+	struct snd_hwdep *hw = file->private_data;
+	if (hw->ops.write)
+		return hw->ops.write(hw, buf, count, offset);
+	return -ENXIO;	
 }
 
 static int snd_hwdep_open(struct inode *inode, struct file * file)
 {
-    int major = MAJOR(inode->i_rdev);
-    int cardnum;
-    int device;
-    snd_hwdep_t *hw;
-    int err;
-    wait_queue_t wait;
-
-    switch (major) {
-    case CONFIG_SND_MAJOR:
-        cardnum = SNDRV_MINOR_CARD(MINOR(inode->i_rdev));
-        device = SNDRV_MINOR_DEVICE(MINOR(inode->i_rdev)) - SNDRV_MINOR_HWDEP;
-        break;
-#ifdef CONFIG_SND_OSSEMUL
-    case SOUND_MAJOR:
-        cardnum = SNDRV_MINOR_OSS_CARD(MINOR(inode->i_rdev));
-        device = 0;
-        break;
+#ifndef TARGET_OS2
+	int major = imajor(inode);
+#else
+	int major = MAJOR(inode->i_rdev);
 #endif
-    default:
-        return -ENXIO;
-    }
-    cardnum %= SNDRV_CARDS;
-    device %= SNDRV_MINOR_HWDEPS;
-    hw = snd_hwdep_devices[(cardnum * SNDRV_MINOR_HWDEPS) + device];
-    if (hw == NULL)
-        return -ENODEV;
+	struct snd_hwdep *hw;
+	int err;
+	wait_queue_t wait;
 
-    if (!hw->ops.open)
-        return -ENXIO;
-#ifdef CONFIG_SND_OSSEMUL
-    if (major == SOUND_MAJOR && hw->oss_type < 0)
-        return -ENXIO;
+	if (major == snd_major) {
+#ifndef TARGET_OS2
+		hw = snd_lookup_minor_data(iminor(inode),
+#else
+		hw = snd_lookup_minor_data(MINOR(inode->i_rdev),
 #endif
+					   SNDRV_DEVICE_TYPE_HWDEP);
+#ifdef CONFIG_SND_OSSEMUL
+	} else if (major == SOUND_MAJOR) {
+#ifndef TARGET_OS2
+		hw = snd_lookup_oss_minor_data(iminor(inode),
+#else
+		hw = snd_lookup_oss_minor_data(MINOR(inode->i_rdev),
+#endif
+					       SNDRV_OSS_DEVICE_TYPE_DMFM);
+#endif
+	} else
+		return -ENXIO;
+	if (hw == NULL)
+		return -ENODEV;
 
-    if (!try_module_get(hw->card->module))
-        return -EFAULT;
+	if (!hw->ops.open)
+		return -ENXIO;
 
-    init_waitqueue_entry(&wait, current);
-    add_wait_queue(&hw->open_wait, &wait);
-    down(&hw->open_mutex);
-    while (1) {
-        if (hw->exclusive && hw->used > 0) {
-            err = -EBUSY;
-            break;
-        }
-        err = hw->ops.open(hw, file);
-        if (err >= 0)
-            break;
-        if (err == -EAGAIN) {
-            if (file->f_flags & O_NONBLOCK) {
-                err = -EBUSY;
-                break;
-            }
-        } else
-            break;
-        set_current_state(TASK_INTERRUPTIBLE);
-        up(&hw->open_mutex);
-        schedule();
-        down(&hw->open_mutex);
-        if (signal_pending(current)) {
-            err = -ERESTARTSYS;
-            break;
-        }
-    }
-    remove_wait_queue(&hw->open_wait, &wait);
-    if (err >= 0) {
-        err = snd_card_file_add(hw->card, file);
-        if (err >= 0) {
-            file->private_data = hw;
-            hw->used++;
-        } else {
-            if (hw->ops.release)
-                hw->ops.release(hw, file);
-        }
-    }
-    up(&hw->open_mutex);
-    if (err < 0)
-        module_put(hw->card->module);
-    return err;
+	if (!try_module_get(hw->card->module))
+		return -EFAULT;
+
+	init_waitqueue_entry(&wait, current);
+	add_wait_queue(&hw->open_wait, &wait);
+	mutex_lock(&hw->open_mutex);
+	while (1) {
+		if (hw->exclusive && hw->used > 0) {
+			err = -EBUSY;
+			break;
+		}
+		err = hw->ops.open(hw, file);
+		if (err >= 0)
+			break;
+		if (err == -EAGAIN) {
+			if (file->f_flags & O_NONBLOCK) {
+				err = -EBUSY;
+				break;
+			}
+		} else
+			break;
+		set_current_state(TASK_INTERRUPTIBLE);
+		mutex_unlock(&hw->open_mutex);
+		schedule();
+		mutex_lock(&hw->open_mutex);
+		if (signal_pending(current)) {
+			err = -ERESTARTSYS;
+			break;
+		}
+	}
+	remove_wait_queue(&hw->open_wait, &wait);
+	if (err >= 0) {
+		err = snd_card_file_add(hw->card, file);
+		if (err >= 0) {
+			file->private_data = hw;
+			hw->used++;
+		} else {
+			if (hw->ops.release)
+				hw->ops.release(hw, file);
+		}
+	}
+	mutex_unlock(&hw->open_mutex);
+	if (err < 0)
+		module_put(hw->card->module);
+	return err;
 }
 
 static int snd_hwdep_release(struct inode *inode, struct file * file)
 {
-    int err = -ENXIO;
-    snd_hwdep_t *hw = file->private_data;
-    down(&hw->open_mutex);
-    if (hw->ops.release) {
-        err = hw->ops.release(hw, file);
-        wake_up(&hw->open_wait);
-    }
-    if (hw->used > 0)
-        hw->used--;
-    snd_card_file_remove(hw->card, file);
-    up(&hw->open_mutex);
-    module_put(hw->card->module);
-    return err;
+	int err = -ENXIO;
+	struct snd_hwdep *hw = file->private_data;
+	struct module *mod = hw->card->module;
+
+	mutex_lock(&hw->open_mutex);
+	if (hw->ops.release)
+		err = hw->ops.release(hw, file);
+	if (hw->used > 0)
+		hw->used--;
+	mutex_unlock(&hw->open_mutex);
+	wake_up(&hw->open_wait);
+
+	snd_card_file_remove(hw->card, file);
+	module_put(mod);
+	return err;
 }
 
 static unsigned int snd_hwdep_poll(struct file * file, poll_table * wait)
 {
-    snd_hwdep_t *hw = file->private_data;
-    if (hw->ops.poll)
-        return hw->ops.poll(hw, file, wait);
-    return 0;
+	struct snd_hwdep *hw = file->private_data;
+	if (hw->ops.poll)
+		return hw->ops.poll(hw, file, wait);
+	return 0;
 }
 
-static int snd_hwdep_info(snd_hwdep_t *hw, snd_hwdep_info_t *_info)
+static int snd_hwdep_info(struct snd_hwdep *hw,
+			  struct snd_hwdep_info __user *_info)
 {
-    snd_hwdep_info_t info;
-
-    memset(&info, 0, sizeof(info));
-    info.card = hw->card->number;
-    strlcpy(info.id, hw->id, sizeof(info.id));
-    strlcpy(info.name, hw->name, sizeof(info.name));
-    info.iface = hw->iface;
-    if (copy_to_user(_info, &info, sizeof(info)))
-        return -EFAULT;
-    return 0;
+	struct snd_hwdep_info info;
+	
+	memset(&info, 0, sizeof(info));
+	info.card = hw->card->number;
+	strlcpy(info.id, hw->id, sizeof(info.id));	
+	strlcpy(info.name, hw->name, sizeof(info.name));
+	info.iface = hw->iface;
+	if (copy_to_user(_info, &info, sizeof(info)))
+		return -EFAULT;
+	return 0;
 }
 
-static int snd_hwdep_dsp_status(snd_hwdep_t *hw, snd_hwdep_dsp_status_t *_info)
+static int snd_hwdep_dsp_status(struct snd_hwdep *hw,
+				struct snd_hwdep_dsp_status __user *_info)
 {
-    snd_hwdep_dsp_status_t info;
-    int err;
+	struct snd_hwdep_dsp_status info;
+	int err;
 
-    if (! hw->ops.dsp_status)
-        return -ENXIO;
-    memset(&info, 0, sizeof(info));
-    info.dsp_loaded = hw->dsp_loaded;
-    if ((err = hw->ops.dsp_status(hw, &info)) < 0)
-        return err;
-    if (copy_to_user(_info, &info, sizeof(info)))
-        return -EFAULT;
-    return 0;
+	if (! hw->ops.dsp_status)
+		return -ENXIO;
+	memset(&info, 0, sizeof(info));
+	info.dsp_loaded = hw->dsp_loaded;
+	if ((err = hw->ops.dsp_status(hw, &info)) < 0)
+		return err;
+	if (copy_to_user(_info, &info, sizeof(info)))
+		return -EFAULT;
+	return 0;
 }
 
-static int snd_hwdep_dsp_load(snd_hwdep_t *hw, snd_hwdep_dsp_image_t *_info)
+static int snd_hwdep_dsp_load(struct snd_hwdep *hw,
+			      struct snd_hwdep_dsp_image __user *_info)
 {
-    snd_hwdep_dsp_image_t info;
-    int err;
+	struct snd_hwdep_dsp_image info;
+	int err;
 
-    if (! hw->ops.dsp_load)
-        return -ENXIO;
-    memset(&info, 0, sizeof(info));
-    if (copy_from_user(&info, _info, sizeof(info)))
-        return -EFAULT;
-    /* check whether the dsp was already loaded */
-    if (hw->dsp_loaded & (1 << info.index))
-        return -EBUSY;
-    if (verify_area(VERIFY_READ, info.image, info.length))
-        return -EFAULT;
-    err = hw->ops.dsp_load(hw, &info);
-    if (err < 0)
-        return err;
-    hw->dsp_loaded |= (1 << info.index);
-    return 0;
+	if (! hw->ops.dsp_load)
+		return -ENXIO;
+	memset(&info, 0, sizeof(info));
+	if (copy_from_user(&info, _info, sizeof(info)))
+		return -EFAULT;
+	/* check whether the dsp was already loaded */
+	if (hw->dsp_loaded & (1 << info.index))
+		return -EBUSY;
+	if (!access_ok(VERIFY_READ, info.image, info.length))
+		return -EFAULT;
+	err = hw->ops.dsp_load(hw, &info);
+	if (err < 0)
+		return err;
+	hw->dsp_loaded |= (1 << info.index);
+	return 0;
 }
 
-static int snd_hwdep_ioctl(struct inode *inode, struct file * file,
-                           unsigned int cmd, unsigned long arg)
+static long snd_hwdep_ioctl(struct file * file, unsigned int cmd,
+			    unsigned long arg)
 {
-    snd_hwdep_t *hw = file->private_data;
-    switch (cmd) {
-    case SNDRV_HWDEP_IOCTL_PVERSION:
-        return put_user(SNDRV_HWDEP_VERSION, (int *)arg);
-    case SNDRV_HWDEP_IOCTL_INFO:
-        return snd_hwdep_info(hw, (snd_hwdep_info_t *)arg);
-    case SNDRV_HWDEP_IOCTL_DSP_STATUS:
-        return snd_hwdep_dsp_status(hw, (snd_hwdep_dsp_status_t *)arg);
-    case SNDRV_HWDEP_IOCTL_DSP_LOAD:
-        return snd_hwdep_dsp_load(hw, (snd_hwdep_dsp_image_t *)arg);
-    }
-    if (hw->ops.ioctl)
-        return hw->ops.ioctl(hw, file, cmd, arg);
-    return -ENOTTY;
+	struct snd_hwdep *hw = file->private_data;
+	void __user *argp = (void __user *)arg;
+	switch (cmd) {
+	case SNDRV_HWDEP_IOCTL_PVERSION:
+		return put_user(SNDRV_HWDEP_VERSION, (int __user *)argp);
+	case SNDRV_HWDEP_IOCTL_INFO:
+		return snd_hwdep_info(hw, argp);
+	case SNDRV_HWDEP_IOCTL_DSP_STATUS:
+		return snd_hwdep_dsp_status(hw, argp);
+	case SNDRV_HWDEP_IOCTL_DSP_LOAD:
+		return snd_hwdep_dsp_load(hw, argp);
+	}
+	if (hw->ops.ioctl)
+		return hw->ops.ioctl(hw, file, cmd, arg);
+	return -ENOTTY;
 }
 
-#ifndef TARGET_OS2
+#ifndef TARGET_OS2x
 static int snd_hwdep_mmap(struct file * file, struct vm_area_struct * vma)
 {
-    snd_hwdep_t *hw = file->private_data;
-    if (hw->ops.mmap)
-        return hw->ops.mmap(hw, file, vma);
-    return -ENXIO;
+	struct snd_hwdep *hw = file->private_data;
+	if (hw->ops.mmap)
+		return hw->ops.mmap(hw, file, vma);
+	return -ENXIO;
 }
 #endif
-
-static int snd_hwdep_control_ioctl(snd_card_t * card, snd_ctl_file_t * control,
-                                   unsigned int cmd, unsigned long arg)
+static int snd_hwdep_control_ioctl(struct snd_card *card,
+				   struct snd_ctl_file * control,
+				   unsigned int cmd, unsigned long arg)
 {
-    unsigned int tmp;
+	switch (cmd) {
+	case SNDRV_CTL_IOCTL_HWDEP_NEXT_DEVICE:
+		{
+			int device;
 
-    tmp = card->number * SNDRV_MINOR_HWDEPS;
-    switch (cmd) {
-    case SNDRV_CTL_IOCTL_HWDEP_NEXT_DEVICE:
-        {
-            int device;
+			if (get_user(device, (int __user *)arg))
+				return -EFAULT;
+			mutex_lock(&register_mutex);
+			device = device < 0 ? 0 : device + 1;
+			while (device < SNDRV_MINOR_HWDEPS) {
+				if (snd_hwdep_search(card, device))
+					break;
+				device++;
+			}
+			if (device >= SNDRV_MINOR_HWDEPS)
+				device = -1;
+			mutex_unlock(&register_mutex);
+			if (put_user(device, (int __user *)arg))
+				return -EFAULT;
+			return 0;
+		}
+	case SNDRV_CTL_IOCTL_HWDEP_INFO:
+		{
+			struct snd_hwdep_info __user *info = (struct snd_hwdep_info __user *)arg;
+			int device, err;
+			struct snd_hwdep *hwdep;
 
-            if (get_user(device, (int *)arg))
-                return -EFAULT;
-            device = device < 0 ? 0 : device + 1;
-            while (device < SNDRV_MINOR_HWDEPS) {
-                if (snd_hwdep_devices[tmp + device])
-                    break;
-                device++;
-            }
-            if (device >= SNDRV_MINOR_HWDEPS)
-                device = -1;
-            if (put_user(device, (int *)arg))
-                return -EFAULT;
-            return 0;
-        }
-    case SNDRV_CTL_IOCTL_HWDEP_INFO:
-        {
-            snd_hwdep_info_t *info = (snd_hwdep_info_t *)arg;
-            int device;
-            snd_hwdep_t *hwdep;
-
-            if (get_user(device, &info->device))
-                return -EFAULT;
-            if (device < 0 || device >= SNDRV_MINOR_HWDEPS)
-                return -ENXIO;
-            hwdep = snd_hwdep_devices[tmp + device];
-            if (hwdep == NULL)
-                return -ENXIO;
-            return snd_hwdep_info(hwdep, info);
-        }
-    }
-    return -ENOIOCTLCMD;
+			if (get_user(device, &info->device))
+				return -EFAULT;
+			mutex_lock(&register_mutex);
+			hwdep = snd_hwdep_search(card, device);
+			if (hwdep)
+				err = snd_hwdep_info(hwdep, info);
+			else
+				err = -ENXIO;
+			mutex_unlock(&register_mutex);
+			return err;
+		}
+	}
+	return -ENOIOCTLCMD;
 }
+
+#ifdef CONFIG_COMPAT
+#include "hwdep_compat.c"
+#else
+#define snd_hwdep_ioctl_compat	NULL
+#endif
+
+#ifndef CONFIG_SND_HAVE_NEW_IOCTL
+/* need to unlock BKL to allow preemption */
+static int snd_hwdep_ioctl_old(struct inode *inode, struct file * file,
+			       unsigned int cmd, unsigned long arg)
+{
+	int err;
+	err = snd_hwdep_ioctl(file, cmd, arg);
+	return err;
+}
+#endif
 
 /*
 
-*/
+ */
 
-static struct file_operations snd_hwdep_f_ops =
+static const struct file_operations snd_hwdep_f_ops =
 {
 #ifndef TARGET_OS2
-    .owner = 	THIS_MODULE,
+	.owner = 	THIS_MODULE,
 #endif
-    .llseek =	snd_hwdep_llseek,
-    .read = 	snd_hwdep_read,
-    .write =	snd_hwdep_write,
-    .open =		snd_hwdep_open,
-    .release =	snd_hwdep_release,
-    .poll =		snd_hwdep_poll,
-    .ioctl =	snd_hwdep_ioctl,
-#ifndef TARGET_OS2
-    .compat_ioctl =	snd_hwdep_ioctl_compat,
-    .mmap =		snd_hwdep_mmap,
+	.llseek =	snd_hwdep_llseek,
+	.read = 	snd_hwdep_read,
+	.write =	snd_hwdep_write,
+	.open =		snd_hwdep_open,
+	.release =	snd_hwdep_release,
+	.poll =		snd_hwdep_poll,
+#ifdef CONFIG_SND_HAVE_NEW_IOCTL
+	.unlocked_ioctl =	snd_hwdep_ioctl,
+	.compat_ioctl =	snd_hwdep_ioctl_compat,
+#else
+	.ioctl =	snd_hwdep_ioctl_old,
 #endif
-};
-
-static struct snd_minor snd_hwdep_reg =
-{
-    .comment =	"hardware dependent",
-    .f_ops =	&snd_hwdep_f_ops,
+#ifndef TARGET_OS2x
+	.mmap =		snd_hwdep_mmap,
+#endif
 };
 
 /**
@@ -340,183 +377,180 @@ static struct snd_minor snd_hwdep_reg =
  *
  * Returns zero if successful, or a negative error code on failure.
  */
-int snd_hwdep_new(snd_card_t * card, char *id, int device, snd_hwdep_t ** rhwdep)
+int snd_hwdep_new(struct snd_card *card, char *id, int device,
+		  struct snd_hwdep **rhwdep)
 {
-    snd_hwdep_t *hwdep;
-    int err;
-#ifdef TARGET_OS2
-    static snd_device_ops_t ops = {
-        snd_hwdep_dev_free,
-        snd_hwdep_dev_register,
-        0,
-        snd_hwdep_dev_unregister
-    };
-#else
-    static snd_device_ops_t ops = {
-    dev_free:	snd_hwdep_dev_free,
-        dev_register:	snd_hwdep_dev_register,
-        dev_unregister:	snd_hwdep_dev_unregister
-    };
-#endif
+	struct snd_hwdep *hwdep;
+	int err;
+	static struct snd_device_ops ops = {
+		.dev_free = snd_hwdep_dev_free,
+		.dev_register = snd_hwdep_dev_register,
+		.dev_disconnect = snd_hwdep_dev_disconnect,
+	};
 
-    snd_assert(rhwdep != NULL, return -EINVAL);
-    *rhwdep = NULL;
-    snd_assert(card != NULL, return -ENXIO);
-    hwdep = kcalloc(1, sizeof(*hwdep), GFP_KERNEL);
-    if (hwdep == NULL)
-        return -ENOMEM;
-    hwdep->card = card;
-    hwdep->device = device;
-    if (id) {
-        strlcpy(hwdep->id, id, sizeof(hwdep->id));
-    }
+	snd_assert(rhwdep != NULL, return -EINVAL);
+	*rhwdep = NULL;
+	snd_assert(card != NULL, return -ENXIO);
+	hwdep = kzalloc(sizeof(*hwdep), GFP_KERNEL);
+	if (hwdep == NULL) {
+		snd_printk(KERN_ERR "hwdep: cannot allocate\n");
+		return -ENOMEM;
+	}
+	hwdep->card = card;
+	hwdep->device = device;
+	if (id)
+		strlcpy(hwdep->id, id, sizeof(hwdep->id));
 #ifdef CONFIG_SND_OSSEMUL
-    hwdep->oss_type = -1;
+	hwdep->oss_type = -1;
 #endif
-    if ((err = snd_device_new(card, SNDRV_DEV_HWDEP, hwdep, &ops)) < 0) {
-        snd_hwdep_free(hwdep);
-        return err;
-    }
-    init_waitqueue_head(&hwdep->open_wait);
-    init_MUTEX(&hwdep->open_mutex);
-    *rhwdep = hwdep;
-    return 0;
+	if ((err = snd_device_new(card, SNDRV_DEV_HWDEP, hwdep, &ops)) < 0) {
+		snd_hwdep_free(hwdep);
+		return err;
+	}
+	init_waitqueue_head(&hwdep->open_wait);
+	mutex_init(&hwdep->open_mutex);
+	*rhwdep = hwdep;
+	return 0;
 }
 
-static int snd_hwdep_free(snd_hwdep_t *hwdep)
+static int snd_hwdep_free(struct snd_hwdep *hwdep)
 {
-    snd_assert(hwdep != NULL, return -ENXIO);
-    if (hwdep->private_free)
-        hwdep->private_free(hwdep);
-    kfree(hwdep);
-    return 0;
+	snd_assert(hwdep != NULL, return -ENXIO);
+	if (hwdep->private_free)
+		hwdep->private_free(hwdep);
+	kfree(hwdep);
+	return 0;
 }
 
-static int snd_hwdep_dev_free(snd_device_t *device)
+static int snd_hwdep_dev_free(struct snd_device *device)
 {
-    snd_hwdep_t *hwdep = device->device_data;
-    return snd_hwdep_free(hwdep);
+	struct snd_hwdep *hwdep = device->device_data;
+	return snd_hwdep_free(hwdep);
 }
 
-static int snd_hwdep_dev_register(snd_device_t *device)
+static int snd_hwdep_dev_register(struct snd_device *device)
 {
-    snd_hwdep_t *hwdep = device->device_data;
-    int idx, err;
-    char name[32];
+	struct snd_hwdep *hwdep = device->device_data;
+	int err;
+	char name[32];
 
-    down(&register_mutex);
-    idx = (hwdep->card->number * SNDRV_MINOR_HWDEPS) + hwdep->device;
-    if (snd_hwdep_devices[idx]) {
-        up(&register_mutex);
-        return -EBUSY;
-    }
-    snd_hwdep_devices[idx] = hwdep;
-    sprintf(name, "hwC%iD%i", hwdep->card->number, hwdep->device);
-    if ((err = snd_register_device(SNDRV_DEVICE_TYPE_HWDEP,
-                                   hwdep->card, hwdep->device,
-                                   &snd_hwdep_reg, name)) < 0) {
-        snd_printk("unable to register hardware dependant device %i:%i\n",
-                   hwdep->card->number, hwdep->device);
-        snd_hwdep_devices[idx] = NULL;
-        up(&register_mutex);
-        return err;
-    }
+	mutex_lock(&register_mutex);
+	if (snd_hwdep_search(hwdep->card, hwdep->device)) {
+		mutex_unlock(&register_mutex);
+		return -EBUSY;
+	}
+	list_add_tail(&hwdep->list, &snd_hwdep_devices);
+	sprintf(name, "hwC%iD%i", hwdep->card->number, hwdep->device);
+	if ((err = snd_register_device(SNDRV_DEVICE_TYPE_HWDEP,
+				       hwdep->card, hwdep->device,
+				       &snd_hwdep_f_ops, hwdep, name)) < 0) {
+		snd_printk(KERN_ERR "unable to register hardware dependent device %i:%i\n",
+			   hwdep->card->number, hwdep->device);
+		list_del(&hwdep->list);
+		mutex_unlock(&register_mutex);
+		return err;
+	}
 #ifdef CONFIG_SND_OSSEMUL
-    hwdep->ossreg = 0;
-    if (hwdep->oss_type >= 0) {
-        if ((hwdep->oss_type == SNDRV_OSS_DEVICE_TYPE_DMFM) && (hwdep->device != 0)) {
-            snd_printk ("only hwdep device 0 can be registered as OSS direct FM device!\n");
-        } else {
-            if (snd_register_oss_device(hwdep->oss_type,
-                                        hwdep->card, hwdep->device,
-                                        &snd_hwdep_reg, hwdep->oss_dev) < 0) {
-                snd_printk("unable to register OSS compatibility device %i:%i\n",
-                           hwdep->card->number, hwdep->device);
-            } else
-                hwdep->ossreg = 1;
-        }
-    }
+	hwdep->ossreg = 0;
+	if (hwdep->oss_type >= 0) {
+		if ((hwdep->oss_type == SNDRV_OSS_DEVICE_TYPE_DMFM) && (hwdep->device != 0)) {
+			snd_printk (KERN_WARNING "only hwdep device 0 can be registered as OSS direct FM device!\n");
+		} else {
+			if (snd_register_oss_device(hwdep->oss_type,
+						    hwdep->card, hwdep->device,
+						    &snd_hwdep_f_ops, hwdep,
+						    hwdep->oss_dev) < 0) {
+				snd_printk(KERN_ERR "unable to register OSS compatibility device %i:%i\n",
+					   hwdep->card->number, hwdep->device);
+			} else
+				hwdep->ossreg = 1;
+		}
+	}
 #endif
-    up(&register_mutex);
-    return 0;
+	mutex_unlock(&register_mutex);
+	return 0;
 }
 
-static int snd_hwdep_dev_unregister(snd_device_t *device)
+static int snd_hwdep_dev_disconnect(struct snd_device *device)
 {
-    snd_hwdep_t *hwdep = device->device_data;
-    int idx;
+	struct snd_hwdep *hwdep = device->device_data;
 
-    snd_assert(hwdep != NULL, return -ENXIO);
-    down(&register_mutex);
-    idx = (hwdep->card->number * SNDRV_MINOR_HWDEPS) + hwdep->device;
-    if (snd_hwdep_devices[idx] != hwdep) {
-        up(&register_mutex);
-        return -EINVAL;
-    }
+	snd_assert(hwdep != NULL, return -ENXIO);
+	mutex_lock(&register_mutex);
+	if (snd_hwdep_search(hwdep->card, hwdep->device) != hwdep) {
+		mutex_unlock(&register_mutex);
+		return -EINVAL;
+	}
 #ifdef CONFIG_SND_OSSEMUL
-    if (hwdep->ossreg)
-        snd_unregister_oss_device(hwdep->oss_type, hwdep->card, hwdep->device);
+	if (hwdep->ossreg)
+		snd_unregister_oss_device(hwdep->oss_type, hwdep->card, hwdep->device);
 #endif
-    snd_unregister_device(SNDRV_DEVICE_TYPE_HWDEP, hwdep->card, hwdep->device);
-    snd_hwdep_devices[idx] = NULL;
-    up(&register_mutex);
-    return snd_hwdep_free(hwdep);
+	snd_unregister_device(SNDRV_DEVICE_TYPE_HWDEP, hwdep->card, hwdep->device);
+	list_del_init(&hwdep->list);
+	mutex_unlock(&register_mutex);
+	return 0;
 }
 
+#ifdef CONFIG_PROC_FS
 /*
  *  Info interface
  */
 
-static void snd_hwdep_proc_read(snd_info_entry_t *entry,
-                                snd_info_buffer_t * buffer)
+static void snd_hwdep_proc_read(struct snd_info_entry *entry,
+				struct snd_info_buffer *buffer)
 {
-    int idx;
-    snd_hwdep_t *hwdep;
+	struct snd_hwdep *hwdep;
 
-    down(&register_mutex);
-    for (idx = 0; idx < SNDRV_CARDS * SNDRV_MINOR_HWDEPS; idx++) {
-        hwdep = snd_hwdep_devices[idx];
-        if (hwdep == NULL)
-            continue;
-        snd_iprintf(buffer, "%02i-%02i: %s\n",
-                    idx / SNDRV_MINOR_HWDEPS,
-                    idx % SNDRV_MINOR_HWDEPS,
-                    hwdep->name);
-    }
-    up(&register_mutex);
+	mutex_lock(&register_mutex);
+	list_for_each_entry(hwdep, &snd_hwdep_devices, list, struct snd_hwdep)
+		snd_iprintf(buffer, "%02i-%02i: %s\n",
+			    hwdep->card->number, hwdep->device, hwdep->name);
+	mutex_unlock(&register_mutex);
 }
+
+static struct snd_info_entry *snd_hwdep_proc_entry;
+
+static void __init snd_hwdep_proc_init(void)
+{
+	struct snd_info_entry *entry;
+
+	if ((entry = snd_info_create_module_entry(THIS_MODULE, "hwdep", NULL)) != NULL) {
+		entry->c.text.read = snd_hwdep_proc_read;
+		if (snd_info_register(entry) < 0) {
+			snd_info_free_entry(entry);
+			entry = NULL;
+		}
+	}
+	snd_hwdep_proc_entry = entry;
+}
+
+static void __exit snd_hwdep_proc_done(void)
+{
+	snd_info_free_entry(snd_hwdep_proc_entry);
+}
+#else /* !CONFIG_PROC_FS */
+#define snd_hwdep_proc_init()
+#define snd_hwdep_proc_done()
+#endif /* CONFIG_PROC_FS */
+
 
 /*
  *  ENTRY functions
  */
 
-static snd_info_entry_t *snd_hwdep_proc_entry = NULL;
-
 static int __init alsa_hwdep_init(void)
 {
-    snd_info_entry_t *entry;
-
-    memset(snd_hwdep_devices, 0, sizeof(snd_hwdep_devices));
-    if ((entry = snd_info_create_module_entry(THIS_MODULE, "hwdep", NULL)) != NULL) {
-        entry->c.text.read_size = 512;
-        entry->c.text.read = snd_hwdep_proc_read;
-        if (snd_info_register(entry) < 0) {
-            snd_info_free_entry(entry);
-            entry = NULL;
-        }
-    }
-    snd_hwdep_proc_entry = entry;
-    snd_ctl_register_ioctl(snd_hwdep_control_ioctl);
-    return 0;
+	snd_hwdep_proc_init();
+	snd_ctl_register_ioctl(snd_hwdep_control_ioctl);
+	snd_ctl_register_ioctl_compat(snd_hwdep_control_ioctl);
+	return 0;
 }
 
 static void __exit alsa_hwdep_exit(void)
 {
-    snd_ctl_unregister_ioctl(snd_hwdep_control_ioctl);
-    if (snd_hwdep_proc_entry) {
-        snd_info_unregister(snd_hwdep_proc_entry);
-        snd_hwdep_proc_entry = NULL;
-    }
+	snd_ctl_unregister_ioctl(snd_hwdep_control_ioctl);
+	snd_ctl_unregister_ioctl_compat(snd_hwdep_control_ioctl);
+	snd_hwdep_proc_done();
 }
 
 module_init(alsa_hwdep_init)

@@ -3,7 +3,7 @@
 
 /*
  *  Header file for control interface
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -22,7 +22,10 @@
  *
  */
 
+#include <sound/asound.h>
+
 #define snd_kcontrol_chip(kcontrol) ((kcontrol)->private_data)
+
 struct snd_kcontrol;
 typedef int (snd_kcontrol_info_t) (struct snd_kcontrol * kcontrol, struct snd_ctl_elem_info * uinfo);
 typedef int (snd_kcontrol_get_t) (struct snd_kcontrol * kcontrol, struct snd_ctl_elem_value * ucontrol);
@@ -32,64 +35,68 @@ typedef int (snd_kcontrol_tlv_rw_t)(struct snd_kcontrol *kcontrol,
 				    unsigned int size,
 				    unsigned int __user *tlv);
 
+
 struct snd_kcontrol_new {
-    snd_ctl_elem_iface_t iface;	/* interface identifier */
-    unsigned int device;		/* device/client number */
-    unsigned int subdevice;		/* subdevice (substream) number */
-    unsigned char *name;		/* ASCII name of item */
-    unsigned int index;		/* index of item */
-    unsigned int access;		/* access rights */
-    unsigned int count;             /* count of same elements */
-    snd_kcontrol_info_t *info;
-    snd_kcontrol_get_t *get;
-    snd_kcontrol_put_t *put;
-    union {
-        snd_kcontrol_tlv_rw_t *c;
-        unsigned int *p;
-    } tlv;
-    unsigned long private_value;
-};
-
-struct snd_kcontrol_volatile {
-    struct snd_ctl_file *owner;     /* locked */
-    pid_t owner_pid;
-    unsigned int access;    /* access rights */
-};
-
-struct snd_kcontrol {
-    struct list_head list;		/* list of controls */
-    struct snd_ctl_elem_id id;
+	snd_ctl_elem_iface_t iface;	/* interface identifier */
+	unsigned int device;		/* device/client number */
+	unsigned int subdevice;		/* subdevice (substream) number */
+	unsigned char *name;		/* ASCII name of item */
+	unsigned int index;		/* index of item */
+	unsigned int access;		/* access rights */
 	unsigned int count;		/* count of same elements */
 	snd_kcontrol_info_t *info;
 	snd_kcontrol_get_t *get;
-        snd_kcontrol_put_t *put;
+	snd_kcontrol_put_t *put;
 	union {
 		snd_kcontrol_tlv_rw_t *c;
-		unsigned int *p;
+		const unsigned int *p;
+	} tlv;
+	unsigned long private_value;
+};
+
+struct snd_kcontrol_volatile {
+	struct snd_ctl_file *owner;	/* locked */
+	pid_t owner_pid;
+	unsigned int access;	/* access rights */
+};
+
+struct snd_kcontrol {
+	struct list_head list;		/* list of controls */
+	struct snd_ctl_elem_id id;
+	unsigned int count;		/* count of same elements */
+	snd_kcontrol_info_t *info;
+	snd_kcontrol_get_t *get;
+	snd_kcontrol_put_t *put;
+	union {
+		snd_kcontrol_tlv_rw_t *c;
+		const unsigned int *p;
 	} tlv;
 	unsigned long private_value;
 #ifdef TARGET_OS2
         void *private_ptr;
 #endif
-        void *private_data;
-        void (*private_free)(struct snd_kcontrol *kcontrol);
-        struct snd_kcontrol_volatile vd[1];     /* volatile data */
-        //snd_kcontrol_volatile_t vd[1];  /* volatile data */
+	void *private_data;
+	void (*private_free)(struct snd_kcontrol *kcontrol);
+#ifndef TARGET_OS2
+	struct snd_kcontrol_volatile vd[0];	/* volatile data */
+#else
+	struct snd_kcontrol_volatile vd[1];	/* volatile data */
+#endif
 };
 
 #define snd_kcontrol(n) list_entry(n, struct snd_kcontrol, list)
 
 struct snd_kctl_event {
-    struct list_head list;	/* list of events */
-    struct snd_ctl_elem_id id;
-    unsigned int mask;
+	struct list_head list;	/* list of events */
+	struct snd_ctl_elem_id id;
+	unsigned int mask;
 };
 
 #define snd_kctl_event(n) list_entry(n, struct snd_kctl_event, list)
 
 struct snd_ctl_file {
-    struct list_head list;		/* list of all control files */
-    struct snd_card *card;
+	struct list_head list;		/* list of all control files */
+	struct snd_card *card;
 	pid_t pid;
 	int prefer_pcm_subdevice;
 	int prefer_rawmidi_subdevice;
@@ -103,12 +110,11 @@ struct snd_ctl_file {
 #define snd_ctl_file(n) list_entry(n, struct snd_ctl_file, list)
 
 typedef int (*snd_kctl_ioctl_func_t) (struct snd_card * card,
-                                      struct snd_ctl_file * control,
-                                      unsigned int cmd, unsigned long arg);
+				      struct snd_ctl_file * control,
+				      unsigned int cmd, unsigned long arg);
 
 void snd_ctl_notify(struct snd_card * card, unsigned int mask, struct snd_ctl_elem_id * id);
 
-struct snd_kcontrol *snd_ctl_new(struct snd_kcontrol * kcontrol, unsigned int access);
 struct snd_kcontrol *snd_ctl_new1(const struct snd_kcontrol_new * kcontrolnew, void * private_data);
 void snd_ctl_free_one(struct snd_kcontrol * kcontrol);
 int snd_ctl_add(struct snd_card * card, struct snd_kcontrol * kcontrol);
@@ -120,12 +126,15 @@ struct snd_kcontrol *snd_ctl_find_id(struct snd_card * card, struct snd_ctl_elem
 
 int snd_ctl_create(struct snd_card *card);
 
-int snd_ctl_register(struct snd_card *card);
-int snd_ctl_disconnect(struct snd_card *card);
-int snd_ctl_can_unregister(struct snd_card *card);
-int snd_ctl_unregister(struct snd_card *card);
 int snd_ctl_register_ioctl(snd_kctl_ioctl_func_t fcn);
 int snd_ctl_unregister_ioctl(snd_kctl_ioctl_func_t fcn);
+#ifdef CONFIG_COMPAT
+int snd_ctl_register_ioctl_compat(snd_kctl_ioctl_func_t fcn);
+int snd_ctl_unregister_ioctl_compat(snd_kctl_ioctl_func_t fcn);
+#else
+#define snd_ctl_register_ioctl_compat(fcn)
+#define snd_ctl_unregister_ioctl_compat(fcn)
+#endif
 
 int snd_ctl_elem_read(struct snd_card *card, struct snd_ctl_elem_value *control);
 int snd_ctl_elem_write(struct snd_card *card, struct snd_ctl_file *file, struct snd_ctl_elem_value *control);
@@ -158,5 +167,13 @@ static inline struct snd_ctl_elem_id *snd_ctl_build_ioff(struct snd_ctl_elem_id 
 	dst_id->numid += offset;
 	return dst_id;
 }
+
+/*
+ * Frequently used control callbacks
+ */
+int snd_ctl_boolean_mono_info(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_info *uinfo);
+int snd_ctl_boolean_stereo_info(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_info *uinfo);
 
 #endif				/* __CONTROL_H */

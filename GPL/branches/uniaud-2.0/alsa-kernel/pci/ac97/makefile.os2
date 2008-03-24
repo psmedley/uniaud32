@@ -12,7 +12,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #   List of source files
 #
 #===================================================================
-FILE1    = ac97_codec.obj ac97_patch.obj ak4531_codec.obj ac97_proc.obj ac97_pcm.obj
+FILE1    = ac97_codec.obj ac97_pcm.obj ac97_proc.obj ak4531_codec.obj 
 FILE2    =
 FILE3    =
 FILE4    =

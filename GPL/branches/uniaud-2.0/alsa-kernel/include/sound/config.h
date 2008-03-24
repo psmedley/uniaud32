@@ -6,6 +6,7 @@
 #define __ALSA_CONFIG_H__
 
 #define inline __inline
+#define INLINE inline
 #define __attribute__
 
 #include <linux/version.h>
@@ -23,12 +24,250 @@
 #include <linux/timer.h>
 #include <linux/stat.h>
 #include <linux/major.h>
+#include <linux/fs.h>
+#include <linux/err.h>
 #include <linux/byteorder/little_endian.h>
 #include <asm/ioctl.h>
 #include <asm/hardirq.h>
 #include <asm/processor.h>
 #include <asm/siginfo.h>
 #include <dbgos2.h>
+#include <limits.h>
+#include <sys/cdefs.h>
+
+#ifndef __iomem
+#define __iomem
+#endif
+
+#ifndef cond_resched
+#define cond_resched() \
+        do { \
+                if (1) { \
+                        set_current_state(TASK_RUNNING); \
+                        schedule(); \
+                } \
+        } while (0)
+#endif
+
+/*
+ *  ==========================================================================
+ */
+
+#ifdef ALSA_BUILD
+#undef MODULE
+#define MODULE
+#endif
+
+#include <linux/config.h>
+#include <linux/version.h>
+
+#define IRQ_NONE      (0)  /*void*/
+#define IRQ_HANDLED   (1)  /*void*/
+#define IRQ_RETVAL(x) ((x) != 0)  /*void*/
+typedef int irqreturn_t;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 2, 3)
+#error "This driver requires Linux 2.2.3 and higher."
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 2, 0)
+#define LINUX_2_2
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 3, 1)
+#define LINUX_2_3
+#endif
+#if defined(LINUX_2_3) && LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 0)
+#error "This code requires Linux 2.4.0-test1 and higher."
+#endif
+
+#ifdef ALSA_BUILD
+#if defined(CONFIG_MODVERSIONS) && !defined(__GENKSYMS__) && !defined(__DEPEND__)
+#define MODVERSIONS
+#include <linux/modversions.h>
+#include "sndversions.h"
+#endif
+#ifdef SNDRV_NO_MODVERS
+#undef MODVERSIONS
+#undef _set_ver
+#endif
+#endif /* ALSA_BUILD */
+
+#ifndef SNDRV_MAIN_OBJECT_FILE
+#define __NO_VERSION__
+#endif
+#include <linux/module.h>
+
+#include <linux/utsname.h>
+#include <linux/errno.h>
+#include <linux/kernel.h>
+#include <linux/sched.h>
+#include <linux/malloc.h>
+#include <linux/delay.h>
+
+#include <linux/ioport.h>
+
+#include <asm/io.h>
+#include <asm/irq.h>
+#include <asm/segment.h>
+#include <asm/uaccess.h>
+#include <asm/system.h>
+#include <asm/string.h>
+
+#include <linux/pci.h>
+#include <linux/interrupt.h>
+#include <linux/pagemap.h>
+#include <linux/fs.h>
+#include <linux/fcntl.h>
+#include <linux/vmalloc.h>
+#include <linux/poll.h>
+#include <linux/reboot.h>
+
+#ifdef LINUX_2_2
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 2, 18)
+#include <linux/init.h>
+#endif
+#include "compat_22.h"
+#endif
+#ifdef LINUX_2_3
+#include <linux/init.h>
+#include <linux/pm.h>
+#define PCI_GET_DRIVER_DATA(pci) pci->driver_data
+#define PCI_SET_DRIVER_DATA(pci, data) pci->driver_data = data
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 3)
+//#define pci_set_dma_mask(pci, mask) pci->dma_mask = mask
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 7)
+#define PCI_NEW_SUSPEND
+#endif
+#ifndef virt_to_page
+//#define virt_to_page(x) (&mem_map[MAP_NR(x)])
+#endif
+#define snd_request_region request_region
+#ifndef rwlock_init
+#define rwlock_init(x) do { *(x) = RW_LOCK_UNLOCKED; } while(0)
+#endif
+#define snd_kill_fasync(fp, sig, band) kill_fasync(fp, sig, band)
+#if defined(__i386__) || defined(__ppc__)
+/*
+ * Here a dirty hack for 2.4 kernels.. See kernel/memory.c.
+ */
+#define HACK_PCI_ALLOC_CONSISTENT
+void *snd_pci_hack_alloc_consistent(struct pci_dev *hwdev, size_t size,
+				    dma_addr_t *dma_handle);
+#undef pci_alloc_consistent
+#define pci_alloc_consistent snd_pci_hack_alloc_consistent
+#endif /* i386 or ppc */
+#endif
+
+#if defined(CONFIG_ISAPNP) || (defined(CONFIG_ISAPNP_MODULE) && defined(MODULE))
+#if (defined(CONFIG_ISAPNP_KERNEL) && defined(ALSA_BUILD)) || (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 3, 30) && !defined(ALSA_BUILD))
+#include <linux/isapnp.h>
+#define isapnp_dev pci_dev
+#define isapnp_card pci_bus
+#else
+#include "isapnp.h"
+#endif
+#undef __ISAPNP__
+#define __ISAPNP__
+#endif
+
+#ifndef PCI_D0
+#define PCI_D0     0
+#define PCI_D1     1
+#define PCI_D2     2
+#define PCI_D3hot  3
+#define PCI_D3cold 4
+#define pci_choose_state(pci,state)     ((state) ? PCI_D3hot : PCI_D0)
+#endif
+
+
+#include <sound/asound.h>
+#include <sound/asoundef.h>
+
+/* wrapper for getnstimeofday()
+ * it's needed for recent 2.6 kernels, too, due to lack of EXPORT_SYMBOL
+ */
+#define getnstimeofday(x) do { \
+	struct timeval __x; \
+	do_gettimeofday(&__x); \
+	(x)->tv_sec = __x.tv_sec;	\
+	(x)->tv_nsec = __x.tv_usec * 1000; \
+} while (0)
+
+struct work_struct {
+        unsigned long pending;
+        struct list_head entry;
+        void (*func)(void *);
+        void *data;
+        void *wq_data;
+        struct timer_list timer;
+};
+
+struct delayed_work {
+	struct work_struct work;
+};
+
+#define INIT_WORK(_work, _func, _data)			\
+	do {						\
+		(_work)->func = _func;			\
+		(_work)->data = _data;			\
+		init_timer(&(_work)->timer);		\
+	} while (0)
+#define __WORK_INITIALIZER(n, f, d) {			\
+		.func = (f),				\
+		.data = (d),				\
+	}
+#define DECLARE_WORK(n, f, d)                           \
+        struct work_struct n = __WORK_INITIALIZER(n, f, d)
+int snd_compat_schedule_work(struct work_struct *work);
+#define schedule_work(w) snd_compat_schedule_work(w)
+
+/* Name change */
+typedef struct timeval snd_timestamp_t;
+#ifndef TARGET_OS2
+typedef enum sndrv_card_type snd_card_type;
+#endif
+typedef union sndrv_pcm_sync_id snd_pcm_sync_id_t;
+#ifndef TARGET_OS2
+typedef enum sndrv_pcm_xrun snd_pcm_xrun_t;
+#endif
+#ifdef TARGET_OS2
+//typedef struct snd_pcm_volume snd_pcm_volume_t;
+#else
+typedef enum sndrv_timer_global snd_timer_global_t;
+#endif
+
+#ifdef CONFIG_SND_DEBUG_MEMORY
+void *snd_wrapper_kmalloc(size_t, int);
+#undef kmalloc
+void snd_wrapper_kfree(const void *);
+#undef kfree
+void *snd_wrapper_vmalloc(size_t);
+#undef vmalloc
+void snd_wrapper_vfree(void *);
+#undef vfree
+#endif
+
+#if defined(__alpha__) && LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 14)
+#undef writeb
+#define writeb(v, a) do { __writeb((v),(a)); mb(); } while(0)
+#undef writew
+#define writew(v, a) do {__writew((v),(a)); mb(); } while(0)
+#undef writel
+#define writel(v, a) do {__writel((v),(a)); mb(); } while(0)
+#undef writeq
+#define writeq(v, a) do {__writeq((v),(a)); mb(); } while(0)
+#endif
+
+/* do we have virt_to_bus? */
+#if defined(CONFIG_SPARC64)
+#undef HAVE_VIRT_TO_BUS
+#else
+#define HAVE_VIRT_TO_BUS  1
+#endif
+
+/*
+ *  ==========================================================================
+ */
 
 extern int this_module[64];
 #define THIS_MODULE (void *)&this_module[0]
@@ -38,118 +277,30 @@ extern int this_module[64];
 #define CONFIG_PM
 #define PCI_NEW_SUSPEND
 #define CONFIG_PCI
+#define CONFIG_HAS_DMA
 #define CONFIG_SND_SEQUENCER
 //#define CONFIG_SND_OSSEMUL
 #define SNDRV_LITTLE_ENDIAN
 #define EXPORT_SYMBOL(a)
 #define CONFIG_SOUND
-#define CONFIG_SND_VERSION	"0.0.1"
 #define ATTRIBUTE_UNUSED
-
-#undef interrupt
-
-/*
- * Power management requests
- */
-enum
-{
-	PM_SUSPEND, /* enter D1-D3 */
-	PM_RESUME,  /* enter D0 */
-
-	/* enable wake-on */
-	PM_SET_WAKEUP,
-
-	/* bus resource management */
-	PM_GET_RESOURCES,
-	PM_SET_RESOURCES,
-
-	/* base station management */
-	PM_EJECT,
-	PM_LOCK,
-};
-
-typedef int pm_request_t;
-
-/*
- * Device types
- */
-enum
-{
-	PM_UNKNOWN_DEV = 0, /* generic */
-	PM_SYS_DEV,	    /* system device (fan, KB controller, ...) */
-	PM_PCI_DEV,	    /* PCI device */
-	PM_USB_DEV,	    /* USB device */
-	PM_SCSI_DEV,	    /* SCSI device */
-	PM_ISA_DEV,	    /* ISA device */
-};
-
-typedef int pm_dev_t;
-
-/*
- * System device hardware ID (PnP) values
- */
-enum
-{
-	PM_SYS_UNKNOWN = 0x00000000, /* generic */
-	PM_SYS_KBC =	 0x41d00303, /* keyboard controller */
-	PM_SYS_COM =	 0x41d00500, /* serial port */
-	PM_SYS_IRDA =	 0x41d00510, /* IRDA controller */
-	PM_SYS_FDC =	 0x41d00700, /* floppy controller */
-	PM_SYS_VGA =	 0x41d00900, /* VGA controller */
-	PM_SYS_PCMCIA =	 0x41d00e00, /* PCMCIA controller */
-};
-
-/*
- * Request handler callback
- */
-struct pm_dev;
-
-typedef int (*pm_callback)(struct pm_dev *dev, pm_request_t rqst, void *data);
-
-/*
- * Dynamic device information
- */
-struct pm_dev
-{
-	pm_dev_t	 type;
-	unsigned long	 id;
-	pm_callback	 callback;
-	void		*data;
-
-	unsigned long	 flags;
-	int		 state;
-	int		 prev_state;
-
-	struct list_head entry;
-};
-
-int pm_init(void);
-void pm_done(void);
-
+#define CONFIG_SND_HDA_CODEC_REALTEK
+#define CONFIG_SND_HDA_CODEC_CMEDIA
+#define CONFIG_SND_HDA_CODEC_ANALOG
+#define CONFIG_SND_HDA_CODEC_SIGMATEL
+#define CONFIG_SND_HDA_CODEC_SI3054
+#define CONFIG_SND_HDA_CODEC_ATIHDMI
+#define CONFIG_SND_HDA_CODEC_CONEXANT
+#define CONFIG_SND_HDA_CODEC_VIA
+#define CONFIG_SND_HDA_GENERIC
+#define CONFIG_SND_HDA_HWDEP
 #define CONFIG_PM
-
-#define PM_IS_ACTIVE() 1
-
-/*
- * Register a device with power management
- */
-struct pm_dev *pm_register(pm_dev_t type,
-			   unsigned long id,
-			   pm_callback callback);
-
-/*
- * Unregister a device with power management
- */
-void pm_unregister(struct pm_dev *dev);
-
-/*
- * Send a request to a single device
- */
-int pm_send(struct pm_dev *dev, pm_request_t rqst, void *data);
+#define CONFIG_HAVE_PCI_DEV_PRESENT
+#define CONFIG_SYSFS_DEPRECATED
+#undef interrupt
 
 #define fops_get(x) (x)
 #define fops_put(x) do { ; } while (0)
-
 #define __builtin_return_address(a)	0
 #define SetPageReserved(a)		a
 #define ClearPageReserved(a)		a
@@ -193,44 +344,233 @@ static inline void module_put(struct module *module)
 #endif
 #endif
 
-struct snd_minor {
-	struct list_head list;		/* list of all minors per card */
-	int number;			/* minor number */
-	int device;			/* device number */
-	const char *comment;		/* for /proc/asound/devices */
-	struct file_operations *f_ops;	/* file operations */
-	char name[1];			/* device name (keep at the end of
-								structure) */
-};
-
-/* PCI quirk list helper */
-struct snd_pci_quirk {
-        unsigned short subvendor;       /* PCI subvendor ID */
-        unsigned short subdevice;       /* PCI subdevice ID */
-        int value;                      /* value */
-#ifdef CONFIG_SND_DEBUG_DETECT
-        const char *name;               /* name of the device (optional) */
-#endif
-};
-
-#define _SND_PCI_QUIRK_ID(vend,dev) \
-        .subvendor = (vend), .subdevice = (dev)
-#define SND_PCI_QUIRK_ID(vend,dev) {_SND_PCI_QUIRK_ID(vend, dev)}
-#ifdef CONFIG_SND_DEBUG_DETECT
-#define SND_PCI_QUIRK(vend,dev,xname,val) \
-        {_SND_PCI_QUIRK_ID(vend, dev), .value = (val), .name = (xname)}
-#else
-#define SND_PCI_QUIRK(vend,dev,xname,val) \
-        {_SND_PCI_QUIRK_ID(vend, dev), .value = (val)}
-#endif
-
-const struct snd_pci_quirk *
-snd_pci_quirk_lookup(struct pci_dev *pci, const struct snd_pci_quirk *list);
-
 /* misc.c */
 struct resource;
 void release_and_free_resource(struct resource *res);
 
 #include "typedefs.h"
+#define container_of(ptr, type, member) \
+( (type *)( (char *)ptr - offsetof(type,member) ) )
+_WCRTLINK extern int     snprintf( char *__buf, size_t __bufsize,
+                                   const char *__fmt, ... );
+#define offsetof(__typ,__id) ((size_t)&(((__typ*)0)->__id))
+#define list_for_each_entry(itemptr, headptr, struct_listmember_name, container_type) \
+    for (itemptr=(container_type *) \
+         (((char *)((headptr)->next))-offsetof(container_type, struct_listmember_name)); \
+         &(itemptr->struct_listmember_name)!=(headptr); \
+         itemptr=(container_type *) \
+         (((char *)(itemptr->struct_listmember_name.next))-offsetof(container_type, struct_listmember_name)))
+
+#define list_for_each_entry_safe(itemptr, n, headptr, struct_listmember_name, container_type) \
+    for (itemptr=(container_type *) \
+         (((char *)((headptr)->next))-offsetof(container_type, struct_listmember_name)), \
+         n=(container_type *) \
+         (((char *)(itemptr->struct_listmember_name.next))-offsetof(container_type, struct_listmember_name)); \
+         &(itemptr->struct_listmember_name)!=(headptr); \
+         itemptr=n, \
+         n=(container_type *) \
+         (((char *)(n->struct_listmember_name.next))-offsetof(container_type, struct_listmember_name)))
+#define flush_scheduled_work()
+
+/* schedule_timeout_[un]interruptible() wrappers */
+#include <linux/sched.h>
+#define schedule_timeout_interruptible(x) \
+	set_current_state(TASK_INTERRUPTIBLE); \
+	schedule_timeout(x);
+
+#define schedule_timeout_uninterruptible(x) \
+	set_current_state(TASK_UNINTERRUPTIBLE); \
+	schedule_timeout(x);
+
+
+/* pm_message_t type */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11)
+#include <linux/pm.h>
+#ifndef PMSG_FREEZE
+typedef u32 pm_message_t;
+#define PMSG_FREEZE	3
+#define PMSG_SUSPEND	3
+#define PMSG_ON		0
+#endif
+#endif
+
+#ifndef imajor
+#define imajor(x) major((x)->i_rdev)
+#endif
+
+#ifndef __nocast
+#define __nocast
+#endif
+
+#ifndef CONFIG_HAVE_KZALLOC
+void *snd_compat_kzalloc(size_t n, unsigned int __nocast gfp_flags);
+#define kzalloc(s,f) snd_compat_kzalloc(s,f)
+#endif
+
+static inline struct proc_dir_entry *PDE(const struct inode *inode)
+{
+	return (struct proc_dir_entry *) inode->u.generic_ip;
+}
+
+#ifndef CONFIG_HAVE_KSTRDUP
+char *snd_compat_kstrdup(const char *s, unsigned int __nocast gfp_flags);
+#define kstrdup(s,f) snd_compat_kstrdup(s,f)
+#endif
+
+#ifndef CONFIG_HAVE_KCALLOC
+void *snd_compat_kcalloc(size_t n, size_t size, unsigned int __nocast gfp_flags);
+#define kcalloc(n,s,f) snd_compat_kcalloc(n,s,f)
+#endif
+
+struct workqueue_struct *snd_compat_create_workqueue(const char *name);
+#define create_workqueue(name) snd_compat_create_workqueue((name))
+void snd_compat_destroy_workqueue(struct workqueue_struct *wq);
+#define destroy_workqueue(wq) snd_compat_destroy_workqueue((wq))
+int snd_compat_queue_work(struct workqueue_struct *wq, struct work_struct *work);
+#define queue_work(wq, work) snd_compat_queue_work((wq), (work))
+
+#ifndef BUG_ON
+#define BUG_ON(x) /* nothing */
+#endif
+#define MODULE_ALIAS_CHARDEV_MAJOR(x)
+typedef unsigned gfp_t;
+
+#ifndef __devexit_p
+#define __devexit_p(x) x
+#endif
+
+#define printk_ratelimit()      1
+#define __builtin_expect(x, expected_value) (x)
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+
+#define smp_mb__after_clear_bit()	
+int snd_compat_devfs_mk_dir(const char *dir, ...);
+#define devfs_mk_dir snd_compat_devfs_mk_dir
+int snd_compat_devfs_mk_cdev(dev_t dev, umode_t mode, const char *fmt, ...);
+#define devfs_mk_cdev snd_compat_devfs_mk_cdev
+void snd_compat_devfs_remove(const char *fmt, ...);
+#define devfs_remove snd_compat_devfs_remove
+#define SINGLE_DEPTH_NESTING                    1
+
+struct iovec {
+        char    *iov_base;      /* Base address. */
+#ifdef __32BIT__
+        size_t   iov_len;       /* Length. */
+#else
+        long     iov_len;       /* Length. */
+#endif
+};
+#define SEEK_SET	0
+#define SEEK_CUR	1
+#define SEEK_END	2
+
+#ifndef IRQF_SHARED
+#include <linux/signal.h>
+#define IRQF_SHARED			SA_SHIRQ
+#define IRQF_DISABLED			SA_INTERRUPT
+#define IRQF_SAMPLE_RANDOM		SA_SAMPLE_RANDOM
+#define IRQF_PERCPU			SA_PERCPU
+#ifdef SA_PROBEIRQ
+#define IRQF_PROBE_SHARED		SA_PROBEIRQ
+#else
+#define IRQF_PROBE_SHARED		0 /* dummy */
+#endif
+#endif /* IRQ_SHARED */
+
+#ifndef MODULE_FIRMWARE
+#define MODULE_FIRMWARE(x)
+#endif
+
+typedef irqreturn_t (*snd_irq_handler_t)(int, void *);
+#define irq_handler_t snd_irq_handler_t
+
+#ifndef MODULE_ALIAS
+#define MODULE_ALIAS(x)
+#define MODULE_ALIAS_CHARDEV_MAJOR(x)
+#endif
+
+#ifndef cpu_relax
+#define cpu_relax()
+#endif
+
+#ifndef roundup
+#define roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
+#endif
+
+/*
+ * lockdep macros
+ */
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 17)
+#define lockdep_set_class(lock, key)		do { (void)(key); } while (0)
+#define down_read_nested(sem, subclass)		down_read(sem)
+#define down_write_nested(sem, subclass)	down_write(sem)
+#define down_read_non_owner(sem)		down_read(sem)
+#define up_read_non_owner(sem)			up_read(sem)
+#define spin_lock_nested(lock, x)		spin_lock(lock)
+#define spin_lock_irqsave_nested(lock, f, x)	spin_lock_irqsave(lock, f)
+#endif
+
+/* msleep */
+#ifndef CONFIG_HAVE_MSLEEP
+void snd_compat_msleep(unsigned int msecs);
+#define msleep snd_compat_msleep
+#endif
+
+#define do_posix_clock_monotonic_gettime getnstimeofday
+
+static inline unsigned char snd_pci_revision(struct pci_dev *pci)
+{
+	unsigned char rev;
+	pci_read_config_byte(pci, PCI_REVISION_ID, &rev);
+	return rev;
+}
+
+#ifndef ALIGN
+#define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
+#endif
+
+/* pci_intx() wrapper */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
+#ifdef CONFIG_PCI
+#undef pci_intx
+#define pci_intx(pci,x)
+#endif
+#endif
+
+/* MSI */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 8)
+static inline int snd_pci_enable_msi(struct pci_dev *dev) { return -1; }
+#undef pci_enable_msi
+#define pci_enable_msi(dev) snd_pci_enable_msi(dev)
+#undef pci_disable_msi
+#define pci_disable_msi(dev)
+#endif
+
+/**
+ * list_move_tail - delete from one list and add as another's tail
+ * @list: the entry to move
+ * @head: the head that will follow our entry
+ */
+static inline void list_move_tail(struct list_head *list,
+				  struct list_head *head)
+{
+	__list_del(list->prev, list->next);
+	list_add_tail(list, head);
+}
+
+#define assert(a)
+#define CONFIG_SND_YMFPCI_FIRMWARE_IN_KERNEL
+#define CONFIG_SND_MAESTRO3_FIRMWARE_IN_KERNEL
+
+#ifndef fastcall
+#define fastcall
+#endif
+
+/* dump_stack hack */
+#ifndef CONFIG_HAVE_DUMP_STACK
+#undef dump_stack
+#define dump_stack()
+#endif
 
 #endif //__ALSA_CONFIG_H__

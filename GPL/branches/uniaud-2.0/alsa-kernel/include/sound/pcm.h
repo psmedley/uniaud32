@@ -3,7 +3,7 @@
 
 /*
  *  Digital Audio (PCM) abstract layer
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *                   Abramo Bagnara <abramo@alsa-project.org>
  *
  *
@@ -23,10 +23,10 @@
  *
  */
 
-#include <limits.h>
 #include <sound/asound.h>
 #include <sound/memalloc.h>
 #include <linux/poll.h>
+#include <linux/mm.h>
 #include <linux/bitops.h>
 
 #define snd_pcm_substream_chip(substream) ((substream)->private_data)
@@ -55,6 +55,8 @@ struct snd_pcm_hardware {
 	unsigned int periods_max;	/* max # of periods */
 	size_t fifo_size;		/* fifo size in bytes */
 };
+
+struct snd_pcm_substream;
 
 struct snd_pcm_ops {
 	int (*open)(struct snd_pcm_substream *substream);
@@ -191,7 +193,7 @@ struct snd_pcm_ops {
 
 struct snd_pcm_file {
 	struct snd_pcm_substream *substream;
-	struct snd_pcm_file *next;
+	int no_compat_mmap;
 };
 
 struct snd_pcm_hw_rule;
@@ -272,7 +274,6 @@ struct snd_pcm_runtime {
 	snd_pcm_uframes_t period_size;	/* period size */
 	unsigned int periods;		/* periods */
 	snd_pcm_uframes_t buffer_size;	/* buffer size */
-	unsigned int tick_time;		/* tick time */
 	snd_pcm_uframes_t min_align;	/* Min alignment for the format */
 	size_t byte_align;
 	unsigned int frame_bits;
@@ -284,8 +285,6 @@ struct snd_pcm_runtime {
 	/* -- SW params -- */
 	int tstamp_mode;		/* mmap timestamp is updated */
   	unsigned int period_step;
-	unsigned int sleep_min;		/* min ticks to sleep */
-	snd_pcm_uframes_t xfer_align;	/* xfer size need to be a multiple */
 	snd_pcm_uframes_t start_threshold;
 	snd_pcm_uframes_t stop_threshold;
 	snd_pcm_uframes_t silence_threshold; /* Silence filling happens when
@@ -299,13 +298,11 @@ struct snd_pcm_runtime {
 	union snd_pcm_sync_id sync;	/* hardware synchronization ID */
 
 	/* -- mmap -- */
-	volatile struct snd_pcm_mmap_status *status;
-	volatile struct snd_pcm_mmap_control *control;
-	atomic_t mmap_count;
+	struct snd_pcm_mmap_status *status;
+	struct snd_pcm_mmap_control *control;
 
 	/* -- locking / scheduling -- */
 	wait_queue_head_t sleep;
-	struct timer_list tick_timer;
 	struct fasync_struct *fasync;
 
 	/* -- private section -- */
@@ -322,6 +319,7 @@ struct snd_pcm_runtime {
 
 	/* -- timer -- */
 	unsigned int timer_resolution;	/* timer resolution */
+	int tstamp_type;		/* timestamp type */
 
 	/* -- DMA -- */           
 	unsigned char *dma_area;	/* DMA area */
@@ -349,6 +347,7 @@ struct snd_pcm_substream {
 	int number;
 	char name[32];			/* substream name */
 	int stream;			/* stream (direction) */
+	char latency_id[20];		/* latency identifier */
 	size_t buffer_bytes_max;	/* limit ring buffer size */
 	struct snd_dma_buffer dma_buffer;
 	unsigned int dma_buf_id;
@@ -368,27 +367,29 @@ struct snd_pcm_substream {
 	struct snd_pcm_group self_group;	/* fake group for non linked substream (with substream lock inside) */
 	struct snd_pcm_group *group;		/* pointer to current group */
 	/* -- assigned files -- */
-	struct snd_pcm_file *file;
-	struct file *ffile;
+	void *file;
+	int ref_count;
+	atomic_t mmap_count;
+	unsigned int f_flags;
+	void (*pcm_release)(struct snd_pcm_substream *);
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
 	/* -- OSS things -- */
 	struct snd_pcm_oss_substream oss;
 #endif
+#ifdef CONFIG_SND_VERBOSE_PROCFS
 	struct snd_info_entry *proc_root;
 	struct snd_info_entry *proc_info_entry;
 	struct snd_info_entry *proc_hw_params_entry;
 	struct snd_info_entry *proc_sw_params_entry;
 	struct snd_info_entry *proc_status_entry;
 	struct snd_info_entry *proc_prealloc_entry;
+	struct snd_info_entry *proc_prealloc_max_entry;
+#endif
 	/* misc flags */
-	unsigned int no_mmap_ctrl: 1;
+	unsigned int hw_opened: 1;
 };
 
-#if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
-#define SUBSTREAM_BUSY(substream) ((substream)->file != NULL || ((substream)->oss.file != NULL))
-#else
-#define SUBSTREAM_BUSY(substream) ((substream)->file != NULL)
-#endif
+#define SUBSTREAM_BUSY(substream) ((substream)->ref_count > 0)
 
 
 struct snd_pcm_str {
@@ -402,18 +403,19 @@ struct snd_pcm_str {
 	/* -- OSS things -- */
 	struct snd_pcm_oss_stream oss;
 #endif
-	struct snd_pcm_file *files;
-	struct snd_minor *reg;
+#ifdef CONFIG_SND_VERBOSE_PROCFS
 	struct snd_info_entry *proc_root;
 	struct snd_info_entry *proc_info_entry;
-#ifdef CONFIG_SND_DEBUG
+#ifdef CONFIG_SND_PCM_XRUN_DEBUG
 	unsigned int xrun_debug;	/* 0 = disabled, 1 = verbose, 2 = stacktrace */
 	struct snd_info_entry *proc_xrun_debug_entry;
+#endif
 #endif
 };
 
 struct snd_pcm {
 	struct snd_card *card;
+	struct list_head list;
 	unsigned int device;	/* device number */
 	unsigned int info_flags;
 	unsigned short dev_class;
@@ -421,10 +423,11 @@ struct snd_pcm {
 	char id[64];
 	char name[80];
 	struct snd_pcm_str streams[2];
-	struct semaphore open_mutex;
+	struct mutex open_mutex;
 	wait_queue_head_t open_wait;
 	void *private_data;
 	void (*private_free) (struct snd_pcm *pcm);
+	struct device *dev; /* actual hw device this belongs to */
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
 	struct snd_pcm_oss oss;
 #endif
@@ -441,8 +444,7 @@ struct snd_pcm_notify {
  *  Registering
  */
 
-extern struct snd_pcm *snd_pcm_devices[];
-extern struct snd_minor snd_pcm_reg[2];
+extern const struct file_operations snd_pcm_f_ops[2];
 
 int snd_pcm_new(struct snd_card *card, char *id, int device,
 		int playback_count, int capture_count,
@@ -462,7 +464,6 @@ int snd_pcm_info_user(struct snd_pcm_substream *substream,
 		      struct snd_pcm_info __user *info);
 int snd_pcm_status(struct snd_pcm_substream *substream,
 		   struct snd_pcm_status *status);
-int snd_pcm_prepare(struct snd_pcm_substream *substream);
 int snd_pcm_start(struct snd_pcm_substream *substream);
 int snd_pcm_stop(struct snd_pcm_substream *substream, int status);
 int snd_pcm_drain_done(struct snd_pcm_substream *substream);
@@ -470,11 +471,13 @@ int snd_pcm_drain_done(struct snd_pcm_substream *substream);
 int snd_pcm_suspend(struct snd_pcm_substream *substream);
 int snd_pcm_suspend_all(struct snd_pcm *pcm);
 #endif
-int snd_pcm_kernel_playback_ioctl(struct snd_pcm_substream *substream, unsigned int cmd, void *arg);
-int snd_pcm_kernel_capture_ioctl(struct snd_pcm_substream *substream, unsigned int cmd, void *arg);
 int snd_pcm_kernel_ioctl(struct snd_pcm_substream *substream, unsigned int cmd, void *arg);
-int snd_pcm_open_substream(struct snd_pcm *pcm, int stream, struct snd_pcm_substream **rsubstream);
+int snd_pcm_open_substream(struct snd_pcm *pcm, int stream, struct file *file,
+			   struct snd_pcm_substream **rsubstream);
 void snd_pcm_release_substream(struct snd_pcm_substream *substream);
+int snd_pcm_attach_substream(struct snd_pcm *pcm, int stream, struct file *file,
+			     struct snd_pcm_substream **rsubstream);
+void snd_pcm_detach_substream(struct snd_pcm_substream *substream);
 void snd_pcm_vma_notify_data(void *client, void *data);
 int snd_pcm_mmap_data(struct snd_pcm_substream *substream, struct file *file, struct vm_area_struct *area);
 
@@ -597,11 +600,8 @@ do { \
 	read_unlock_irqrestore(&snd_pcm_link_rwlock, (flags)); \
 } while (0)
 
-#define snd_pcm_group_for_each(pos, substream) \
-	list_for_each(pos, &substream->group->substreams)
-
-#define snd_pcm_group_substream_entry(pos) \
-	list_entry(pos, struct snd_pcm_substream, link_list)
+#define snd_pcm_group_for_each_entry(s, substream) \
+	list_for_each_entry(s, &substream->group->substreams, link_list, struct snd_pcm_substream)
 
 static inline int snd_pcm_running(struct snd_pcm_substream *substream)
 {
@@ -788,13 +788,13 @@ static inline struct snd_interval *hw_param_interval(struct snd_pcm_hw_params *p
 static inline const struct snd_mask *hw_param_mask_c(const struct snd_pcm_hw_params *params,
 					     snd_pcm_hw_param_t var)
 {
-	return (const struct snd_mask *)hw_param_mask((struct snd_pcm_hw_params*) params, var);
+	return &params->masks[var - SNDRV_PCM_HW_PARAM_FIRST_MASK];
 }
 
 static inline const struct snd_interval *hw_param_interval_c(const struct snd_pcm_hw_params *params,
 						     snd_pcm_hw_param_t var)
 {
-	return (const struct snd_interval *)hw_param_interval((struct snd_pcm_hw_params*) params, var);
+	return &params->intervals[var - SNDRV_PCM_HW_PARAM_FIRST_INTERVAL];
 }
 
 #define params_access(p) snd_mask_min(hw_param_mask((p), SNDRV_PCM_HW_PARAM_ACCESS))
@@ -807,7 +807,6 @@ static inline const struct snd_interval *hw_param_interval_c(const struct snd_pc
 #define params_periods(p) hw_param_interval((p), SNDRV_PCM_HW_PARAM_PERIODS)->min
 #define params_buffer_size(p) hw_param_interval((p), SNDRV_PCM_HW_PARAM_BUFFER_SIZE)->min
 #define params_buffer_bytes(p) hw_param_interval((p), SNDRV_PCM_HW_PARAM_BUFFER_BYTES)->min
-#define params_tick_time(p) hw_param_interval((p), SNDRV_PCM_HW_PARAM_TICK_TIME)->min
 
 
 int snd_interval_refine(struct snd_interval *i, const struct snd_interval *v);
@@ -824,14 +823,6 @@ int snd_interval_ratnum(struct snd_interval *i,
 
 void _snd_pcm_hw_params_any(struct snd_pcm_hw_params *params);
 void _snd_pcm_hw_param_setempty(struct snd_pcm_hw_params *params, snd_pcm_hw_param_t var);
-int snd_pcm_hw_param_near(struct snd_pcm_substream *substream, 
-			  struct snd_pcm_hw_params *params,
-			  snd_pcm_hw_param_t var, 
-			  unsigned int val, int *dir);
-int snd_pcm_hw_param_set(struct snd_pcm_substream *pcm,
-			 struct snd_pcm_hw_params *params,
-			 snd_pcm_hw_param_t var,
-			 unsigned int val, int dir);
 int snd_pcm_hw_params_choose(struct snd_pcm_substream *substream, struct snd_pcm_hw_params *params);
 
 int snd_pcm_hw_refine(struct snd_pcm_substream *substream, struct snd_pcm_hw_params *params);
@@ -901,7 +892,6 @@ ssize_t snd_pcm_format_size(snd_pcm_format_t format, size_t samples);
 const unsigned char *snd_pcm_format_silence_64(snd_pcm_format_t format);
 int snd_pcm_format_set_silence(snd_pcm_format_t format, void *buf, unsigned int frames);
 snd_pcm_format_t snd_pcm_build_linear_format(int width, int unsignd, int big_endian);
-const char *snd_pcm_format_name(snd_pcm_format_t format);
 
 void snd_pcm_set_ops(struct snd_pcm * pcm, int direction, struct snd_pcm_ops *ops);
 void snd_pcm_set_sync(struct snd_pcm_substream *substream);
@@ -914,9 +904,6 @@ int snd_pcm_capture_xrun_check(struct snd_pcm_substream *substream);
 int snd_pcm_playback_xrun_asap(struct snd_pcm_substream *substream);
 int snd_pcm_capture_xrun_asap(struct snd_pcm_substream *substream);
 void snd_pcm_playback_silence(struct snd_pcm_substream *substream, snd_pcm_uframes_t new_hw_ptr);
-void snd_pcm_tick_prepare(struct snd_pcm_substream *substream);
-void snd_pcm_tick_set(struct snd_pcm_substream *substream, unsigned long ticks);
-void snd_pcm_tick_elapsed(struct snd_pcm_substream *substream);
 void snd_pcm_period_elapsed(struct snd_pcm_substream *substream);
 snd_pcm_sframes_t snd_pcm_lib_write(struct snd_pcm_substream *substream,
 				    const void __user *buf,
@@ -928,7 +915,10 @@ snd_pcm_sframes_t snd_pcm_lib_writev(struct snd_pcm_substream *substream,
 snd_pcm_sframes_t snd_pcm_lib_readv(struct snd_pcm_substream *substream,
 				    void __user **bufs, snd_pcm_uframes_t frames);
 
+extern const struct snd_pcm_hw_constraint_list snd_pcm_known_rates;
+
 int snd_pcm_limit_hw_rates(struct snd_pcm_runtime *runtime);
+unsigned int snd_pcm_rate_to_rate_bit(unsigned int rate);
 
 static inline void snd_pcm_set_runtime_buffer(struct snd_pcm_substream *substream,
 					      struct snd_dma_buffer *bufp)
@@ -955,6 +945,15 @@ void snd_pcm_timer_resolution_change(struct snd_pcm_substream *substream);
 void snd_pcm_timer_init(struct snd_pcm_substream *substream);
 void snd_pcm_timer_done(struct snd_pcm_substream *substream);
 
+static inline void snd_pcm_gettime(struct snd_pcm_runtime *runtime,
+				   struct timespec *tv)
+{
+	if (runtime->tstamp_type == SNDRV_PCM_TSTAMP_TYPE_MONOTONIC)
+		do_posix_clock_monotonic_gettime(tv);
+	else
+		getnstimeofday(tv);
+}
+
 /*
  *  Memory
  */
@@ -979,13 +978,13 @@ struct page *snd_pcm_sgbuf_ops_page(struct snd_pcm_substream *substream, unsigne
 static inline void snd_pcm_mmap_data_open(struct vm_area_struct *area)
 {
 	struct snd_pcm_substream *substream = (struct snd_pcm_substream *)area->vm_private_data;
-	atomic_inc(&substream->runtime->mmap_count);
+	atomic_inc(&substream->mmap_count);
 }
 
 static inline void snd_pcm_mmap_data_close(struct vm_area_struct *area)
 {
 	struct snd_pcm_substream *substream = (struct snd_pcm_substream *)area->vm_private_data;
-	atomic_dec(&substream->runtime->mmap_count);
+	atomic_dec(&substream->mmap_count);
 }
 
 /* mmap for io-memory area */

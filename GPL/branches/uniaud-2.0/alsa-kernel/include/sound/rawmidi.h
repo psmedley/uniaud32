@@ -3,7 +3,7 @@
 
 /*
  *  Abstract layer for MIDI v1.0 stream
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -26,8 +26,11 @@
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
 #include <linux/wait.h>
-#include <asm/semaphore.h>
+#include <linux/mutex.h>
 
+#ifdef TARGET_OS2x
+#define tasklet_struct		tq_struct 
+#endif
 #if defined(CONFIG_SND_SEQUENCER) || defined(CONFIG_SND_SEQUENCER_MODULE)
 #include "seq_device.h"
 #endif
@@ -46,6 +49,7 @@
 
 struct snd_rawmidi;
 struct snd_rawmidi_substream;
+struct snd_seq_port_info;
 
 struct snd_rawmidi_ops {
 	int (*open) (struct snd_rawmidi_substream * substream);
@@ -57,6 +61,8 @@ struct snd_rawmidi_ops {
 struct snd_rawmidi_global_ops {
 	int (*dev_register) (struct snd_rawmidi * rmidi);
 	int (*dev_unregister) (struct snd_rawmidi * rmidi);
+	void (*get_port_info)(struct snd_rawmidi *rmidi, int number,
+			      struct snd_seq_port_info *info);
 };
 
 struct snd_rawmidi_runtime {
@@ -113,7 +119,7 @@ struct snd_rawmidi_str {
 
 struct snd_rawmidi {
 	struct snd_card *card;
-
+	struct list_head list;
 	unsigned int device;		/* device number */
 	unsigned int info_flags;	/* SNDRV_RAWMIDI_INFO_XXXX */
 	char id[64];
@@ -130,7 +136,7 @@ struct snd_rawmidi {
 	void *private_data;
 	void (*private_free) (struct snd_rawmidi *rmidi);
 
-	struct semaphore open_mutex;
+	struct mutex open_mutex;
 	wait_queue_head_t open_wait;
 
 	struct snd_info_entry *dev;
@@ -165,8 +171,8 @@ int snd_rawmidi_transmit(struct snd_rawmidi_substream *substream,
 /* main midi functions */
 
 int snd_rawmidi_info_select(struct snd_card *card, struct snd_rawmidi_info *info);
-int snd_rawmidi_kernel_open(int cardnum, int device, int subdevice, int mode,
-			    struct snd_rawmidi_file *rfile);
+int snd_rawmidi_kernel_open(struct snd_card *card, int device, int subdevice,
+			    int mode, struct snd_rawmidi_file *rfile);
 int snd_rawmidi_kernel_release(struct snd_rawmidi_file *rfile);
 int snd_rawmidi_output_params(struct snd_rawmidi_substream *substream,
 			      struct snd_rawmidi_params *params);

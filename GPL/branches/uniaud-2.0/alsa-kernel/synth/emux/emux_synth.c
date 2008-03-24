@@ -205,9 +205,10 @@ void snd_emux_timer_callback(unsigned long data)
 {
 	struct snd_emux *emu = (struct snd_emux *) data;
 	struct snd_emux_voice *vp;
+	unsigned long flags;
 	int ch, do_again = 0;
 
-	spin_lock(&emu->voice_lock);
+	spin_lock_irqsave(&emu->voice_lock, flags);
 	for (ch = 0; ch < emu->max_voices; ch++) {
 		vp = &emu->voices[ch];
 		if (vp->state == SNDRV_EMUX_ST_PENDING) {
@@ -225,7 +226,7 @@ void snd_emux_timer_callback(unsigned long data)
 		emu->timer_active = 1;
 	} else
 		emu->timer_active = 0;
-	spin_unlock(&emu->voice_lock);
+	spin_unlock_irqrestore(&emu->voice_lock, flags);
 }
 
 /*
@@ -316,7 +317,7 @@ snd_emux_update_port(struct snd_emux_port *port, int update)
 
 
 /*
- * Deal with a controler type event.  This includes all types of
+ * Deal with a controller type event.  This includes all types of
  * control events, not just the midi controllers
  */
 void
@@ -433,6 +434,7 @@ snd_emux_terminate_all(struct snd_emux *emu)
 	spin_unlock_irqrestore(&emu->voice_lock, flags);
 }
 
+EXPORT_SYMBOL(snd_emux_terminate_all);
 
 /*
  * Terminate all voices associated with the given port
@@ -950,6 +952,8 @@ void snd_emux_lock_voice(struct snd_emux *emu, int voice)
 	spin_unlock_irqrestore(&emu->voice_lock, flags);
 }
 
+EXPORT_SYMBOL(snd_emux_lock_voice);
+
 /*
  */
 void snd_emux_unlock_voice(struct snd_emux *emu, int voice)
@@ -964,3 +968,5 @@ void snd_emux_unlock_voice(struct snd_emux *emu, int voice)
 			   voice, emu->voices[voice].state);
 	spin_unlock_irqrestore(&emu->voice_lock, flags);
 }
+
+EXPORT_SYMBOL(snd_emux_unlock_voice);

@@ -19,7 +19,6 @@
  *
  */
 
-#include <sound/driver.h>
 #include <linux/time.h>
 #include <linux/slab.h>
 #include <sound/core.h>
@@ -59,7 +58,7 @@ struct snd_seq_prioq *snd_seq_prioq_new(void)
 {
 	struct snd_seq_prioq *f;
 
-	f = (struct snd_seq_prioq *)kzalloc(sizeof(*f), GFP_KERNEL);
+	f = kzalloc(sizeof(*f), GFP_KERNEL);
 	if (f == NULL) {
 		snd_printd("oops: malloc failed for snd_seq_prioq_new()\n");
 		return NULL;

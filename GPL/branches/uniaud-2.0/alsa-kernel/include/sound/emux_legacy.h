@@ -1,3 +1,6 @@
+#ifndef __SOUND_EMUX_LEGACY_H
+#define __SOUND_EMUX_LEGACY_H
+
 /*
  *  Copyright (c) 1999-2000 Takashi Iwai <tiwai@suse.de>
  *
@@ -15,12 +18,9 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
-
-#ifndef __EMUX_LEGACY_H
-#define __EMUX_LEGACY_H
 
 #include "seq_oss_legacy.h"
 
@@ -143,4 +143,4 @@ enum {
 #define EMUX_FX_FLAG_ADD	2
 
 
-#endif
+#endif /* __SOUND_EMUX_LEGACY_H */

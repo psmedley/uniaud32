@@ -45,7 +45,7 @@ snd_emu10k1_sample_new(struct snd_emux *rec, struct snd_sf_sample *sp,
 	unsigned int start_addr;
 	struct snd_emu10k1 *emu;
 
-        emu = rec->hw;
+	emu = rec->hw;
 	snd_assert(sp != NULL, return -EINVAL);
 	snd_assert(hdr != NULL, return -EINVAL);
 
@@ -119,11 +119,8 @@ snd_emu10k1_sample_new(struct snd_emux *rec, struct snd_sf_sample *sp,
 		return -EFAULT;
 	}
 	offset += size;
-#ifdef TARGET_OS2
-	data = (char *)data + size;
-#else
 	data += size;
-#endif
+
 #if 0 /* not suppported yet */
 	/* handle reverse (or bidirectional) loop */
 	if (sp->v.mode_flags & (SNDRV_SFNT_SAMPLE_BIDIR_LOOP|SNDRV_SFNT_SAMPLE_REVERSE_LOOP)) {
@@ -210,11 +207,11 @@ snd_emu10k1_sample_new(struct snd_emux *rec, struct snd_sf_sample *sp,
  */
 int
 snd_emu10k1_sample_free(struct snd_emux *rec, struct snd_sf_sample *sp,
-                        struct snd_util_memhdr *hdr)
+			struct snd_util_memhdr *hdr)
 {
 	struct snd_emu10k1 *emu;
 
-        emu = rec->hw;
+	emu = rec->hw;
 	snd_assert(sp != NULL, return -EINVAL);
 	snd_assert(hdr != NULL, return -EINVAL);
 

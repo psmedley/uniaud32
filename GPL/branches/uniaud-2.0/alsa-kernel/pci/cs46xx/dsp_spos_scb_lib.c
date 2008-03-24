@@ -21,10 +21,8 @@
  */
 
 
-#include <sound/driver.h>
 #include <asm/io.h>
 #include <linux/delay.h>
-#include <linux/pci.h>
 #include <linux/pm.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -180,6 +178,7 @@ static void _dsp_clear_sample_buffer (struct snd_cs46xx *chip, u32 sample_buffer
 void cs46xx_dsp_remove_scb (struct snd_cs46xx *chip, struct dsp_scb_descriptor * scb)
 {
 	struct dsp_spos_instance * ins = chip->dsp_spos_instance;
+	unsigned long flags;
 
 	/* check integrety */
 	snd_assert ( (scb->index >= 0 && 
@@ -194,9 +193,9 @@ void cs46xx_dsp_remove_scb (struct snd_cs46xx *chip, struct dsp_scb_descriptor *
 		     goto _end);
 #endif
 
-	spin_lock(&scb->lock);
+	spin_lock_irqsave(&scb->lock, flags);
 	_dsp_unlink_scb (chip,scb);
-	spin_unlock(&scb->lock);
+	spin_unlock_irqrestore(&scb->lock, flags);
 
 	cs46xx_dsp_proc_free_scb_desc(scb);
 	snd_assert (scb->scb_symbol != NULL, return );
@@ -232,7 +231,7 @@ void cs46xx_dsp_proc_free_scb_desc (struct dsp_scb_descriptor * scb)
 
 		snd_printdd("cs46xx_dsp_proc_free_scb_desc: freeing %s\n",scb->scb_name);
 
-		snd_info_unregister(scb->proc_info);
+		snd_info_free_entry(scb->proc_info);
 		scb->proc_info = NULL;
 
 		snd_assert (scb_info != NULL, return);
@@ -267,7 +266,6 @@ void cs46xx_dsp_proc_register_scb_desc (struct snd_cs46xx *chip,
 			entry->private_data = scb_info;
 			entry->mode = S_IFREG | S_IRUGO | S_IWUSR;
       
-			entry->c.text.read_size = 512;
 			entry->c.text.read = cs46xx_dsp_proc_scb_info_read;
       
 			if (snd_info_register(entry) < 0) {
@@ -430,15 +428,12 @@ cs46xx_dsp_create_codec_out_scb(struct snd_cs46xx * chip, char * codec_name,
 		0,NULL_SCB_ADDR,
 		0,                      /* COstrmRsConfig */
 		0,                      /* COstrmBufPtr */
-		/*channel_disp*/0,/*fifo_addr*/0, /* leftChanBaseIOaddr:rightChanIOdisp */
+		channel_disp,fifo_addr, /* leftChanBaseIOaddr:rightChanIOdisp */
 		0x0000,0x0080,          /* (!AC97!) COexpVolChangeRate:COscaleShiftCount */
-		0,/*child_scb_addr*/0        /* COreserved - need child scb to work with rom code */
-        };
-
-        codec_out_scb.left_chan_base_IO_addr = channel_disp;
-        codec_out_scb.right_chan_IO_disp = fifo_addr;
-        codec_out_scb.last_sub_ptr = child_scb_addr;
-
+		0,child_scb_addr        /* COreserved - need child scb to work with rom code */
+	};
+  
+  
 	scb = cs46xx_dsp_create_generic_scb(chip,codec_name,(u32 *)&codec_out_scb,
 					    dest,"S16_CODECOUTPUTTASK",parent_scb,
 					    scb_child_type);
@@ -476,18 +471,14 @@ cs46xx_dsp_create_codec_in_scb(struct snd_cs46xx * chip, char * codec_name,
 		0,0,
 
 		RSCONFIG_SAMPLE_16STEREO + RSCONFIG_MODULO_64,  /* strmRsConfig */
-		/*sample_buffer_addr << 0x10*/0,       /* strmBufPtr; defined as a dword ptr, used as a byte ptr */
-		/*channel_disp*/0,/*fifo_addr*/0,           /* (!AC97!) leftChanBaseINaddr=AC97primary
+		sample_buffer_addr << 0x10,       /* strmBufPtr; defined as a dword ptr, used as a byte ptr */
+		channel_disp,fifo_addr,           /* (!AC97!) leftChanBaseINaddr=AC97primary 
 						     link input slot 3 :rightChanINdisp=""slot 4 */
 		0x0000,0x0000,                    /* (!AC97!) ????:scaleShiftCount; no shift needed 
 						     because AC97 is already 20 bits */
 		0x80008000                        /* ??clw cwcgame.scb has 0 */
 	};
-
-        codec_input_scb.strm_buf_ptr = sample_buffer_addr << 0x10;
-        codec_input_scb.rightChanINdisp = channel_disp;
-        codec_input_scb.left_chan_base_IN_addr = fifo_addr;
-
+  
 	scb = cs46xx_dsp_create_generic_scb(chip,codec_name,(u32 *)&codec_input_scb,
 					    dest,"S16_CODECINPUTTASK",parent_scb,
 					    scb_child_type);
@@ -558,8 +549,7 @@ cs46xx_dsp_create_pcm_reader_scb(struct snd_cs46xx * chip, char * scb_name,
 		/* Sublist pointer & next stream control block (SCB) link. */
 		NULL_SCB_ADDR,NULL_SCB_ADDR,
 		/* Pointer to this tasks parameter block & stream function pointer */
-                0,NULL_SCB_ADDR,
-#ifndef TARGET_OS2
+		0,NULL_SCB_ADDR,
 		/* rsConfig register for stream buffer (rsDMA reg. is loaded from basicReq.daw */
 		/*   for incoming streams, or basicReq.saw, for outgoing streams) */
 		RSCONFIG_DMA_ENABLE +                 /* enable DMA */
@@ -567,12 +557,9 @@ cs46xx_dsp_create_pcm_reader_scb(struct snd_cs46xx * chip, char * scb_name,
 		/*  uses it for some reason */
 		((dest >> 4) << RSCONFIG_STREAM_NUM_SHIFT) + /* stream number = SCBaddr/16 */
 		RSCONFIG_SAMPLE_16STEREO +
-                RSCONFIG_MODULO_32,             /* dest buffer(PCMreaderBuf) is 32 dwords (256 bytes) */
-#else
-                0,
-#endif
+		RSCONFIG_MODULO_32,             /* dest buffer(PCMreaderBuf) is 32 dwords (256 bytes) */
 		/* Stream sample pointer & MAC-unit mode for this stream */
-		/*(sample_buffer_addr << 0x10)*/0,
+		(sample_buffer_addr << 0x10),
 		/* Fractional increment per output sample in the input sample buffer */
 		0, 
 		{
@@ -581,14 +568,7 @@ cs46xx_dsp_create_pcm_reader_scb(struct snd_cs46xx * chip, char * scb_name,
 			0xffff,0xffff,
 			0xffff,0xffff
 		}
-        };
-
-        pcm_reader_scb.strm_rs_config = RSCONFIG_DMA_ENABLE +
-            (19 << RSCONFIG_MAX_DMA_SIZE_SHIFT) +
-            ((dest >> 4) << RSCONFIG_STREAM_NUM_SHIFT) +
-            RSCONFIG_SAMPLE_16STEREO +
-            RSCONFIG_MODULO_32;
-        pcm_reader_scb.strm_buf_ptr = sample_buffer_addr << 0x10;
+	};
 
 	if (ins->null_algorithm == NULL) {
 		ins->null_algorithm =  cs46xx_dsp_lookup_symbol (chip,"NULLALGORITHM",
@@ -695,7 +675,7 @@ cs46xx_dsp_create_src_task_scb(struct snd_cs46xx * chip, char * scb_name,
 		if (pass_through) {
 			/* wont work with any other rate than
 			   the native DSP rate */
-			snd_assert (rate == 48000, return NULL);
+			snd_assert (rate == 48000);
 
 			scb = cs46xx_dsp_create_generic_scb(chip,scb_name,(u32 *)&src_task_scb,
 							    dest,"DMAREADER",parent_scb,
@@ -1266,7 +1246,7 @@ cs46xx_dsp_create_pcm_channel (struct snd_cs46xx * chip,
 		break;
 	case DSP_PCM_S71_CHANNEL:
 		/* TODO */
-		snd_assert(0, return NULL);
+		snd_assert(0);
 		break;
 	case DSP_IEC958_CHANNEL:
 		snd_assert (ins->asynch_tx_scb != NULL, return NULL);
@@ -1282,7 +1262,7 @@ cs46xx_dsp_create_pcm_channel (struct snd_cs46xx * chip,
 		}
 		break;
 	default:
-		snd_assert (0, return NULL);
+		snd_assert (0);
 		return NULL;
 	}
 	/* default sample rate is 44100 */
@@ -1499,7 +1479,7 @@ void cs46xx_dsp_destroy_pcm_channel (struct snd_cs46xx * chip,
 	if (!pcm_channel->src_scb->ref_count) {
 		cs46xx_dsp_remove_scb(chip,pcm_channel->src_scb);
 
-		snd_assert (pcm_channel->src_slot >= 0 && pcm_channel->src_slot <= DSP_MAX_SRC_NR,
+		snd_assert (pcm_channel->src_slot >= 0 && pcm_channel->src_slot < DSP_MAX_SRC_NR,
 			    return );
 
 		ins->src_scb_slots[pcm_channel->src_slot] = 0;

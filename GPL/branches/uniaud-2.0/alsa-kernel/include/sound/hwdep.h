@@ -3,7 +3,7 @@
 
 /*
  *  Hardware dependent layer 
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -43,6 +43,7 @@ struct snd_hwdep_ops {
 
 struct snd_hwdep {
 	struct snd_card *card;
+	struct list_head list;
 	int device;
 	char id[32];
 	char name[80];
@@ -59,7 +60,7 @@ struct snd_hwdep {
 	void *private_data;
 	void (*private_free) (struct snd_hwdep *hwdep);
 
-	struct semaphore open_mutex;
+	struct mutex open_mutex;
 	int used;
 	unsigned int dsp_loaded;
 	unsigned int exclusive: 1;

@@ -1,6 +1,6 @@
 /*
  *  Digital Audio (PCM) abstract layer
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -15,11 +15,12 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#include <sound/driver.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/timer.h>
 
@@ -30,78 +31,78 @@
 /* Greatest common divisor */
 static unsigned long gcd(unsigned long a, unsigned long b)
 {
-    unsigned long r;
-    if (a < b) {
-        r = a;
-        a = b;
-        b = r;
-    }
-    while ((r = a % b) != 0) {
-        a = b;
-        b = r;
-    }
-    return b;
+	unsigned long r;
+	if (a < b) {
+		r = a;
+		a = b;
+		b = r;
+	}
+	while ((r = a % b) != 0) {
+		a = b;
+		b = r;
+	}
+	return b;
 }
 
-void snd_pcm_timer_resolution_change(snd_pcm_substream_t *substream)
+void snd_pcm_timer_resolution_change(struct snd_pcm_substream *substream)
 {
-    unsigned long rate, mult, fsize, l, post;
-    snd_pcm_runtime_t *runtime = substream->runtime;
-
-    mult = 1000000000;
-    rate = runtime->rate;
-    snd_assert(rate != 0, return);
-    l = gcd(mult, rate);
-    mult /= l;
-    rate /= l;
-    fsize = runtime->period_size;
-    snd_assert(fsize != 0, return);
-    l = gcd(rate, fsize);
-    rate /= l;
-    fsize /= l;
-    post = 1;
-    while ((mult * fsize) / fsize != mult) {
-        mult /= 2;
-        post *= 2;
-    }
-    if (rate == 0) {
-        snd_printk(KERN_ERR "pcm timer resolution out of range (rate = %u, period_size = %lu)\n", runtime->rate, runtime->period_size);
-        runtime->timer_resolution = -1;
-        return;
-    }
-    runtime->timer_resolution = (mult * fsize / rate) * post;
+	unsigned long rate, mult, fsize, l, post;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	
+        mult = 1000000000;
+	rate = runtime->rate;
+	snd_assert(rate != 0, return);
+	l = gcd(mult, rate);
+	mult /= l;
+	rate /= l;
+	fsize = runtime->period_size;
+	snd_assert(fsize != 0, return);
+	l = gcd(rate, fsize);
+	rate /= l;
+	fsize /= l;
+	post = 1;
+	while ((mult * fsize) / fsize != mult) {
+		mult /= 2;
+		post *= 2;
+	}
+	if (rate == 0) {
+		snd_printk(KERN_ERR "pcm timer resolution out of range (rate = %u, period_size = %lu)\n", runtime->rate, runtime->period_size);
+		runtime->timer_resolution = -1;
+		return;
+	}
+	runtime->timer_resolution = (mult * fsize / rate) * post;
 }
 
-static unsigned long snd_pcm_timer_resolution(snd_timer_t * timer)
+static unsigned long snd_pcm_timer_resolution(struct snd_timer * timer)
 {
-    snd_pcm_substream_t * substream;
-
-    substream = timer->private_data;
-    return substream->runtime ? substream->runtime->timer_resolution : 0;
+	struct snd_pcm_substream *substream;
+	
+	substream = timer->private_data;
+	return substream->runtime ? substream->runtime->timer_resolution : 0;
 }
 
-static int snd_pcm_timer_start(snd_timer_t * timer)
+static int snd_pcm_timer_start(struct snd_timer * timer)
 {
-    unsigned long flags;
-    snd_pcm_substream_t * substream;
-
-    substream = snd_timer_chip(timer);
-    spin_lock_irqsave(&substream->timer_lock, flags);
-    substream->timer_running = 1;
-    spin_unlock_irqrestore(&substream->timer_lock, flags);
-    return 0;
+	unsigned long flags;
+	struct snd_pcm_substream *substream;
+	
+	substream = snd_timer_chip(timer);
+	spin_lock_irqsave(&substream->timer_lock, flags);
+	substream->timer_running = 1;
+	spin_unlock_irqrestore(&substream->timer_lock, flags);
+	return 0;
 }
 
-static int snd_pcm_timer_stop(snd_timer_t * timer)
+static int snd_pcm_timer_stop(struct snd_timer * timer)
 {
-    unsigned long flags;
-    snd_pcm_substream_t * substream;
-
-    substream = snd_timer_chip(timer);
-    spin_lock_irqsave(&substream->timer_lock, flags);
-    substream->timer_running = 0;
-    spin_unlock_irqrestore(&substream->timer_lock, flags);
-    return 0;
+	unsigned long flags;
+	struct snd_pcm_substream *substream;
+	
+	substream = snd_timer_chip(timer);
+	spin_lock_irqsave(&substream->timer_lock, flags);
+	substream->timer_running = 0;
+	spin_unlock_irqrestore(&substream->timer_lock, flags);
+	return 0;
 }
 
 static struct snd_timer_hardware snd_pcm_timer =
@@ -118,42 +119,42 @@ static struct snd_timer_hardware snd_pcm_timer =
  *  Init functions
  */
 
-static void snd_pcm_timer_free(snd_timer_t *timer)
+static void snd_pcm_timer_free(struct snd_timer *timer)
 {
-    snd_pcm_substream_t *substream = timer->private_data;
-    substream->timer = NULL;
+	struct snd_pcm_substream *substream = timer->private_data;
+	substream->timer = NULL;
 }
 
-void snd_pcm_timer_init(snd_pcm_substream_t *substream)
+void snd_pcm_timer_init(struct snd_pcm_substream *substream)
 {
-    snd_timer_id_t tid;
-    snd_timer_t *timer;
-
-    tid.dev_sclass = SNDRV_TIMER_SCLASS_NONE;
-    tid.dev_class = SNDRV_TIMER_CLASS_PCM;
-    tid.card = substream->pcm->card->number;
-    tid.device = substream->pcm->device;
-    tid.subdevice = (substream->number << 1) | (substream->stream & 1);
-    if (snd_timer_new(substream->pcm->card, "PCM", &tid, &timer) < 0)
-        return;
-    sprintf(timer->name, "PCM %s %i-%i-%i",
-            substream->stream == SNDRV_PCM_STREAM_CAPTURE ?
-            "capture" : "playback",
-            tid.card, tid.device, tid.subdevice);
-    timer->hw = snd_pcm_timer;
-    if (snd_device_register(timer->card, timer) < 0) {
-        snd_device_free(timer->card, timer);
-        return;
-    }
-    timer->private_data = substream;
-    timer->private_free = snd_pcm_timer_free;
-    substream->timer = timer;
+	struct snd_timer_id tid;
+	struct snd_timer *timer;
+	
+	tid.dev_sclass = SNDRV_TIMER_SCLASS_NONE;
+	tid.dev_class = SNDRV_TIMER_CLASS_PCM;
+	tid.card = substream->pcm->card->number;
+	tid.device = substream->pcm->device;
+	tid.subdevice = (substream->number << 1) | (substream->stream & 1);
+	if (snd_timer_new(substream->pcm->card, "PCM", &tid, &timer) < 0)
+		return;
+	sprintf(timer->name, "PCM %s %i-%i-%i",
+			substream->stream == SNDRV_PCM_STREAM_CAPTURE ?
+			"capture" : "playback",
+			tid.card, tid.device, tid.subdevice);
+	timer->hw = snd_pcm_timer;
+	if (snd_device_register(timer->card, timer) < 0) {
+		snd_device_free(timer->card, timer);
+		return;
+	}
+	timer->private_data = substream;
+	timer->private_free = snd_pcm_timer_free;
+	substream->timer = timer;
 }
 
-void snd_pcm_timer_done(snd_pcm_substream_t *substream)
+void snd_pcm_timer_done(struct snd_pcm_substream *substream)
 {
-    if (substream->timer) {
-        snd_device_free(substream->pcm->card, substream->timer);
-        substream->timer = NULL;
-    }
+	if (substream->timer) {
+		snd_device_free(substream->pcm->card, substream->timer);
+		substream->timer = NULL;
+	}
 }

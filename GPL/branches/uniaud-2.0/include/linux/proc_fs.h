@@ -106,6 +106,7 @@ extern int proc_unregister(struct proc_dir_entry *, int);
 
 extern struct proc_dir_entry *create_proc_entry(const char *name, mode_t mode,
 						struct proc_dir_entry *parent);
+
 extern void remove_proc_entry(const char *name, struct proc_dir_entry *parent);
 
 
@@ -228,7 +229,6 @@ static inline struct proc_dir_entry *create_proc_read_entry(const char *name,
 	read_proc_t *read_proc, void * data) { return NULL; }
 struct proc_dir_entry *create_proc_info_entry(const char *name,
 	mode_t mode, struct proc_dir_entry *base, get_info_t *get_info);
-struct proc_dir_entry *proc_net_create(const char *name);
 void proc_net_remove(const char *name);
 
 extern struct proc_dir_entry proc_root;

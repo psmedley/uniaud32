@@ -31,12 +31,11 @@ KEE=1
 #   List of source files
 #
 #===================================================================
-FILE1    = seq_device.obj seq.obj seq_instr.obj seq_midi_emul.obj seq_midi_event.obj 
-#seq_virmidi.obj
-FILE2    = seq.obj seq_lock.obj seq_clientmgr.obj seq_memory.obj seq_queue.obj 
-FILE3    = seq_fifo.obj seq_prioq.obj seq_timer.obj 
-FILE4    = seq_system.obj seq_ports.obj seq_info.obj seq_sync.obj
-FILE5    = seq_midi_clock.obj seq_mtc.obj seq_dtl.obj
+FILE1    = seq_device.obj 
+FILE2    = seq.obj seq_lock.obj seq_clientmgr.obj seq_memory.obj seq_queue.obj
+FILE3    = seq_fifo.obj seq_prioq.obj seq_timer.obj
+FILE4    = seq_system.obj seq_ports.obj seq_info.obj
+FILE5    = seq_midi.obj seq_midi_emul.obj seq_midi_event.obj seq_dummy.obj seq_virmidi.obj
 FILELAST =
 FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10) $(FILE11) $(FILE12)
 
@@ -62,16 +61,16 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 subdirs: .SYMBOLIC
-    @echo BUILDING instr
-    @cd instr
-    @wmake $(NMAKEOPTS)
-    @cd ..
+#    @echo BUILDING instr
+#    @cd instr
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
 
 clean: .SYMBOLIC
-    @echo BUILDING instr
-    @cd instr
-    @wmake $(NMAKEOPTS) clean
-    @cd ..
+#    @echo BUILDING instr
+#    @cd instr
+#    @wmake $(NMAKEOPTS) clean
+#    @cd ..
     -@rm *.err 2>nul
     @cd $(OBJDIR)
     -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -22,6 +22,8 @@
 #define SNDRV_GF1_ATTEN_TABLE_SIZE	128
 
 #ifdef __GUS_TABLES_ALLOC__
+
+#if 0
 
 unsigned int snd_gf1_scale_table[SNDRV_GF1_SCALE_TABLE_SIZE] =
 {
@@ -48,6 +50,8 @@ unsigned int snd_gf1_scale_table[SNDRV_GF1_SCALE_TABLE_SIZE] =
    8572947,   9082720,   9622807,  10195009,  10801236,  11443511,
   12123977,  12844906
 };
+
+#endif  /*  0  */
 
 unsigned short snd_gf1_atten_table[SNDRV_GF1_ATTEN_TABLE_SIZE] = {
   4095 /* 0   */,1789 /* 1   */,1533 /* 2   */,1383 /* 3   */,1277 /* 4   */,
@@ -80,7 +84,7 @@ unsigned short snd_gf1_atten_table[SNDRV_GF1_ATTEN_TABLE_SIZE] = {
 
 #else
 
-unsigned int snd_gf1_scale_table[SNDRV_GF1_SCALE_TABLE_SIZE];
-unsigned short snd_gf1_atten_table[SNDRV_GF1_ATTEN_TABLE_SIZE];
+extern unsigned int snd_gf1_scale_table[SNDRV_GF1_SCALE_TABLE_SIZE];
+extern unsigned short snd_gf1_atten_table[SNDRV_GF1_ATTEN_TABLE_SIZE];
 
 #endif

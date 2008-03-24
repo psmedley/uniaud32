@@ -2,7 +2,7 @@
 #define __SOUND_CS46XX_H
 
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>,
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>,
  *		     Cirrus Logic, Inc.
  *  Definitions for Cirrus Logic CS46xx chips
  *
@@ -1704,14 +1704,12 @@ struct snd_cs46xx {
 	int acpi_port;
 	struct snd_kcontrol *eapd_switch; /* for amplifier hack */
 	int accept_valid;	/* accept mmap valid (for OSS) */
+	int in_suspend;
 
 	struct gameport *gameport;
 
-#ifdef CONFIG_SND_CS46XX_DEBUG_GPIO
-	int current_gpio;
-#endif
 #ifdef CONFIG_SND_CS46XX_NEW_DSP
-	struct semaphore spos_mutex;
+	struct mutex spos_mutex;
 
 	struct dsp_spos_instance * dsp_spos_instance;
 
@@ -1721,6 +1719,10 @@ struct snd_cs46xx {
 #else /* for compatibility */
 	struct snd_cs46xx_pcm *playback_pcm;
 	unsigned int play_ctl;
+#endif
+
+#ifdef CONFIG_PM
+	u32 *saved_regs;
 #endif
 };
 

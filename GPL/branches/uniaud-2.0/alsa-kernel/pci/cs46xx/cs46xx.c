@@ -1,6 +1,6 @@
 /*
  *  The driver for the Cirrus Logic's Sound Fusion CS46XX based soundcards
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -25,7 +25,6 @@
     reloading the module may solve this.
 */
 
-#include <sound/driver.h>
 #include <linux/pci.h>
 #include <linux/time.h>
 #include <linux/init.h>
@@ -34,7 +33,7 @@
 #include <sound/cs46xx.h>
 #include <sound/initval.h>
 
-MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Cirrus Logic Sound Fusion CS46XX");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{Cirrus Logic,Sound Fusion (CS4280)},"
@@ -48,21 +47,24 @@ MODULE_SUPPORTED_DEVICE("{{Cirrus Logic,Sound Fusion (CS4280)},"
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
-static int external_amp[SNDRV_CARDS] = {0,0,0,0,0,0,0,0};
-static int thinkpad[SNDRV_CARDS] = {0,0,0,0,0,0,0,0};
+static int external_amp[SNDRV_CARDS];
+static int thinkpad[SNDRV_CARDS];
+#ifndef TARGET_OS2
+static int mmap_valid[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 1};
+#else
 static int mmap_valid[SNDRV_CARDS] = {1,1,1,1,1,1,1,1};
-
-//module_param_array(index, int, NULL, 0444);
+#endif
+module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for the CS46xx soundcard.");
-//module_param_array(id, charp, NULL, 0444);
+module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for the CS46xx soundcard.");
-//module_param_array(enable, bool, NULL, 0444);
+module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable CS46xx soundcard.");
-//module_param_array(external_amp, bool, NULL, 0444);
+module_param_array(external_amp, bool, NULL, 0444);
 MODULE_PARM_DESC(external_amp, "Force to enable external amplifer.");
-//module_param_array(thinkpad, bool, NULL, 0444);
+module_param_array(thinkpad, bool, NULL, 0444);
 MODULE_PARM_DESC(thinkpad, "Force to enable Thinkpad's CLKRUN control.");
-//module_param_array(mmap_valid, bool, NULL, 0444);
+module_param_array(mmap_valid, bool, NULL, 0444);
 MODULE_PARM_DESC(mmap_valid, "Support OSS mmap.");
 
 static struct pci_device_id snd_cs46xx_ids[] = {

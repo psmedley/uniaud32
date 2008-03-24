@@ -25,7 +25,6 @@
  * of doing things so that the old sfxload utility can be used.
  * Everything may change when there is an alsa way of doing things.
  */
-#include <sound/driver.h>
 #include <asm/uaccess.h>
 #include <linux/slab.h>
 #include <sound/core.h>
@@ -79,7 +78,7 @@ static void
 lock_preset(struct snd_sf_list *sflist)
 {
 	unsigned long flags;
-	down(&sflist->presets_mutex);
+	mutex_lock(&sflist->presets_mutex);
 	spin_lock_irqsave(&sflist->lock, flags);
 	sflist->presets_locked = 1;
 	spin_unlock_irqrestore(&sflist->lock, flags);
@@ -96,7 +95,7 @@ unlock_preset(struct snd_sf_list *sflist)
 	spin_lock_irqsave(&sflist->lock, flags);
 	sflist->presets_locked = 0;
 	spin_unlock_irqrestore(&sflist->lock, flags);
-	up(&sflist->presets_mutex);
+	mutex_unlock(&sflist->presets_mutex);
 }
 
 
@@ -141,7 +140,7 @@ snd_soundfont_load(struct snd_sf_list *sflist, const void __user *data,
 		return -EFAULT;
 
 	count -= sizeof(patch);
-	data = (char*)data + sizeof(patch);
+	data += sizeof(patch);
 
 	if (patch.key != SNDRV_OSS_SOUNDFONT_PATCH) {
 		snd_printk("'The wrong kind of patch' %x\n", patch.key);
@@ -194,20 +193,20 @@ snd_soundfont_load(struct snd_sf_list *sflist, const void __user *data,
 		rc = probe_data(sflist, patch.optarg);
 		break;
 	case SNDRV_SFNT_REMOVE_INFO:
-            /* patch must be opened */
-            if (!sflist->currsf) {
-                snd_printk("soundfont: remove_info: patch not opened\n");
-                rc = -EINVAL;
-            } else {
-                int bank, instr;
-                bank = ((unsigned short)patch.optarg >> 8) & 0xff;
-                instr = (unsigned short)patch.optarg & 0xff;
-                if (! remove_info(sflist, sflist->currsf, bank, instr))
-                    rc = -EINVAL;
-                else
-                    rc = 0;
-            }
-            break;
+		/* patch must be opened */
+		if (!sflist->currsf) {
+			snd_printk("soundfont: remove_info: patch not opened\n");
+			rc = -EINVAL;
+		} else {
+			int bank, instr;
+			bank = ((unsigned short)patch.optarg >> 8) & 0xff;
+			instr = (unsigned short)patch.optarg & 0xff;
+			if (! remove_info(sflist, sflist->currsf, bank, instr))
+				rc = -EINVAL;
+			else
+				rc = 0;
+		}
+		break;
 	}
 	unlock_preset(sflist);
 
@@ -538,10 +537,10 @@ load_info(struct snd_sf_list *sflist, const void __user *data, long count)
 	if (copy_from_user((char*)&hdr, data, sizeof(hdr)))
 		return -EFAULT;
 	
-	data = (char*)data + sizeof(hdr);
+	data += sizeof(hdr);
 	count -= sizeof(hdr);
 
-	if ((signed char)hdr.nvoices <= 0 || hdr.nvoices >= 100) {
+	if (hdr.nvoices <= 0 || hdr.nvoices >= 100) {
 		printk("Soundfont error: Illegal voice number %d\n", hdr.nvoices);
 		return -EINVAL;
 	}
@@ -577,7 +576,7 @@ load_info(struct snd_sf_list *sflist, const void __user *data, long count)
 			return -EFAULT;
 		}
 
-		data = (char*)data + sizeof(tmpzone.v);
+		data += sizeof(tmpzone.v);
 		count -= sizeof(tmpzone.v);
 
 		tmpzone.bank = hdr.bank;
@@ -747,7 +746,7 @@ load_data(struct snd_sf_list *sflist, const void __user *data, long count)
 		int  rc;
 		rc = sflist->callback.sample_new
 			(sflist->callback.private_data, sp, sflist->memhdr,
-			 (char*)data + off, count - off);
+			 data + off, count - off);
 		if (rc < 0) {
 			sf_sample_delete(sflist, sf, sp);
 			return rc;
@@ -809,6 +808,9 @@ snd_sf_linear_to_log(unsigned int amount, int offset, int ratio)
 	v += (24 - bit) * ratio;
 	return v;
 }
+
+EXPORT_SYMBOL(snd_sf_linear_to_log);
+
 
 #define OFFSET_MSEC		653117		/* base = 1000 */
 #define OFFSET_ABSCENT		851781		/* base = 8176 */
@@ -1390,7 +1392,7 @@ snd_sf_new(struct snd_sf_callback *callback, struct snd_util_memhdr *hdr)
 	if ((sflist = kzalloc(sizeof(*sflist), GFP_KERNEL)) == NULL)
 		return NULL;
 
-	init_MUTEX(&sflist->presets_mutex);
+	mutex_init(&sflist->presets_mutex);
 	spin_lock_init(&sflist->lock);
 	sflist->memhdr = hdr;
 
@@ -1485,4 +1487,3 @@ snd_soundfont_remove_unlocked(struct snd_sf_list *sflist)
 	unlock_preset(sflist);
 	return 0;
 }
-

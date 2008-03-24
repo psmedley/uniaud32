@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Universal routines for AK4531 codec
  *
  *
@@ -19,14 +19,16 @@
  *
  */
 
-#include <sound/driver.h>
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/slab.h>
+#include <linux/mutex.h>
+
 #include <sound/core.h>
 #include <sound/ak4531_codec.h>
+#include <sound/tlv.h>
 
-MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Universal routines for AK4531 codec");
 MODULE_LICENSE("GPL");
 
@@ -61,6 +63,14 @@ static void snd_ak4531_dump(struct snd_ak4531 *ak4531)
   .info = snd_ak4531_info_single, \
   .get = snd_ak4531_get_single, .put = snd_ak4531_put_single, \
   .private_value = reg | (shift << 16) | (mask << 24) | (invert << 22) }
+#define AK4531_SINGLE_TLV(xname, xindex, reg, shift, mask, invert, xtlv)    \
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
+  .access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_TLV_READ, \
+  .name = xname, .index = xindex, \
+  .info = snd_ak4531_info_single, \
+  .get = snd_ak4531_get_single, .put = snd_ak4531_put_single, \
+  .private_value = reg | (shift << 16) | (mask << 24) | (invert << 22), \
+  .tlv = { .p = (xtlv) } }
 
 static int snd_ak4531_info_single(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_info *uinfo)
 {
@@ -82,9 +92,9 @@ static int snd_ak4531_get_single(struct snd_kcontrol *kcontrol, struct snd_ctl_e
 	int invert = (kcontrol->private_value >> 22) & 1;
 	int val;
 
-	down(&ak4531->reg_mutex);
+	mutex_lock(&ak4531->reg_mutex);
 	val = (ak4531->regs[reg] >> shift) & mask;
-	up(&ak4531->reg_mutex);
+	mutex_unlock(&ak4531->reg_mutex);
 	if (invert) {
 		val = mask - val;
 	}
@@ -107,11 +117,11 @@ static int snd_ak4531_put_single(struct snd_kcontrol *kcontrol, struct snd_ctl_e
 		val = mask - val;
 	}
 	val <<= shift;
-	down(&ak4531->reg_mutex);
+	mutex_lock(&ak4531->reg_mutex);
 	val = (ak4531->regs[reg] & ~(mask << shift)) | val;
 	change = val != ak4531->regs[reg];
 	ak4531->write(ak4531, reg, ak4531->regs[reg] = val);
-	up(&ak4531->reg_mutex);
+	mutex_unlock(&ak4531->reg_mutex);
 	return change;
 }
 
@@ -120,6 +130,14 @@ static int snd_ak4531_put_single(struct snd_kcontrol *kcontrol, struct snd_ctl_e
   .info = snd_ak4531_info_double, \
   .get = snd_ak4531_get_double, .put = snd_ak4531_put_double, \
   .private_value = left_reg | (right_reg << 8) | (left_shift << 16) | (right_shift << 19) | (mask << 24) | (invert << 22) }
+#define AK4531_DOUBLE_TLV(xname, xindex, left_reg, right_reg, left_shift, right_shift, mask, invert, xtlv) \
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
+  .access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_TLV_READ, \
+  .name = xname, .index = xindex, \
+  .info = snd_ak4531_info_double, \
+  .get = snd_ak4531_get_double, .put = snd_ak4531_put_double, \
+  .private_value = left_reg | (right_reg << 8) | (left_shift << 16) | (right_shift << 19) | (mask << 24) | (invert << 22), \
+  .tlv = { .p = (xtlv) } }
 
 static int snd_ak4531_info_double(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_info *uinfo)
 {
@@ -143,10 +161,10 @@ static int snd_ak4531_get_double(struct snd_kcontrol *kcontrol, struct snd_ctl_e
 	int invert = (kcontrol->private_value >> 22) & 1;
 	int left, right;
 
-	down(&ak4531->reg_mutex);
+	mutex_lock(&ak4531->reg_mutex);
 	left = (ak4531->regs[left_reg] >> left_shift) & mask;
 	right = (ak4531->regs[right_reg] >> right_shift) & mask;
-	up(&ak4531->reg_mutex);
+	mutex_unlock(&ak4531->reg_mutex);
 	if (invert) {
 		left = mask - left;
 		right = mask - right;
@@ -176,7 +194,7 @@ static int snd_ak4531_put_double(struct snd_kcontrol *kcontrol, struct snd_ctl_e
 	}
 	left <<= left_shift;
 	right <<= right_shift;
-	down(&ak4531->reg_mutex);
+	mutex_lock(&ak4531->reg_mutex);
 	if (left_reg == right_reg) {
 		left = (ak4531->regs[left_reg] & ~((mask << left_shift) | (mask << right_shift))) | left | right;
 		change = left != ak4531->regs[left_reg];
@@ -188,7 +206,7 @@ static int snd_ak4531_put_double(struct snd_kcontrol *kcontrol, struct snd_ctl_e
 		ak4531->write(ak4531, left_reg, ak4531->regs[left_reg] = left);
 		ak4531->write(ak4531, right_reg, ak4531->regs[right_reg] = right);
 	}
-	up(&ak4531->reg_mutex);
+	mutex_unlock(&ak4531->reg_mutex);
 	return change;
 }
 
@@ -215,12 +233,12 @@ static int snd_ak4531_get_input_sw(struct snd_kcontrol *kcontrol, struct snd_ctl
 	int left_shift = (kcontrol->private_value >> 16) & 0x0f;
 	int right_shift = (kcontrol->private_value >> 24) & 0x0f;
 
-	down(&ak4531->reg_mutex);
+	mutex_lock(&ak4531->reg_mutex);
 	ucontrol->value.integer.value[0] = (ak4531->regs[reg1] >> left_shift) & 1;
 	ucontrol->value.integer.value[1] = (ak4531->regs[reg2] >> left_shift) & 1;
 	ucontrol->value.integer.value[2] = (ak4531->regs[reg1] >> right_shift) & 1;
 	ucontrol->value.integer.value[3] = (ak4531->regs[reg2] >> right_shift) & 1;
-	up(&ak4531->reg_mutex);
+	mutex_unlock(&ak4531->reg_mutex);
 	return 0;
 }
 
@@ -234,7 +252,7 @@ static int snd_ak4531_put_input_sw(struct snd_kcontrol *kcontrol, struct snd_ctl
 	int change;
 	int val1, val2;
 
-	down(&ak4531->reg_mutex);
+	mutex_lock(&ak4531->reg_mutex);
 	val1 = ak4531->regs[reg1] & ~((1 << left_shift) | (1 << right_shift));
 	val2 = ak4531->regs[reg2] & ~((1 << left_shift) | (1 << right_shift));
 	val1 |= (ucontrol->value.integer.value[0] & 1) << left_shift;
@@ -244,54 +262,66 @@ static int snd_ak4531_put_input_sw(struct snd_kcontrol *kcontrol, struct snd_ctl
 	change = val1 != ak4531->regs[reg1] || val2 != ak4531->regs[reg2];
 	ak4531->write(ak4531, reg1, ak4531->regs[reg1] = val1);
 	ak4531->write(ak4531, reg2, ak4531->regs[reg2] = val2);
-	up(&ak4531->reg_mutex);
+	mutex_unlock(&ak4531->reg_mutex);
 	return change;
 }
 
+static const DECLARE_TLV_DB_SCALE(db_scale_master, -6200, 200, 0);
+static const DECLARE_TLV_DB_SCALE(db_scale_mono, -2800, 400, 0);
+static const DECLARE_TLV_DB_SCALE(db_scale_input, -5000, 200, 0);
+
 static struct snd_kcontrol_new snd_ak4531_controls[] = {
 
-AK4531_DOUBLE("Master Playback Switch", 0, AK4531_LMASTER, AK4531_RMASTER, 7, 7, 1, 1),
+AK4531_DOUBLE_TLV("Master Playback Switch", 0,
+		  AK4531_LMASTER, AK4531_RMASTER, 7, 7, 1, 1,
+		  db_scale_master),
 AK4531_DOUBLE("Master Playback Volume", 0, AK4531_LMASTER, AK4531_RMASTER, 0, 0, 0x1f, 1),
 
-AK4531_SINGLE("Master Mono Playback Switch", 0, AK4531_MONO_OUT, 7, 1, 1),
+AK4531_SINGLE_TLV("Master Mono Playback Switch", 0, AK4531_MONO_OUT, 7, 1, 1,
+		  db_scale_mono),
 AK4531_SINGLE("Master Mono Playback Volume", 0, AK4531_MONO_OUT, 0, 0x07, 1),
 
 AK4531_DOUBLE("PCM Switch", 0, AK4531_LVOICE, AK4531_RVOICE, 7, 7, 1, 1),
-AK4531_DOUBLE("PCM Volume", 0, AK4531_LVOICE, AK4531_RVOICE, 0, 0, 0x1f, 1),
+AK4531_DOUBLE_TLV("PCM Volume", 0, AK4531_LVOICE, AK4531_RVOICE, 0, 0, 0x1f, 1,
+		  db_scale_input),
 AK4531_DOUBLE("PCM Playback Switch", 0, AK4531_OUT_SW2, AK4531_OUT_SW2, 3, 2, 1, 0),
 AK4531_DOUBLE("PCM Capture Switch", 0, AK4531_LIN_SW2, AK4531_RIN_SW2, 2, 2, 1, 0),
 
 AK4531_DOUBLE("PCM Switch", 1, AK4531_LFM, AK4531_RFM, 7, 7, 1, 1),
-AK4531_DOUBLE("PCM Volume", 1, AK4531_LFM, AK4531_RFM, 0, 0, 0x1f, 1),
+AK4531_DOUBLE_TLV("PCM Volume", 1, AK4531_LFM, AK4531_RFM, 0, 0, 0x1f, 1,
+		  db_scale_input),
 AK4531_DOUBLE("PCM Playback Switch", 1, AK4531_OUT_SW1, AK4531_OUT_SW1, 6, 5, 1, 0),
 AK4531_INPUT_SW("PCM Capture Route", 1, AK4531_LIN_SW1, AK4531_RIN_SW1, 6, 5),
 
 AK4531_DOUBLE("CD Switch", 0, AK4531_LCD, AK4531_RCD, 7, 7, 1, 1),
-AK4531_DOUBLE("CD Volume", 0, AK4531_LCD, AK4531_RCD, 0, 0, 0x1f, 1),
+AK4531_DOUBLE_TLV("CD Volume", 0, AK4531_LCD, AK4531_RCD, 0, 0, 0x1f, 1,
+		  db_scale_input),
 AK4531_DOUBLE("CD Playback Switch", 0, AK4531_OUT_SW1, AK4531_OUT_SW1, 2, 1, 1, 0),
 AK4531_INPUT_SW("CD Capture Route", 0, AK4531_LIN_SW1, AK4531_RIN_SW1, 2, 1),
 
 AK4531_DOUBLE("Line Switch", 0, AK4531_LLINE, AK4531_RLINE, 7, 7, 1, 1),
-AK4531_DOUBLE("Line Volume", 0, AK4531_LLINE, AK4531_RLINE, 0, 0, 0x1f, 1),
+AK4531_DOUBLE_TLV("Line Volume", 0, AK4531_LLINE, AK4531_RLINE, 0, 0, 0x1f, 1,
+		  db_scale_input),
 AK4531_DOUBLE("Line Playback Switch", 0, AK4531_OUT_SW1, AK4531_OUT_SW1, 4, 3, 1, 0),
 AK4531_INPUT_SW("Line Capture Route", 0, AK4531_LIN_SW1, AK4531_RIN_SW1, 4, 3),
 
 AK4531_DOUBLE("Aux Switch", 0, AK4531_LAUXA, AK4531_RAUXA, 7, 7, 1, 1),
-AK4531_DOUBLE("Aux Volume", 0, AK4531_LAUXA, AK4531_RAUXA, 0, 0, 0x1f, 1),
+AK4531_DOUBLE_TLV("Aux Volume", 0, AK4531_LAUXA, AK4531_RAUXA, 0, 0, 0x1f, 1,
+		  db_scale_input),
 AK4531_DOUBLE("Aux Playback Switch", 0, AK4531_OUT_SW2, AK4531_OUT_SW2, 5, 4, 1, 0),
 AK4531_INPUT_SW("Aux Capture Route", 0, AK4531_LIN_SW2, AK4531_RIN_SW2, 4, 3),
 
 AK4531_SINGLE("Mono Switch", 0, AK4531_MONO1, 7, 1, 1),
-AK4531_SINGLE("Mono Volume", 0, AK4531_MONO1, 0, 0x1f, 1),
+AK4531_SINGLE_TLV("Mono Volume", 0, AK4531_MONO1, 0, 0x1f, 1, db_scale_input),
 AK4531_SINGLE("Mono Playback Switch", 0, AK4531_OUT_SW2, 0, 1, 0),
 AK4531_DOUBLE("Mono Capture Switch", 0, AK4531_LIN_SW2, AK4531_RIN_SW2, 0, 0, 1, 0),
 
 AK4531_SINGLE("Mono Switch", 1, AK4531_MONO2, 7, 1, 1),
-AK4531_SINGLE("Mono Volume", 1, AK4531_MONO2, 0, 0x1f, 1),
+AK4531_SINGLE_TLV("Mono Volume", 1, AK4531_MONO2, 0, 0x1f, 1, db_scale_input),
 AK4531_SINGLE("Mono Playback Switch", 1, AK4531_OUT_SW2, 1, 1, 0),
 AK4531_DOUBLE("Mono Capture Switch", 1, AK4531_LIN_SW2, AK4531_RIN_SW2, 1, 1, 1, 0),
 
-AK4531_SINGLE("Mic Volume", 0, AK4531_MIC, 0, 0x1f, 1),
+AK4531_SINGLE_TLV("Mic Volume", 0, AK4531_MIC, 0, 0x1f, 1, db_scale_input),
 AK4531_SINGLE("Mic Switch", 0, AK4531_MIC, 7, 1, 1),
 AK4531_SINGLE("Mic Playback Switch", 0, AK4531_OUT_SW1, 0, 1, 0),
 AK4531_DOUBLE("Mic Capture Switch", 0, AK4531_LIN_SW1, AK4531_RIN_SW1, 0, 0, 1, 0),
@@ -366,7 +396,7 @@ int snd_ak4531_mixer(struct snd_card *card, struct snd_ak4531 *_ak4531,
 	if (ak4531 == NULL)
 		return -ENOMEM;
 	*ak4531 = *_ak4531;
-	init_MUTEX(&ak4531->reg_mutex);
+	mutex_init(&ak4531->reg_mutex);
 	if ((err = snd_component_add(card, "AK4531")) < 0) {
 		snd_ak4531_free(ak4531);
 		return err;
@@ -451,7 +481,7 @@ static void snd_ak4531_proc_init(struct snd_card *card, struct snd_ak4531 *ak453
 	struct snd_info_entry *entry;
 
 	if (! snd_card_proc_new(card, "ak4531", &entry))
-		snd_info_set_text_ops(entry, ak4531, 1024, snd_ak4531_proc_read);
+		snd_info_set_text_ops(entry, ak4531, snd_ak4531_proc_read);
 }
 #endif
 

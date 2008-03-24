@@ -22,7 +22,7 @@
  *
  */
 
-#include <sound/driver.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
@@ -161,7 +161,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
         goto failure;
     }
     //allocate memory for all mixer elements
-    pHandle->pids = (snd_ctl_elem_id_t *)kmalloc(sizeof(snd_ctl_elem_id_t)*pHandle->list.count, GFP_KERNEL);
+    pHandle->pids = (struct snd_ctl_elem_id *)kmalloc(sizeof(struct snd_ctl_elem_id)*pHandle->list.count, GFP_KERNEL);
     if(pHandle->pids == NULL) {
         goto failure;
     }
@@ -254,7 +254,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
     //request information about available capture sources
     if(pHandle->controls[OSS_MIXER_IGAIN].idxCustom != -1) 
     {
-        snd_ctl_elem_info_t  *pElemInfo = NULL;  
+        struct snd_ctl_elem_info  *pElemInfo = NULL;  
         int                   idx, j;
 
         idx = pHandle->controls[OSS_MIXER_IGAIN].idxCustom;
@@ -265,7 +265,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
         pHandle->rectype = RECTYPE_SELECTOR;
 
         //too big to put on the stack
-        pElemInfo = (snd_ctl_elem_info_t *)kmalloc(sizeof(snd_ctl_elem_info_t), GFP_KERNEL);
+        pElemInfo = (struct snd_ctl_elem_info *)kmalloc(sizeof(struct snd_ctl_elem_info), GFP_KERNEL);
         if(pElemInfo == NULL) {
             DebugInt3();
             goto failure;
@@ -367,8 +367,8 @@ OSSRET OSS32_MixGetVolume(OSSSTREAMID streamid, ULONG line, ULONG *pVolume)
 OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
 {
     mixerhandle          *pHandle = (mixerhandle *)streamid;
-    snd_ctl_elem_value_t *pElem = NULL;
-    snd_ctl_elem_info_t  *pElemInfo;  
+    struct snd_ctl_elem_value *pElem = NULL;
+    struct snd_ctl_elem_info  *pElemInfo;  
     int                   ret, idx, lVol, rVol = 0, idxMute, cnt;
 
     if(pHandle == NULL || pHandle->magic != MAGIC_MIXER_ALSA32) {
@@ -380,13 +380,13 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     pHandle->file.f_flags = O_NONBLOCK;
 
     //too big to put on the stack
-    pElem = (snd_ctl_elem_value_t *)kmalloc(sizeof(snd_ctl_elem_value_t) + sizeof(snd_ctl_elem_info_t), GFP_KERNEL);
+    pElem = (struct snd_ctl_elem_value *)kmalloc(sizeof(struct snd_ctl_elem_value) + sizeof(struct snd_ctl_elem_info), GFP_KERNEL);
     if(pElem == NULL) {
         printk("Out of memory in OSS32_MixSetVolume\n");
         DebugInt3();
         return OSSERR_OUT_OF_MEMORY;
     }
-    pElemInfo = (snd_ctl_elem_info_t *)(pElem+1);
+    pElemInfo = (struct snd_ctl_elem_info *)(pElem+1);
 
     switch(line) {
     case OSS32_MIX_VOLUME_MASTER_FRONT:
@@ -548,8 +548,8 @@ fail:
 OSSRET OSS32_MixSetProperty(OSSSTREAMID streamid, ULONG ulLine, ULONG ulValue)
 {
     mixerhandle          *pHandle = (mixerhandle *)streamid;
-    snd_ctl_elem_value_t *pElem = NULL;
-    snd_ctl_elem_info_t  *pElemInfo;  
+    struct snd_ctl_elem_value *pElem = NULL;
+    struct snd_ctl_elem_info  *pElemInfo;  
     int                   ret, idx = -1, lVol, rVol = 0, j, i;
 
     if(pHandle == NULL || pHandle->magic != MAGIC_MIXER_ALSA32) {
@@ -560,12 +560,12 @@ OSSRET OSS32_MixSetProperty(OSSSTREAMID streamid, ULONG ulLine, ULONG ulValue)
     pHandle->file.f_flags = O_NONBLOCK;
  
     //too big to put on the stack
-    pElem = (snd_ctl_elem_value_t *)kmalloc(sizeof(snd_ctl_elem_value_t) + sizeof(snd_ctl_elem_info_t), GFP_KERNEL);
+    pElem = (struct snd_ctl_elem_value *)kmalloc(sizeof(struct snd_ctl_elem_value) + sizeof(struct snd_ctl_elem_info), GFP_KERNEL);
     if(pElem == NULL) {
         DebugInt3();
         return OSSERR_OUT_OF_MEMORY;
     }
-    pElemInfo = (snd_ctl_elem_info_t *)(pElem+1);
+    pElemInfo = (struct snd_ctl_elem_info *)(pElem+1);
 
     switch(ulLine) {
     case OSS32_MIX_INPUTSRC:
@@ -869,6 +869,7 @@ OSSRET OSS32_QueryNames(ULONG deviceid, char *pszDeviceName, ULONG cbDeviceName,
 
     if(alsa_fops == NULL) {
         ret = OSSERR_NO_DEVICE_AVAILABLE;
+        printk("ret = OSSERR_NO_DEVICE_AVAILABLE\n");
         goto failure;
     }
 

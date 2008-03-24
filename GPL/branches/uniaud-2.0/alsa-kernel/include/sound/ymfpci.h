@@ -2,7 +2,7 @@
 #define __SOUND_YMFPCI_H
 
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Definitions for Yahama YMF724/740/744/754 chips
  *
  *
@@ -25,28 +25,8 @@
 #include "pcm.h"
 #include "rawmidi.h"
 #include "ac97_codec.h"
-
-#ifndef PCI_VENDOR_ID_YAMAHA
-#define PCI_VENDOR_ID_YAMAHA            0x1073
-#endif
-#ifndef PCI_DEVICE_ID_YAMAHA_724
-#define PCI_DEVICE_ID_YAMAHA_724	0x0004
-#endif
-#ifndef PCI_DEVICE_ID_YAMAHA_724F
-#define PCI_DEVICE_ID_YAMAHA_724F	0x000d
-#endif
-#ifndef PCI_DEVICE_ID_YAMAHA_740
-#define PCI_DEVICE_ID_YAMAHA_740	0x000a
-#endif
-#ifndef PCI_DEVICE_ID_YAMAHA_740C
-#define PCI_DEVICE_ID_YAMAHA_740C	0x000c
-#endif
-#ifndef PCI_DEVICE_ID_YAMAHA_744
-#define PCI_DEVICE_ID_YAMAHA_744	0x0010
-#endif
-#ifndef PCI_DEVICE_ID_YAMAHA_754
-#define PCI_DEVICE_ID_YAMAHA_754	0x0012
-#endif
+#include "timer.h"
+#include <linux/gameport.h>
 
 /*
  *  Direct registers
@@ -196,11 +176,15 @@
 #define YMFPCI_LEGACY2_IMOD	(1 << 15)	/* legacy IRQ mode */
 /* SIEN:IMOD 0:0 = legacy irq, 0:1 = INTA, 1:0 = serialized IRQ */
 
+#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
+#define SUPPORT_JOYSTICK
+#endif
+
 /*
  *
  */
 
-typedef struct snd_ymfpci_playback_bank {
+struct snd_ymfpci_playback_bank {
 	u32 format;
 	u32 loop_default;
 	u32 base;			/* 32-bit address */
@@ -231,46 +215,45 @@ typedef struct snd_ymfpci_playback_bank {
 	u32 eff3_gain;
 	u32 lpfD1;
 	u32 lpfD2;
-} snd_ymfpci_playback_bank_t;
+ };
 
-typedef struct snd_ymfpci_capture_bank {
+struct snd_ymfpci_capture_bank {
 	u32 base;			/* 32-bit address */
 	u32 loop_end;			/* 32-bit offset */
 	u32 start;			/* 32-bit offset */
 	u32 num_of_loops;		/* counter */
-} snd_ymfpci_capture_bank_t;
+};
 
-typedef struct snd_ymfpci_effect_bank {
+struct snd_ymfpci_effect_bank {
 	u32 base;			/* 32-bit address */
 	u32 loop_end;			/* 32-bit offset */
 	u32 start;			/* 32-bit offset */
 	u32 temp;
-} snd_ymfpci_effect_bank_t;
+};
 
-typedef struct snd_ymfpci_voice ymfpci_voice_t;
-typedef struct snd_ymfpci_pcm ymfpci_pcm_t;
-typedef struct snd_ymfpci ymfpci_t;
+struct snd_ymfpci_pcm;
+struct snd_ymfpci;
 
-typedef enum {
+enum snd_ymfpci_voice_type {
 	YMFPCI_PCM,
 	YMFPCI_SYNTH,
 	YMFPCI_MIDI
-} ymfpci_voice_type_t;
+};
 
 struct snd_ymfpci_voice {
-	ymfpci_t *chip;
+	struct snd_ymfpci *chip;
 	int number;
-	int use: 1,
+	unsigned int use: 1,
 	    pcm: 1,
 	    synth: 1,
 	    midi: 1;
-	snd_ymfpci_playback_bank_t *bank;
+	struct snd_ymfpci_playback_bank *bank;
 	dma_addr_t bank_addr;
-	void (*interrupt)(ymfpci_t *chip, ymfpci_voice_t *voice);
-	ymfpci_pcm_t *ypcm;
+	void (*interrupt)(struct snd_ymfpci *chip, struct snd_ymfpci_voice *voice);
+	struct snd_ymfpci_pcm *ypcm;
 };
 
-typedef enum {
+enum snd_ymfpci_pcm_type {
 	PLAYBACK_VOICE,
 	CAPTURE_REC,
 	CAPTURE_AC97,
@@ -279,17 +262,19 @@ typedef enum {
 	EFFECT_EFF1,
 	EFFECT_EFF2,
 	EFFECT_EFF3
-} snd_ymfpci_pcm_type_t;
+};
 
 struct snd_ymfpci_pcm {
-	ymfpci_t *chip;
-	snd_ymfpci_pcm_type_t type;
-	snd_pcm_substream_t *substream;
-	ymfpci_voice_t *voices[2];	/* playback only */
-	int running: 1;
-	int output_front: 1;
-        int output_rear: 1;
-        unsigned int update_pcm_vol;
+	struct snd_ymfpci *chip;
+	enum snd_ymfpci_pcm_type type;
+	struct snd_pcm_substream *substream;
+	struct snd_ymfpci_voice *voices[2];	/* playback only */
+	unsigned int running: 1,
+		     use_441_slot: 1,
+	             output_front: 1,
+	             output_rear: 1,
+	             swap_rear: 1;
+	unsigned int update_pcm_vol;
 	u32 period_size;		/* cached from runtime->period_size */
 	u32 buffer_size;		/* cached from runtime->buffer_size */
 	u32 period_pos;
@@ -302,22 +287,19 @@ struct snd_ymfpci {
 	int irq;
 
 	unsigned int device_id;	/* PCI device ID */
-	unsigned int rev;	/* PCI revision */
+	unsigned char rev;	/* PCI revision */
 	unsigned long reg_area_phys;
-	unsigned long reg_area_virt;
+	void __iomem *reg_area_virt;
 	struct resource *res_reg_area;
 	struct resource *fm_res;
 	struct resource *mpu_res;
 
 	unsigned short old_legacy_ctrl;
-#if defined(CONFIG_GAMEPORT) || defined(CONFIG_GAMEPORT_MODULE)
-	unsigned int joystick_port;
-	struct semaphore joystick_mutex;
-	struct resource *joystick_res;
-	struct gameport gameport;
+#ifdef SUPPORT_JOYSTICK
+	struct gameport *gameport;
 #endif
 
-        struct snd_dma_buffer work_ptr;
+	struct snd_dma_buffer work_ptr;
 
 	unsigned int bank_size_playback;
 	unsigned int bank_size_capture;
@@ -331,52 +313,54 @@ struct snd_ymfpci {
 	dma_addr_t bank_base_playback_addr;
 	dma_addr_t bank_base_capture_addr;
 	dma_addr_t bank_base_effect_addr;
-        dma_addr_t work_base_addr;
-
-        struct snd_dma_buffer ac3_tmp_base;
+	dma_addr_t work_base_addr;
+	struct snd_dma_buffer ac3_tmp_base;
 
 	u32 *ctrl_playback;
-	snd_ymfpci_playback_bank_t *bank_playback[YDSXG_PLAYBACK_VOICES][2];
-	snd_ymfpci_capture_bank_t *bank_capture[YDSXG_CAPTURE_VOICES][2];
-	snd_ymfpci_effect_bank_t *bank_effect[YDSXG_EFFECT_VOICES][2];
+	struct snd_ymfpci_playback_bank *bank_playback[YDSXG_PLAYBACK_VOICES][2];
+	struct snd_ymfpci_capture_bank *bank_capture[YDSXG_CAPTURE_VOICES][2];
+	struct snd_ymfpci_effect_bank *bank_effect[YDSXG_EFFECT_VOICES][2];
 
 	int start_count;
 
 	u32 active_bank;
-	ymfpci_voice_t voices[64];
+	struct snd_ymfpci_voice voices[64];
+	int src441_used;
 
-	ac97_bus_t *ac97_bus;
-	ac97_t *ac97;
-	snd_rawmidi_t *rawmidi;
-	snd_timer_t *timer;
+	struct snd_ac97_bus *ac97_bus;
+	struct snd_ac97 *ac97;
+	struct snd_rawmidi *rawmidi;
+	struct snd_timer *timer;
 
 	struct pci_dev *pci;
-	snd_card_t *card;
-	snd_pcm_t *pcm;
-	snd_pcm_t *pcm2;
-	snd_pcm_t *pcm_spdif;
-	snd_pcm_t *pcm_4ch;
-	snd_pcm_substream_t *capture_substream[YDSXG_CAPTURE_VOICES];
-	snd_pcm_substream_t *effect_substream[YDSXG_EFFECT_VOICES];
-	snd_kcontrol_t *ctl_vol_recsrc;
-	snd_kcontrol_t *ctl_vol_adcrec;
-	snd_kcontrol_t *ctl_vol_spdifrec;
+	struct snd_card *card;
+	struct snd_pcm *pcm;
+	struct snd_pcm *pcm2;
+	struct snd_pcm *pcm_spdif;
+	struct snd_pcm *pcm_4ch;
+	struct snd_pcm_substream *capture_substream[YDSXG_CAPTURE_VOICES];
+	struct snd_pcm_substream *effect_substream[YDSXG_EFFECT_VOICES];
+	struct snd_kcontrol *ctl_vol_recsrc;
+	struct snd_kcontrol *ctl_vol_adcrec;
+	struct snd_kcontrol *ctl_vol_spdifrec;
 	unsigned short spdif_bits, spdif_pcm_bits;
-	snd_kcontrol_t *spdif_pcm_ctl;
+	struct snd_kcontrol *spdif_pcm_ctl;
 	int mode_dup4ch;
 	int rear_opened;
-        int spdif_opened;
-        struct {
-            u16 left;
-            u16 right;
-            snd_kcontrol_t *ctl;
-        } pcm_mixer[32];
+	int spdif_opened;
+	struct snd_ymfpci_pcm_mixer {
+		u16 left;
+		u16 right;
+		struct snd_kcontrol *ctl;
+	} pcm_mixer[32];
 
 	spinlock_t reg_lock;
 	spinlock_t voice_lock;
 	wait_queue_head_t interrupt_sleep;
 	atomic_t interrupt_sleep_count;
-	snd_info_entry_t *proc_entry;
+	struct snd_info_entry *proc_entry;
+	const struct firmware *dsp_microcode;
+	const struct firmware *controller_microcode;
 
 #ifdef CONFIG_PM
 	u32 *saved_regs;
@@ -384,25 +368,20 @@ struct snd_ymfpci {
 #endif
 };
 
-int snd_ymfpci_create(snd_card_t * card,
+int snd_ymfpci_create(struct snd_card *card,
 		      struct pci_dev *pci,
 		      unsigned short old_legacy_ctrl,
-		      ymfpci_t ** rcodec);
+		      struct snd_ymfpci ** rcodec);
+void snd_ymfpci_free_gameport(struct snd_ymfpci *chip);
 
 int snd_ymfpci_suspend(struct pci_dev *pci, pm_message_t state);
 int snd_ymfpci_resume(struct pci_dev *pci);
 
-int snd_ymfpci_pcm(ymfpci_t *chip, int device, snd_pcm_t **rpcm);
-int snd_ymfpci_pcm2(ymfpci_t *chip, int device, snd_pcm_t **rpcm);
-int snd_ymfpci_pcm_spdif(ymfpci_t *chip, int device, snd_pcm_t **rpcm);
-int snd_ymfpci_pcm_4ch(ymfpci_t *chip, int device, snd_pcm_t **rpcm);
-int snd_ymfpci_mixer(ymfpci_t *chip, int rear_switch);
-int snd_ymfpci_timer(ymfpci_t *chip, int device);
-#if defined(CONFIG_GAMEPORT) || defined(CONFIG_GAMEPORT_MODULE)
-int snd_ymfpci_joystick(ymfpci_t *chip);
-#endif
-
-int snd_ymfpci_voice_alloc(ymfpci_t *chip, ymfpci_voice_type_t type, int pair, ymfpci_voice_t **rvoice);
-int snd_ymfpci_voice_free(ymfpci_t *chip, ymfpci_voice_t *pvoice);
+int snd_ymfpci_pcm(struct snd_ymfpci *chip, int device, struct snd_pcm **rpcm);
+int snd_ymfpci_pcm2(struct snd_ymfpci *chip, int device, struct snd_pcm **rpcm);
+int snd_ymfpci_pcm_spdif(struct snd_ymfpci *chip, int device, struct snd_pcm **rpcm);
+int snd_ymfpci_pcm_4ch(struct snd_ymfpci *chip, int device, struct snd_pcm **rpcm);
+int snd_ymfpci_mixer(struct snd_ymfpci *chip, int rear_switch);
+int snd_ymfpci_timer(struct snd_ymfpci *chip, int device);
 
 #endif /* __SOUND_YMFPCI_H */

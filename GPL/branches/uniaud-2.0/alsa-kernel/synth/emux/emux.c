@@ -18,9 +18,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#include <sound/driver.h>
 #include <linux/wait.h>
-#include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <sound/core.h>
@@ -45,7 +43,7 @@ int snd_emux_new(struct snd_emux **remu)
 		return -ENOMEM;
 
 	spin_lock_init(&emu->voice_lock);
-	init_MUTEX(&emu->register_mutex);
+	mutex_init(&emu->register_mutex);
 
 	emu->client = -1;
 #ifdef CONFIG_SND_SEQUENCER_OSS
@@ -63,6 +61,7 @@ int snd_emux_new(struct snd_emux **remu)
 	return 0;
 }
 
+EXPORT_SYMBOL(snd_emux_new);
 
 /*
  */
@@ -136,6 +135,7 @@ int snd_emux_register(struct snd_emux *emu, struct snd_card *card, int index, ch
 	return 0;
 }
 
+EXPORT_SYMBOL(snd_emux_register);
 
 /*
  */
@@ -171,17 +171,7 @@ int snd_emux_free(struct snd_emux *emu)
 	return 0;
 }
 
-
-EXPORT_SYMBOL(snd_emux_new);
-EXPORT_SYMBOL(snd_emux_register);
 EXPORT_SYMBOL(snd_emux_free);
-
-EXPORT_SYMBOL(snd_emux_terminate_all);
-EXPORT_SYMBOL(snd_emux_lock_voice);
-EXPORT_SYMBOL(snd_emux_unlock_voice);
-
-/* soundfont.c */
-EXPORT_SYMBOL(snd_sf_linear_to_log);
 
 
 /*

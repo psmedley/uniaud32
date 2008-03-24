@@ -15,11 +15,13 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include <sound/driver.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/gus.h>
 
 /*
@@ -40,7 +42,7 @@ static void select_instrument(snd_gus_card_t * gus, snd_gus_voice_t * v)
 	instr = snd_seq_instr_find(gus->gf1.ilist, &v->instr, 0, 1);
 	if (instr != NULL) {
 		if (instr->ops) {
-			if (instr->ops->instr_type == snd_seq_simple_id)
+			if (!strcmp(instr->ops->instr_type, SNDRV_SEQ_INSTR_ID_SIMPLE))
 				snd_gf1_simple_init(v);
 		}
 		snd_seq_instr_free_use(gus->gf1.ilist, instr);

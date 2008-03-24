@@ -1,7 +1,7 @@
 /*
  *   Generic MIDI synth driver for ALSA sequencer
  *   Copyright (c) 1998 by Frank van de Pol <fvdpol@coil.demon.nl>
- *                         Jaroslav Kysela <perex@suse.cz>
+ *                         Jaroslav Kysela <perex@perex.cz>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,13 +26,12 @@ Possible options for midisynth module:
 */
 
 
-#include <sound/driver.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/string.h>
 #include <linux/moduleparam.h>
-#include <asm/semaphore.h>
+#include <linux/mutex.h>
 #include <sound/core.h>
 #include <sound/rawmidi.h>
 #include <sound/seq_kernel.h>
@@ -40,7 +39,7 @@ Possible options for midisynth module:
 #include <sound/seq_midi_event.h>
 #include <sound/initval.h>
 
-MODULE_AUTHOR("Frank van de Pol <fvdpol@coil.demon.nl>, Jaroslav Kysela <perex@suse.cz>");
+MODULE_AUTHOR("Frank van de Pol <fvdpol@coil.demon.nl>, Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Advanced Linux Sound Architecture sequencer MIDI synth.");
 MODULE_LICENSE("GPL");
 static int output_buffer_size = PAGE_SIZE;
@@ -70,7 +69,7 @@ struct seq_midisynth_client {
 };
 
 static struct seq_midisynth_client *synths[SNDRV_CARDS];
-static DECLARE_MUTEX(register_mutex);
+static DEFINE_MUTEX(register_mutex);
 
 /* handle rawmidi input event (MIDI v1.0 stream) */
 static void snd_midi_input_event(struct snd_rawmidi_substream *substream)
@@ -183,7 +182,10 @@ static int midisynth_subscribe(void *private_data, struct snd_seq_port_subscribe
 	struct snd_rawmidi_params params;
 
 	/* open midi port */
-	if ((err = snd_rawmidi_kernel_open(msynth->card->number, msynth->device, msynth->subdevice, SNDRV_RAWMIDI_LFLG_INPUT, &msynth->input_rfile)) < 0) {
+	if ((err = snd_rawmidi_kernel_open(msynth->card, msynth->device,
+					   msynth->subdevice,
+					   SNDRV_RAWMIDI_LFLG_INPUT,
+					   &msynth->input_rfile)) < 0) {
 		snd_printd("midi input open failed!!!\n");
 		return err;
 	}
@@ -221,7 +223,10 @@ static int midisynth_use(void *private_data, struct snd_seq_port_subscribe *info
 	struct snd_rawmidi_params params;
 
 	/* open midi port */
-	if ((err = snd_rawmidi_kernel_open(msynth->card->number, msynth->device, msynth->subdevice, SNDRV_RAWMIDI_LFLG_OUTPUT, &msynth->output_rfile)) < 0) {
+	if ((err = snd_rawmidi_kernel_open(msynth->card, msynth->device,
+					   msynth->subdevice,
+					   SNDRV_RAWMIDI_LFLG_OUTPUT,
+					   &msynth->output_rfile)) < 0) {
 		snd_printd("midi output open failed!!!\n");
 		return err;
 	}
@@ -264,21 +269,6 @@ static void snd_seq_midisynth_delete(struct seq_midisynth *msynth)
 		snd_midi_event_free(msynth->parser);
 }
 
-/* set our client name */
-static int set_client_name(struct seq_midisynth_client *client, struct snd_card *card,
-			   struct snd_rawmidi_info *rmidi)
-{
-	struct snd_seq_client_info cinfo;
-	const char *name;
-
-	memset(&cinfo, 0, sizeof(cinfo));
-	cinfo.client = client->seq_client;
-	cinfo.type = KERNEL_CLIENT;
-	name = rmidi->name[0] ? (const char *)rmidi->name : "External MIDI";
-	strlcpy(cinfo.name, name, sizeof(cinfo.name));
-	return snd_seq_kernel_client_ctl(client->seq_client, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, &cinfo);
-}
-
 /* register new midi synth port */
 static int
 snd_seq_midisynth_register_port(struct snd_seq_device *dev)
@@ -287,9 +277,9 @@ snd_seq_midisynth_register_port(struct snd_seq_device *dev)
 	struct seq_midisynth *msynth, *ms;
 	struct snd_seq_port_info *port;
 	struct snd_rawmidi_info *info;
+	struct snd_rawmidi *rmidi = dev->private_data;
 	int newclient = 0;
 	unsigned int p, ports;
-	struct snd_seq_client_callback callbacks;
 	struct snd_seq_port_callback pcallbacks;
 	struct snd_card *card = dev->card;
 	int device = dev->device;
@@ -318,29 +308,27 @@ snd_seq_midisynth_register_port(struct snd_seq_device *dev)
 	if (ports > (256 / SNDRV_RAWMIDI_DEVICES))
 		ports = 256 / SNDRV_RAWMIDI_DEVICES;
 
-	down(&register_mutex);
+	mutex_lock(&register_mutex);
 	client = synths[card->number];
 	if (client == NULL) {
 		newclient = 1;
 		client = kzalloc(sizeof(*client), GFP_KERNEL);
 		if (client == NULL) {
-			up(&register_mutex);
+			mutex_unlock(&register_mutex);
 			kfree(info);
 			return -ENOMEM;
 		}
-		memset(&callbacks, 0, sizeof(callbacks));
-		callbacks.private_data = client;
-		callbacks.allow_input = callbacks.allow_output = 1;
-		client->seq_client = snd_seq_create_kernel_client(card, 0, &callbacks);
+		client->seq_client =
+			snd_seq_create_kernel_client(
+				card, 0, "%s", card->shortname[0] ?
+				(const char *)card->shortname : "External MIDI");
 		if (client->seq_client < 0) {
 			kfree(client);
-			up(&register_mutex);
+			mutex_unlock(&register_mutex);
 			kfree(info);
 			return -ENOMEM;
 		}
-		set_client_name(client, card, info);
-	} else if (device == 0)
-		set_client_name(client, card, info); /* use the first device's name */
+	}
 
 	msynth = kcalloc(ports, sizeof(struct seq_midisynth), GFP_KERNEL);
 	port = kmalloc(sizeof(*port), GFP_KERNEL);
@@ -370,9 +358,9 @@ snd_seq_midisynth_register_port(struct snd_seq_device *dev)
 		if (! port->name[0]) {
 			if (info->name[0]) {
 				if (ports > 1)
-					sprintf(port->name, "%s-%d", info->name, p);
+					snprintf(port->name, sizeof(port->name), "%s-%d", info->name, p);
 				else
-					sprintf(port->name, "%s", info->name);
+					snprintf(port->name, sizeof(port->name), "%s", info->name);
 			} else {
 				/* last resort */
 				if (ports > 1)
@@ -388,7 +376,9 @@ snd_seq_midisynth_register_port(struct snd_seq_device *dev)
 		if ((port->capability & (SNDRV_SEQ_PORT_CAP_WRITE|SNDRV_SEQ_PORT_CAP_READ)) == (SNDRV_SEQ_PORT_CAP_WRITE|SNDRV_SEQ_PORT_CAP_READ) &&
 		    info->flags & SNDRV_RAWMIDI_INFO_DUPLEX)
 			port->capability |= SNDRV_SEQ_PORT_CAP_DUPLEX;
-		port->type = SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC;
+		port->type = SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC
+			| SNDRV_SEQ_PORT_TYPE_HARDWARE
+			| SNDRV_SEQ_PORT_TYPE_PORT;
 		port->midi_channels = 16;
 		memset(&pcallbacks, 0, sizeof(pcallbacks));
 		pcallbacks.owner = THIS_MODULE;
@@ -399,6 +389,8 @@ snd_seq_midisynth_register_port(struct snd_seq_device *dev)
 		pcallbacks.unuse = midisynth_unuse;
 		pcallbacks.event_input = event_process_midi;
 		port->kernel = &pcallbacks;
+		if (rmidi->ops && rmidi->ops->get_port_info)
+			rmidi->ops->get_port_info(rmidi, p, port);
 		if (snd_seq_kernel_client_ctl(client->seq_client, SNDRV_SEQ_IOCTL_CREATE_PORT, port)<0)
 			goto __nomem;
 		ms->seq_client = client->seq_client;
@@ -409,7 +401,7 @@ snd_seq_midisynth_register_port(struct snd_seq_device *dev)
 	client->num_ports++;
 	if (newclient)
 		synths[card->number] = client;
-	up(&register_mutex);
+	mutex_unlock(&register_mutex);
 	kfree(info);
 	kfree(port);
 	return 0;	/* success */
@@ -426,7 +418,7 @@ snd_seq_midisynth_register_port(struct snd_seq_device *dev)
 	}
 	kfree(info);
 	kfree(port);
-	up(&register_mutex);
+	mutex_unlock(&register_mutex);
 	return -ENOMEM;
 }
 
@@ -439,10 +431,10 @@ snd_seq_midisynth_unregister_port(struct snd_seq_device *dev)
 	struct snd_card *card = dev->card;
 	int device = dev->device, p, ports;
 	
-	down(&register_mutex);
+	mutex_lock(&register_mutex);
 	client = synths[card->number];
 	if (client == NULL || client->ports[device] == NULL) {
-		up(&register_mutex);
+		mutex_unlock(&register_mutex);
 		return -ENODEV;
 	}
 	ports = client->ports_per_device[device];
@@ -458,7 +450,7 @@ snd_seq_midisynth_unregister_port(struct snd_seq_device *dev)
 		synths[card->number] = NULL;
 		kfree(client);
 	}
-	up(&register_mutex);
+	mutex_unlock(&register_mutex);
 	return 0;
 }
 

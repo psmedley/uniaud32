@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Universal interface for Audio Codec '97
  *
  *  For more details look to AC '97 component specification revision 2.2
@@ -22,8 +22,9 @@
  *
  */
 
-#include <sound/driver.h>
 #include <linux/slab.h>
+#include <linux/mutex.h>
+
 #include <sound/core.h>
 #include <sound/ac97_codec.h>
 #include <sound/asoundef.h>
@@ -234,10 +235,14 @@ static void snd_ac97_proc_read_main(struct snd_ac97 *ac97, struct snd_info_buffe
 		val = snd_ac97_read(ac97, AC97_PCM_MIC_ADC_RATE);
 		snd_iprintf(buffer, "PCM MIC ADC      : %iHz\n", val);
 	}
-	if ((ext & AC97_EI_SPDIF) || (ac97->flags & AC97_CS_SPDIF)) {
+	if ((ext & AC97_EI_SPDIF) || (ac97->flags & AC97_CS_SPDIF) ||
+	    (ac97->id == AC97_ID_YMF743)) {
 	        if (ac97->flags & AC97_CS_SPDIF)
 			val = snd_ac97_read(ac97, AC97_CSR_SPDIF);
-		else
+		else if (ac97->id == AC97_ID_YMF743) {
+			val = snd_ac97_read(ac97, AC97_YMF7X3_DIT_CTRL);
+			val = 0x2000 | (val & 0xff00) >> 4 | (val & 0x38) >> 2;
+		} else
 			val = snd_ac97_read(ac97, AC97_SPDIF);
 
 		snd_iprintf(buffer, "SPDIF Control    :%s%s%s%s Category=0x%x Generation=%i%s%s%s\n",
@@ -338,7 +343,7 @@ static void snd_ac97_proc_read(struct snd_info_entry *entry, struct snd_info_buf
 {
 	struct snd_ac97 *ac97 = entry->private_data;
 	
-	down(&ac97->page_mutex);
+	mutex_lock(&ac97->page_mutex);
 	if ((ac97->id & 0xffffff40) == AC97_ID_AD1881) {	// Analog Devices AD1881/85/86
 		int idx;
 		for (idx = 0; idx < 3; idx++)
@@ -364,7 +369,7 @@ static void snd_ac97_proc_read(struct snd_info_entry *entry, struct snd_info_buf
 	} else {
 		snd_ac97_proc_read_main(ac97, buffer, 0);
 	}
-	up(&ac97->page_mutex);
+	mutex_unlock(&ac97->page_mutex);
 }
 
 #ifdef CONFIG_SND_DEBUG
@@ -374,7 +379,7 @@ static void snd_ac97_proc_regs_write(struct snd_info_entry *entry, struct snd_in
 	struct snd_ac97 *ac97 = entry->private_data;
 	char line[64];
 	unsigned int reg, val;
-	down(&ac97->page_mutex);
+	mutex_lock(&ac97->page_mutex);
 	while (!snd_info_get_line(buffer, line, sizeof(line))) {
 		if (sscanf(line, "%x %x", &reg, &val) != 2)
 			continue;
@@ -382,7 +387,7 @@ static void snd_ac97_proc_regs_write(struct snd_info_entry *entry, struct snd_in
 		if (reg < 0x80 && (reg & 1) == 0 && val <= 0xffff)
 			snd_ac97_write_cache(ac97, reg, val);
 	}
-	up(&ac97->page_mutex);
+	mutex_unlock(&ac97->page_mutex);
 }
 #endif
 
@@ -401,7 +406,7 @@ static void snd_ac97_proc_regs_read(struct snd_info_entry *entry,
 {
 	struct snd_ac97 *ac97 = entry->private_data;
 
-	down(&ac97->page_mutex);
+	mutex_lock(&ac97->page_mutex);
 	if ((ac97->id & 0xffffff40) == AC97_ID_AD1881) {	// Analog Devices AD1881/85/86
 
 		int idx;
@@ -417,7 +422,7 @@ static void snd_ac97_proc_regs_read(struct snd_info_entry *entry,
 	} else {
 		snd_ac97_proc_regs_read_main(ac97, buffer, 0);
 	}	
-	up(&ac97->page_mutex);
+	mutex_unlock(&ac97->page_mutex);
 }
 
 void snd_ac97_proc_init(struct snd_ac97 * ac97)
@@ -431,7 +436,7 @@ void snd_ac97_proc_init(struct snd_ac97 * ac97)
 	prefix = ac97_is_audio(ac97) ? "ac97" : "mc97";
 	sprintf(name, "%s#%d-%d", prefix, ac97->addr, ac97->num);
 	if ((entry = snd_info_create_card_entry(ac97->bus->card, name, ac97->bus->proc)) != NULL) {
-		snd_info_set_text_ops(entry, ac97, 1024, snd_ac97_proc_read);
+		snd_info_set_text_ops(entry, ac97, snd_ac97_proc_read);
 		if (snd_info_register(entry) < 0) {
 			snd_info_free_entry(entry);
 			entry = NULL;
@@ -440,10 +445,9 @@ void snd_ac97_proc_init(struct snd_ac97 * ac97)
 	ac97->proc = entry;
 	sprintf(name, "%s#%d-%d+regs", prefix, ac97->addr, ac97->num);
 	if ((entry = snd_info_create_card_entry(ac97->bus->card, name, ac97->bus->proc)) != NULL) {
-		snd_info_set_text_ops(entry, ac97, 1024, snd_ac97_proc_regs_read);
+		snd_info_set_text_ops(entry, ac97, snd_ac97_proc_regs_read);
 #ifdef CONFIG_SND_DEBUG
 		entry->mode |= S_IWUSR;
-		entry->c.text.write_size = 1024;
 		entry->c.text.write = snd_ac97_proc_regs_write;
 #endif
 		if (snd_info_register(entry) < 0) {
@@ -456,14 +460,10 @@ void snd_ac97_proc_init(struct snd_ac97 * ac97)
 
 void snd_ac97_proc_done(struct snd_ac97 * ac97)
 {
-	if (ac97->proc_regs) {
-		snd_info_unregister(ac97->proc_regs);
-		ac97->proc_regs = NULL;
-	}
-	if (ac97->proc) {
-		snd_info_unregister(ac97->proc);
-		ac97->proc = NULL;
-	}
+	snd_info_free_entry(ac97->proc_regs);
+	ac97->proc_regs = NULL;
+	snd_info_free_entry(ac97->proc);
+	ac97->proc = NULL;
 }
 
 void snd_ac97_bus_proc_init(struct snd_ac97_bus * bus)
@@ -484,8 +484,6 @@ void snd_ac97_bus_proc_init(struct snd_ac97_bus * bus)
 
 void snd_ac97_bus_proc_done(struct snd_ac97_bus * bus)
 {
-	if (bus->proc) {
-		snd_info_unregister(bus->proc);
-		bus->proc = NULL;
-	}
+	snd_info_free_entry(bus->proc);
+	bus->proc = NULL;
 }

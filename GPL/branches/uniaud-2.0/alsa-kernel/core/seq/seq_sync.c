@@ -20,6 +20,7 @@
  */
 
 #include <sound/driver.h>
+#include <sound/core.h>
 
 #include "seq_memory.h"
 #include "seq_queue.h"

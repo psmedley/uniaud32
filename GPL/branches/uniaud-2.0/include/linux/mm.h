@@ -134,7 +134,8 @@ extern int free_pages(unsigned long addr, unsigned long order);
 #define virt_to_bus virt_to_phys
 extern unsigned long virt_to_phys(void * address);
 
-extern mem_map_t *virt_to_page(int x);
+//extern mem_map_t *virt_to_page(int x);
+#define virt_to_page(x) (&mem_map[MAP_NR(x)])
 
 extern void * phys_to_virt(unsigned long address);
 

@@ -19,7 +19,6 @@
  *
  */
 
-#include <sound/driver.h>
 #include <sound/core.h>
 #include "seq_lock.h"
 
@@ -43,5 +42,7 @@ void snd_use_lock_sync_helper(snd_use_lock_t *lockp, const char *file, int line)
 		max_count--;
 	}
 }
+
+EXPORT_SYMBOL(snd_use_lock_sync_helper);
 
 #endif

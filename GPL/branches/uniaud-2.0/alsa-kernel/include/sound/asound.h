@@ -1,6 +1,6 @@
 /*
  *  Advanced Linux Sound Architecture - ALSA - Driver
- *  Copyright (c) 1994-2003 by Jaroslav Kysela <perex@suse.cz>,
+ *  Copyright (c) 1994-2003 by Jaroslav Kysela <perex@perex.cz>,
  *                             Abramo Bagnara <abramo@alsa-project.org>
  *
  *
@@ -23,21 +23,25 @@
 #ifndef __SOUND_ASOUND_H
 #define __SOUND_ASOUND_H
 
+#ifdef __KERNEL__
+#include <linux/ioctl.h>
+#include <linux/types.h>
+#include <linux/time.h>
+#include <asm/byteorder.h>
+#ifdef TARGET_OS2x
+#include <sound/config.h>
+#endif
+#ifdef  __LITTLE_ENDIAN
 #define SNDRV_LITTLE_ENDIAN
-
-#ifndef __KERNEL__
-#include <sys/time.h>
-#include <sys/types.h>
-#endif
-
-struct iovec {
-        char    *iov_base;      /* Base address. */
-#ifdef __32BIT__
-        size_t   iov_len;       /* Length. */
 #else
-        long     iov_len;       /* Length. */
+#ifdef __BIG_ENDIAN
+#define SNDRV_BIG_ENDIAN
+#else
+#error "Unsupported endian..."
 #endif
-};
+#endif
+
+#endif /* __KERNEL__ **/
 
 #ifndef __force
 #define __force
@@ -114,9 +118,10 @@ enum {
 	SNDRV_HWDEP_IFACE_USX2Y_PCM,	/* Tascam US122, US224 & US428 rawusb pcm */
 	SNDRV_HWDEP_IFACE_PCXHR,	/* Digigram PCXHR */
 	SNDRV_HWDEP_IFACE_SB_RC,	/* SB Extigy/Audigy2NX remote control */
+	SNDRV_HWDEP_IFACE_HDA,		/* HD-audio */
 
 	/* Don't forget to change the following: */
-	SNDRV_HWDEP_IFACE_LAST = SNDRV_HWDEP_IFACE_SB_RC
+	SNDRV_HWDEP_IFACE_LAST = SNDRV_HWDEP_IFACE_HDA
 };
 
 struct snd_hwdep_info {
@@ -159,7 +164,7 @@ enum {
  *                                                                           *
  *****************************************************************************/
 
-#define SNDRV_PCM_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 7)
+#define SNDRV_PCM_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 9)
 
 typedef unsigned long snd_pcm_uframes_t;
 typedef signed long snd_pcm_sframes_t;
@@ -262,6 +267,30 @@ typedef int __bitwise snd_pcm_subformat_t;
 #define	SNDRV_PCM_SUBFORMAT_STD		((__force snd_pcm_subformat_t) 0)
 #define	SNDRV_PCM_SUBFORMAT_LAST	SNDRV_PCM_SUBFORMAT_STD
 
+
+#ifdef SNDRV_LITTLE_ENDIAN
+#define	SNDRV_PCM_FORMAT_S16		SNDRV_PCM_FORMAT_S16_LE
+#define	SNDRV_PCM_FORMAT_U16		SNDRV_PCM_FORMAT_U16_LE
+#define	SNDRV_PCM_FORMAT_S24		SNDRV_PCM_FORMAT_S24_LE
+#define	SNDRV_PCM_FORMAT_U24		SNDRV_PCM_FORMAT_U24_LE
+#define	SNDRV_PCM_FORMAT_S32		SNDRV_PCM_FORMAT_S32_LE
+#define	SNDRV_PCM_FORMAT_U32		SNDRV_PCM_FORMAT_U32_LE
+#define	SNDRV_PCM_FORMAT_FLOAT		SNDRV_PCM_FORMAT_FLOAT_LE
+#define	SNDRV_PCM_FORMAT_FLOAT64	SNDRV_PCM_FORMAT_FLOAT64_LE
+#define	SNDRV_PCM_FORMAT_IEC958_SUBFRAME SNDRV_PCM_FORMAT_IEC958_SUBFRAME_LE
+#endif
+#ifdef SNDRV_BIG_ENDIAN
+#define	SNDRV_PCM_FORMAT_S16		SNDRV_PCM_FORMAT_S16_BE
+#define	SNDRV_PCM_FORMAT_U16		SNDRV_PCM_FORMAT_U16_BE
+#define	SNDRV_PCM_FORMAT_S24		SNDRV_PCM_FORMAT_S24_BE
+#define	SNDRV_PCM_FORMAT_U24		SNDRV_PCM_FORMAT_U24_BE
+#define	SNDRV_PCM_FORMAT_S32		SNDRV_PCM_FORMAT_S32_BE
+#define	SNDRV_PCM_FORMAT_U32		SNDRV_PCM_FORMAT_U32_BE
+#define	SNDRV_PCM_FORMAT_FLOAT		SNDRV_PCM_FORMAT_FLOAT_BE
+#define	SNDRV_PCM_FORMAT_FLOAT64	SNDRV_PCM_FORMAT_FLOAT64_BE
+#define	SNDRV_PCM_FORMAT_IEC958_SUBFRAME SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE
+#endif
+
 #define SNDRV_PCM_INFO_MMAP		0x00000001	/* hardware supports mmap */
 #define SNDRV_PCM_INFO_MMAP_VALID	0x00000002	/* period data are valid during transfer */
 #define SNDRV_PCM_INFO_DOUBLE		0x00000004	/* Double buffering needed for PCM start/stop */
@@ -319,11 +348,8 @@ struct snd_pcm_info {
 
 typedef int __bitwise snd_pcm_hw_param_t;
 #define	SNDRV_PCM_HW_PARAM_ACCESS	((__force snd_pcm_hw_param_t) 0) /* Access type */
-#ifdef TARGET_OS2
-#define	SNDRV_PCM_HW_PARAM_RATE_MASK    ((__force snd_pcm_hw_param_t) 1) /* Format */
-#endif
-#define	SNDRV_PCM_HW_PARAM_FORMAT	((__force snd_pcm_hw_param_t) 2) /* Format */
-#define	SNDRV_PCM_HW_PARAM_SUBFORMAT	((__force snd_pcm_hw_param_t) 3) /* Subformat */
+#define	SNDRV_PCM_HW_PARAM_FORMAT	((__force snd_pcm_hw_param_t) 1) /* Format */
+#define	SNDRV_PCM_HW_PARAM_SUBFORMAT	((__force snd_pcm_hw_param_t) 2) /* Subformat */
 #define	SNDRV_PCM_HW_PARAM_FIRST_MASK	SNDRV_PCM_HW_PARAM_ACCESS
 #define	SNDRV_PCM_HW_PARAM_LAST_MASK	SNDRV_PCM_HW_PARAM_SUBFORMAT
 
@@ -378,8 +404,8 @@ struct snd_pcm_hw_params {
 
 enum {
 	SNDRV_PCM_TSTAMP_NONE = 0,
-	SNDRV_PCM_TSTAMP_MMAP,
-	SNDRV_PCM_TSTAMP_LAST = SNDRV_PCM_TSTAMP_MMAP,
+	SNDRV_PCM_TSTAMP_ENABLE,
+	SNDRV_PCM_TSTAMP_LAST = SNDRV_PCM_TSTAMP_ENABLE,
 };
 
 struct snd_pcm_sw_params {
@@ -387,7 +413,7 @@ struct snd_pcm_sw_params {
 	unsigned int period_step;
 	unsigned int sleep_min;			/* min ticks to sleep */
 	snd_pcm_uframes_t avail_min;		/* min avail frames for wakeup */
-	snd_pcm_uframes_t xfer_align;		/* xfer size need to be a multiple */
+	snd_pcm_uframes_t xfer_align;		/* obsolete: xfer size need to be a multiple */
 	snd_pcm_uframes_t start_threshold;	/* min hw_avail frames for automatic start */
 	snd_pcm_uframes_t stop_threshold;	/* min avail frames for automatic stop */
 	snd_pcm_uframes_t silence_threshold;	/* min distance from noise for silence filling */
@@ -459,9 +485,16 @@ struct snd_xfern {
 };
 
 enum {
+	SNDRV_PCM_TSTAMP_TYPE_GETTIMEOFDAY = 0,	/* gettimeofday equivalent */
+	SNDRV_PCM_TSTAMP_TYPE_MONOTONIC,	/* posix_clock_monotonic equivalent */
+	SNDRV_PCM_TSTAMP_TYPE_LAST = SNDRV_PCM_TSTAMP_TYPE_MONOTONIC,
+};
+
+enum {
 	SNDRV_PCM_IOCTL_PVERSION = _IOR('A', 0x00, int),
 	SNDRV_PCM_IOCTL_INFO = _IOR('A', 0x01, struct snd_pcm_info),
 	SNDRV_PCM_IOCTL_TSTAMP = _IOW('A', 0x02, int),
+	SNDRV_PCM_IOCTL_TTSTAMP = _IOW('A', 0x03, int),
 	SNDRV_PCM_IOCTL_HW_REFINE = _IOWR('A', 0x10, struct snd_pcm_hw_params),
 	SNDRV_PCM_IOCTL_HW_PARAMS = _IOWR('A', 0x11, struct snd_pcm_hw_params),
 	SNDRV_PCM_IOCTL_HW_FREE = _IO('A', 0x12),
@@ -713,7 +746,7 @@ struct snd_timer_tread {
  *                                                                          *
  ****************************************************************************/
 
-#define SNDRV_CTL_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 4)
+#define SNDRV_CTL_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 5)
 
 struct snd_ctl_card_info {
 	int card;			/* card number */
@@ -752,7 +785,7 @@ typedef int __bitwise snd_ctl_elem_iface_t;
 #define SNDRV_CTL_ELEM_ACCESS_WRITE		(1<<1)
 #define SNDRV_CTL_ELEM_ACCESS_READWRITE		(SNDRV_CTL_ELEM_ACCESS_READ|SNDRV_CTL_ELEM_ACCESS_WRITE)
 #define SNDRV_CTL_ELEM_ACCESS_VOLATILE		(1<<2)	/* control value may be changed without a notification */
-#define SNDRV_CTL_ELEM_ACCESS_TIMESTAMP		(1<<2)	/* when was control changed */
+#define SNDRV_CTL_ELEM_ACCESS_TIMESTAMP		(1<<3)	/* when was control changed */
 #define SNDRV_CTL_ELEM_ACCESS_TLV_READ		(1<<4)	/* TLV read is possible */
 #define SNDRV_CTL_ELEM_ACCESS_TLV_WRITE		(1<<5)	/* TLV write is possible */
 #define SNDRV_CTL_ELEM_ACCESS_TLV_READWRITE	(SNDRV_CTL_ELEM_ACCESS_TLV_READ|SNDRV_CTL_ELEM_ACCESS_TLV_WRITE)
@@ -762,8 +795,7 @@ typedef int __bitwise snd_ctl_elem_iface_t;
 #define SNDRV_CTL_ELEM_ACCESS_OWNER		(1<<10)	/* write lock owner */
 #define SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK	(1<<28)	/* kernel use a TLV callback */ 
 #define SNDRV_CTL_ELEM_ACCESS_USER		(1<<29) /* user space element */
-#define SNDRV_CTL_ELEM_ACCESS_DINDIRECT		(1<<30)	/* indirect access for matrix dimensions in the info structure */
-#define SNDRV_CTL_ELEM_ACCESS_INDIRECT		(1<<31)	/* indirect access for element value in the value structure */
+/* bits 30 and 31 are obsoleted (for indirect access) */
 
 /* for further details see the ACPI and PCI power management specification */
 #define SNDRV_CTL_POWER_D0		0x0000	/* full On */
@@ -817,30 +849,30 @@ struct snd_ctl_elem_info {
 	} value;
 	union {
 		unsigned short d[4];		/* dimensions */
-		unsigned short *d_ptr;		/* indirect */
+		unsigned short *d_ptr;		/* indirect - obsoleted */
 	} dimen;
 	unsigned char reserved[64-4*sizeof(unsigned short)];
 };
 
 struct snd_ctl_elem_value {
 	struct snd_ctl_elem_id id;	/* W: element ID */
-	unsigned int indirect: 1;	/* W: use indirect pointer (xxx_ptr member) */
+	unsigned int indirect: 1;	/* W: indirect access - obsoleted */
         union {
 		union {
 			long value[128];
-			long *value_ptr;
+			long *value_ptr;	/* obsoleted */
 		} integer;
 		union {
 			long long value[64];
-			long long *value_ptr;
+			long long *value_ptr;	/* obsoleted */
 		} integer64;
 		union {
 			unsigned int item[128];
-			unsigned int *item_ptr;
+			unsigned int *item_ptr;	/* obsoleted */
 		} enumerated;
 		union {
 			unsigned char data[512];
-			unsigned char *data_ptr;
+			unsigned char *data_ptr;	/* obsoleted */
 		} bytes;
 		struct snd_aes_iec958 iec958;
         } value;                /* RO */
@@ -849,10 +881,15 @@ struct snd_ctl_elem_value {
 };
 
 struct snd_ctl_tlv {
-    unsigned int numid;	/* control element numeric identification */
-    unsigned int length;	/* in bytes aligned to 4 */
-    unsigned int tlv[1];	/* first TLV */
+        unsigned int numid;	/* control element numeric identification */
+        unsigned int length;	/* in bytes aligned to 4 */
+#ifndef TARGET_OS2
+        unsigned int tlv[0];	/* first TLV */
+#else
+        unsigned int tlv[1];	/* first TLV */
+#endif
 };
+
 
 enum {
 	SNDRV_CTL_IOCTL_PVERSION = _IOR('U', 0x00, int),
@@ -866,10 +903,10 @@ enum {
 	SNDRV_CTL_IOCTL_SUBSCRIBE_EVENTS = _IOWR('U', 0x16, int),
 	SNDRV_CTL_IOCTL_ELEM_ADD = _IOWR('U', 0x17, struct snd_ctl_elem_info),
 	SNDRV_CTL_IOCTL_ELEM_REPLACE = _IOWR('U', 0x18, struct snd_ctl_elem_info),
-        SNDRV_CTL_IOCTL_ELEM_REMOVE = _IOWR('U', 0x19, struct snd_ctl_elem_id),
-        SNDRV_CTL_IOCTL_TLV_READ = _IOWR('U', 0x1a, struct snd_ctl_tlv),
-        SNDRV_CTL_IOCTL_TLV_WRITE = _IOWR('U', 0x1b, struct snd_ctl_tlv),
-        SNDRV_CTL_IOCTL_TLV_COMMAND = _IOWR('U', 0x1c, struct snd_ctl_tlv),
+	SNDRV_CTL_IOCTL_ELEM_REMOVE = _IOWR('U', 0x19, struct snd_ctl_elem_id),
+	SNDRV_CTL_IOCTL_TLV_READ = _IOWR('U', 0x1a, struct snd_ctl_tlv),
+	SNDRV_CTL_IOCTL_TLV_WRITE = _IOWR('U', 0x1b, struct snd_ctl_tlv),
+	SNDRV_CTL_IOCTL_TLV_COMMAND = _IOWR('U', 0x1c, struct snd_ctl_tlv),
 	SNDRV_CTL_IOCTL_HWDEP_NEXT_DEVICE = _IOWR('U', 0x20, int),
 	SNDRV_CTL_IOCTL_HWDEP_INFO = _IOR('U', 0x21, struct snd_hwdep_info),
 	SNDRV_CTL_IOCTL_PCM_NEXT_DEVICE = _IOR('U', 0x30, int),
@@ -879,12 +916,11 @@ enum {
 	SNDRV_CTL_IOCTL_RAWMIDI_INFO = _IOWR('U', 0x41, struct snd_rawmidi_info),
 	SNDRV_CTL_IOCTL_RAWMIDI_PREFER_SUBDEVICE = _IOW('U', 0x42, int),
 	SNDRV_CTL_IOCTL_POWER = _IOWR('U', 0xd0, int),
-        SNDRV_CTL_IOCTL_POWER_STATE = _IOR('U', 0xd1, int),
+	SNDRV_CTL_IOCTL_POWER_STATE = _IOR('U', 0xd1, int),
 #ifdef TARGET_OS2
         SNDRV_PCM_IOCTL_SETVOLUME = _IOW('A', 0x62, struct snd_pcm_volume),
         SNDRV_PCM_IOCTL_GETVOLUME = _IOR('A', 0x63, struct snd_pcm_volume),
 #endif
-
 };
 
 /*
@@ -944,15 +980,5 @@ enum {
 	SNDRV_IOCTL_READV = _IOW('K', 0x00, struct snd_xferv),
 	SNDRV_IOCTL_WRITEV = _IOW('K', 0x01, struct snd_xferv),
 };
-
-#define msleep(msecs) \
-        do { \
-                set_current_state(TASK_UNINTERRUPTIBLE); \
-                schedule_timeout(((msecs) * HZ + 999) / 1000);  \
-        } while (0)
-
-#define schedule_timeout_interruptible(x) \
- {set_current_state(TASK_INTERRUPTIBLE); schedule_timeout(x);}
-#define schedule_timeout_uninterruptible(x) {set_current_state(TASK_UNINTERRUPTIBLE); schedule_timeout(x);}
 
 #endif /* __SOUND_ASOUND_H */

@@ -2,7 +2,7 @@
 #define __AD1848_H
 
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Definitions for AD1847/AD1848/CS4248 chips
  *
  *
@@ -27,7 +27,7 @@
 
 /* IO ports */
 
-#define AD1848P( codec, x ) ( (chip) -> port + c_d_c_AD1848##x )
+#define AD1848P( chip, x ) ( (chip) -> port + c_d_c_AD1848##x )
 
 #define c_d_c_AD1848REGSEL	0
 #define c_d_c_AD1848REG		1
@@ -48,7 +48,7 @@
 #define AD1848_IFACE_CTRL	0x09	/* interface control - bits 7-2 MCE */
 #define AD1848_PIN_CTRL		0x0a	/* pin control */
 #define AD1848_TEST_INIT	0x0b	/* test and initialization */
-#define AD1848_MISC_INFO	0x0c	/* miscellaneaous information */
+#define AD1848_MISC_INFO	0x0c	/* miscellaneous information */
 #define AD1848_LOOPBACK		0x0d	/* loopback control */
 #define AD1848_DATA_UPR_CNT	0x0e	/* playback/capture upper base count */
 #define AD1848_DATA_LWR_CNT	0x0f	/* playback/capture lower base count */
@@ -120,7 +120,7 @@
 #define AD1848_HW_CS4248	0x0003	/* CS4248 chip */
 #define AD1848_HW_CMI8330	0x0004	/* CMI8330 chip */
 
-struct _snd_ad1848 {
+struct snd_ad1848 {
 	unsigned long port;		/* i/o port */
 	struct resource *res_port;
 	int irq;			/* IRQ line */
@@ -130,10 +130,10 @@ struct _snd_ad1848 {
 	unsigned short hardware;	/* see to AD1848_HW_XXXX */
 	unsigned short single_dma:1;	/* forced single DMA mode (GUS 16-bit daughter board) or dma1 == dma2 */
 
-	snd_pcm_t *pcm;
-	snd_pcm_substream_t *playback_substream;
-	snd_pcm_substream_t *capture_substream;
-	snd_card_t *card;
+	struct snd_pcm *pcm;
+	struct snd_pcm_substream *playback_substream;
+	struct snd_pcm_substream *capture_substream;
+	struct snd_card *card;
 
 	unsigned char image[32];	/* SGalaxy needs an access to extended registers */
 	int mce_bit;
@@ -141,64 +141,71 @@ struct _snd_ad1848 {
         int dma_size;
         int thinkpad_flag;              /* Thinkpad CS4248 needs some extra help */
 
-	spinlock_t reg_lock;
-	struct semaphore open_mutex;
-};
+#ifdef CONFIG_PM
+	void (*suspend)(struct snd_ad1848 *chip);
+	void (*resume)(struct snd_ad1848 *chip);
+#endif
 
-typedef struct _snd_ad1848 ad1848_t;
+	spinlock_t reg_lock;
+};
 
 /* exported functions */
 
-void snd_ad1848_out(ad1848_t *chip, unsigned char reg, unsigned char value);
+void snd_ad1848_out(struct snd_ad1848 *chip, unsigned char reg, unsigned char value);
 
-int snd_ad1848_create(snd_card_t * card,
+int snd_ad1848_create(struct snd_card *card,
 		      unsigned long port,
 		      int irq, int dma,
 		      unsigned short hardware,
-		      ad1848_t ** chip);
+		      struct snd_ad1848 ** chip);
 
-int snd_ad1848_pcm(ad1848_t * chip, int device, snd_pcm_t **rpcm);
-int snd_ad1848_mixer(ad1848_t * chip);
-void snd_ad1848_interrupt(int irq, void *dev_id, struct pt_regs *regs);
+int snd_ad1848_pcm(struct snd_ad1848 * chip, int device, struct snd_pcm **rpcm);
+const struct snd_pcm_ops *snd_ad1848_get_pcm_ops(int direction);
+int snd_ad1848_mixer(struct snd_ad1848 * chip);
 
-#ifdef TARGET_OS2
+/* exported mixer stuffs */
+enum { AD1848_MIX_SINGLE, AD1848_MIX_DOUBLE, AD1848_MIX_CAPTURE };
+
+#define AD1848_MIXVAL_SINGLE(reg, shift, mask, invert) \
+	((reg) | ((shift) << 8) | ((mask) << 16) | ((invert) << 24))
+#define AD1848_MIXVAL_DOUBLE(left_reg, right_reg, shift_left, shift_right, mask, invert) \
+	((left_reg) | ((right_reg) << 8) | ((shift_left) << 16) | ((shift_right) << 19) | ((mask) << 24) | ((invert) << 22))
+
+/* for ease of use */
+struct ad1848_mix_elem {
+	const char *name;
+	int index;
+	int type;
+	unsigned long private_value;
+	const unsigned int *tlv;
+};
+
 #define AD1848_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
-  0, 0, snd_ad1848_info_single, \
-  snd_ad1848_get_single, snd_ad1848_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#else
-#define AD1848_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_ad1848_info_single, \
-  get: snd_ad1848_get_single, put: snd_ad1848_put_single, \
-  private_value: reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+{ .name = xname, \
+  .index = xindex, \
+  .type = AD1848_MIX_SINGLE, \
+  .private_value = AD1848_MIXVAL_SINGLE(reg, shift, mask, invert) }
 
-int snd_ad1848_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo);
-int snd_ad1848_get_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
-int snd_ad1848_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
+#define AD1848_SINGLE_TLV(xname, xindex, reg, shift, mask, invert, xtlv) \
+{ .name = xname, \
+  .index = xindex, \
+  .type = AD1848_MIX_SINGLE, \
+  .private_value = AD1848_MIXVAL_SINGLE(reg, shift, mask, invert), \
+  .tlv = xtlv }
 
-#ifdef TARGET_OS2
 #define AD1848_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, xindex, \
-  0, 0, snd_ad1848_info_double, \
-  snd_ad1848_get_double, snd_ad1848_put_double, \
-  left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#else
-#define AD1848_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, index: xindex, \
-  info: snd_ad1848_info_double, \
-  get: snd_ad1848_get_double, put: snd_ad1848_put_double, \
-  private_value: left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#endif
+{ .name = xname, \
+  .index = xindex, \
+  .type = AD1848_MIX_DOUBLE, \
+  .private_value = AD1848_MIXVAL_DOUBLE(left_reg, right_reg, shift_left, shift_right, mask, invert) }
 
-int snd_ad1848_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo);
-int snd_ad1848_get_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
-int snd_ad1848_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t * ucontrol);
+#define AD1848_DOUBLE_TLV(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert, xtlv) \
+{ .name = xname, \
+  .index = xindex, \
+  .type = AD1848_MIX_DOUBLE, \
+  .private_value = AD1848_MIXVAL_DOUBLE(left_reg, right_reg, shift_left, shift_right, mask, invert), \
+  .tlv = xtlv }
 
-#ifdef CONFIG_SND_DEBUG
-void snd_ad1848_debug(ad1848_t *chip);
-#endif
+int snd_ad1848_add_ctl_elem(struct snd_ad1848 *chip, const struct ad1848_mix_elem *c);
 
-#endif				/* __AD1848_H */
+#endif /* __SOUND_AD1848_H */

@@ -3,7 +3,7 @@
 
 /*
  *  Header file for SoundBlaster cards
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -38,6 +38,7 @@ enum sb_hw_type {
 	SB_HW_ALS100,		/* Avance Logic ALS100 chip */
 	SB_HW_ALS4000,		/* Avance Logic ALS4000 chip */
 	SB_HW_DT019X,		/* Diamond Tech. DT-019X / Avance Logic ALS-007 */
+	SB_HW_CS5530,		/* Cyrix/NatSemi 5530 VSA1 */
 };
 
 #define SB_OPEN_PCM			0x01
@@ -100,7 +101,7 @@ struct snd_sb {
 	struct snd_rawmidi *rmidi;
 	struct snd_rawmidi_substream *midi_substream_input;
 	struct snd_rawmidi_substream *midi_substream_output;
-	irqreturn_t (*rmidi_callback)(int irq, void *dev_id, struct pt_regs *regs);
+	irq_handler_t rmidi_callback;
 
 	spinlock_t reg_lock;
 	spinlock_t open_lock;
@@ -286,7 +287,7 @@ int snd_sbdsp_reset(struct snd_sb *chip);
 int snd_sbdsp_create(struct snd_card *card,
 		     unsigned long port,
 		     int irq,
-		     irqreturn_t (*irq_handler)(int, void *, struct pt_regs *),
+		     irq_handler_t irq_handler,
 		     int dma8, int dma16,
 		     unsigned short hardware,
 		     struct snd_sb **r_chip);
@@ -316,7 +317,7 @@ int snd_sb16dsp_pcm(struct snd_sb *chip, int device, struct snd_pcm ** rpcm);
 const struct snd_pcm_ops *snd_sb16dsp_get_pcm_ops(int direction);
 int snd_sb16dsp_configure(struct snd_sb *chip);
 /* sb16.c */
-irqreturn_t snd_sb16dsp_interrupt(int irq, void *dev_id, struct pt_regs *regs);
+irqreturn_t snd_sb16dsp_interrupt(int irq, void *dev_id);
 
 /* exported mixer stuffs */
 enum {

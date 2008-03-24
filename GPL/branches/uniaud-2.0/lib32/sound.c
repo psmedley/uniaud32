@@ -22,7 +22,7 @@
  *
  */
 
-#include <sound/driver.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
@@ -313,11 +313,11 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 {
     OSSSTREAMID          streamid = 0;
     soundhandle         *pHandle;
-    snd_pcm_info_t      *pcminfo = NULL;
-    snd_pcm_hw_params_t *params;
+    struct snd_pcm_info      *pcminfo = NULL;
+    struct snd_pcm_hw_params *params;
     int                  ret, fmt, i;
     ULONG                format_mask;
-    snd_mask_t           *mask;
+    struct snd_mask           *mask;
     int max_ch;
 
 #ifdef DEBUG
@@ -326,16 +326,16 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 //    max_ch = GetMaxChannels(deviceid, OSS32_CAPS_WAVE_PLAYBACK);
 
     //these structures are too big to put on the stack
-    pcminfo = (snd_pcm_info_t *)kmalloc(sizeof(snd_pcm_info_t)+sizeof(snd_pcm_hw_params_t), GFP_KERNEL);
+    pcminfo = (struct snd_pcm_info *)kmalloc(sizeof(struct snd_pcm_info)+sizeof(struct snd_pcm_hw_params), GFP_KERNEL);
     if(pcminfo == NULL) {
         DebugInt3();
         printk("OSS32_QueryDevCaps: out of memory\n");
         return OSSERR_OUT_OF_MEMORY;
     }
-    params = (snd_pcm_hw_params_t *)(pcminfo+1);
+    params = (struct snd_pcm_hw_params *)(pcminfo+1);
 
-//    printk("Number of cards: %i\n",nrCardsDetected);
-//    printk("dev id: %i\n",deviceid);
+    printk("Number of cards: %i\n",nrCardsDetected);
+    printk("dev id: %i\n",deviceid);
     pDevCaps->nrDevices  = 1;//nrCardsDetected;
     pDevCaps->ulCaps     = OSS32_CAPS_WAVE_PLAYBACK | OSS32_CAPS_WAVE_CAPTURE;
 
@@ -403,7 +403,8 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
         pWaveCaps->ulMinRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->min;
         pWaveCaps->ulMaxRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->max;
 
-        mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
+//        mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
+        mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
         pWaveCaps->ulRateFlags   = mask->bits[0];
 
         pWaveCaps->ulRateFlags   = ALSAToOSSRateFlags(pWaveCaps->ulRateFlags);
@@ -458,7 +459,7 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
         printk("OSS32_QueryDevCaps: OSS32_MixQueryName error\n");
         goto fail;
     }
-//    printk("OSS32_QueryDevCaps: devname: [%s]\n", pDevCaps->szDeviceName);
+    printk("OSS32_QueryDevCaps: devname: [%s]\n", pDevCaps->szDeviceName);
     kfree(pcminfo);
     streamid = 0;
 
@@ -532,7 +533,7 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
     }
 
     ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
-    //printk("OSS32_WaveOpen. ret: %i\n", ret);
+    printk("OSS32_WaveOpen. ret: %i\n", ret);
     /* check if PCM already opened (stupid uniaud16.sys doesnt closes it) */
     if (ret == -16)
     {
@@ -763,9 +764,9 @@ static unsigned rates[] = {
 OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
 {
     soundhandle        *pHandle = (soundhandle *)streamid;
-    snd_pcm_hw_params_t params;
-    snd_pcm_status_t    status;
-    snd_pcm_sw_params_t swparams;
+    struct snd_pcm_hw_params params;
+    struct snd_pcm_status    status;
+    struct snd_pcm_sw_params swparams;
     int                 ret, ret1, nrperiods, minnrperiods, maxnrperiods, samplesize, i;
     ULONG               bufsize, periodsize, minperiodsize, maxperiodsize;
     ULONG               periodbytes, minperiodbytes, maxperiodbytes;
@@ -1072,7 +1073,7 @@ extern  ULONG xchg( ULONG *p, ULONG x);
 OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG *pTransferred, int pcm)
 {
     soundhandle        *pHandle = (soundhandle *)streamid;
-    snd_pcm_status_t    status;
+    struct snd_pcm_status    status;
     int                 ret, align, size1, ret1;
     LONG                transferred;
     ULONG               position,i,j;
@@ -1203,7 +1204,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
 OSSRET OSS32_WaveGetPosition(ULONG streamid, ULONG *pPosition)
 {
     soundhandle        *pHandle = (soundhandle *)streamid;
-    snd_pcm_status_t    status;
+    struct snd_pcm_status    status;
     int                 ret;
     ULONG               delta;
 
@@ -1236,7 +1237,7 @@ OSSRET OSS32_WaveGetPosition(ULONG streamid, ULONG *pPosition)
 OSSRET OSS32_WaveGetSpace(ULONG streamid, ULONG *pBytesAvail)
 {
     soundhandle        *pHandle = (soundhandle *)streamid;
-    snd_pcm_status_t    status;
+    struct snd_pcm_status    status;
     int                 ret;
 
     if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
@@ -1259,6 +1260,7 @@ OSSRET OSS32_WaveGetSpace(ULONG streamid, ULONG *pBytesAvail)
         return UNIXToOSSError(ret);
     }
     ret = samples_to_bytes(status.avail);
+
     *pBytesAvail = ret > 752? ret - 752 : 0;
     return OSSERR_SUCCESS;
 }

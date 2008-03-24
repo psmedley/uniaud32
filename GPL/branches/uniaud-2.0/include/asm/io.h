@@ -106,11 +106,13 @@ void outsb(unsigned short port, char *buffer, int size);
   "outsb"                  \
   parm [dx] [esi] [ecx];
 
+#if 1
 unsigned char inb(unsigned short port);
 #pragma aux inb =       \
   "in al,dx"            \
   parm [dx]             \
   value [al];
+#endif
 
 void insb(unsigned short port, char *buffer, int size);
 #pragma aux insb =       \

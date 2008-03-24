@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>,
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>,
  *                   Hannu Savolainen 1993-1996,
  *                   Rob Hooft
  *                   
@@ -31,7 +31,7 @@
 #include <linux/ioport.h>
 #include <sound/minors.h>
 
-MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>, Hannu Savolainen 1993-1996, Rob Hooft");
+MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>, Hannu Savolainen 1993-1996, Rob Hooft");
 MODULE_DESCRIPTION("Routines for control of AdLib FM cards (OPL2/OPL3/OPL4 chips)");
 MODULE_LICENSE("GPL");
 
@@ -316,6 +316,8 @@ void snd_opl3_interrupt(struct snd_hwdep * hw)
 	}
 }
 
+EXPORT_SYMBOL(snd_opl3_interrupt);
+
 /*
 
  */
@@ -325,6 +327,7 @@ static int snd_opl3_free(struct snd_opl3 *opl3)
 	snd_assert(opl3 != NULL, return -ENXIO);
 	if (opl3->private_free)
 		opl3->private_free(opl3);
+	snd_opl3_clear_patches(opl3);
 	release_and_free_resource(opl3->res_l_port);
 	release_and_free_resource(opl3->res_r_port);
 	kfree(opl3);
@@ -348,7 +351,7 @@ int snd_opl3_new(struct snd_card *card,
 	int err;
 
 	*ropl3 = NULL;
-	opl3 = (struct snd_opl3 *)kzalloc(sizeof(*opl3), GFP_KERNEL);
+	opl3 = kzalloc(sizeof(*opl3), GFP_KERNEL);
 	if (opl3 == NULL) {
 		snd_printk(KERN_ERR "opl3: cannot allocate\n");
 		return -ENOMEM;
@@ -358,7 +361,6 @@ int snd_opl3_new(struct snd_card *card,
 	opl3->hardware = hardware;
 	spin_lock_init(&opl3->reg_lock);
 	spin_lock_init(&opl3->timer_lock);
-	init_MUTEX(&opl3->access_mutex);
 
 	if ((err = snd_device_new(card, SNDRV_DEV_CODEC, opl3, &ops)) < 0) {
 		snd_opl3_free(opl3);
@@ -368,6 +370,8 @@ int snd_opl3_new(struct snd_card *card,
 	*ropl3 = opl3;
 	return 0;
 }
+
+EXPORT_SYMBOL(snd_opl3_new);
 
 int snd_opl3_init(struct snd_opl3 *opl3)
 {
@@ -393,6 +397,8 @@ int snd_opl3_init(struct snd_opl3 *opl3)
 	return 0;
 }
 
+EXPORT_SYMBOL(snd_opl3_init);
+
 int snd_opl3_create(struct snd_card *card,
 		    unsigned long l_port,
 		    unsigned long r_port,
@@ -409,13 +415,13 @@ int snd_opl3_create(struct snd_card *card,
 	if (! integrated) {
 		if ((opl3->res_l_port = request_region(l_port, 2, "OPL2/3 (left)")) == NULL) {
 			snd_printk(KERN_ERR "opl3: can't grab left port 0x%lx\n", l_port);
-			snd_opl3_free(opl3);
+			snd_device_free(card, opl3);
 			return -EBUSY;
 		}
 		if (r_port != 0 &&
 		    (opl3->res_r_port = request_region(r_port, 2, "OPL2/3 (right)")) == NULL) {
 			snd_printk(KERN_ERR "opl3: can't grab right port 0x%lx\n", r_port);
-			snd_opl3_free(opl3);
+			snd_device_free(card, opl3);
 			return -EBUSY;
 		}
 	}
@@ -434,7 +440,7 @@ int snd_opl3_create(struct snd_card *card,
 		if ((err = snd_opl3_detect(opl3)) < 0) {
 			snd_printd("OPL2/3 chip not detected at 0x%lx/0x%lx\n",
 				   opl3->l_port, opl3->r_port);
-			snd_opl3_free(opl3);
+			snd_device_free(card, opl3);
 			return err;
 		}
 		/* detect routine returns correct hardware type */
@@ -450,6 +456,8 @@ int snd_opl3_create(struct snd_card *card,
 	*ropl3 = opl3;
 	return 0;
 }
+
+EXPORT_SYMBOL(snd_opl3_create);
 
 int snd_opl3_timer_new(struct snd_opl3 * opl3, int timer1_dev, int timer2_dev)
 {
@@ -467,6 +475,8 @@ int snd_opl3_timer_new(struct snd_opl3 * opl3, int timer1_dev, int timer2_dev)
 	}
 	return 0;
 }
+
+EXPORT_SYMBOL(snd_opl3_timer_new);
 
 int snd_opl3_hwdep_new(struct snd_opl3 * opl3,
 		       int device, int seq_device,
@@ -486,6 +496,7 @@ int snd_opl3_hwdep_new(struct snd_opl3 * opl3,
 		return err;
 	}
 	hw->private_data = opl3;
+	hw->exclusive = 1;
 #ifdef CONFIG_SND_OSSEMUL
 	if (device == 0) {
 		hw->oss_type = SNDRV_OSS_DEVICE_TYPE_DMFM;
@@ -511,8 +522,10 @@ int snd_opl3_hwdep_new(struct snd_opl3 * opl3,
 	/* operators - only ioctl */
 	hw->ops.open = snd_opl3_open;
 	hw->ops.ioctl = snd_opl3_ioctl;
+	hw->ops.write = snd_opl3_write;
 	hw->ops.release = snd_opl3_release;
 
+	opl3->hwdep = hw;
 	opl3->seq_dev_num = seq_device;
 #if defined(CONFIG_SND_SEQUENCER) || (defined(MODULE) && defined(CONFIG_SND_SEQUENCER_MODULE))
 	if (snd_seq_device_new(card, seq_device, SNDRV_SEQ_DEV_ID_OPL3,
@@ -526,16 +539,7 @@ int snd_opl3_hwdep_new(struct snd_opl3 * opl3,
 	return 0;
 }
 
-EXPORT_SYMBOL(snd_opl3_interrupt);
-EXPORT_SYMBOL(snd_opl3_new);
-EXPORT_SYMBOL(snd_opl3_init);
-EXPORT_SYMBOL(snd_opl3_create);
-EXPORT_SYMBOL(snd_opl3_timer_new);
 EXPORT_SYMBOL(snd_opl3_hwdep_new);
-
-/* opl3_synth.c */
-EXPORT_SYMBOL(snd_opl3_regmap);
-EXPORT_SYMBOL(snd_opl3_reset);
 
 /*
  *  INIT part

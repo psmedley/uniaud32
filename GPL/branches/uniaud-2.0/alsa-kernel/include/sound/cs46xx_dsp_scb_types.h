@@ -1,6 +1,6 @@
 /*
  *  The driver for the Cirrus Logic's Sound Fusion CS46XX based soundcards
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 #ifndef __CS46XX_DSP_SCB_TYPES_H__
 #define __CS46XX_DSP_SCB_TYPES_H__
 
-//#include <asm/byteorder.h>
+#include <asm/byteorder.h>
 
 #ifndef ___DSP_DUAL_16BIT_ALLOC
 #if   defined(__LITTLE_ENDIAN)

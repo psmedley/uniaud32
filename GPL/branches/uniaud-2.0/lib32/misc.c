@@ -119,11 +119,13 @@ unsigned int hweight32(unsigned int w)
 }
 //******************************************************************************
 //******************************************************************************
+#if 0
 mem_map_t *virt_to_page(int x)
 {
     static mem_map_t map = {0};
     return &map;
 }
+#endif
 //******************************************************************************
 //******************************************************************************
 struct proc_dir_entry proc_root = {0};
@@ -133,7 +135,6 @@ struct proc_dir_entry *create_proc_entry(const char *name, mode_t mode,
 				         struct proc_dir_entry *parent)
 {
     struct proc_dir_entry *proc;
-
     proc = (struct proc_dir_entry *)kmalloc(sizeof(struct proc_dir_entry), 0);
     memset(proc, 0, sizeof(struct proc_dir_entry));
 
@@ -217,16 +218,3 @@ int unregister_reboot_notifier(struct notifier_block *pnblock)
 }
 //******************************************************************************
 //******************************************************************************
-void *snd_compat_kcalloc(size_t n, size_t size, int flags)
-{
-        void *ret = NULL;
-
-        if (n != 0 && size > INT_MAX / n)
-                return ret;
-
-        ret = kmalloc(n * size, flags);
-        if (ret)
-                memset(ret, 0, n * size);
-        return ret;
-}
-

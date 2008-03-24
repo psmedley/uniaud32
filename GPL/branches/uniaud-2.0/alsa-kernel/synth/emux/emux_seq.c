@@ -28,7 +28,6 @@ static void free_port(void *private);
 static void snd_emux_init_port(struct snd_emux_port *p);
 static int snd_emux_use(void *private_data, struct snd_seq_port_subscribe *info);
 static int snd_emux_unuse(void *private_data, struct snd_seq_port_subscribe *info);
-static int get_client(struct snd_card *card, int index, char *name);
 
 /*
  * MIDI emulation operators
@@ -56,7 +55,8 @@ static struct snd_midi_op emux_ops = {
 				 SNDRV_SEQ_PORT_TYPE_MIDI_GM |\
 				 SNDRV_SEQ_PORT_TYPE_MIDI_GS |\
 				 SNDRV_SEQ_PORT_TYPE_MIDI_XG |\
-				 SNDRV_SEQ_PORT_TYPE_DIRECT_SAMPLE)
+				 SNDRV_SEQ_PORT_TYPE_HARDWARE |\
+				 SNDRV_SEQ_PORT_TYPE_SYNTHESIZER)
 
 /*
  * Initialise the EMUX Synth by creating a client and registering
@@ -71,8 +71,8 @@ snd_emux_init_seq(struct snd_emux *emu, struct snd_card *card, int index)
 	struct snd_seq_port_callback pinfo;
 	char tmpname[64];
 
-	sprintf(tmpname, "%s WaveTable", emu->name);
-	emu->client = get_client(card, index, tmpname);
+	emu->client = snd_seq_create_kernel_client(card, index,
+						   "%s WaveTable", emu->name);
 	if (emu->client < 0) {
 		snd_printk("can't create client\n");
 		return -ENODEV;
@@ -124,12 +124,12 @@ snd_emux_detach_seq(struct snd_emux *emu)
 	if (emu->voices)
 		snd_emux_terminate_all(emu);
 		
-	down(&emu->register_mutex);
+	mutex_lock(&emu->register_mutex);
 	if (emu->client >= 0) {
 		snd_seq_delete_kernel_client(emu->client);
 		emu->client = -1;
 	}
-	up(&emu->register_mutex);
+	mutex_unlock(&emu->register_mutex);
 }
 
 
@@ -312,10 +312,10 @@ snd_emux_use(void *private_data, struct snd_seq_port_subscribe *info)
 	emu = p->emu;
 	snd_assert(emu != NULL, return -EINVAL);
 
-	down(&emu->register_mutex);
+	mutex_lock(&emu->register_mutex);
 	snd_emux_init_port(p);
 	snd_emux_inc_count(emu);
-	up(&emu->register_mutex);
+	mutex_unlock(&emu->register_mutex);
 	return 0;
 }
 
@@ -333,41 +333,11 @@ snd_emux_unuse(void *private_data, struct snd_seq_port_subscribe *info)
 	emu = p->emu;
 	snd_assert(emu != NULL, return -EINVAL);
 
-	down(&emu->register_mutex);
+	mutex_lock(&emu->register_mutex);
 	snd_emux_sounds_off_all(p);
 	snd_emux_dec_count(emu);
-	up(&emu->register_mutex);
+	mutex_unlock(&emu->register_mutex);
 	return 0;
-}
-
-
-/*
- * Create a sequencer client
- */
-static int
-get_client(struct snd_card *card, int index, char *name)
-{
-	struct snd_seq_client_callback callbacks;
-	struct snd_seq_client_info cinfo;
-	int client;
-
-	memset(&callbacks, 0, sizeof(callbacks));
-	callbacks.private_data = NULL;
-	callbacks.allow_input = 1;
-	callbacks.allow_output = 1;
-
-	/* Find a free client, start from 1 as the MPU expects to use 0 */
-	client = snd_seq_create_kernel_client(card, index, &callbacks);
-	if (client < 0)
-		return client;
-
-	memset(&cinfo, 0, sizeof(cinfo));
-	cinfo.client = client;
-	cinfo.type = KERNEL_CLIENT;
-	strcpy(cinfo.name, name);
-	snd_seq_kernel_client_ctl(client, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, &cinfo);
-
-	return client;
 }
 
 

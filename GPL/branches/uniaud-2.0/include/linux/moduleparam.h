@@ -65,9 +65,10 @@ struct kparam_array
 	param_check_##type(name, &(value));				   \
 	module_param_call(name, param_set_##type, param_get_##type, &value, perm)
 
+#ifndef TARGET_OS2
 #define module_param(name, type, perm)				\
 	module_param_named(name, name, type, perm)
-
+#endif
 /* Actually copy string: maxlen param is usually sizeof(string). */
 #define module_param_string(name, string, len, perm)			\
 	static struct kparam_string __param_string_##name		\
@@ -136,9 +137,10 @@ extern int param_get_invbool(char *buffer, struct kernel_param *kp);
 	module_param_call(name, param_array_set, param_array_get, 	\
 			  &__param_arr_##name, perm)
 
+#ifndef TARGET_OS2
 #define module_param_array(name, type, nump, perm)		\
 	module_param_array_named(name, name, type, nump, perm)
-
+#endif
 extern int param_array_set(const char *val, struct kernel_param *kp);
 extern int param_array_get(char *buffer, struct kernel_param *kp);
 

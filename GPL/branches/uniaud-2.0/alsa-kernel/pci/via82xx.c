@@ -3,7 +3,7 @@
  *
  *   VT82C686A/B/C, VT8233A/C, VT8235
  *
- *	Copyright (c) 2000 Jaroslav Kysela <perex@suse.cz>
+ *	Copyright (c) 2000 Jaroslav Kysela <perex@perex.cz>
  *	                   Tjeerd.Mulder <Tjeerd.Mulder@fujitsu-siemens.com>
  *                    2002 Takashi Iwai <tiwai@suse.de>
  *
@@ -46,14 +46,13 @@
  *	- Optimize position calculation for the 823x chips. 
  */
 
-#include <sound/driver.h>
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
-//#include <linux/gameport.h>
+#include <linux/gameport.h>
 #include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -68,14 +67,10 @@
 #define POINTER_DEBUG
 #endif
 
-MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("VIA VT82xx audio");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{VIA,VT82C686A/B/C,pci},{VIA,VT8233A/C,8235}}");
-
-#ifndef PCI_DEVICE_ID_VIA_8233_5
-#define PCI_DEVICE_ID_VIA_8233_5        0x3059
-#endif
 
 #if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
 #define SUPPORT_JOYSTICK 1
@@ -91,26 +86,26 @@ static int ac97_clock = 48000;
 static char *ac97_quirk;
 static int dxs_support;
 
-//module_param(index, int, 0444);
+module_param(index, int, 0444);
 MODULE_PARM_DESC(index, "Index value for VIA 82xx bridge.");
-//module_param(id, charp, 0444);
+module_param(id, charp, 0444);
 MODULE_PARM_DESC(id, "ID string for VIA 82xx bridge.");
-//module_param(mpu_port, long, 0444);
+module_param(mpu_port, long, 0444);
 MODULE_PARM_DESC(mpu_port, "MPU-401 port. (VT82C686x only)");
 #ifdef SUPPORT_JOYSTICK
-//module_param(joystick, bool, 0444);
+module_param(joystick, bool, 0444);
 MODULE_PARM_DESC(joystick, "Enable joystick. (VT82C686x only)");
 #endif
-//module_param(ac97_clock, int, 0444);
+module_param(ac97_clock, int, 0444);
 MODULE_PARM_DESC(ac97_clock, "AC'97 codec clock (default 48000Hz).");
-//module_param(ac97_quirk, charp, 0444);
+module_param(ac97_quirk, charp, 0444);
 MODULE_PARM_DESC(ac97_quirk, "AC'97 workaround for strange hardware.");
-//module_param(dxs_support, int, 0444);
+module_param(dxs_support, int, 0444);
 MODULE_PARM_DESC(dxs_support, "Support for DXS channels (0 = auto, 1 = enable, 2 = disable, 3 = 48k only, 4 = no VRA, 5 = enable any sample rate)");
 
 /* just for backward compatibility */
 static int enable;
-//module_param(enable, bool, 0444);
+module_param(enable, bool, 0444);
 
 
 /* revision numbers for via686 */
@@ -617,7 +612,7 @@ static void snd_via82xx_channel_reset(struct via82xx *chip, struct viadev *viade
  *  Interrupt handler
  *  Used for 686 and 8233A
  */
-static irqreturn_t snd_via686_interrupt(int irq, void *dev_id, struct pt_regs *unused)
+static irqreturn_t snd_via686_interrupt(int irq, void *dev_id)
 {
 	struct via82xx *chip = dev_id;
 	unsigned int status;
@@ -626,8 +621,8 @@ static irqreturn_t snd_via686_interrupt(int irq, void *dev_id, struct pt_regs *u
 	status = inl(VIAREG(chip, SGD_SHADOW));
 	if (! (status & chip->intr_mask)) {
 		if (chip->rmidi)
-                    /* check mpu401 interrupt */
-                    //return snd_mpu401_uart_interrupt(irq, chip->rmidi->private_data);
+			/* check mpu401 interrupt */
+			return snd_mpu401_uart_interrupt(irq, chip->rmidi->private_data);
 		return IRQ_NONE;
 	}
 
@@ -663,7 +658,7 @@ static irqreturn_t snd_via686_interrupt(int irq, void *dev_id, struct pt_regs *u
 /*
  *  Interrupt handler
  */
-static irqreturn_t snd_via8233_interrupt(int irq, void *dev_id,struct pt_regs *unused)
+static irqreturn_t snd_via8233_interrupt(int irq, void *dev_id)
 {
 	struct via82xx *chip = dev_id;
 	unsigned int status;
@@ -868,7 +863,7 @@ static snd_pcm_uframes_t snd_via8233_pcm_pointer(struct snd_pcm_substream *subst
 	if (!status)
 		status = inb(VIADEV_REG(viadev, OFFSET_STATUS));
 
-	/* An apparent bug in the 8251 is worked around by sending a
+	/* An apparent bug in the 8251 is worked around by sending a 
 	 * REG_CTRL_START. */
 	if (chip->revision == VIA_REV_8251 && (status & VIA_REG_STAT_EOL))
 		snd_via82xx_pcm_trigger(substream, SNDRV_PCM_TRIGGER_START);
@@ -1281,20 +1276,19 @@ static int snd_via82xx_pcm_close(struct snd_pcm_substream *substream)
 	ratep->used--;
 	if (! ratep->used)
 		ratep->rate = 0;
-        spin_unlock_irq(&ratep->lock);
-
-        if (! ratep->rate) {
-            if (! viadev->direction) {
-                snd_ac97_update_power(chip->ac97,
-                                      AC97_PCM_FRONT_DAC_RATE, 0);
-                snd_ac97_update_power(chip->ac97,
-                                      AC97_PCM_SURR_DAC_RATE, 0);
-                snd_ac97_update_power(chip->ac97,
-                                      AC97_PCM_LFE_DAC_RATE, 0);
-            } else
-                snd_ac97_update_power(chip->ac97,
-                                      AC97_PCM_LR_ADC_RATE, 0);
-        }
+	spin_unlock_irq(&ratep->lock);
+	if (! ratep->rate) {
+		if (! viadev->direction) {
+			snd_ac97_update_power(chip->ac97,
+					      AC97_PCM_FRONT_DAC_RATE, 0);
+			snd_ac97_update_power(chip->ac97,
+					      AC97_PCM_SURR_DAC_RATE, 0);
+			snd_ac97_update_power(chip->ac97,
+					      AC97_PCM_LFE_DAC_RATE, 0);
+		} else
+			snd_ac97_update_power(chip->ac97,
+					      AC97_PCM_LR_ADC_RATE, 0);
+	}
 	viadev->substream = NULL;
 	return 0;
 }
@@ -1577,15 +1571,7 @@ static struct snd_kcontrol_new snd_via8233_capture_source __devinitdata = {
 	.put = snd_via8233_capture_source_put,
 };
 
-static int snd_via8233_dxs3_spdif_info(struct snd_kcontrol *kcontrol,
-				       struct snd_ctl_elem_info *uinfo)
-{
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
-	uinfo->count = 1;
-	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = 1;
-	return 0;
-}
+#define snd_via8233_dxs3_spdif_info	snd_ctl_boolean_mono_info
 
 static int snd_via8233_dxs3_spdif_get(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
@@ -1703,7 +1689,8 @@ static int snd_via8233_pcmdxs_volume_put(struct snd_kcontrol *kcontrol,
 	}
 	return change;
 }
-static DECLARE_TLV_DB_SCALE(db_scale_dxs, -9450, 150, 1);
+
+static const DECLARE_TLV_DB_SCALE(db_scale_dxs, -9450, 150, 1);
 
 static struct snd_kcontrol_new snd_via8233_pcmdxs_volume_control __devinitdata = {
 	.name = "PCM Playback Volume",
@@ -1712,8 +1699,8 @@ static struct snd_kcontrol_new snd_via8233_pcmdxs_volume_control __devinitdata =
 		   SNDRV_CTL_ELEM_ACCESS_TLV_READ),
 	.info = snd_via8233_dxs_volume_info,
 	.get = snd_via8233_pcmdxs_volume_get,
-        .put = snd_via8233_pcmdxs_volume_put,
-        .tlv = { .p = db_scale_dxs }
+	.put = snd_via8233_pcmdxs_volume_put,
+	.tlv = { .p = db_scale_dxs }
 };
 
 static struct snd_kcontrol_new snd_via8233_dxs_volume_control __devinitdata = {
@@ -1724,8 +1711,8 @@ static struct snd_kcontrol_new snd_via8233_dxs_volume_control __devinitdata = {
 	.count = 4,
 	.info = snd_via8233_dxs_volume_info,
 	.get = snd_via8233_dxs_volume_get,
-        .put = snd_via8233_dxs_volume_put,
-        .tlv = { .p = db_scale_dxs }
+	.put = snd_via8233_dxs_volume_put,
+	.tlv = { .p = db_scale_dxs }
 };
 
 /*
@@ -1797,13 +1784,19 @@ static struct ac97_quirk ac97_quirks[] = {
 		.subvendor = 0x161f,
 		.subdevice = 0x2032,
 		.name = "Targa Traveller 811",
-                .type = AC97_TUNE_HP_ONLY,
-        },
+		.type = AC97_TUNE_HP_ONLY,
+	},
 	{
 		.subvendor = 0x161f,
 		.subdevice = 0x2032,
 		.name = "m680x",
 		.type = AC97_TUNE_HP_ONLY, /* http://launchpad.net/bugs/38546 */
+	},
+	{
+		.subvendor = 0x1297,
+		.subdevice = 0xa232,
+		.name = "Shuttle AK32VN",
+		.type = AC97_TUNE_HP_ONLY
 	},
 	{0} /* terminator */
 };
@@ -1827,7 +1820,7 @@ static int __devinit snd_via82xx_mixer_new(struct via82xx *chip, const char *qui
 	ac97.private_data = chip;
 	ac97.private_free = snd_via82xx_mixer_free_ac97;
 	ac97.pci = chip->pci;
-	ac97.scaps = AC97_SCAP_SKIP_MODEM;
+	ac97.scaps = AC97_SCAP_SKIP_MODEM | AC97_SCAP_POWER_SAVE;
 	if ((err = snd_ac97_mixer(chip->ac97_bus, &ac97, &chip->ac97)) < 0)
 		return err;
 
@@ -2002,9 +1995,9 @@ static int __devinit snd_via686_init_misc(struct via82xx *chip)
 	pci_write_config_byte(chip->pci, VIA_FUNC_ENABLE, legacy);
 	pci_write_config_byte(chip->pci, VIA_PNP_CONTROL, legacy_cfg);
 	if (chip->mpu_res) {
-            if (snd_mpu401_uart_new(chip->card, 0, MPU401_HW_VIA686A,
-                                    mpu_port, MPU401_INFO_INTEGRATED,
-                                    chip->irq, 0, &chip->rmidi) < 0) {
+		if (snd_mpu401_uart_new(chip->card, 0, MPU401_HW_VIA686A,
+					mpu_port, MPU401_INFO_INTEGRATED,
+					chip->irq, 0, &chip->rmidi) < 0) {
 			printk(KERN_WARNING "unable to initialize MPU-401"
 			       " at 0x%lx, skipping\n", mpu_port);
 			legacy &= ~VIA_FUNC_ENABLE_MIDI;
@@ -2045,7 +2038,7 @@ static void __devinit snd_via82xx_proc_init(struct via82xx *chip)
 	struct snd_info_entry *entry;
 
 	if (! snd_card_proc_new(chip->card, "via82xx", &entry))
-		snd_info_set_text_ops(entry, chip, 1024, snd_via82xx_proc_read);
+		snd_info_set_text_ops(entry, chip, snd_via82xx_proc_read);
 }
 
 /*
@@ -2121,7 +2114,7 @@ static int snd_via82xx_chip_init(struct via82xx *chip)
 			chip->ac97_secondary = 1;
 			goto __ac97_ok2;
 		}
-		schedule_timeout_interruptible(1);
+		schedule_timeout_uninterruptible(1);
 	} while (time_before(jiffies, end_time));
 	/* This is ok, the most of motherboards have only one codec */
 
@@ -2190,8 +2183,8 @@ static int snd_via82xx_suspend(struct pci_dev *pci, pm_message_t state)
 	}
 
 	pci_disable_device(pci);
-        pci_save_state(pci);
-        pci_set_power_state(pci, pci_choose_state(pci, state));
+	pci_save_state(pci);
+	pci_set_power_state(pci, pci_choose_state(pci, state));
 	return 0;
 }
 
@@ -2244,9 +2237,9 @@ static int snd_via82xx_free(struct via82xx *chip)
 	for (i = 0; i < chip->num_devs; i++)
 		snd_via82xx_channel_reset(chip, &chip->devs[i]);
 	synchronize_irq(chip->irq);
-      __end_hw:
 	if (chip->irq >= 0)
 		free_irq(chip->irq, chip);
+ __end_hw:
 	release_and_free_resource(chip->mpu_res);
 	pci_release_regions(chip->pci);
 
@@ -2310,8 +2303,8 @@ static int __devinit snd_via82xx_create(struct snd_card *card,
 	chip->port = pci_resource_start(pci, 0);
 	if (request_irq(pci->irq,
 			chip_type == TYPE_VIA8233 ?
-			  snd_via8233_interrupt : snd_via686_interrupt,
-			SA_INTERRUPT|SA_SHIRQ,
+			snd_via8233_interrupt :	snd_via686_interrupt,
+			IRQF_SHARED,
 			card->driver, chip)) {
 		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_via82xx_free(chip);
@@ -2354,104 +2347,75 @@ static struct via823x_info via823x_cards[] __devinitdata = {
 	{ VIA_REV_8233, "VIA 8233", TYPE_VIA8233 },
 	{ VIA_REV_8233A, "VIA 8233A", TYPE_VIA8233A },
 	{ VIA_REV_8235, "VIA 8235", TYPE_VIA8233 },
-        { VIA_REV_8237, "VIA 8237", TYPE_VIA8233 },
-        { VIA_REV_8251, "VIA 8251", TYPE_VIA8233 },
+	{ VIA_REV_8237, "VIA 8237", TYPE_VIA8233 },
+	{ VIA_REV_8251, "VIA 8251", TYPE_VIA8233 },
 };
 
 /*
  * auto detection of DXS channel supports.
  */
-struct dxs_whitelist {
-	unsigned short subvendor;
-	unsigned short subdevice; 
-	unsigned short mask; 
-	short action;	/* new dxs_support value */
+
+static struct snd_pci_quirk dxs_whitelist[] __devinitdata = {
+	SND_PCI_QUIRK(0x1005, 0x4710, "Avance Logic Mobo", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x1019, 0x0996, "ESC Mobo", VIA_DXS_48K),
+	SND_PCI_QUIRK(0x1019, 0x0a81, "ECS K7VTA3 v8.0", VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x1019, 0x0a85, "ECS L7VMM2", VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x1019, 0, "ESC K8", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1019, 0xaa01, "ESC K8T890-A", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1025, 0x0033, "Acer Inspire 1353LM", VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x1025, 0x0046, "Acer Aspire 1524 WLMi", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1043, 0, "ASUS A7/A8", VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x1071, 0, "Diverse Notebook", VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x10cf, 0x118e, "FSC Laptop", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x1106, 0, "ASRock", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1297, 0xa231, "Shuttle AK31v2", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1297, 0xa232, "Shuttle", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1297, 0xc160, "Shuttle Sk41G", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1458, 0xa002, "Gigabyte GA-7VAXP", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x1462, 0x3800, "MSI KT266", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x1462, 0x7120, "MSI KT4V", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x1462, 0x7142, "MSI K8MM-V", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x1462, 0, "MSI Mobo", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x147b, 0x1401, "ABIT KD7(-RAID)", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x147b, 0x1411, "ABIT VA-20", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x147b, 0x1413, "ABIT KV8 Pro", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x147b, 0x1415, "ABIT AV8", VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x14ff, 0x0403, "Twinhead mobo", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x14ff, 0x0408, "Twinhead laptop", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1558, 0x4701, "Clevo D470", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1584, 0x8120, "Diverse Laptop", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x1584, 0x8123, "Targa/Uniwill", VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x161f, 0x202b, "Amira Notebook", VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x161f, 0x2032, "m680x machines", VIA_DXS_48K),
+	SND_PCI_QUIRK(0x1631, 0xe004, "PB EasyNote 3174", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x1695, 0x3005, "EPoX EP-8K9A", VIA_DXS_ENABLE),
+	SND_PCI_QUIRK(0x1695, 0, "EPoX mobo", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x16f3, 0, "Jetway K8", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1734, 0, "FSC Laptop", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1849, 0x3059, "ASRock K7VM2", VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x1849, 0, "ASRock mobo", VIA_DXS_SRC),
+	SND_PCI_QUIRK(0x1919, 0x200a, "Soltek SL-K8",  VIA_DXS_NO_VRA),
+	SND_PCI_QUIRK(0x4005, 0x4710, "MSI K7T266", VIA_DXS_SRC),
+	{0} /* terminator */
 };
 
 static int __devinit check_dxs_list(struct pci_dev *pci, int revision)
 {
-	static struct dxs_whitelist whitelist[] = {
-		{ .subvendor = 0x1005, .subdevice = 0x4710, .action = VIA_DXS_ENABLE }, /* Avance Logic Mobo */
-		{ .subvendor = 0x1019, .subdevice = 0x0996, .action = VIA_DXS_48K },
-		{ .subvendor = 0x1019, .subdevice = 0x0a81, .action = VIA_DXS_NO_VRA }, /* ECS K7VTA3 v8.0 */
-		{ .subvendor = 0x1019, .subdevice = 0x0a85, .action = VIA_DXS_NO_VRA }, /* ECS L7VMM2 */
-                { .subvendor = 0x1019, .subdevice = 0xa101, .action = VIA_DXS_SRC },
-		{ .subvendor = 0x1019, .subdevice = 0xaa01, .action = VIA_DXS_SRC }, /* ECS K8T890-A */
-		{ .subvendor = 0x1025, .subdevice = 0x0033, .action = VIA_DXS_NO_VRA }, /* Acer Inspire 1353LM */
-		{ .subvendor = 0x1025, .subdevice = 0x0046, .action = VIA_DXS_SRC }, /* Acer Aspire 1524 WLMi */
-		{ .subvendor = 0x1043, .subdevice = 0x8095, .action = VIA_DXS_NO_VRA }, /* ASUS A7V8X (FIXME: possibly VIA_DXS_ENABLE?)*/
-		{ .subvendor = 0x1043, .subdevice = 0x80a1, .action = VIA_DXS_NO_VRA }, /* ASUS A7V8-X */
-		{ .subvendor = 0x1043, .subdevice = 0x80b0, .action = VIA_DXS_NO_VRA }, /* ASUS A7V600 & K8V*/ 
-		{ .subvendor = 0x1043, .subdevice = 0x810d, .action = VIA_DXS_SRC }, /* ASUS */
-		{ .subvendor = 0x1043, .subdevice = 0x812a, .action = VIA_DXS_SRC    }, /* ASUS A8V Deluxe */ 
-		{ .subvendor = 0x1043, .subdevice = 0x8174, .action = VIA_DXS_SRC    }, /* ASUS */
-		{ .subvendor = 0x1043, .subdevice = 0x81b9, .action = VIA_DXS_SRC    }, /* ASUS A8V-MX */
-		{ .subvendor = 0x1071, .subdevice = 0x8375, .action = VIA_DXS_NO_VRA }, /* Vobis/Yakumo/Mitac notebook */
-		{ .subvendor = 0x1071, .subdevice = 0x8399, .action = VIA_DXS_NO_VRA }, /* Umax AB 595T (VIA K8N800A - VT8237) */
-		{ .subvendor = 0x10cf, .subdevice = 0x118e, .action = VIA_DXS_ENABLE }, /* FSC laptop */
-		{ .subvendor = 0x1106, .subdevice = 0x4161, .action = VIA_DXS_NO_VRA }, /* ASRock K7VT2 */
-		{ .subvendor = 0x1106, .subdevice = 0x4552, .action = VIA_DXS_NO_VRA }, /* QDI Kudoz 7X/600-6AL */
-		{ .subvendor = 0x1106, .subdevice = 0xaa01, .action = VIA_DXS_NO_VRA }, /* EPIA MII */
-		{ .subvendor = 0x1106, .subdevice = 0xc001, .action = VIA_DXS_SRC }, /* Insight P4-ITX */
-		{ .subvendor = 0x1297, .subdevice = 0xa232, .action = VIA_DXS_ENABLE }, /* Shuttle ?? */
-		{ .subvendor = 0x1297, .subdevice = 0xc160, .action = VIA_DXS_ENABLE }, /* Shuttle SK41G */
-		{ .subvendor = 0x1458, .subdevice = 0xa002, .action = VIA_DXS_ENABLE }, /* Gigabyte GA-7VAXP */
-		{ .subvendor = 0x1462, .subdevice = 0x0080, .action = VIA_DXS_SRC }, /* MSI K8T Neo-FIS2R */
-		{ .subvendor = 0x1462, .subdevice = 0x0430, .action = VIA_DXS_SRC }, /* MSI 7142 (K8MM-V) */
-		{ .subvendor = 0x1462, .subdevice = 0x0470, .action = VIA_DXS_SRC }, /* MSI KT880 Delta-FSR */
-		{ .subvendor = 0x1462, .subdevice = 0x3800, .action = VIA_DXS_ENABLE }, /* MSI KT266 */
-                { .subvendor = 0x1462, .subdevice = 0x5901, .action = VIA_DXS_NO_VRA }, /* MSI KT6 Delta-SR */
-                { .subvendor = 0x1462, .subdevice = 0x7023, .action = VIA_DXS_SRC }, /* MSI K8T Neo2-FI */
-		{ .subvendor = 0x1462, .subdevice = 0x7120, .action = VIA_DXS_ENABLE }, /* MSI KT4V */
-                { .subvendor = 0x1462, .subdevice = 0x7142, .action = VIA_DXS_ENABLE }, /* MSI K8MM-V */
-                { .subvendor = 0x1462, .subdevice = 0xb012, .action = VIA_DXS_SRC }, /* P4M800/VIA8237R */
-		{ .subvendor = 0x147b, .subdevice = 0x1401, .action = VIA_DXS_ENABLE }, /* ABIT KD7(-RAID) */
-		{ .subvendor = 0x147b, .subdevice = 0x1411, .action = VIA_DXS_ENABLE }, /* ABIT VA-20 */
-		{ .subvendor = 0x147b, .subdevice = 0x1413, .action = VIA_DXS_ENABLE }, /* ABIT KV8 Pro */
-		{ .subvendor = 0x147b, .subdevice = 0x1415, .action = VIA_DXS_NO_VRA }, /* Abit AV8 */
-		{ .subvendor = 0x14ff, .subdevice = 0x0403, .action = VIA_DXS_ENABLE }, /* Twinhead mobo */
-		{ .subvendor = 0x14ff, .subdevice = 0x0408, .action = VIA_DXS_SRC }, /* Twinhead laptop */
-		{ .subvendor = 0x1558, .subdevice = 0x4701, .action = VIA_DXS_SRC }, /* Clevo D470 */
-		{ .subvendor = 0x1584, .subdevice = 0x8120, .action = VIA_DXS_ENABLE }, /* Gericom/Targa/Vobis/Uniwill laptop */
-		{ .subvendor = 0x1584, .subdevice = 0x8123, .action = VIA_DXS_NO_VRA }, /* Uniwill (Targa Visionary XP-210) */
-		{ .subvendor = 0x161f, .subdevice = 0x202b, .action = VIA_DXS_NO_VRA }, /* Amira Note book */
-		{ .subvendor = 0x161f, .subdevice = 0x2032, .action = VIA_DXS_48K }, /* m680x machines */
-		{ .subvendor = 0x1631, .subdevice = 0xe004, .action = VIA_DXS_ENABLE }, /* Easy Note 3174, Packard Bell */
-                { .subvendor = 0x1695, .subdevice = 0x3005, .action = VIA_DXS_ENABLE }, /* EPoX EP-8K9A */
-                { .subvendor = 0x1695, .subdevice = 0x300c, .action = VIA_DXS_SRC }, /* EPoX EP-8KRAI */
-                { .subvendor = 0x1695, .subdevice = 0x300e, .action = VIA_DXS_SRC }, /* EPoX 9HEAI */
-                { .subvendor = 0x16f3, .subdevice = 0x6405, .action = VIA_DXS_SRC }, /* Jetway K8M8MS */
-                { .subvendor = 0x1734, .subdevice = 0x1078, .action = VIA_DXS_SRC }, /* FSC Amilo L7300 */
-                { .subvendor = 0x1734, .subdevice = 0x1093, .action = VIA_DXS_SRC }, /* FSC */
-		{ .subvendor = 0x1734, .subdevice = 0x10ab, .action = VIA_DXS_SRC }, /* FSC */
-		{ .subvendor = 0x1849, .subdevice = 0x3059, .action = VIA_DXS_NO_VRA }, /* ASRock K7VM2 */
-		{ .subvendor = 0x1849, .subdevice = 0x9739, .action = VIA_DXS_SRC }, /* ASRock mobo(?) */
-		{ .subvendor = 0x1849, .subdevice = 0x9761, .action = VIA_DXS_SRC }, /* ASRock mobo(?) */
-		{ .subvendor = 0x1919, .subdevice = 0x200a, .action = VIA_DXS_NO_VRA }, /* Soltek SL-K8Tpro-939 */
-		{ .subvendor = 0x4005, .subdevice = 0x4710, .action = VIA_DXS_SRC },	/* MSI K7T266 Pro2 (MS-6380 V2.0) BIOS 3.7 */
-		{0} /* terminator */
-        };
-        const struct dxs_whitelist *w;
-	unsigned short subsystem_vendor;
-	unsigned short subsystem_device;
+	const struct snd_pci_quirk *w;
 
-	pci_read_config_word(pci, PCI_SUBSYSTEM_VENDOR_ID, &subsystem_vendor);
-	pci_read_config_word(pci, PCI_SUBSYSTEM_ID, &subsystem_device);
+	w = snd_pci_quirk_lookup(pci, dxs_whitelist);
+	if (w) {
+#ifndef TARGET_OS2
+		snd_printdd(KERN_INFO "via82xx: DXS white list for %s found\n",
+			    w->name);
+#endif
+		return w->value;
+	}
 
-	for (w = whitelist; w->subvendor; w++) {
-		if (w->subvendor != subsystem_vendor)
-			continue;
-		if (w->mask) {
-			if ((w->mask & subsystem_device) == w->subdevice)
-				return w->action;
-		} else {
-			if (subsystem_device == w->subdevice)
-				return w->action;
-		}
-        }
-        /* for newer revision, default to DXS_SRC */
-        if (revision >= VIA_REV_8235)
-            return VIA_DXS_SRC;
+	/* for newer revision, default to DXS_SRC */
+	if (revision >= VIA_REV_8235)
+		return VIA_DXS_SRC;
+
 	/*
 	 * not detected, try 48k rate only to be sure.
 	 */
@@ -2467,36 +2431,53 @@ static int __devinit snd_via82xx_probe(struct pci_dev *pci,
 {
 	struct snd_card *card;
 	struct via82xx *chip;
-	unsigned char revision;
 	int chip_type = 0, card_type;
 	unsigned int i;
 	int err;
+#ifdef TARGET_OS2
+	unsigned char revision = snd_pci_revision(pci);
+#endif
 
 	card = snd_card_new(index, id, THIS_MODULE, 0);
 	if (card == NULL)
 		return -ENOMEM;
 
 	card_type = pci_id->driver_data;
-	pci_read_config_byte(pci, PCI_REVISION_ID, &revision);
 	switch (card_type) {
 	case TYPE_CARD_VIA686:
 		strcpy(card->driver, "VIA686A");
+#ifndef TARGET_OS2
+		sprintf(card->shortname, "VIA 82C686A/B rev%x", pci->revision);
+#else
 		sprintf(card->shortname, "VIA 82C686A/B rev%x", revision);
+#endif
 		chip_type = TYPE_VIA686;
 		break;
 	case TYPE_CARD_VIA8233:
 		chip_type = TYPE_VIA8233;
+#ifndef TARGET_OS2
+		sprintf(card->shortname, "VIA 823x rev%x", pci->revision);
+#else
 		sprintf(card->shortname, "VIA 823x rev%x", revision);
+#endif
 		for (i = 0; i < ARRAY_SIZE(via823x_cards); i++) {
+#ifndef TARGET_OS2
+			if (pci->revision == via823x_cards[i].revision) {
+#else
 			if (revision == via823x_cards[i].revision) {
+#endif
 				chip_type = via823x_cards[i].type;
 				strcpy(card->shortname, via823x_cards[i].name);
 				break;
 			}
 		}
 		if (chip_type != TYPE_VIA8233A) {
-                    if (dxs_support == VIA_DXS_AUTO)
-                        dxs_support = check_dxs_list(pci, revision);
+			if (dxs_support == VIA_DXS_AUTO)
+#ifndef TARGET_OS2
+				dxs_support = check_dxs_list(pci, pci->revision);
+#else
+				dxs_support = check_dxs_list(pci, revision);
+#endif
 			/* force to use VIA8233 or 8233A model according to
 			 * dxs_support module option
 			 */
@@ -2507,7 +2488,11 @@ static int __devinit snd_via82xx_probe(struct pci_dev *pci,
 		}
 		if (chip_type == TYPE_VIA8233A)
 			strcpy(card->driver, "VIA8233A");
+#ifndef TARGET_OS2
+		else if (pci->revision >= VIA_REV_8237)
+#else
 		else if (revision >= VIA_REV_8237)
+#endif
 			strcpy(card->driver, "VIA8237"); /* no slog assignment */
 		else
 			strcpy(card->driver, "VIA8233");
@@ -2518,7 +2503,11 @@ static int __devinit snd_via82xx_probe(struct pci_dev *pci,
 		goto __error;
 	}
 		
+#ifndef TARGET_OS2
+	if ((err = snd_via82xx_create(card, pci, chip_type, pci->revision,
+#else
 	if ((err = snd_via82xx_create(card, pci, chip_type, revision,
+#endif
 				      ac97_clock, &chip)) < 0)
 		goto __error;
 	card->private_data = chip;
@@ -2554,7 +2543,7 @@ static int __devinit snd_via82xx_probe(struct pci_dev *pci,
 	for (i = 0; i < chip->num_devs; i++)
 		snd_via82xx_channel_reset(chip, &chip->devs[i]);
 
-	sprintf(card->longname,
+	snprintf(card->longname, sizeof(card->longname),
 		 "%s with %s at %#lx, irq %d", card->shortname,
 		 snd_ac97_get_short_name(chip->ac97), chip->port, chip->irq);
 

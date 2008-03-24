@@ -164,12 +164,14 @@ OSSRET OSS32_Initialize(void)
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_via82xx_exit);
     }
 
+#if 0
     if((ForceCard == CARD_NONE || ForceCard == CARD_SBLIVE) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_emu10k1_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_emu10k1_exit);
     }
-
+#endif
+#if 0
     if((ForceCard == CARD_NONE || ForceCard == CARD_CMEDIA) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cmipci_init) == 0)
     {
@@ -180,6 +182,7 @@ OSSRET OSS32_Initialize(void)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_als4000_exit);
     }
+#endif
     if((ForceCard == CARD_NONE || ForceCard == CARD_CS4281) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cs4281_init) == 0)
     {
@@ -225,7 +228,6 @@ OSSRET OSS32_Initialize(void)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_trident_exit);
     }
-
 #ifdef VORTEX
     if((ForceCard == CARD_NONE || ForceCard == CARD_VORTEX) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_vortex_init) == 0)
@@ -258,23 +260,20 @@ OSSRET OSS32_Initialize(void)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_azx_exit);
     }
+#if 0
     if((ForceCard == CARD_NONE || ForceCard == CARD_BT87X) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_bt87x_init) == 0)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_bt87x_exit);
     }
-
+#endif
 #endif
     fStrategyInit = FALSE;
 
     if(nrCardsDetected != 0) {
-        dprintf(("OSS32_Initialize2"));
         pcm_info();
-        dprintf(("OSS32_Initialize3"));
         for(int i=0;i<nrCardsDetected;i++) {
-            dprintf(("OSS32_Initialize4 start: %d",i));
             FillCaps(i);
-            dprintf(("OSS32_Initialize4 end: %d",i));
         }
         dprintf(("OSS32_Initialize: SUCCESS. nr. of cards: %d",nrCardsDetected));
         return OSSERR_SUCCESS;

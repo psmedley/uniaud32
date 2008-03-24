@@ -18,7 +18,6 @@
  *
  */
 
-#include <sound/driver.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/moduleparam.h>
@@ -66,7 +65,7 @@ MODULE_LICENSE("GPL");
 MODULE_ALIAS("snd-seq-client-" __stringify(SNDRV_SEQ_CLIENT_DUMMY));
 
 static int ports = 1;
-static int duplex = 0;
+static int duplex;
 
 module_param(ports, int, 0444);
 MODULE_PARM_DESC(ports, "number of ports to be created");
@@ -171,7 +170,9 @@ create_port(int idx, int type)
 	pinfo.capability |= SNDRV_SEQ_PORT_CAP_WRITE | SNDRV_SEQ_PORT_CAP_SUBS_WRITE;
 	if (duplex)
 		pinfo.capability |= SNDRV_SEQ_PORT_CAP_DUPLEX;
-	pinfo.type = SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC;
+	pinfo.type = SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC
+		| SNDRV_SEQ_PORT_TYPE_SOFTWARE
+		| SNDRV_SEQ_PORT_TYPE_PORT;
 	memset(&pcb, 0, sizeof(pcb));
 	pcb.owner = THIS_MODULE;
 	pcb.unuse = dummy_unuse;
@@ -193,8 +194,6 @@ create_port(int idx, int type)
 static int __init
 register_client(void)
 {
-	struct snd_seq_client_callback cb;
-	struct snd_seq_client_info cinfo;
 	struct snd_seq_dummy_port *rec1, *rec2;
 	int i;
 
@@ -204,19 +203,10 @@ register_client(void)
 	}
 
 	/* create client */
-	memset(&cb, 0, sizeof(cb));
-	cb.allow_input = 1;
-	cb.allow_output = 1;
-	my_client = snd_seq_create_kernel_client(NULL, SNDRV_SEQ_CLIENT_DUMMY, &cb);
+	my_client = snd_seq_create_kernel_client(NULL, SNDRV_SEQ_CLIENT_DUMMY,
+						 "Midi Through");
 	if (my_client < 0)
 		return my_client;
-
-	/* set client name */
-	memset(&cinfo, 0, sizeof(cinfo));
-	cinfo.client = my_client;
-	cinfo.type = KERNEL_CLIENT;
-	strcpy(cinfo.name, "Midi Through");
-	snd_seq_kernel_client_ctl(my_client, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, &cinfo);
 
 	/* create ports */
 	for (i = 0; i < ports; i++) {

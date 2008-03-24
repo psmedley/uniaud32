@@ -1,6 +1,6 @@
 /*
  *  Driver for Gravis UltraSound Classic soundcard
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -15,288 +15,234 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
-#include <sound/driver.h>
+#include <linux/init.h>
+#include <linux/err.h>
+#include <linux/isa.h>
+#include <linux/delay.h>
+#include <linux/time.h>
+#include <linux/moduleparam.h>
+#include <asm/dma.h>
+#include <sound/core.h>
 #include <sound/gus.h>
-#define SNDRV_LEGACY_AUTO_PROBE
 #define SNDRV_LEGACY_FIND_FREE_IRQ
 #define SNDRV_LEGACY_FIND_FREE_DMA
-#define SNDRV_GET_ID
 #include <sound/initval.h>
 
-EXPORT_NO_SYMBOLS;
-MODULE_DESCRIPTION("Gravis UltraSound Classic");
-MODULE_CLASSES("{sound}");
-MODULE_DEVICES("{{Gravis,UltraSound Classic}}");
+#define CRD_NAME "Gravis UltraSound Classic"
+#define DEV_NAME "gusclassic"
 
-static int snd_index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
-static char *snd_id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int snd_enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
-static long snd_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* 0x220,0x230,0x240,0x250,0x260 */
-static int snd_irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;	/* 3,5,9,11,12,15 */
-static int snd_dma1[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;	/* 1,3,5,6,7 */
-static int snd_dma2[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;	/* 1,3,5,6,7 */
-#ifdef TARGET_OS2
-static int snd_joystick_dac[SNDRV_CARDS] = {REPEAT_SNDRV(29)};
+MODULE_DESCRIPTION(CRD_NAME);
+MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
+MODULE_LICENSE("GPL");
+MODULE_SUPPORTED_DEVICE("{{Gravis,UltraSound Classic}}");
+
+static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
+static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static long port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* 0x220,0x230,0x240,0x250,0x260 */
+static int irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;	/* 3,5,9,11,12,15 */
+static int dma1[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;	/* 1,3,5,6,7 */
+static int dma2[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;	/* 1,3,5,6,7 */
+static int joystick_dac[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 29};
 				/* 0 to 31, (0.59V-4.52V or 0.389V-2.98V) */
-static int snd_channels[SNDRV_CARDS] = {REPEAT_SNDRV(24)};
-static int snd_pcm_channels[SNDRV_CARDS] = {REPEAT_SNDRV(2)};
-#else
-static int snd_joystick_dac[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 29};
-				/* 0 to 31, (0.59V-4.52V or 0.389V-2.98V) */
-static int snd_channels[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 24};
-static int snd_pcm_channels[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 2};
-#endif
+static int channels[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 24};
+static int pcm_channels[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 2};
 
-MODULE_PARM(snd_index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_index, "Index value for GUS Classic soundcard.");
-MODULE_PARM_SYNTAX(snd_index, SNDRV_INDEX_DESC);
-MODULE_PARM(snd_id, "1-" __MODULE_STRING(SNDRV_CARDS) "s");
-MODULE_PARM_DESC(snd_id, "ID string for GUS Classic soundcard.");
-MODULE_PARM_SYNTAX(snd_id, SNDRV_ID_DESC);
-MODULE_PARM(snd_enable, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_enable, "Enable GUS Classic soundcard.");
-MODULE_PARM_SYNTAX(snd_enable, SNDRV_ENABLE_DESC);
-MODULE_PARM(snd_port, "1-" __MODULE_STRING(SNDRV_CARDS) "l");
-MODULE_PARM_DESC(snd_port, "Port # for GUS Classic driver.");
-MODULE_PARM_SYNTAX(snd_port, SNDRV_ENABLED ",allows:{{0x220,0x260,0x10}},dialog:list");
-MODULE_PARM(snd_irq, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_irq, "IRQ # for GUS Classic driver.");
-MODULE_PARM_SYNTAX(snd_irq, SNDRV_ENABLED ",allows:{{3},{5},{9},{11},{12},{15}},dialog:list");
-MODULE_PARM(snd_dma1, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_dma1, "DMA1 # for GUS Classic driver.");
-MODULE_PARM_SYNTAX(snd_dma1, SNDRV_ENABLED ",allows:{{1},{3},{5},{6},{7}},dialog:list");
-MODULE_PARM(snd_dma2, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_dma2, "DMA2 # for GUS Classic driver.");
-MODULE_PARM_SYNTAX(snd_dma2, SNDRV_ENABLED ",allows:{{1},{3},{5},{6},{7}},dialog:list");
-MODULE_PARM(snd_joystick_dac, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_joystick_dac, "Joystick DAC level 0.59V-4.52V or 0.389V-2.98V for GUS Classic driver.");
-MODULE_PARM_SYNTAX(snd_joystick_dac, SNDRV_ENABLED ",allows:{{0,31}}");
-MODULE_PARM(snd_channels, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_channels, "GF1 channels for GUS Classic driver.");
-MODULE_PARM_SYNTAX(snd_channels,  SNDRV_ENABLED ",allows:{{14,32}}");
-MODULE_PARM(snd_pcm_channels, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(snd_pcm_channels, "Reserved PCM channels for GUS Classic driver.");
-MODULE_PARM_SYNTAX(snd_pcm_channels, SNDRV_ENABLED ",allows:{{2,16}}");
+module_param_array(index, int, NULL, 0444);
+MODULE_PARM_DESC(index, "Index value for " CRD_NAME " soundcard.");
+module_param_array(id, charp, NULL, 0444);
+MODULE_PARM_DESC(id, "ID string for " CRD_NAME " soundcard.");
+module_param_array(enable, bool, NULL, 0444);
+MODULE_PARM_DESC(enable, "Enable " CRD_NAME " soundcard.");
+module_param_array(port, long, NULL, 0444);
+MODULE_PARM_DESC(port, "Port # for " CRD_NAME " driver.");
+module_param_array(irq, int, NULL, 0444);
+MODULE_PARM_DESC(irq, "IRQ # for " CRD_NAME " driver.");
+module_param_array(dma1, int, NULL, 0444);
+MODULE_PARM_DESC(dma1, "DMA1 # for " CRD_NAME " driver.");
+module_param_array(dma2, int, NULL, 0444);
+MODULE_PARM_DESC(dma2, "DMA2 # for " CRD_NAME " driver.");
+module_param_array(joystick_dac, int, NULL, 0444);
+MODULE_PARM_DESC(joystick_dac, "Joystick DAC level 0.59V-4.52V or 0.389V-2.98V for " CRD_NAME " driver.");
+module_param_array(channels, int, NULL, 0444);
+MODULE_PARM_DESC(channels, "GF1 channels for " CRD_NAME " driver.");
+module_param_array(pcm_channels, int, NULL, 0444);
+MODULE_PARM_DESC(pcm_channels, "Reserved PCM channels for " CRD_NAME " driver.");
 
-static snd_card_t *snd_gusclassic_cards[SNDRV_CARDS] = SNDRV_DEFAULT_PTR;
-
-
-static int __init snd_gusclassic_detect(snd_gus_card_t * gus)
+static int __devinit snd_gusclassic_match(struct device *dev, unsigned int n)
 {
-	snd_gf1_i_write8(gus, SNDRV_GF1_GB_RESET, 0);	/* reset GF1 */
-#ifdef CONFIG_SND_DEBUG_DETECT
-	{
-		unsigned char d;
+	return enable[n];
+}
 
-		if (((d = snd_gf1_i_look8(gus, SNDRV_GF1_GB_RESET)) & 0x07) != 0) {
-			snd_printk("[0x%lx] check 1 failed - 0x%x\n", gus->gf1.port, d);
-			return -ENODEV;
+static int __devinit snd_gusclassic_create(struct snd_card *card,
+		struct device *dev, unsigned int n, struct snd_gus_card **rgus)
+{
+	static long possible_ports[] = {0x220, 0x230, 0x240, 0x250, 0x260};
+	static int possible_irqs[] = {5, 11, 12, 9, 7, 15, 3, 4, -1};
+	static int possible_dmas[] = {5, 6, 7, 1, 3, -1};
+
+	int i, error;
+
+	if (irq[n] == SNDRV_AUTO_IRQ) {
+		irq[n] = snd_legacy_find_free_irq(possible_irqs);
+		if (irq[n] < 0) {
+			snd_printk(KERN_ERR "%s: unable to find a free IRQ\n",
+				dev->bus_id);
+			return -EBUSY;
 		}
 	}
-#else
-	if ((snd_gf1_i_look8(gus, SNDRV_GF1_GB_RESET) & 0x07) != 0)
+	if (dma1[n] == SNDRV_AUTO_DMA) {
+		dma1[n] = snd_legacy_find_free_dma(possible_dmas);
+		if (dma1[n] < 0) {
+			snd_printk(KERN_ERR "%s: unable to find a free DMA1\n",
+				dev->bus_id);
+			return -EBUSY;
+		}
+	}
+	if (dma2[n] == SNDRV_AUTO_DMA) {
+		dma2[n] = snd_legacy_find_free_dma(possible_dmas);
+		if (dma2[n] < 0) {
+			snd_printk(KERN_ERR "%s: unable to find a free DMA2\n",
+				dev->bus_id);
+			return -EBUSY;
+		}
+	}
+
+	if (port[n] != SNDRV_AUTO_PORT)
+		return snd_gus_create(card, port[n], irq[n], dma1[n], dma2[n],
+				0, channels[n], pcm_channels[n], 0, rgus);
+
+	i = 0;
+	do {
+		port[n] = possible_ports[i];
+		error = snd_gus_create(card, port[n], irq[n], dma1[n], dma2[n],
+				0, channels[n], pcm_channels[n], 0, rgus);
+	} while (error < 0 && ++i < ARRAY_SIZE(possible_ports));
+
+	return error;
+}
+
+static int __devinit snd_gusclassic_detect(struct snd_gus_card *gus)
+{
+	unsigned char d;
+
+	snd_gf1_i_write8(gus, SNDRV_GF1_GB_RESET, 0);	/* reset GF1 */
+	if (((d = snd_gf1_i_look8(gus, SNDRV_GF1_GB_RESET)) & 0x07) != 0) {
+		snd_printdd("[0x%lx] check 1 failed - 0x%x\n", gus->gf1.port, d);
 		return -ENODEV;
-#endif
+	}
 	udelay(160);
 	snd_gf1_i_write8(gus, SNDRV_GF1_GB_RESET, 1);	/* release reset */
 	udelay(160);
-#ifdef CONFIG_SND_DEBUG_DETECT
-	{
-		unsigned char d;
-
-		if (((d = snd_gf1_i_look8(gus, SNDRV_GF1_GB_RESET)) & 0x07) != 1) {
-			snd_printk("[0x%lx] check 2 failed - 0x%x\n", gus->gf1.port, d);
-			return -ENODEV;
-		}
-	}
-#else
-	if ((snd_gf1_i_look8(gus, SNDRV_GF1_GB_RESET) & 0x07) != 1)
+	if (((d = snd_gf1_i_look8(gus, SNDRV_GF1_GB_RESET)) & 0x07) != 1) {
+		snd_printdd("[0x%lx] check 2 failed - 0x%x\n", gus->gf1.port, d);
 		return -ENODEV;
-#endif
-
+	}
 	return 0;
 }
 
-static void __init snd_gusclassic_init(int dev, snd_gus_card_t * gus)
+static int __devinit snd_gusclassic_probe(struct device *dev, unsigned int n)
 {
-	gus->equal_irq = 0;
-	gus->codec_flag = 0;
-	gus->max_flag = 0;
-	gus->joystick_dac = snd_joystick_dac[dev];
-}
+	struct snd_card *card;
+	struct snd_gus_card *gus;
+	int error;
 
-static int __init snd_gusclassic_probe(int dev)
-{
-	static int possible_irqs[] = {5, 11, 12, 9, 7, 15, 3, 4, -1};
-	static int possible_dmas[] = {5, 6, 7, 1, 3, -1};
-	int irq, dma1, dma2;
-	snd_card_t *card;
-	struct snd_gusclassic *guscard;
-	snd_gus_card_t *gus = NULL;
-	int err;
+	card = snd_card_new(index[n], id[n], THIS_MODULE, 0);
+	if (!card)
+		return -EINVAL;
 
-	card = snd_card_new(snd_index[dev], snd_id[dev], THIS_MODULE, 0);
-	if (card == NULL)
-		return -ENOMEM;
-	guscard = (struct snd_gusclassic *)card->private_data;
-	if (snd_pcm_channels[dev] < 2)
-		snd_pcm_channels[dev] = 2;
+	if (pcm_channels[n] < 2)
+		pcm_channels[n] = 2;
 
-	irq = snd_irq[dev];
-	if (irq == SNDRV_AUTO_IRQ) {
-		if ((irq = snd_legacy_find_free_irq(possible_irqs)) < 0) {
-			snd_card_free(card);
-			snd_printk("unable to find a free IRQ\n");
-			return -EBUSY;
-		}
-	}
-	dma1 = snd_dma1[dev];
-	if (dma1 == SNDRV_AUTO_DMA) {
-		if ((dma1 = snd_legacy_find_free_dma(possible_dmas)) < 0) {
-			snd_card_free(card);
-			snd_printk("unable to find a free DMA1\n");
-			return -EBUSY;
-		}
-	}
-	dma2 = snd_dma2[dev];
-	if (dma2 == SNDRV_AUTO_DMA) {
-		if ((dma2 = snd_legacy_find_free_dma(possible_dmas)) < 0) {
-			snd_card_free(card);
-			snd_printk("unable to find a free DMA2\n");
-			return -EBUSY;
-		}
-	}
+	error = snd_gusclassic_create(card, dev, n, &gus);
+	if (error < 0)
+		goto out;
 
+	error = snd_gusclassic_detect(gus);
+	if (error < 0)
+		goto out;
 
-	if ((err = snd_gus_create(card,
-				  snd_port[dev],
-				  irq, dma1, dma2,
-			          0, snd_channels[dev], snd_pcm_channels[dev],
-			          0, &gus)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
-	if ((err = snd_gusclassic_detect(gus)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
-	snd_gusclassic_init(dev, gus);
-	if ((err = snd_gus_initialize(gus)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
+	gus->joystick_dac = joystick_dac[n];
+
+	error = snd_gus_initialize(gus);
+	if (error < 0)
+		goto out;
+
+	error = -ENODEV;
 	if (gus->max_flag || gus->ess_flag) {
-		snd_card_free(card);
-		snd_printdd("GUS Classic or ACE soundcard was not detected at 0x%lx\n", gus->gf1.port);
-		return -ENODEV;
+		snd_printk(KERN_ERR "%s: GUS Classic or ACE soundcard was "
+			"not detected at 0x%lx\n", dev->bus_id, gus->gf1.port);
+		goto out;
 	}
-	if ((err = snd_gf1_new_mixer(gus)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
-	if ((err = snd_gf1_pcm_new(gus, 0, 0, NULL)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
+
+	error = snd_gf1_new_mixer(gus);
+	if (error < 0)
+		goto out;
+
+	error = snd_gf1_pcm_new(gus, 0, 0, NULL);
+	if (error < 0)
+		goto out;
+
 	if (!gus->ace_flag) {
-		if ((err = snd_gf1_rawmidi_new(gus, 0, NULL)) < 0) {
-			snd_card_free(card);
-			return err;
-		}
+		error = snd_gf1_rawmidi_new(gus, 0, NULL);
+		if (error < 0)
+			goto out;
 	}
-	sprintf(card->longname + strlen(card->longname), " at 0x%lx, irq %d, dma %d", gus->gf1.port, irq, dma1);
-	if (dma2 >= 0)
-		sprintf(card->longname + strlen(card->longname), "&%d", dma2);
-	if ((err = snd_card_register(card)) < 0) {
-		snd_card_free(card);
-		return err;
-	}
-	snd_gusclassic_cards[dev] = card;
+
+	sprintf(card->longname + strlen(card->longname),
+		" at 0x%lx, irq %d, dma %d",
+		gus->gf1.port, gus->gf1.irq, gus->gf1.dma1);
+
+	if (gus->gf1.dma2 >= 0)
+		sprintf(card->longname + strlen(card->longname),
+			"&%d", gus->gf1.dma2);
+
+	snd_card_set_dev(card, dev);
+
+	error = snd_card_register(card);
+	if (error < 0)
+		goto out;
+
+	dev_set_drvdata(dev, card);
+	return 0;
+
+out:	snd_card_free(card);
+	return error;
+}
+
+static int __devexit snd_gusclassic_remove(struct device *dev, unsigned int n)
+{
+	snd_card_free(dev_get_drvdata(dev));
+	dev_set_drvdata(dev, NULL);
 	return 0;
 }
 
-static int __init snd_gusclassic_legacy_auto_probe(unsigned long port)
-{
-	static int dev = 0;
-	int res;
-
-	for ( ; dev < SNDRV_CARDS; dev++) {
-		if (!snd_enable[dev] || snd_port[dev] != SNDRV_AUTO_PORT)
-			continue;
-		snd_port[dev] = port;
-		res = snd_gusclassic_probe(dev);
-		if (res < 0)
-			snd_port[dev] = SNDRV_AUTO_PORT;
-		return res;
+static struct isa_driver snd_gusclassic_driver = {
+	.match		= snd_gusclassic_match,
+	.probe		= snd_gusclassic_probe,
+	.remove		= __devexit_p(snd_gusclassic_remove),
+#if 0	/* FIXME */
+	.suspend	= snd_gusclassic_suspend,
+	.remove		= snd_gusclassic_remove,
+#endif
+	.driver		= {
+		.name	= DEV_NAME
 	}
-	return -ENODEV;
-}
+};
 
 static int __init alsa_card_gusclassic_init(void)
 {
-	static unsigned long possible_ports[] = {0x220, 0x230, 0x240, 0x250, 0x260, -1};
-	int dev, cards;
-
-	for (dev = cards = 0; dev < SNDRV_CARDS && snd_enable[dev]; dev++) {
-		if (snd_port[dev] == SNDRV_AUTO_PORT)
-			continue;
-		if (snd_gusclassic_probe(dev) >= 0)
-			cards++;
-	}
-	cards += snd_legacy_auto_probe(possible_ports, snd_gusclassic_legacy_auto_probe);
-	if (!cards) {
-#ifdef MODULE
-		snd_printk("GUS Classic soundcard not found or device busy\n");
-#endif
-		return -ENODEV;
-	}
-	return 0;
+	return isa_register_driver(&snd_gusclassic_driver, SNDRV_CARDS);
 }
 
 static void __exit alsa_card_gusclassic_exit(void)
 {
-	int idx;
-	
-	for (idx = 0; idx < SNDRV_CARDS; idx++)
-		snd_card_free(snd_gusclassic_cards[idx]);
+	isa_unregister_driver(&snd_gusclassic_driver);
 }
 
-module_init(alsa_card_gusclassic_init)
-module_exit(alsa_card_gusclassic_exit)
-
-#ifndef MODULE
-
-/* format is: snd-card-gusclassic=snd_enable,snd_index,snd_id,
-				  snd_port,snd_irq,
-				  snd_dma1,snd_dma2,
-				  snd_joystick_dac,
-				  snd_channels,snd_pcm_channels */
-
-static int __init alsa_card_gusclassic_setup(char *str)
-{
-	static unsigned __initdata nr_dev = 0;
-
-	if (nr_dev >= SNDRV_CARDS)
-		return 0;
-	(void)(get_option(&str,&snd_enable[nr_dev]) == 2 &&
-	       get_option(&str,&snd_index[nr_dev]) == 2 &&
-	       get_id(&str,&snd_id[nr_dev]) == 2 &&
-	       get_option(&str,(int *)&snd_port[nr_dev]) == 2 &&
-	       get_option(&str,&snd_irq[nr_dev]) == 2 &&
-	       get_option(&str,&snd_dma1[nr_dev]) == 2 &&
-	       get_option(&str,&snd_dma2[nr_dev]) == 2 &&
-	       get_option(&str,&snd_joystick_dac[nr_dev]) == 2 &&
-	       get_option(&str,&snd_channels[nr_dev]) == 2 &&
-	       get_option(&str,&snd_pcm_channels[nr_dev]) == 2);
-	nr_dev++;
-	return 1;
-}
-
-__setup("snd-card-gusclassic=", alsa_card_gusclassic_setup);
-
-#endif /* ifndef MODULE */
+module_init(alsa_card_gusclassic_init);
+module_exit(alsa_card_gusclassic_exit);

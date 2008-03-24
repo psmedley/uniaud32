@@ -15,6 +15,8 @@
 #ifndef LINUX_PCI_H
 #define LINUX_PCI_H
 
+#include <linux/types.h>
+#include <linux/list.h>
 #pragma pack(1) //!!! by vladest
 /*
  * Under PCI, each device has 256 bytes of configuration address space,
@@ -284,7 +286,7 @@
 #include <linux/ioport.h>
 
 #include <asm/pci.h>
-
+#define BUS_ID_SIZE		20
 #define DEVICE_COUNT_COMPATIBLE	4
 #define DEVICE_COUNT_IRQ	2
 #define DEVICE_COUNT_DMA	2
@@ -292,12 +294,22 @@
 
 typedef struct pci_dev;
 
+
+
 typedef struct device {
     struct pci_dev *pci;	/* for PCI and PCI-SG types */
+	struct device 	* parent;
+	struct bus_type	* bus;		/* type of bus device is on */
+	char	bus_id[BUS_ID_SIZE];	/* position on parent bus */
+	void	(*release)(struct device * dev);
     unsigned int flags;	/* GFP_XXX for continous and ISA types */
 #ifdef CONFIG_SBUS
     struct sbus_dev *sbus;	/* for SBUS type */
 #endif
+	void *private_data;
+	struct device_driver *driver;
+	struct pm_dev *pm_dev;
+	char	bus_id[20];
 } device;
 
 /*
@@ -647,7 +659,8 @@ void pci_save_state(struct pci_dev *dev);
 void pci_restore_state(struct pci_dev *dev);
 
 unsigned long pci_get_dma_mask(struct pci_dev *);
-int pci_set_dma_mask(struct pci_dev *, unsigned long mask);
+void pci_set_dma_mask(struct pci_dev *, unsigned long mask);
+
 
 void *pci_get_driver_data (struct pci_dev *dev);
 void pci_set_driver_data (struct pci_dev *dev, void *driver_data);

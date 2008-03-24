@@ -13,7 +13,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #
 #===================================================================
 FILE1    = trident.obj trident_main.obj trident_memory.obj
-FILE2    = trident_synth.obj
+FILE2    = 
 FILE3    = 
 FILE4    = 
 FILE5    = 

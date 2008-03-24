@@ -1,7 +1,7 @@
 /*
- *  Copyright (c) by Jaroslav Kysela <perex@suse.cz>
+ *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *                   Takashi Iwai <tiwai@suse.de>
- *
+ * 
  *  Generic memory allocators
  *
  *
@@ -21,24 +21,49 @@
  *
  */
 
-#include <sound/driver.h>
-#include <sound/info.h>
+#ifdef TARGET_OS2
+#include <sound/core.h>
+#define __GFP_NOWARN	0
+#define __GFP_NORETRY	0
+#define __GFP_COMP	0
+/* Pure 2^n version of get_order */
+static inline int get_order(unsigned long size)
+{
+	int order;
+
+	size = (size-1) >> (PAGE_SHIFT-1);
+	order = -1;
+	do {
+		size >>= 1;
+		order++;
+	} while (size);
+	return order;
+}
+#endif
+#include <linux/module.h>
 #include <linux/proc_fs.h>
+#include <linux/init.h>
+#include <linux/pci.h>
+#include <linux/slab.h>
+#include <linux/mm.h>
+#include <linux/seq_file.h>
+#include <asm/uaccess.h>
+#include <linux/dma-mapping.h>
+#include <linux/moduleparam.h>
+#include <linux/mutex.h>
 #include <sound/memalloc.h>
+#ifdef CONFIG_SBUS
+#include <asm/sbus.h>
+#endif
 
 
-MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>, Jaroslav Kysela <perex@suse.cz>");
+MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>, Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Memory allocator for ALSA system.");
 MODULE_LICENSE("GPL");
 
 
-#ifndef SNDRV_CARDS
-#define SNDRV_CARDS	8
-#endif
-static int enable[SNDRV_CARDS] = {1,1,1,1,1,1,1,1};
-MODULE_PARM(enable, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
-MODULE_PARM_DESC(enable, "Enable cards to allocate buffers.");
-
+/*
+ */
 
 void *snd_malloc_sgbuf_pages(struct device *device,
                              size_t size, struct snd_dma_buffer *dmab,
@@ -48,27 +73,58 @@ int snd_free_sgbuf_pages(struct snd_dma_buffer *dmab);
 /*
  */
 
-static DECLARE_MUTEX(list_mutex);
+static DEFINE_MUTEX(list_mutex);
 static LIST_HEAD(mem_list_head);
 
 /* buffer preservation list */
 struct snd_mem_list {
-    struct snd_dma_buffer buffer;
-    unsigned int id;
-    struct list_head list;
+	struct snd_dma_buffer buffer;
+	unsigned int id;
+	struct list_head list;
 };
 
 /* id for pre-allocated buffers */
 #define SNDRV_DMA_DEVICE_UNUSED (unsigned int)-1
 
-#ifdef CONFIG_PCI
-#if defined(__i386__) || defined(__ppc__) || defined(__x86_64__)
-#define HACK_PCI_ALLOC_CONSISTENT
+#ifdef CONFIG_SND_DEBUG
+#define __ASTRING__(x) #x
+#define snd_assert(expr, args...) do {\
+	if (!(expr)) {\
+		printk(KERN_ERR "snd-malloc: BUG? (%s) (called from %p)\n", __ASTRING__(expr), __builtin_return_address(0));\
+		args;\
+	}\
+} while (0)
+#else
+#ifndef TARGET_OS2
+#define snd_assert(expr, args...) /**/
+#else
+#define snd_assert(expr, retval) \
+	if (!(expr)) {\
+		snd_printk("BUG? (%s)\n", __STRING(expr));\
+		##retval;\
+	}
+#endif
+#endif
 
 /*
- * A hack to allocate large buffers via pci_alloc_consistent()
+ *  Hacks
+ */
+
+#if defined(CONFIG_PCI) || defined(CONFIG_ISA) || defined(__i386__)
+#define dma_alloc_coherent(dev,size,addr,flags) pci_alloc_consistent((struct pci_dev *)(dev),size,addr)
+#define dma_free_coherent(dev,size,ptr,addr) pci_free_consistent((struct pci_dev *)(dev),size,ptr,addr)
+#elif CONFIG_SBUS
+#define dma_alloc_coherent(dev,size,addr,flags) sbus_alloc_consistent((struct sbus_dev *)(dev),size,addr)
+#define dma_free_coherent(dev,size,ptr,addr) sbus_free_consistent((struct sbus_dev *)(dev),size,ptr,addr)
+#else
+#error "Need a bus for dma_alloc_coherent()"
+#endif
+
+#if defined(__i386__)
+/*
+ * A hack to allocate large buffers via dma_alloc_coherent()
  *
- * since pci_alloc_consistent always tries GFP_DMA when the requested
+ * since dma_alloc_coherent always tries GFP_DMA when the requested
  * pci memory region is below 32bit, it happens quite often that even
  * 2 order of pages cannot be allocated.
  *
@@ -76,68 +132,135 @@ struct snd_mem_list {
  * allocation will be done without GFP_DMA.  if the area doesn't match
  * with the requested region, then realloate with the original dma_mask
  * again.
+ *
+ * Really, we want to move this type of thing into dma_alloc_coherent()
+ * so dma_mask doesn't have to be messed with.
  */
 
-static void *snd_pci_hack_alloc_consistent(struct pci_dev *hwdev, size_t size,
-				    dma_addr_t *dma_handle)
+static void *snd_dma_hack_alloc_coherent(struct device *dev, size_t size,
+					 dma_addr_t *dma_handle,
+					 gfp_t flags)
 {
 	void *ret;
-	u64 dma_mask, cdma_mask;
-	unsigned long mask;
+	u64 dma_mask, coherent_dma_mask;
 
-	if (hwdev == NULL)
-		return pci_alloc_consistent(hwdev, size, dma_handle);
-	dma_mask = hwdev->dma_mask;
-	cdma_mask = hwdev->consistent_dma_mask;
-	mask = (unsigned long)dma_mask && (unsigned long)cdma_mask;
-	hwdev->dma_mask = 0xffffffff; /* do without masking */
-	hwdev->consistent_dma_mask = 0xffffffff; /* do without masking */
-	ret = pci_alloc_consistent(hwdev, size, dma_handle);
-	hwdev->dma_mask = dma_mask; /* restore */
-	hwdev->consistent_dma_mask = cdma_mask; /* restore */
+	if (dev == NULL || !dev->dma_mask)
+		return dma_alloc_coherent(dev, size, dma_handle, flags);
+	dma_mask = *dev->dma_mask;
+	coherent_dma_mask = dev->coherent_dma_mask;
+	*dev->dma_mask = 0xffffffff; 	/* do without masking */
+	dev->coherent_dma_mask = 0xffffffff; 	/* do without masking */
+	ret = dma_alloc_coherent(dev, size, dma_handle, flags);
+	*dev->dma_mask = dma_mask;	/* restore */
+	dev->coherent_dma_mask = coherent_dma_mask;	/* restore */
 	if (ret) {
 		/* obtained address is out of range? */
-		if (((unsigned long)*dma_handle + size - 1) & ~mask) {
+		if (((unsigned long)*dma_handle + size - 1) & ~dma_mask) {
 			/* reallocate with the proper mask */
-			pci_free_consistent(hwdev, size, ret, *dma_handle);
-			ret = pci_alloc_consistent(hwdev, size, dma_handle);
+			dma_free_coherent(dev, size, ret, *dma_handle);
+			ret = dma_alloc_coherent(dev, size, dma_handle, flags);
 		}
 	} else {
 		/* wish to success now with the proper mask... */
-		if (mask != 0xffffffffUL)
-			ret = pci_alloc_consistent(hwdev, size, dma_handle);
+		if (dma_mask != 0xffffffffUL) {
+			/* allocation with GFP_ATOMIC to avoid the long stall */
+			flags &= ~GFP_KERNEL;
+			flags |= GFP_ATOMIC;
+			ret = dma_alloc_coherent(dev, size, dma_handle, flags);
+		}
 	}
 	return ret;
 }
 
-/* redefine pci_alloc_consistent for some architectures */
-#undef pci_alloc_consistent
-#define pci_alloc_consistent snd_pci_hack_alloc_consistent
+/* redefine dma_alloc_coherent for some architectures */
+#undef dma_alloc_coherent
+#define dma_alloc_coherent snd_dma_hack_alloc_coherent
 
 #endif /* arch */
-/* for 2.2/2.4 kernels */
-#define dma_alloc_coherent(dev,size,addr,flags) pci_alloc_consistent((struct pci_dev *)(dev),size,addr)
-#define dma_free_coherent(dev,size,ptr,addr) pci_free_consistent((struct pci_dev *)(dev),size,ptr,addr)
 
-#endif /* CONFIG_PCI */
+/*
+ *
+ *  Generic memory allocators
+ *
+ */
 
+static long snd_allocated_pages; /* holding the number of allocated pages */
+
+static inline void inc_snd_pages(int order)
+{
+	snd_allocated_pages += 1 << order;
+}
+
+static inline void dec_snd_pages(int order)
+{
+	snd_allocated_pages -= 1 << order;
+}
+
+/**
+ * snd_malloc_pages - allocate pages with the given size
+ * @size: the size to allocate in bytes
+ * @gfp_flags: the allocation conditions, GFP_XXX
+ *
+ * Allocates the physically contiguous pages with the given size.
+ *
+ * Returns the pointer of the buffer, or NULL if no enoguh memory.
+ */
+void *snd_malloc_pages(size_t size, gfp_t gfp_flags)
+{
+	int pg;
+	void *res;
+
+	snd_assert(size > 0, return NULL);
+	snd_assert(gfp_flags != 0, return NULL);
+	gfp_flags |= __GFP_COMP;	/* compound page lets parts be mapped */
+	pg = get_order(size);
+	if ((res = (void *) __get_free_pages(gfp_flags, pg)) != NULL)
+		inc_snd_pages(pg);
+	return res;
+}
+
+/**
+ * snd_free_pages - release the pages
+ * @ptr: the buffer pointer to release
+ * @size: the allocated buffer size
+ *
+ * Releases the buffer allocated via snd_malloc_pages().
+ */
+void snd_free_pages(void *ptr, size_t size)
+{
+	int pg;
+
+	if (ptr == NULL)
+		return;
+	pg = get_order(size);
+	dec_snd_pages(pg);
+	free_pages((unsigned long) ptr, pg);
+}
+
+/*
+ *
+ *  Bus-specific memory allocators
+ *
+ */
+
+#ifdef CONFIG_HAS_DMA
 /* allocate the coherent DMA pages */
 static void *snd_malloc_dev_pages(struct device *dev, size_t size, dma_addr_t *dma)
 {
 	int pg;
 	void *res;
-	unsigned int gfp_flags;
+	gfp_t gfp_flags;
 
 	snd_assert(size > 0, return NULL);
 	snd_assert(dma != NULL, return NULL);
 	pg = get_order(size);
-	gfp_flags = GFP_KERNEL;
-	if (pg > 0)
-		gfp_flags |= __GFP_NOWARN;
+	gfp_flags = GFP_KERNEL
+		| __GFP_COMP	/* compound page lets parts be mapped */
+		| __GFP_NORETRY /* don't trigger OOM-killer */
+		| __GFP_NOWARN; /* no stack trace print - this call is non-critical */
 	res = dma_alloc_coherent(dev, PAGE_SIZE << pg, dma, gfp_flags);
-	if (res != NULL) {
+	if (res != NULL)
 		inc_snd_pages(pg);
-	}
 
 	return res;
 }
@@ -154,60 +277,98 @@ static void snd_free_dev_pages(struct device *dev, size_t size, void *ptr,
 	dec_snd_pages(pg);
 	dma_free_coherent(dev, PAGE_SIZE << pg, ptr, dma);
 }
+#endif /* CONFIG_HAS_DMA */
 
-#if ! defined(__arm__)
-#define NEED_RESERVE_PAGES
-#endif
+#ifdef CONFIG_SBUS
+
+static void *snd_malloc_sbus_pages(struct device *dev, size_t size,
+				   dma_addr_t *dma_addr)
+{
+	struct sbus_dev *sdev = (struct sbus_dev *)dev;
+	int pg;
+	void *res;
+
+	snd_assert(size > 0, return NULL);
+	snd_assert(dma_addr != NULL, return NULL);
+	pg = get_order(size);
+	res = sbus_alloc_consistent(sdev, PAGE_SIZE * (1 << pg), dma_addr);
+	if (res != NULL)
+		inc_snd_pages(pg);
+	return res;
+}
+
+static void snd_free_sbus_pages(struct device *dev, size_t size,
+				void *ptr, dma_addr_t dma_addr)
+{
+	struct sbus_dev *sdev = (struct sbus_dev *)dev;
+	int pg;
+
+	if (ptr == NULL)
+		return;
+	pg = get_order(size);
+	dec_snd_pages(pg);
+	sbus_free_consistent(sdev, PAGE_SIZE * (1 << pg), ptr, dma_addr);
+}
+
+#endif /* CONFIG_SBUS */
+
+/*
+ *
+ *  ALSA generic memory management
+ *
+ */
+
+
 /**
  * snd_dma_alloc_pages - allocate the buffer area according to the given type
- * @dev: the buffer device info
+ * @type: the DMA buffer type
+ * @device: the device pointer
  * @size: the buffer size to allocate
  * @dmab: buffer allocation record to store the allocated data
  *
  * Calls the memory-allocator function for the corresponding
  * buffer type.
- *
+ * 
  * Returns zero if the buffer with the given size is allocated successfuly,
  * other a negative value at error.
  */
 int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 			struct snd_dma_buffer *dmab)
 {
-#ifdef DEBUG
-    dprintf(("snd_dma_alloc_pages with size = %d",size));
-#endif
-    snd_assert(size > 0, return -ENXIO);
-    snd_assert(dmab != NULL, return -ENXIO);
+	snd_assert(size > 0, return -ENXIO);
+	snd_assert(dmab != NULL, return -ENXIO);
 
-    dmab->dev.type = type;
-    dmab->dev.dev = device;
-    dmab->bytes = 0;
-    switch (type) {
-    case SNDRV_DMA_TYPE_CONTINUOUS:
-        dmab->area = snd_malloc_pages(size, (unsigned long)device);
-        dmab->addr = 0;
-        break;
+	dmab->dev.type = type;
+	dmab->dev.dev = device;
+	dmab->bytes = 0;
+	switch (type) {
+	case SNDRV_DMA_TYPE_CONTINUOUS:
+		dmab->area = snd_malloc_pages(size, (unsigned long)device);
+		dmab->addr = 0;
+		break;
 #ifdef CONFIG_SBUS
-    case SNDRV_DMA_TYPE_SBUS:
-        dmab->area = snd_malloc_sbus_pages(device, size, &dmab->addr);
+	case SNDRV_DMA_TYPE_SBUS:
+		dmab->area = snd_malloc_sbus_pages(device, size, &dmab->addr);
 		break;
 #endif
-    case SNDRV_DMA_TYPE_DEV:
-        dmab->area = snd_malloc_dev_pages(device, size, &dmab->addr);
-        break;
-    case SNDRV_DMA_TYPE_DEV_SG:
-        snd_malloc_sgbuf_pages(device, size, dmab, NULL);
-        break;
-    default:
-        printk(KERN_ERR "snd-malloc: invalid device type %d\n", type);
-        dmab->area = NULL;
-        dmab->addr = 0;
-        return -ENXIO;
-    }
-    if (! dmab->area)
-        return -ENOMEM;
-    dmab->bytes = size;
-    return 0;
+#ifdef CONFIG_HAS_DMA
+	case SNDRV_DMA_TYPE_DEV:
+		dmab->area = snd_malloc_dev_pages(device, size, &dmab->addr);
+		break;
+	case SNDRV_DMA_TYPE_DEV_SG:
+		snd_malloc_sgbuf_pages(device, size, dmab, NULL);
+		break;
+#endif
+	default:
+		printk(KERN_ERR "snd-malloc: invalid device type %d\n", type);
+		dmab->area = NULL;
+		dmab->addr = 0;
+		return -ENXIO;
+	}
+	if (! dmab->area)
+		return -ENOMEM;
+	dmab->bytes = size;
+	return 0;
 }
 
 /**
@@ -245,6 +406,7 @@ int snd_dma_alloc_pages_fallback(int type, struct device *device, size_t size,
 	return 0;
 }
 
+
 /**
  * snd_dma_free_pages - release the allocated buffer
  * @dmab: the buffer allocation record to release
@@ -262,16 +424,19 @@ void snd_dma_free_pages(struct snd_dma_buffer *dmab)
 		snd_free_sbus_pages(dmab->dev.dev, dmab->bytes, dmab->area, dmab->addr);
 		break;
 #endif
+#ifdef CONFIG_HAS_DMA
 	case SNDRV_DMA_TYPE_DEV:
 		snd_free_dev_pages(dmab->dev.dev, dmab->bytes, dmab->area, dmab->addr);
 		break;
 	case SNDRV_DMA_TYPE_DEV_SG:
 		snd_free_sgbuf_pages(dmab);
 		break;
+#endif
 	default:
 		printk(KERN_ERR "snd-malloc: invalid device type %d\n", dmab->dev.type);
 	}
 }
+
 
 /**
  * snd_dma_get_reserved - get the reserved buffer for the given device
@@ -285,24 +450,26 @@ void snd_dma_free_pages(struct snd_dma_buffer *dmab)
  */
 size_t snd_dma_get_reserved_buf(struct snd_dma_buffer *dmab, unsigned int id)
 {
-	struct list_head *p;
 	struct snd_mem_list *mem;
 
 	snd_assert(dmab, return 0);
 
-	down(&list_mutex);
-	list_for_each(p, &mem_list_head) {
-		mem = list_entry(p, struct snd_mem_list, list);
+	mutex_lock(&list_mutex);
+	list_for_each_entry(mem, &mem_list_head, list, struct snd_mem_list) {
 		if (mem->id == id &&
-		    ! memcmp(&mem->buffer.dev, &dmab->dev, sizeof(dmab->dev))) {
-			list_del(p);
+		    (mem->buffer.dev.dev == NULL || dmab->dev.dev == NULL ||
+		     ! memcmp(&mem->buffer.dev, &dmab->dev, sizeof(dmab->dev)))) {
+			struct device *dev = dmab->dev.dev;
+			list_del(&mem->list);
 			*dmab = mem->buffer;
+			if (dmab->dev.dev == NULL)
+				dmab->dev.dev = dev;
 			kfree(mem);
-			up(&list_mutex);
+			mutex_unlock(&list_mutex);
 			return dmab->bytes;
 		}
 	}
-	up(&list_mutex);
+	mutex_unlock(&list_mutex);
 	return 0;
 }
 
@@ -323,11 +490,11 @@ int snd_dma_reserve_buf(struct snd_dma_buffer *dmab, unsigned int id)
 	mem = kmalloc(sizeof(*mem), GFP_KERNEL);
 	if (! mem)
 		return -ENOMEM;
-	down(&list_mutex);
+	mutex_lock(&list_mutex);
 	mem->buffer = *dmab;
 	mem->id = id;
 	list_add_tail(&mem->list, &mem_list_head);
-	up(&list_mutex);
+	mutex_unlock(&list_mutex);
 	return 0;
 }
 
@@ -339,7 +506,7 @@ static void free_all_reserved_pages(void)
 	struct list_head *p;
 	struct snd_mem_list *mem;
 
-	down(&list_mutex);
+	mutex_lock(&list_mutex);
 	while (! list_empty(&mem_list_head)) {
 		p = mem_list_head.next;
 		mem = list_entry(p, struct snd_mem_list, list);
@@ -347,453 +514,153 @@ static void free_all_reserved_pages(void)
 		snd_dma_free_pages(&mem->buffer);
 		kfree(mem);
 	}
-	up(&list_mutex);
+	mutex_unlock(&list_mutex);
 }
 
-
-/*
- *
- *  Generic memory allocators
- *
- */
-
-/* Pure 2^n version of get_order */
-static inline int get_order(unsigned int size)
-{
-        int order;
-
-        size = (size-1) >> (PAGE_SHIFT-1);
-        order = -1;
-        do {
-                size >>= 1;
-                order++;
-        } while (size);
-        return order;
-}
-
-static long snd_allocated_pages; /* holding the number of allocated pages */
-
-static inline void inc_snd_pages(int order)
-{
-        snd_allocated_pages += 1 << order;
-}
-
-static inline void dec_snd_pages(int order)
-{
-        snd_allocated_pages -= 1 << order;
-}
-
-
-/**
- * snd_malloc_pages - allocate pages with the given size
- * @size: the size to allocate in bytes
- * @gfp_flags: the allocation conditions, GFP_XXX
- *
- * Allocates the physically contiguous pages with the given size.
- *
- * Returns the pointer of the buffer, or NULL if no enoguh memory.
- */
-void *snd_malloc_pages(unsigned long size, unsigned int dma_flags)
-{
-    int pg;
-    void *res;
-
-    snd_assert(size > 0, return NULL);
-    snd_assert(dma_flags != 0, return NULL);
-    pg = get_order(size);
-    if ((res = (void *) __get_free_pages(dma_flags, pg)) != NULL) {
-        inc_snd_pages(pg);
-    }
-    return res;
-}
-
-/**
- * snd_free_pages - release the pages
- * @ptr: the buffer pointer to release
- * @size: the allocated buffer size
- *
- * Releases the buffer allocated via snd_malloc_pages().
- */
-void snd_free_pages(void *ptr, unsigned long size)
-{
-    int pg;
-    struct page *page, *last_page;
-
-    if (ptr == NULL)
-        return;
-    pg = get_order(size);
-    dec_snd_pages(pg);
-    free_pages((unsigned long) ptr, pg);
-}
-
-#if defined(CONFIG_ISA) && ! defined(CONFIG_PCI)
-
-/**
- * snd_malloc_isa_pages - allocate pages for ISA bus with the given size
- * @size: the size to allocate in bytes
- * @dma_addr: the pointer to store the physical address of the buffer
- *
- * Allocates the physically contiguous pages with the given size for
- * ISA bus.
- *
- * Returns the pointer of the buffer, or NULL if no enoguh memory.
- */
-void *snd_malloc_isa_pages(size_t size, dma_addr_t *dma_addr)
-{
-	void *dma_area;
-	dma_area = snd_malloc_pages(size, GFP_ATOMIC|GFP_DMA);
-	*dma_addr = dma_area ? isa_virt_to_bus(dma_area) : 0UL;
-	return dma_area;
-}
-
-/**
- * snd_malloc_isa_pages_fallback - allocate pages with the given size with fallback for ISA bus
- * @size: the requested size to allocate in bytes
- * @dma_addr: the pointer to store the physical address of the buffer
- * @res_size: the pointer to store the size of buffer actually allocated
- *
- * Allocates the physically contiguous pages with the given request
- * size for PCI bus.  When no space is left, this function reduces the size and
- * tries to allocate again.  The size actually allocated is stored in
- * res_size argument.
- *
- * Returns the pointer of the buffer, or NULL if no enoguh memory.
- */
-void *snd_malloc_isa_pages_fallback(size_t size,
-				    dma_addr_t *dma_addr,
-				    size_t *res_size)
-{
-	void *dma_area;
-	dma_area = snd_malloc_pages_fallback(size, GFP_ATOMIC|GFP_DMA, res_size);
-	*dma_addr = dma_area ? isa_virt_to_bus(dma_area) : 0UL;
-	return dma_area;
-}
-
-#endif /* CONFIG_ISA && !CONFIG_PCI */
-
-#ifdef CONFIG_PCI
-
-/**
- * snd_malloc_pci_pages - allocate pages for PCI bus with the given size
- * @pci: the pci device pointer
- * @size: the size to allocate in bytes
- * @dma_addr: the pointer to store the physical address of the buffer
- *
- * Allocates the physically contiguous pages with the given size for
- * PCI bus.
- *
- * Returns the pointer of the buffer, or NULL if no enoguh memory.
- */
-void *snd_malloc_pci_pages(struct pci_dev *pci,
-			   size_t size,
-			   dma_addr_t *dmaaddr)
-{
-	int pg;
-	void *res;
-#ifdef DEBUG
-        dprintf(("snd_malloc_pci_pages. size = %d",size));
-#endif
-	snd_assert(size > 0, return NULL);
-	snd_assert(dmaaddr != NULL, return NULL);
-	for (pg = 0; PAGE_SIZE * (1 << pg) < size; pg++);
-	res = pci_alloc_consistent(pci, PAGE_SIZE * (1 << pg), dmaaddr);
-        if (res != NULL) {
-            inc_snd_pages(pg);
-	}
-	return res;
-}
-
-/**
- * snd_malloc_pci_pages_fallback - allocate pages with the given size with fallback for PCI bus
- * @pci: pci device pointer
- * @size: the requested size to allocate in bytes
- * @dma_addr: the pointer to store the physical address of the buffer
- * @res_size: the pointer to store the size of buffer actually allocated
- *
- * Allocates the physically contiguous pages with the given request
- * size for PCI bus.  When no space is left, this function reduces the size and
- * tries to allocate again.  The size actually allocated is stored in
- * res_size argument.
- *
- * Returns the pointer of the buffer, or NULL if no enoguh memory.
- */
-void *snd_malloc_pci_pages_fallback(struct pci_dev *pci, size_t size,
-				    dma_addr_t *dmaaddr,
-				    size_t *res_size)
-{
-	void *res;
-
-	snd_assert(res_size != NULL, return NULL);
-	do {
-		if ((res = snd_malloc_pci_pages(pci, size, dmaaddr)) != NULL) {
-			*res_size = size;
-			return res;
-		}
-		size >>= 1;
-	} while (size >= PAGE_SIZE);
-	return NULL;
-}
-
-/**
- * snd_free_pci_pages - release the pages
- * @pci: pci device pointer
- * @size: the allocated buffer size
- * @ptr: the buffer pointer to release
- * @dma_addr: the physical address of the buffer
- *
- * Releases the buffer allocated via snd_malloc_pci_pages().
- */
-void snd_free_pci_pages(struct pci_dev *pci, size_t size, void *ptr, dma_addr_t dmaaddr)
-{
-	int pg;
-	mem_map_t *page, *last_page;
-
-	if (ptr == NULL)
-		return;
-        for (pg = 0; PAGE_SIZE * (1 << pg) < size; pg++);
-        dec_snd_pages(pg);
-	pci_free_consistent(pci, PAGE_SIZE * (1 << pg), ptr, dmaaddr);
-}
-
-#if defined(__i386__)
-/*
- * on ix86, we allocate a page with GFP_KERNEL to assure the
- * allocation.  the code is almost same with kernel/i386/pci-dma.c but
- * it allocates only a single page and checks the validity of the
- * page address with the given pci dma mask.
- */
-
-/**
- * snd_malloc_pci_page - allocate a page in the valid pci dma mask
- * @pci: pci device pointer
- * @addrp: the pointer to store the physical address of the buffer
- *
- * Allocates a single page for the given PCI device and returns
- * the virtual address and stores the physical address on addrp.
- *
- * This function cannot be called from interrupt handlers or
- * within spinlocks.
- */
-void *snd_malloc_pci_page(struct pci_dev *pci, dma_addr_t *addrp)
-{
-	void *ptr;
-	dma_addr_t addr;
-	unsigned long mask;
-
-	mask = pci ? (unsigned long)pci->consistent_dma_mask : 0x00ffffffUL;
-	ptr = (void *)__get_free_page(GFP_KERNEL);
-	if (ptr) {
-		addr = virt_to_phys(ptr);
-		if (((unsigned long)addr + PAGE_SIZE - 1) & ~mask) {
-			/* try to reallocate with the GFP_DMA */
-			free_page((unsigned long)ptr);
-			/* use GFP_ATOMIC for the DMA zone to avoid stall */
-			ptr = (void *)__get_free_page(GFP_ATOMIC | GFP_DMA);
-			if (ptr) /* ok, the address must be within lower 16MB... */
-				addr = virt_to_phys(ptr);
-			else
-				addr = 0;
-		}
-	} else
-		addr = 0;
-	if (ptr) {
-		memset(ptr, 0, PAGE_SIZE);
-	}
-	*addrp = addr;
-	return ptr;
-}
-#else
-
-/* on other architectures, call snd_malloc_pci_pages() helper function
- * which uses pci_alloc_consistent().
- */
-void *snd_malloc_pci_page(struct pci_dev *pci, dma_addr_t *addrp)
-{
-        return snd_malloc_pci_pages(pci, PAGE_SIZE, addrp);
-}
-
-#endif
-
-#endif /* CONFIG_PCI */
-
-#ifdef CONFIG_SBUS
-
-/**
- * snd_malloc_sbus_pages - allocate pages for SBUS with the given size
- * @sdev: sbus device pointer
- * @size: the size to allocate in bytes
- * @dma_addr: the pointer to store the physical address of the buffer
- *
- * Allocates the physically contiguous pages with the given size for
- * SBUS.
- *
- * Returns the pointer of the buffer, or NULL if no enoguh memory.
- */
-void *snd_malloc_sbus_pages(struct sbus_dev *sdev,
-			    size_t size,
-			    dma_addr_t *dma_addr)
-{
-	int pg;
-	void *res;
-
-	snd_assert(size > 0, return NULL);
-        snd_assert(dma_addr != NULL, return NULL);
-        pg = get_order(size);
-	res = sbus_alloc_consistent(sdev, PAGE_SIZE * (1 << pg), dma_addr);
-        if (res != NULL)
-            inc_snd_pages(pg);
-	return res;
-}
-
-/**
- * snd_malloc_pci_pages_fallback - allocate pages with the given size with fallback for SBUS
- * @sdev: sbus device pointer
- * @size: the requested size to allocate in bytes
- * @dma_addr: the pointer to store the physical address of the buffer
- * @res_size: the pointer to store the size of buffer actually allocated
- *
- * Allocates the physically contiguous pages with the given request
- * size for SBUS.  When no space is left, this function reduces the size and
- * tries to allocate again.  The size actually allocated is stored in
- * res_size argument.
- *
- * Returns the pointer of the buffer, or NULL if no enoguh memory.
- */
-/**
- * snd_free_sbus_pages - release the pages
- * @sdev: sbus device pointer
- * @size: the allocated buffer size
- * @ptr: the buffer pointer to release
- * @dma_addr: the physical address of the buffer
- *
- * Releases the buffer allocated via snd_malloc_pci_pages().
- */
-void snd_free_sbus_pages(struct sbus_dev *sdev,
-			 size_t size,
-			 void *ptr,
-			 dma_addr_t dma_addr)
-{
-	int pg;
-
-	if (ptr == NULL)
-            return;
-        pg = get_order(size);
-        dec_snd_pages(pg);
-	sbus_free_consistent(sdev, PAGE_SIZE * (1 << pg), ptr, dma_addr);
-}
-
-#endif /* CONFIG_SBUS */
-
-/*
- * allocation of buffers for pre-defined devices
- */
-
-#ifdef CONFIG_PCI
-/* FIXME: for pci only - other bus? */
-struct prealloc_dev {
-	unsigned short vendor;
-	unsigned short device;
-	unsigned long dma_mask;
-	unsigned int size;
-	unsigned int buffers;
-};
-
-#define HAMMERFALL_BUFFER_SIZE    (16*1024*4*(26+1))
-
-static struct prealloc_dev prealloc_devices[] __initdata = {
-	{
-		/* hammerfall */
-		/*.vendor = */0x10ee,
-		/*.device = */0x3fc4,
-		/*.dma_mask = */0xffffffff,
-		/*.size = */HAMMERFALL_BUFFER_SIZE,
-		/*.buffers = */2
-	},
-	{
-		/* HDSP */
-		/*.vendor = */0x10ee,
-		/*.device = */0x3fc5,
-		/*.dma_mask = */0xffffffff,
-		/*.size = */HAMMERFALL_BUFFER_SIZE,
-		/*.buffers = */2
-	},
-	{0 }, /* terminator */
-};
-
-static void __init preallocate_cards(void)
-{
-	struct pci_dev *pci = NULL;
-	int card;
-
-	card = 0;
-
-	while ((pci = pci_find_device(PCI_ANY_ID, PCI_ANY_ID, pci)) != NULL) {
-		struct prealloc_dev *dev;
-		unsigned int i;
-		if (card >= SNDRV_CARDS)
-			break;
-		for (dev = prealloc_devices; dev->vendor; dev++) {
-			if (dev->vendor == pci->vendor && dev->device == pci->device)
-				break;
-		}
-		if (! dev->vendor)
-			continue;
-		if (! enable[card++]) {
-			printk(KERN_DEBUG "snd-page-alloc: skipping card %d, device %04x:%04x\n", card, pci->vendor, pci->device);
-			continue;
-		}
-			
-		pci_set_dma_mask(pci, dev->dma_mask);
-		for (i = 0; i < dev->buffers; i++) {
-			struct snd_dma_buffer dmab;
-			memset(&dmab, 0, sizeof(dmab));
-			if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, snd_dma_pci_data(pci),
-						dev->size, &dmab) < 0)
-				printk(KERN_WARNING "snd-page-alloc: cannot allocate buffer pages (size = %d)\n", dev->size);
-			else
-				snd_dma_reserve_buf(&dmab, snd_dma_pci_buf_id(pci));
-		}
-	}
-}
-#else
-#define preallocate_cards()	/* NOP */
-#endif
 
 #ifdef CONFIG_PROC_FS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
 /*
  * proc file interface
  */
-static int snd_mem_proc_read(char *page, char **start, off_t off,
-			     int count, int *eof, void *data)
+#define SND_MEM_PROC_FILE	"driver/snd-page-alloc"
+static struct proc_dir_entry *snd_mem_proc;
+
+static int snd_mem_proc_read(struct seq_file *seq, void *offset)
 {
-	int len = 0;
 	long pages = snd_allocated_pages >> (PAGE_SHIFT-12);
-	struct list_head *p;
 	struct snd_mem_list *mem;
 	int devno;
 	static char *types[] = { "UNKNOWN", "CONT", "DEV", "DEV-SG", "SBUS" };
-#if 0
-	down(&list_mutex);
-	len += snprintf(page + len, count - len,
-			"pages  : %li bytes (%li pages per %likB)\n",
-			pages * PAGE_SIZE, pages, PAGE_SIZE / 1024);
+
+	mutex_lock(&list_mutex);
+	seq_printf(seq, "pages  : %li bytes (%li pages per %likB)\n",
+		   pages * PAGE_SIZE, pages, PAGE_SIZE / 1024);
 	devno = 0;
-	list_for_each(p, &mem_list_head) {
-		mem = list_entry(p, struct snd_mem_list, list);
-                devno++;
-
-		len += snprintf(page + len, count - len,
-				"buffer %d : ID %08x : type %s\n",
-				devno, mem->id, types[mem->buffer.dev.type]);
-		len += snprintf(page + len, count - len,
-				"  addr = 0x%lx, size = %d bytes\n",
-                                (unsigned long)mem->buffer.addr, (int)mem->buffer.bytes);
-
+	list_for_each_entry(mem, &mem_list_head, list, struct snd_mem_list) {
+		devno++;
+		seq_printf(seq, "buffer %d : ID %08x : type %s\n",
+			   devno, mem->id, types[mem->buffer.dev.type]);
+		seq_printf(seq, "  addr = 0x%lx, size = %d bytes\n",
+			   (unsigned long)mem->buffer.addr,
+			   (int)mem->buffer.bytes);
 	}
-        up(&list_mutex);
-#endif
-	return len;
+	mutex_unlock(&list_mutex);
+	return 0;
 }
+
+static int snd_mem_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, snd_mem_proc_read, NULL);
+}
+
+/* FIXME: for pci only - other bus? */
+#ifdef CONFIG_PCI
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0)
+#define gettoken(bufp) strsep(bufp, " \t\n")
+
+static ssize_t snd_mem_proc_write(struct file *file, const char __user * buffer,
+				  size_t count, loff_t * ppos)
+{
+	char buf[128];
+	char *token, *p;
+
+	if (count > sizeof(buf) - 1)
+		return -EINVAL;
+	if (copy_from_user(buf, buffer, count))
+		return -EFAULT;
+	buf[count] = '\0';
+
+	p = buf;
+	token = gettoken(&p);
+	if (! token || *token == '#')
+		return count;
+	if (strcmp(token, "add") == 0) {
+		char *endp;
+		int vendor, device, size, buffers;
+		long mask;
+		int i, alloced;
+		struct pci_dev *pci;
+
+		if ((token = gettoken(&p)) == NULL ||
+		    (vendor = simple_strtol(token, NULL, 0)) <= 0 ||
+		    (token = gettoken(&p)) == NULL ||
+		    (device = simple_strtol(token, NULL, 0)) <= 0 ||
+		    (token = gettoken(&p)) == NULL ||
+		    (mask = simple_strtol(token, NULL, 0)) < 0 ||
+		    (token = gettoken(&p)) == NULL ||
+		    (size = memparse(token, &endp)) < 64*1024 ||
+		    size > 16*1024*1024 /* too big */ ||
+		    (token = gettoken(&p)) == NULL ||
+		    (buffers = simple_strtol(token, NULL, 0)) <= 0 ||
+		    buffers > 4) {
+			printk(KERN_ERR "snd-page-alloc: invalid proc write format\n");
+			return count;
+		}
+		vendor &= 0xffff;
+		device &= 0xffff;
+
+		alloced = 0;
+		pci = NULL;
+		while ((pci = pci_get_device(vendor, device, pci)) != NULL) {
+			if (mask > 0 && mask < 0xffffffff) {
+				if (pci_set_dma_mask(pci, mask) < 0 ||
+				    pci_set_consistent_dma_mask(pci, mask) < 0) {
+					printk(KERN_ERR "snd-page-alloc: cannot set DMA mask %lx for pci %04x:%04x\n", mask, vendor, device);
+					pci_dev_put(pci);
+					return count;
+				}
+			}
+			for (i = 0; i < buffers; i++) {
+				struct snd_dma_buffer dmab;
+				memset(&dmab, 0, sizeof(dmab));
+				if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, snd_dma_pci_data(pci),
+							size, &dmab) < 0) {
+					printk(KERN_ERR "snd-page-alloc: cannot allocate buffer pages (size = %d)\n", size);
+					pci_dev_put(pci);
+					return count;
+				}
+				snd_dma_reserve_buf(&dmab, snd_dma_pci_buf_id(pci));
+			}
+			alloced++;
+		}
+		if (! alloced) {
+			for (i = 0; i < buffers; i++) {
+				struct snd_dma_buffer dmab;
+				memset(&dmab, 0, sizeof(dmab));
+				/* FIXME: We can allocate only in ZONE_DMA
+				 * without a device pointer!
+				 */
+				if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, NULL,
+							size, &dmab) < 0) {
+					printk(KERN_ERR "snd-page-alloc: cannot allocate buffer pages (size = %d)\n", size);
+					break;
+				}
+				snd_dma_reserve_buf(&dmab, (unsigned int)((vendor << 16) | device));
+			}
+		}
+	} else if (strcmp(token, "erase") == 0)
+		/* FIXME: need for releasing each buffer chunk? */
+		free_all_reserved_pages();
+	else
+		printk(KERN_ERR "snd-page-alloc: invalid proc cmd\n");
+	return count;
+}
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0) */
+#endif /* CONFIG_PCI */
+
+static const struct file_operations snd_mem_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= snd_mem_proc_open,
+	.read		= seq_read,
+#ifdef CONFIG_PCI
+	.write		= snd_mem_proc_write,
+#endif
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0) */
+
 #endif /* CONFIG_PROC_FS */
 
 /*
@@ -803,70 +670,39 @@ static int snd_mem_proc_read(char *page, char **start, off_t off,
 static int __init snd_mem_init(void)
 {
 #ifdef CONFIG_PROC_FS
-	create_proc_read_entry("driver/snd-page-alloc", 0, NULL, snd_mem_proc_read, NULL);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
+	snd_mem_proc = create_proc_entry(SND_MEM_PROC_FILE, 0644, NULL);
+	if (snd_mem_proc)
+		snd_mem_proc->proc_fops = &snd_mem_proc_fops;
 #endif
-	preallocate_cards();
+#endif
 	return 0;
 }
 
 static void __exit snd_mem_exit(void)
 {
-	remove_proc_entry("driver/snd-page-alloc", NULL);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
+	remove_proc_entry(SND_MEM_PROC_FILE, NULL);
+#endif
 	free_all_reserved_pages();
 	if (snd_allocated_pages > 0)
 		printk(KERN_ERR "snd-malloc: Memory leak?  pages not freed = %li\n", snd_allocated_pages);
 }
 
+
 module_init(snd_mem_init)
 module_exit(snd_mem_exit)
 
-
-#ifndef MODULE
-
-/* format is: snd-page-alloc=enable */
-
-static int __init snd_mem_setup(char *str)
-{
-	static unsigned __initdata nr_dev = 0;
-
-	if (nr_dev >= SNDRV_CARDS)
-		return 0;
-	(void)(get_option(&str,&enable[nr_dev]) == 2);
-	nr_dev++;
-	return 1;
-}
-
-__setup("snd-page-alloc=", snd_mem_setup);
-
-#endif
 
 /*
  * exports
  */
 EXPORT_SYMBOL(snd_dma_alloc_pages);
+EXPORT_SYMBOL(snd_dma_alloc_pages_fallback);
 EXPORT_SYMBOL(snd_dma_free_pages);
-EXPORT_SYMBOL(snd_dma_get_reserved);
-EXPORT_SYMBOL(snd_dma_free_reserved);
-EXPORT_SYMBOL(snd_dma_set_reserved);
+
+EXPORT_SYMBOL(snd_dma_get_reserved_buf);
+EXPORT_SYMBOL(snd_dma_reserve_buf);
 
 EXPORT_SYMBOL(snd_malloc_pages);
-EXPORT_SYMBOL(snd_malloc_pages_fallback);
 EXPORT_SYMBOL(snd_free_pages);
-#if defined(CONFIG_ISA) && ! defined(CONFIG_PCI)
-EXPORT_SYMBOL(snd_malloc_isa_pages);
-EXPORT_SYMBOL(snd_malloc_isa_pages_fallback);
-#endif
-#ifdef CONFIG_PCI
-EXPORT_SYMBOL(snd_malloc_pci_pages);
-EXPORT_SYMBOL(snd_malloc_pci_pages_fallback);
-EXPORT_SYMBOL(snd_malloc_pci_page);
-EXPORT_SYMBOL(snd_free_pci_pages);
-EXPORT_SYMBOL(snd_malloc_sgbuf_pages);
-EXPORT_SYMBOL(snd_free_sgbuf_pages);
-#endif
-#ifdef CONFIG_SBUS
-EXPORT_SYMBOL(snd_malloc_sbus_pages);
-EXPORT_SYMBOL(snd_malloc_sbus_pages_fallback);
-EXPORT_SYMBOL(snd_free_sbus_pages);
-#endif
-

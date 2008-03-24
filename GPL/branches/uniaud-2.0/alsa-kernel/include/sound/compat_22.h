@@ -424,6 +424,7 @@ struct completion {
         wait_queue_head_t wait;
 };
 
+#if 0
 struct workqueue_struct {
 	spinlock_t lock;
 	const char *name;
@@ -438,5 +439,6 @@ struct workqueue_struct *create_workqueue(const char *name);
 int queue_work(struct workqueue_struct *wq, struct work_struct *work);
 
 void destroy_workqueue(struct workqueue_struct *wq);
+#endif
 
 #endif //__COMPAT_22__

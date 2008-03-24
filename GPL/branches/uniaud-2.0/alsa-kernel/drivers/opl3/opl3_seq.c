@@ -32,7 +32,7 @@ MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("ALSA driver for OPL3 FM synth");
 
 int use_internal_drums = 0;
-//module_param(use_internal_drums, bool, 0444);
+module_param(use_internal_drums, bool, 0444);
 MODULE_PARM_DESC(use_internal_drums, "Enable internal OPL2/3 drums.");
 
 int snd_opl3_synth_use_inc(struct snd_opl3 * opl3)
@@ -51,14 +51,15 @@ void snd_opl3_synth_use_dec(struct snd_opl3 * opl3)
 int snd_opl3_synth_setup(struct snd_opl3 * opl3)
 {
 	int idx;
+	struct snd_hwdep *hwdep = opl3->hwdep;
 
-	down(&opl3->access_mutex);
-	if (opl3->used) {
-		up(&opl3->access_mutex);
+	mutex_lock(&hwdep->open_mutex);
+	if (hwdep->used) {
+		mutex_unlock(&hwdep->open_mutex);
 		return -EBUSY;
 	}
-	opl3->used++;
-	up(&opl3->access_mutex);
+	hwdep->used++;
+	mutex_unlock(&hwdep->open_mutex);
 
 	snd_opl3_reset(opl3);
 
@@ -81,6 +82,7 @@ int snd_opl3_synth_setup(struct snd_opl3 * opl3)
 void snd_opl3_synth_cleanup(struct snd_opl3 * opl3)
 {
 	unsigned long flags;
+	struct snd_hwdep *hwdep;
 
 	/* Stop system timer */
 	spin_lock_irqsave(&opl3->sys_timer_lock, flags);
@@ -91,9 +93,11 @@ void snd_opl3_synth_cleanup(struct snd_opl3 * opl3)
 	spin_unlock_irqrestore(&opl3->sys_timer_lock, flags);
 
 	snd_opl3_reset(opl3);
-	down(&opl3->access_mutex);
-	opl3->used--;
-	up(&opl3->access_mutex);
+	hwdep = opl3->hwdep;
+	mutex_lock(&hwdep->open_mutex);
+	hwdep->used--;
+	mutex_unlock(&hwdep->open_mutex);
+	wake_up(&hwdep->open_wait);
 }
 
 static int snd_opl3_synth_use(void *private_data, struct snd_seq_port_subscribe * info)
@@ -152,15 +156,7 @@ static int snd_opl3_synth_event_input(struct snd_seq_event * ev, int direct,
 {
 	struct snd_opl3 *opl3 = private_data;
 
-	if (ev->type >= SNDRV_SEQ_EVENT_INSTR_BEGIN &&
-	    ev->type <= SNDRV_SEQ_EVENT_INSTR_CHANGE) {
-		if (direct) {
-			snd_seq_instr_event(&opl3->fm_ops, opl3->ilist, ev,
-					    opl3->seq_client, atomic, hop);
-		}
-	} else {
-		snd_midi_process_event(&opl3_ops, ev, opl3->chset);
-	}
+	snd_midi_process_event(&opl3_ops, ev, opl3->chset);
 	return 0;
 }
 
@@ -203,12 +199,16 @@ static int snd_opl3_synth_create_port(struct snd_opl3 * opl3)
 						      SNDRV_SEQ_PORT_CAP_SUBS_WRITE,
 						      SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC |
 						      SNDRV_SEQ_PORT_TYPE_MIDI_GM |
-						      SNDRV_SEQ_PORT_TYPE_SYNTH,
+						      SNDRV_SEQ_PORT_TYPE_DIRECT_SAMPLE |
+						      SNDRV_SEQ_PORT_TYPE_HARDWARE |
+						      SNDRV_SEQ_PORT_TYPE_SYNTHESIZER,
 						      16, voices,
 						      name);
 	if (opl3->chset->port < 0) {
+		int port;
+		port = opl3->chset->port;
 		snd_midi_channel_free_set(opl3->chset);
-		return opl3->chset->port;
+		return port;
 	}
 	return 0;
 }
@@ -218,9 +218,8 @@ static int snd_opl3_synth_create_port(struct snd_opl3 * opl3)
 static int snd_opl3_seq_new_device(struct snd_seq_device *dev)
 {
 	struct snd_opl3 *opl3;
-	int client;
-	struct snd_seq_client_callback callbacks;
-	struct snd_seq_client_info cinfo;
+	int client, err;
+	char name[32];
 	int opl_ver;
 
 	opl3 = *(struct snd_opl3 **)SNDRV_SEQ_DEVICE_ARGPTR(dev);
@@ -232,33 +231,19 @@ static int snd_opl3_seq_new_device(struct snd_seq_device *dev)
 	opl3->seq_client = -1;
 
 	/* allocate new client */
-	memset(&callbacks, 0, sizeof(callbacks));
-	callbacks.private_data = opl3;
-	callbacks.allow_output = callbacks.allow_input = 1;
+	opl_ver = (opl3->hardware & OPL3_HW_MASK) >> 8;
+	sprintf(name, "OPL%i FM synth", opl_ver);
 	client = opl3->seq_client =
-	    snd_seq_create_kernel_client(opl3->card, opl3->seq_dev_num, &callbacks);
+		snd_seq_create_kernel_client(opl3->card, opl3->seq_dev_num,
+					     name);
 	if (client < 0)
 		return client;
 
-	/* change name of client */
-	memset(&cinfo, 0, sizeof(cinfo));
-	cinfo.client = client;
-	cinfo.type = KERNEL_CLIENT;
-	opl_ver = (opl3->hardware & OPL3_HW_MASK) >> 8;
-	sprintf(cinfo.name, "OPL%i FM synth", opl_ver);
-	snd_seq_kernel_client_ctl(client, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, &cinfo);
-
-	snd_opl3_synth_create_port(opl3);
-
-	/* initialize instrument list */
-	opl3->ilist = snd_seq_instr_list_new();
-	if (opl3->ilist == NULL) {
+	if ((err = snd_opl3_synth_create_port(opl3)) < 0) {
 		snd_seq_delete_kernel_client(client);
 		opl3->seq_client = -1;
-		return -ENOMEM;
+		return err;
 	}
-	opl3->ilist->flags = SNDRV_SEQ_INSTR_FLG_DIRECT;
-	snd_seq_fm_init(&opl3->fm_ops, NULL);
 
 	/* setup system timer */
 	init_timer(&opl3->tlist);
@@ -268,7 +253,7 @@ static int snd_opl3_seq_new_device(struct snd_seq_device *dev)
 	opl3->sys_timer_status = 0;
 
 #ifdef CONFIG_SND_SEQUENCER_OSS
-	snd_opl3_init_seq_oss(opl3, cinfo.name);
+	snd_opl3_init_seq_oss(opl3, name);
 #endif
 	return 0;
 }
@@ -288,8 +273,6 @@ static int snd_opl3_seq_delete_device(struct snd_seq_device *dev)
 		snd_seq_delete_kernel_client(opl3->seq_client);
 		opl3->seq_client = -1;
 	}
-	if (opl3->ilist)
-		snd_seq_instr_list_free(&opl3->ilist);
 	return 0;
 }
 

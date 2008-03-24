@@ -69,13 +69,11 @@ enum {
      he makes it with spinlocks.
  */
 
-struct tasklet_struct
-{
-	struct tasklet_struct *next;
-	unsigned long state;
-	atomic_t count;
-	void (*func)(unsigned long);
-	unsigned long data;
+struct tasklet_struct {
+	struct tasklet_struct *next;	/* linked list of active bh's */
+	unsigned long sync;		/* must be initialized to zero */
+	void (*func)(void *);		/* function to call */
+	void *data;			/* argument to function */
 };
 
 extern void tasklet_hi_schedule(struct tasklet_struct *t);

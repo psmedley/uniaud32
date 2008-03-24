@@ -5,7 +5,7 @@
 
  */
 
-#include <sound/driver.h>
+#include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/pcm.h>
@@ -28,7 +28,7 @@ extern OpenedHandles opened_handles[8*256];
  * Control ID changed by an external
  * set by snd_ctl_notify()
  */
-snd_pcm_substream_t *substream_int[8*256] = {0}; // interrupted substream
+struct snd_pcm_substream *substream_int[8*256] = {0}; // interrupted substream
 int control_id_changed = 0;
 int card_id_changed = 0;
 int unlock_all = 0;
@@ -70,9 +70,9 @@ int WaitForPCMInterrupt(void *handle, int timeout)
     ULONG blkid = 0;
     int i = 0;
     int j = 0;
-    snd_pcm_file_t *pcm_file = NULL;
-    snd_pcm_substream_t *substream;
-    snd_pcm_runtime_t *runtime;
+    struct snd_pcm_file *pcm_file = NULL;
+    struct snd_pcm_substream *substream;
+    struct snd_pcm_runtime *runtime;
     soundhandle        *pHandle = (soundhandle *)handle;
     struct file *pfile;
 
@@ -84,7 +84,7 @@ int WaitForPCMInterrupt(void *handle, int timeout)
     if (pfile == NULL)
         return -ENXIO;
 
-    pcm_file = (snd_pcm_file_t *)pfile->private_data;
+    pcm_file = (struct snd_pcm_file *)pfile->private_data;
 
     if (pcm_file == NULL)
         return -ENXIO;
@@ -283,11 +283,11 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
     int i;
     OSSSTREAMID          streamid = 0;
     soundhandle         *pHandle;
-    snd_pcm_info_t      *pcminfo = NULL;
-    snd_pcm_hw_params_t *params;
+    struct snd_pcm_info      *pcminfo = NULL;
+    struct snd_pcm_hw_params *params;
     int                  ret, fmt, j;
     ULONG                format_mask;
-    snd_mask_t           *mask;
+    struct snd_mask           *mask;
     int pcms = 0;
 
     pcms = pcm_instances(deviceid);
@@ -296,13 +296,13 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 
     
     //these structures are too big to put on the stack
-    pcminfo = (snd_pcm_info_t *)kmalloc(sizeof(snd_pcm_info_t)+sizeof(snd_pcm_hw_params_t), GFP_KERNEL);
+    pcminfo = (struct snd_pcm_info *)kmalloc(sizeof(struct snd_pcm_info)+sizeof(struct snd_pcm_hw_params), GFP_KERNEL);
     if(pcminfo == NULL) {
         DebugInt3();
         printk("GetUniaudPcmCaps: out of memory\n");
         return OSSERR_OUT_OF_MEMORY;
     }
-    params = (snd_pcm_hw_params_t *)(pcminfo+1);
+    params = (struct snd_pcm_hw_params *)(pcminfo+1);
 
     for (i=0; i<pcms;i++)
     {
@@ -382,7 +382,8 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
             pWaveCaps->ulMinRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->min;
             pWaveCaps->ulMaxRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->max;
 
-            mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
+//            mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
+            mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
             pWaveCaps->ulRateFlags   = mask->bits[0];
 
             pWaveCaps->ulRateFlags   = ALSAToOSSRateFlags(pWaveCaps->ulRateFlags);
@@ -524,7 +525,7 @@ int GetUniaudCardInfo(ULONG deviceid, void *info)
 {
     mixerhandle *pHandle = NULL;
     int          ret, i, j;
-//    snd_ctl_card_info_t *pinfo;
+//    struct snd_ctl_card_info *pinfo;
 
     if(alsa_fops == NULL) {
         ret = OSSERR_NO_DEVICE_AVAILABLE;
@@ -555,7 +556,7 @@ int GetUniaudCardInfo(ULONG deviceid, void *info)
     //retrieve mixer information
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
                                     SNDRV_CTL_IOCTL_CARD_INFO, 
-                                    (ULONG)(snd_ctl_card_info_t *)info);
+                                    (ULONG)(struct snd_ctl_card_info *)info);
     if(ret) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         goto failure;
@@ -691,8 +692,8 @@ int GetUniaudControls(ULONG deviceid, void *pids)
     }
 
     //allocate memory for all mixer elements
-    pHandle->pids = (snd_ctl_elem_id_t *)pids;
-        //kmalloc(sizeof(snd_ctl_elem_id_t)*pHandle->list.count, GFP_KERNEL);
+    pHandle->pids = (struct snd_ctl_elem_id *)pids;
+        //kmalloc(sizeof(struct snd_ctl_elem_id)*pHandle->list.count, GFP_KERNEL);
     if(pHandle->pids == NULL) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         goto failure;
@@ -710,7 +711,7 @@ int GetUniaudControls(ULONG deviceid, void *pids)
     }
 //    if (pids)
 //        memcpy(pids, pHandle->pids,
-//               sizeof(snd_ctl_elem_id_t)*pHandle->list.count);
+//               sizeof(struct snd_ctl_elem_id)*pHandle->list.count);
 
     ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
     if(pHandle) {
@@ -729,8 +730,8 @@ failure:
 
 int GetUniaudControlInfo(ULONG deviceid, ULONG id, void *info)
 {
-    snd_ctl_elem_value_t *pElem = NULL;
-    snd_ctl_elem_info_t  *pElemInfo = NULL;
+    struct snd_ctl_elem_value *pElem = NULL;
+    struct snd_ctl_elem_info  *pElemInfo = NULL;
     mixerhandle *pHandle = NULL;
     int          ret, i, j, sz;
 
@@ -763,13 +764,13 @@ int GetUniaudControlInfo(ULONG deviceid, ULONG id, void *info)
     }
 
     //allocate memory for info element
-    pElemInfo = (snd_ctl_elem_info_t *)info;
+    pElemInfo = (struct snd_ctl_elem_info *)info;
     if(pElemInfo == NULL) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         goto failure;
     }
 
-//    printk("sizeof elem_info %i\n",sizeof(snd_ctl_elem_info_t));
+//    printk("sizeof elem_info %i\n",sizeof(struct snd_ctl_elem_info));
 
     pElemInfo->id.numid = id;
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
@@ -788,8 +789,8 @@ failure:
 
 int GetUniaudControlValueGet(ULONG deviceid, ULONG id, void *value)
 {
-    snd_ctl_elem_value_t *pElem = NULL;
-    snd_ctl_elem_info_t  *pElemInfo = NULL;
+    struct snd_ctl_elem_value *pElem = NULL;
+    struct snd_ctl_elem_info  *pElemInfo = NULL;
     mixerhandle *pHandle = NULL;
     int          ret, i, j, sz;
 
@@ -821,13 +822,13 @@ int GetUniaudControlValueGet(ULONG deviceid, ULONG id, void *value)
         goto failure;
     }
 
-    pElem = (snd_ctl_elem_value_t *)value;
+    pElem = (struct snd_ctl_elem_value *)value;
     if(pElem == NULL) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         goto failure;
     }
 
-//    printk("sizeof elem_info %i\n",sizeof(snd_ctl_elem_info_t));
+//    printk("sizeof elem_info %i\n",sizeof(struct snd_ctl_elem_info));
 
     pElem->id.numid = id;
     pElem->indirect = 0;
@@ -846,8 +847,8 @@ failure:
 
 int GetUniaudControlValuePut(ULONG deviceid, ULONG id, void *value)
 {
-    snd_ctl_elem_value_t *pElem = NULL;
-    snd_ctl_elem_info_t  *pElemInfo = NULL;
+    struct snd_ctl_elem_value *pElem = NULL;
+    struct snd_ctl_elem_info  *pElemInfo = NULL;
     mixerhandle *pHandle = NULL;
     int          ret, i, j, sz;
 
@@ -879,13 +880,13 @@ int GetUniaudControlValuePut(ULONG deviceid, ULONG id, void *value)
         goto failure;
     }
 
-    pElem = (snd_ctl_elem_value_t *)value;
+    pElem = (struct snd_ctl_elem_value *)value;
     if(pElem == NULL) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         goto failure;
     }
 
-//    printk("sizeof elem_info %i\n",sizeof(snd_ctl_elem_info_t));
+//    printk("sizeof elem_info %i\n",sizeof(struct snd_ctl_elem_info));
 
     pElem->id.numid = id;
     pElem->indirect = 0;
@@ -907,9 +908,9 @@ int UniaudIoctlHWRefine(OSSSTREAMID streamid, void *pHwParams)
 {
     int ret;
     soundhandle        *pHandle = (soundhandle *)streamid;
-    snd_pcm_hw_params_t *params = NULL;
+    struct snd_pcm_hw_params *params = NULL;
 
-    params = (snd_pcm_hw_params_t *)pHwParams;
+    params = (struct snd_pcm_hw_params *)pHwParams;
 
     if (!params) return -1001;
 
@@ -924,9 +925,9 @@ int UniaudIoctlHWParamSet(OSSSTREAMID streamid, void *pHwParams)
 {
     int ret;
     soundhandle        *pHandle = (soundhandle *)streamid;
-    snd_pcm_hw_params_t *params = NULL;
+    struct snd_pcm_hw_params *params = NULL;
 
-    params = (snd_pcm_hw_params_t *)pHwParams;
+    params = (struct snd_pcm_hw_params *)pHwParams;
 
     if (!params) return -1001;
     if (!pHandle) return -1002;
@@ -940,9 +941,9 @@ int UniaudIoctlSWParamSet(OSSSTREAMID streamid, void *pSwParams)
 {
     int ret;
     soundhandle        *pHandle = (soundhandle *)streamid;
-    snd_pcm_sw_params_t *params = NULL;
+    struct snd_pcm_sw_params *params = NULL;
 
-    params = (snd_pcm_sw_params_t *)pSwParams;
+    params = (struct snd_pcm_sw_params *)pSwParams;
 
     if (!params) return -1001;
     if (!pHandle) return -1002;
@@ -957,7 +958,7 @@ int UniaudIoctlPCMStatus(OSSSTREAMID streamid, void *pstatus)
 {
     int ret;
     soundhandle        *pHandle = (soundhandle *)streamid;
-    snd_pcm_status_t   *status = (snd_pcm_status_t *)pstatus;
+    struct snd_pcm_status   *status = (struct snd_pcm_status *)pstatus;
 
     if (!status) return -1001;
     if (!pHandle) return -1002;

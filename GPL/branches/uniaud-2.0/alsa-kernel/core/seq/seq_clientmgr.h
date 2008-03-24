@@ -40,12 +40,12 @@ struct snd_seq_user_client {
 };
 
 struct snd_seq_kernel_client {
-	struct snd_card *card;
-	/* pointer to client functions */
-	void *private_data;			/* private data for client */
 	/* ... */
-};
+#ifdef TARGET_OS2
+	int not_used;
+#endif
 
+};
 
 struct snd_seq_client {
 	snd_seq_client_type_t type;
@@ -61,7 +61,7 @@ struct snd_seq_client {
 	int num_ports;		/* number of ports */
 	struct list_head ports_list_head;
 	rwlock_t ports_lock;
-	struct semaphore ports_mutex;
+	struct mutex ports_mutex;
 	int convert32;		/* convert 32->64bit */
 
 	/* output pool */
@@ -94,13 +94,13 @@ struct snd_seq_client *snd_seq_client_use_ptr(int clientid);
 int snd_seq_dispatch_event(struct snd_seq_event_cell *cell, int atomic, int hop);
 
 /* exported to other modules */
-int snd_seq_register_kernel_client(struct snd_seq_client_callback *callback, void *private_data);
-int snd_seq_unregister_kernel_client(int client);
 int snd_seq_kernel_client_enqueue(int client, struct snd_seq_event *ev, int atomic, int hop);
 int snd_seq_kernel_client_enqueue_blocking(int client, struct snd_seq_event * ev,
 					   struct file *file, int atomic, int hop);
 int snd_seq_kernel_client_write_poll(int clientid, struct file *file, poll_table *wait);
 int snd_seq_client_notify_subscription(int client, int port,
 				       struct snd_seq_port_subscribe *info, int evtype);
+
+extern int seq_client_load[15];
 
 #endif

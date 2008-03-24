@@ -1,7 +1,7 @@
 /*
  *   ALSA sequencer Timer
  *   Copyright (c) 1998-1999 by Frank van de Pol <fvdpol@coil.demon.nl>
- *                              Jaroslav Kysela <perex@suse.cz>
+ *                              Jaroslav Kysela <perex@perex.cz>
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -20,19 +20,11 @@
  *
  */
 
-#include <sound/driver.h>
 #include <sound/core.h>
 #include <linux/slab.h>
 #include "seq_timer.h"
 #include "seq_queue.h"
 #include "seq_info.h"
-
-extern int seq_default_timer_class;
-extern int seq_default_timer_sclass;
-extern int seq_default_timer_card;
-extern int seq_default_timer_device;
-extern int seq_default_timer_subdevice;
-extern int seq_default_timer_resolution;
 
 /* allowed sequencer timer frequencies, in Hz */
 #define MIN_FREQUENCY		10
@@ -54,7 +46,7 @@ static void snd_seq_timer_set_tick_resolution(struct snd_seq_timer_tick *tick,
 		tick->resolution = (tempo / ppq) * 1000;
 		tick->resolution += s;
 	}
-	if (tick->resolution == 0)
+	if (tick->resolution <= 0)
 		tick->resolution = 1;
 	snd_seq_timer_update_tick(tick, 0);
 }
@@ -64,7 +56,7 @@ struct snd_seq_timer *snd_seq_timer_new(void)
 {
 	struct snd_seq_timer *tmr;
 	
-	tmr = (struct snd_seq_timer *)kzalloc(sizeof(*tmr), GFP_KERNEL);
+	tmr = kzalloc(sizeof(*tmr), GFP_KERNEL);
 	if (tmr == NULL) {
 		snd_printd("malloc failed for snd_seq_timer_new() \n");
 		return NULL;
@@ -425,6 +417,7 @@ snd_seq_tick_time_t snd_seq_timer_get_cur_tick(struct snd_seq_timer *tmr)
 }
 
 
+#ifdef CONFIG_PROC_FS
 /* exported to seq_info.c */
 void snd_seq_info_timer_read(struct snd_info_entry *entry,
 			     struct snd_info_buffer *buffer)
@@ -451,3 +444,5 @@ void snd_seq_info_timer_read(struct snd_info_entry *entry,
 		queuefree(q);
  	}
 }
+#endif /* CONFIG_PROC_FS */
+
