@@ -659,7 +659,7 @@ void pci_save_state(struct pci_dev *dev);
 void pci_restore_state(struct pci_dev *dev);
 
 unsigned long pci_get_dma_mask(struct pci_dev *);
-void pci_set_dma_mask(struct pci_dev *, unsigned long mask);
+int pci_set_dma_mask(struct pci_dev *, unsigned long mask);
 
 
 void *pci_get_driver_data (struct pci_dev *dev);
