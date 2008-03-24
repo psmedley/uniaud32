@@ -65,9 +65,8 @@ static IRQ_SLOT *FindSlot(unsigned irq)
 //******************************************************************************
 //******************************************************************************
 
-int request_irq(unsigned int irq,
-                int (near *handler)(int, void *, struct pt_regs *),
-                unsigned long x0, const char *x1, void *x2)
+int request_irq(unsigned irq, irq_handler_t handler,
+		    unsigned long x0, const char *x1, void *x2)
 {
     IRQ_SLOT 	*pSlot = FindSlot(irq);
     unsigned 	u, uSlotNo = (unsigned)-1;

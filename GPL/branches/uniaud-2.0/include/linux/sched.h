@@ -46,9 +46,11 @@ extern void wake_up_process(struct task_struct * tsk);
 void schedule(void);
 
 // 12 Jun 07 SHL Drop superfluous near
+#if 0
 extern int request_irq(unsigned int,
 		       int (*handler)(int, void *, struct pt_regs *),
 		       unsigned long, const char *, void *);
+#endif
 extern void free_irq(unsigned int, void *);
 extern void eoi_irq(unsigned int);
 

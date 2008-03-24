@@ -484,6 +484,10 @@ struct iovec {
 
 typedef irqreturn_t (*snd_irq_handler_t)(int, void *);
 #define irq_handler_t snd_irq_handler_t
+#undef irq_handler_t
+#define irq_handler_t snd_irq_handler_t
+int request_irq(unsigned int, irq_handler_t handler,
+		    unsigned long, const char *, void *);
 
 #ifndef MODULE_ALIAS
 #define MODULE_ALIAS(x)
