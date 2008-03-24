@@ -46,7 +46,7 @@ EVERYTHING_AS_CPP=1
 32BIT=1
 #Default packing on byte boundary
 PACK_1=1
-!include ..\..\makefile.inc
+!include ..\makefile.inc
 
 
 #===================================================================
