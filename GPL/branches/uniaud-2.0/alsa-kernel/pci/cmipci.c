@@ -56,8 +56,13 @@ static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable switches */
 static long mpu_port[SNDRV_CARDS];
+#ifndef TARGET_OS2
 static long fm_port[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS-1)]=1};
 static int soft_ac3[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS-1)]=1};
+#else
+static long fm_port[SNDRV_CARDS] = {0x388, -1,-1,-1,-1,-1,-1,-1};
+static int soft_ac3[SNDRV_CARDS] = {0,1,1,1,1,1,1,1};
+#endif
 #ifdef SUPPORT_JOYSTICK
 static int joystick_port[SNDRV_CARDS];
 #endif
@@ -2405,6 +2410,7 @@ static int snd_cmipci_uswitch_put(struct snd_kcontrol *kcontrol,
 	return _snd_cmipci_uswitch_put(kcontrol, ucontrol, args);
 }
 
+#ifndef TARGET_OS2
 #define DEFINE_SWITCH_ARG(sname, xreg, xmask, xmask_on, xis_byte, xac3) \
 static struct cmipci_switch_args cmipci_switch_arg_##sname = { \
   .reg = xreg, \
@@ -2413,6 +2419,16 @@ static struct cmipci_switch_args cmipci_switch_arg_##sname = { \
   .is_byte = xis_byte, \
   .ac3_sensitive = xac3, \
 }
+#else
+#define DEFINE_SWITCH_ARG(sname, xreg, xmask, xmask_on, xis_byte, xac3) \
+    static struct cmipci_switch_args cmipci_switch_arg_##sname = { \
+    xreg, \
+    xmask, \
+    xmask_on, \
+    xis_byte, \
+    xac3, \
+    }
+#endif
 	
 #define DEFINE_BIT_SWITCH_ARG(sname, xreg, xmask, xis_byte, xac3) \
 	DEFINE_SWITCH_ARG(sname, xreg, xmask, xmask, xis_byte, xac3)

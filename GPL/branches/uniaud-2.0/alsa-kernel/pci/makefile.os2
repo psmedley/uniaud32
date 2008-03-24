@@ -33,8 +33,8 @@ KEE=1
 #===================================================================
 FILE1    = pci_iomap_compat.obj ens1370.obj ens1371.obj cs4281.obj  es1938.obj
 FILE2    = es1968.obj intel8x0.obj maestro3.obj via82xx.obj 
-FILE3    = fm801.obj atiixp.obj 
-#FILE4    = als4000.obj cmipci.obj
+FILE3    = fm801.obj atiixp.obj cmipci.obj
+#FILE4    = als4000.obj 
 FILE5    = 
 FILE6    = 
 FILE7    = 
