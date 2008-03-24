@@ -40,7 +40,7 @@ subdirs: .SYMBOLIC
     @cd ..
     @echo BUILDING isa
     @cd isa
-#    @wmake $(NMAKEOPTS)
+    @wmake $(NMAKEOPTS)
     @cd ..
     @echo BUILDING pci
     @cd pci
