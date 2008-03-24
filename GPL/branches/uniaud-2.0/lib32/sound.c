@@ -278,7 +278,7 @@ ULONG ALSAToOSSRateFlags(ULONG fuRates)
     if(fuRates & SNDRV_PCM_RATE_48000) {
         fuOSSRates |= OSS32_CAPS_PCM_RATE_48000;
     }
-#if 0
+//#if 0
     if(fuRates & SNDRV_PCM_RATE_64000) {
         fuOSSRates |= OSS32_CAPS_PCM_RATE_64000;
     }
@@ -294,7 +294,7 @@ ULONG ALSAToOSSRateFlags(ULONG fuRates)
     if(fuRates & SNDRV_PCM_RATE_192000) {
         fuOSSRates |= OSS32_CAPS_PCM_RATE_192000;
     }
-#endif
+//#endif
     if(fuRates & SNDRV_PCM_RATE_CONTINUOUS) {
         fuOSSRates |= OSS32_CAPS_PCM_RATE_CONTINUOUS;
     }
@@ -334,8 +334,8 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
     }
     params = (struct snd_pcm_hw_params *)(pcminfo+1);
 
-    printk("Number of cards: %i\n",nrCardsDetected);
-    printk("dev id: %i\n",deviceid);
+    printk("Number of cards: %i",nrCardsDetected);
+    printk("dev id: %i",deviceid);
     pDevCaps->nrDevices  = 1;//nrCardsDetected;
     pDevCaps->ulCaps     = OSS32_CAPS_WAVE_PLAYBACK | OSS32_CAPS_WAVE_CAPTURE;
 
@@ -372,7 +372,7 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
             }
             else strncpy(pDevCaps->szDeviceName, pcminfo->id, sizeof(pDevCaps->szDeviceName));
         }
-        printk("Device name: %s\n", pDevCaps->szDeviceName);
+        printk("Device name: %s", pDevCaps->szDeviceName);
         pWaveCaps->nrStreams = pcminfo->subdevices_count;
     
         //get all hardware parameters
@@ -403,13 +403,18 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
         pWaveCaps->ulMinRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->min;
         pWaveCaps->ulMaxRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->max;
 
-//        mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
         mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
+        printk("rate flags1: %X", mask);
+
+        mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
+        printk("rate flags2: %X", mask);
+
         pWaveCaps->ulRateFlags   = mask->bits[0];
 
+        printk("rate flags3: %X", pWaveCaps->ulRateFlags);
         pWaveCaps->ulRateFlags   = ALSAToOSSRateFlags(pWaveCaps->ulRateFlags);
 
-        printk("rate flags: %X\n", pWaveCaps->ulRateFlags);
+        printk("rate flags4: %X", pWaveCaps->ulRateFlags);
 
         pWaveCaps->ulDataFormats = 0;
 

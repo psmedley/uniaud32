@@ -382,8 +382,8 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
             pWaveCaps->ulMinRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->min;
             pWaveCaps->ulMaxRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->max;
 
-//            mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
-            mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
+            mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
+//            mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
             pWaveCaps->ulRateFlags   = mask->bits[0];
 
             pWaveCaps->ulRateFlags   = ALSAToOSSRateFlags(pWaveCaps->ulRateFlags);

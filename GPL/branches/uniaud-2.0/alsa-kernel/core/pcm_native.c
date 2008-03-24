@@ -1964,6 +1964,11 @@ int snd_pcm_hw_constraints_complete(struct snd_pcm_substream *substream)
 	err = snd_pcm_hw_constraint_mask(runtime, SNDRV_PCM_HW_PARAM_SUBFORMAT, 1 << SNDRV_PCM_SUBFORMAT_STD);
 	snd_assert(err >= 0, return -EINVAL);
 
+#ifdef TARGET_OS2
+    err = snd_pcm_hw_constraint_mask(runtime, SNDRV_PCM_HW_PARAM_RATE_MASK, hw->rates);
+    snd_assert(err >= 0, return -EINVAL);
+#endif
+
 	err = snd_pcm_hw_constraint_minmax(runtime, SNDRV_PCM_HW_PARAM_CHANNELS,
 					   hw->channels_min, hw->channels_max);
 	snd_assert(err >= 0, return -EINVAL);
