@@ -102,7 +102,11 @@ struct snd_device {
 struct snd_monitor_file {
 	struct file *file;
 	struct snd_monitor_file *next;
+#ifndef TARGET_OS2
 	const struct file_operations *disconnected_f_op;
+#else
+	struct file_operations *disconnected_f_op;
+#endif
 	struct list_head shutdown_list;
 };
 
@@ -201,7 +205,11 @@ struct snd_minor {
 	int type;			/* SNDRV_DEVICE_TYPE_XXX */
 	int card;			/* card number */
 	int device;			/* device number */
+#ifndef TARGET_OS2
 	const struct file_operations *f_ops;	/* file operations */
+#else
+	struct file_operations *f_ops;	/* file operations */
+#endif
 	void *private_data;		/* private data for f_ops->open */
 	struct device *dev;		/* device for sysfs */
 };
@@ -226,7 +234,11 @@ void snd_request_card(int card);
 
 int snd_register_device_for_dev(int type, struct snd_card *card,
 				int dev,
+#ifndef TARGET_OS2
 				const struct file_operations *f_ops,
+#else
+				struct file_operations *f_ops,
+#endif
 				void *private_data,
 				const char *name,
 				struct device *device);
@@ -249,7 +261,11 @@ int snd_register_device_for_dev(int type, struct snd_card *card,
  * Returns zero if successful, or a negative error code on failure.
  */
 static inline int snd_register_device(int type, struct snd_card *card, int dev,
+#ifndef TARGET_OS2
 				      const struct file_operations *f_ops,
+#else
+				      struct file_operations *f_ops,
+#endif
 				      void *private_data,
 				      const char *name)
 {

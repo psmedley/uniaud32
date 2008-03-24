@@ -133,7 +133,11 @@ static int snd_open(struct inode *inode, struct file *file)
 	unsigned int minor = MINOR(inode->i_rdev);
 #endif
 	struct snd_minor *mptr = NULL;
+#ifndef TARGET_OS2
 	const struct file_operations *old_fops;
+#else
+	struct file_operations *old_fops;
+#endif
 	int err = 0;
 
 	if (minor >= ARRAY_SIZE(snd_minors))
@@ -171,7 +175,11 @@ static int snd_open(struct inode *inode, struct file *file)
 	return err;
 }
 
+#ifndef TARGET_OS2
 static const struct file_operations snd_fops =
+#else
+static struct file_operations snd_fops =
+#endif
 {
 #ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
@@ -239,7 +247,11 @@ static int snd_kernel_minor(int type, struct snd_card *card, int dev)
  * Returns zero if successful, or a negative error code on failure.
  */
 int snd_register_device_for_dev(int type, struct snd_card *card, int dev,
+#ifndef TARGET_OS2
 				const struct file_operations *f_ops,
+#else
+				struct file_operations *f_ops,
+#endif
 				void *private_data,
 				const char *name, struct device *device)
 {
