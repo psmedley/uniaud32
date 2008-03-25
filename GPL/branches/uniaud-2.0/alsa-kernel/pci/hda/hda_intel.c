@@ -1352,7 +1352,7 @@ static int azx_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	if (cmd == SNDRV_PCM_TRIGGER_PAUSE_PUSH ||
 	    cmd == SNDRV_PCM_TRIGGER_SUSPEND ||
 	    cmd == SNDRV_PCM_TRIGGER_STOP) {
-#ifndef TARGET_OS2x
+#ifndef TARGET_OS2
 		int timeout = 5000;
 #else /* TARGET_OS2 */
 		int timeout = 100000;
@@ -1552,7 +1552,7 @@ static int azx_acquire_irq(struct azx *chip, int do_disconnect)
 			"HDA Intel", chip)) {
 		printk(KERN_ERR "hda-intel: unable to grab IRQ %d, "
 		       "disabling device\n", chip->pci->irq);
-#ifndef TARGET_OS2x
+#ifndef TARGET_OS2
 		if (do_disconnect)
 			snd_card_disconnect(chip->card);
 #endif
