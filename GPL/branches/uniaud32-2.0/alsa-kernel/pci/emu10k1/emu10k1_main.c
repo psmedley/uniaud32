@@ -1805,12 +1805,8 @@ int __devinit snd_emu10k1_create(struct snd_card *card,
 
 	/* set the DMA transfer mask */
 	emu->dma_mask = is_audigy ? AUDIGY_DMA_MASK : EMU10K1_DMA_MASK;
-#ifndef TARGET_OS2
 	if (pci_set_dma_mask(pci, emu->dma_mask) < 0 ||
 	    pci_set_consistent_dma_mask(pci, emu->dma_mask) < 0) {
-#else
-	if (!pci_dma_supported(pci, 0x0fffffff)) {
-#endif
 		snd_printk(KERN_ERR "architecture does not support PCI busmaster DMA with mask 0x%lx\n", emu->dma_mask);
 		kfree(emu);
 		pci_disable_device(pci);

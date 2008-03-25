@@ -897,12 +897,8 @@ static int __devinit snd_emu10k1x_create(struct snd_card *card,
 
 	if ((err = pci_enable_device(pci)) < 0)
 		return err;
-#ifndef TARGET_OS2
 	if (pci_set_dma_mask(pci, DMA_28BIT_MASK) < 0 ||
 	    pci_set_consistent_dma_mask(pci, DMA_28BIT_MASK) < 0) {
-#else
-	if (!pci_dma_supported(pci, DMA_28BIT_MASK)) {
-#endif
 		snd_printk(KERN_ERR "error to set 28bit mask DMA\n");
 		pci_disable_device(pci);
 		return -ENXIO;

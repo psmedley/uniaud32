@@ -2198,12 +2198,8 @@ static int __devinit snd_ali_create(struct snd_card *card,
 	if (err < 0)
 		return err;
 	/* check, if we can restrict PCI DMA transfers to 31 bits */
-#ifndef TARGET_OS2
 	if (pci_set_dma_mask(pci, DMA_31BIT_MASK) < 0 ||
 	    pci_set_consistent_dma_mask(pci, DMA_31BIT_MASK) < 0) {
-#else
-	if (!pci_dma_supported(pci, DMA_31BIT_MASK)) {
-#endif
 		snd_printk(KERN_ERR "architecture does not support "
 			   "31bit PCI busmaster DMA\n");
 		pci_disable_device(pci);
