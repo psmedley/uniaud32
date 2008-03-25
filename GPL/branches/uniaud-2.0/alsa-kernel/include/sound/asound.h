@@ -28,9 +28,6 @@
 #include <linux/types.h>
 #include <linux/time.h>
 #include <asm/byteorder.h>
-#ifdef TARGET_OS2x
-#include <sound/config.h>
-#endif
 #ifdef  __LITTLE_ENDIAN
 #define SNDRV_LITTLE_ENDIAN
 #else

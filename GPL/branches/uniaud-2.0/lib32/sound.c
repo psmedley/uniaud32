@@ -278,7 +278,7 @@ ULONG ALSAToOSSRateFlags(ULONG fuRates)
     if(fuRates & SNDRV_PCM_RATE_48000) {
         fuOSSRates |= OSS32_CAPS_PCM_RATE_48000;
     }
-//#if 0
+#if 0
     if(fuRates & SNDRV_PCM_RATE_64000) {
         fuOSSRates |= OSS32_CAPS_PCM_RATE_64000;
     }
@@ -294,7 +294,7 @@ ULONG ALSAToOSSRateFlags(ULONG fuRates)
     if(fuRates & SNDRV_PCM_RATE_192000) {
         fuOSSRates |= OSS32_CAPS_PCM_RATE_192000;
     }
-//#endif
+#endif
     if(fuRates & SNDRV_PCM_RATE_CONTINUOUS) {
         fuOSSRates |= OSS32_CAPS_PCM_RATE_CONTINUOUS;
     }
