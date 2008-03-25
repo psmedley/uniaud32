@@ -88,6 +88,7 @@ struct snd_mem_list {
 
 #ifdef CONFIG_SND_DEBUG
 #define __ASTRING__(x) #x
+#ifndef TARGET_OS2
 #define snd_assert(expr, args...) do {\
 	if (!(expr)) {\
 		printk(KERN_ERR "snd-malloc: BUG? (%s) (called from %p)\n", __ASTRING__(expr), __builtin_return_address(0));\
@@ -95,14 +96,17 @@ struct snd_mem_list {
 	}\
 } while (0)
 #else
-#ifndef TARGET_OS2
-#define snd_assert(expr, args...) /**/
-#else
 #define snd_assert(expr, retval) \
 	if (!(expr)) {\
 		snd_printk("BUG? (%s)\n", __STRING(expr));\
 		##retval;\
 	}
+#endif
+#else
+#ifndef TARGET_OS2
+#define snd_assert(expr, args...) /**/
+#else
+#define snd_assert(expr, retval) (void)(expr)
 #endif
 #endif
 

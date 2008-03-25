@@ -414,6 +414,7 @@ void snd_verbose_printd(const char *file, int line, const char *format, ...)
  * When CONFIG_SND_DEBUG is not set, the expression is executed but
  * not checked.
  */
+#ifndef TARGET_OS2
 #define snd_assert(expr, args...) do {					\
 	if (unlikely(!(expr))) {					\
 		snd_printk(KERN_ERR "BUG? (%s)\n", __ASTRING__(expr));	\
@@ -421,7 +422,13 @@ void snd_verbose_printd(const char *file, int line, const char *format, ...)
 		args;							\
 	}								\
 } while (0)
-
+#else
+#define snd_assert(expr, retval) \
+	if (!(expr)) {\
+		snd_printk("BUG? (%s)\n", __STRING(expr));\
+		##retval;\
+	}
+#endif
 #define snd_BUG() do {				\
 	snd_printk(KERN_ERR "BUG?\n");		\
 	dump_stack();				\
@@ -434,11 +441,7 @@ void snd_verbose_printd(const char *file, int line, const char *format, ...)
 #define snd_assert(expr, args...)	(void)(expr)
 #else
 #define snd_printd snd_printk
-#define snd_assert(expr, retval) \
-	if (!(expr)) {\
-		snd_printk("BUG? (%s)\n", __STRING(expr));\
-		##retval;\
-	}
+#define snd_assert(expr, retval) 	(void)(expr)
 #endif
 #define snd_BUG()			/* nothing */
 
