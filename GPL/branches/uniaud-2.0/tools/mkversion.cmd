@@ -70,7 +70,11 @@ end
 
 parse value versionIn with major'.'minor'.'projVersion
 
-projVers  = versionIn'-'fixpack
+if fixpack="" then
+	projVers  = versionIn
+else
+	projVers  = versionIn'-'fixpack
+
 projVers2 = major||minor||LEFT(projVersion, 1)
 
 LINEIN(AlsaVersHdr,,0)
