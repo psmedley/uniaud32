@@ -8,7 +8,7 @@ CDEFINES += -DIBM_BUILD
 !endif
 
 32BIT=1
-!include ..\..\makefile.inc
+!include ..\makefile.inc
 
 
 #===================================================================

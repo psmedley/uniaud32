@@ -17,7 +17,7 @@
         fInteractive = 1;
 
     /* strings */
-    sIncFile='..\Makefile.inc';
+    sIncFile='Makefile.inc';
 
     /* Status */
     if (fInteractive) then
