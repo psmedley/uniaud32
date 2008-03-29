@@ -5,7 +5,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #-DCONFIG_SND_CS46XX_NEW_DSP
 
 32BIT=1
-!include ..\..\..\..\makefile.inc
+!include ..\..\..\makefile.inc
 
 
 #===================================================================
