@@ -5,6 +5,10 @@
 !if "$(KEE)" == "0"
 DIREXT = W4
 KEE    = 0
+!else if "$(ACPI)" == "1"
+DIREXT = ACP
+ACPI   = 1
+KEE    = 1
 !else
 DIREXT = KEE
 KEE    = 1

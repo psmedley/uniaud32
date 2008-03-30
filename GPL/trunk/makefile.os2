@@ -4,14 +4,28 @@ NMAKEOPTS=-f makefile.os2 $(LOGO)
 
 !if "$(DEBUG)" == "1"
 NMAKEOPTS += DEBUG=1
+!else
+NMAKEOPTS += DEBUG=0
 !endif
 
 !if "$(KEE)" == "0"
 NMAKEOPTS += KEE=0
 KEE=0
+!Message KEE=0, so ACPI=0
+NMAKEOPTS += ACPI=0
+ACPI=0
 !else
 NMAKEOPTS += KEE=1
 KEE=1
+!endif
+
+!include Makefile.inc
+!if "$(ACPI_LIB)" == "" || "$(ACPI)" == "0"
+NMAKEOPTS += ACPI=0
+ACPI=0
+!else
+NMAKEOPTS += ACPI=1
+ACPI=1
 !endif
 
 !if "$(IBM_BUILD)" == "1"

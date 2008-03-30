@@ -43,13 +43,8 @@
         call lineout sIncFile, 'ALSA_SRC       =' sAlsaBase'\src';
         call lineout sIncFile, 'ALSA_LIB_      =' sAlsaBase'\lib';
         call lineout sIncFile, 'ALSA_BIN_      =' sAlsaBase'\bin';
-        call lineout sIncFile, '!ifdef 32BIT'
         call lineout sIncFile, 'ALSA_INCLUDE   =' sAlsaBase'\include';
         call lineout sIncFile, 'ALSA_TOOLS     =' sAlsaBase'\tools';
-        call lineout sIncFile, '!else'
-        call lineout sIncFile, 'ALSA_INCLUDE   =' sAlsaBase'\OCO\include';
-        call lineout sIncFile, 'ALSA_TOOLS     =' sAlsaBase'\OCO\tools';
-        call lineout sIncFile, '!endif'
         call lineout sIncFile, ''
         say 'Enter DDK base directory (e.g. c:\ddk\base)';
         sDDKPath = linein();
@@ -59,16 +54,16 @@
         sWatcomPath = linein();
         call lineout sIncFile, 'WATCOM         =' sWatcomPath;
 
+        say 'Enter directory location for AcpiDrv.lib (e.g. C:\ACPI)';
+        say 'Or leave blank if not present.'
+        sAcpiLibPath = linein();
+        call lineout sIncFile, 'ACPI_LIB       =' sAcpiLibPath;
+
         call lineout sIncFile, '################################################################################'
         call lineout sIncFile, '# Include the right watcom makefile'
         call lineout sIncFile, '################################################################################'
-        call lineout sIncFile, '!ifdef 32BIT'
         call lineout sIncFile, '!include 'sAlsaBase'\include\watcom32.mk'
         call lineout sIncFile, '!include 'sAlsaBase'\include\watcom32.mak'
-        call lineout sIncFile, '!else'
-        call lineout sIncFile, '!include 'sAlsaBase'\OCO\include\watcom16.mk'
-        call lineout sIncFile, '!include 'sAlsaBase'\OCO\include\watcom16.mak'
-        call lineout sIncFile, '!endif'
         call lineout sIncFile, ''
 
         call lineout sIncFile, ''

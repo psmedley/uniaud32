@@ -1,4 +1,3 @@
-# $Id: makefile.os2,v 1.3 2003/07/21 18:35:39 vladest Exp $
 #
 # Makefile for the 32bit UNIAUD driver
 #
@@ -87,7 +86,9 @@ $(LNKFILE): $(MAKEFILE)
     @%write $^@ option cache
     @%write $^@ option alignment=16
     @%write $^@ option map=$(WMAPNAME)
-!if "$(KEE)" == "1"
+!if "$(ACPI) == "1"
+    @%write $^@ option description '$(%BUILDLEVEL) (ACPI)'
+!else if "$(KEE)" == "1"
     @%write $^@ option description '$(%BUILDLEVEL) (KEE)'
 !else
     @%write $^@ option description '$(%BUILDLEVEL) (W4)'
@@ -95,6 +96,9 @@ $(LNKFILE): $(MAKEFILE)
     @%write $^@ name $(OBJDIR)\$(TARGET).sys
     @for %f in ($(FILES)) do @%append $^@ file $(OBJDIR)\%f
     @for %f in ($(LIBS)) do @%append $^@ library %f
+!if "$(ACPI) == "1"
+    @%write $^@ library $(ACPI_LIB)\AcpiDrv.lib
+!endif
     @%write $^@ library $(%WATCOM)\lib386\os2\clib3r.lib
     @%write $^@ library $(%WATCOM)\lib386\os2\os2386.lib
 !else
@@ -103,13 +107,18 @@ $(LNKFILE): $(MAKEFILE)
     @%write $^@ /MAP:$(OBJDIR)\$(TARGET).map
     @for %f in ($(FILES)) do @%append $^@ $(OBJDIR)\%f
     @for %f in ($(LIBS)) do @%append $^@ %f
+!if "$(ACPI)" == "1"
+    @%write $^@ $(ACPI_LIB)\AcpiDrv.lib
+!endif
     @%write $^@ $(%WATCOM)\lib386\os2\clib3r.lib
     @%write $^@ $(%WATCOM)\lib386\os2\os2386.lib
     @%write $^@ $(DEFFILE)
 !endif
 
 $(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
-!if "$(KEE)" == "1"
+!if "$(ACPI)" == "1"
+     @%write $(DEFFILE) description '$(%BUILDLEVEL) (ACPI)'
+!else if "$(KEE)" == "1"
      @%write $(DEFFILE) description '$(%BUILDLEVEL) (KEE)'
 !else
      @%write $(DEFFILE) description '$(%BUILDLEVEL) (W4)'
@@ -118,12 +127,11 @@ $(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
      $(LINK) @$(LNKFILE)
 
      copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)
-!if "$(KEE)" == "1"
-#     copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)\$(TARGET)kee.sys
-         
+!if "$(ACPI)" == "1"
+      copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN_)\$(TARGET)acpi.sys
+!else if "$(KEE)" == "1"
       copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN_)\$(TARGET)kee.sys
 !else
-#     copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)\$(TARGET)w4.sys
      copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN_)\$(TARGET)w4.sys
 !endif
 
