@@ -653,6 +653,20 @@ static inline size_t snd_pcm_lib_period_bytes(struct snd_pcm_substream *substrea
 static inline snd_pcm_uframes_t snd_pcm_playback_avail(struct snd_pcm_runtime *runtime)
 {
 	snd_pcm_sframes_t avail = runtime->status->hw_ptr + runtime->buffer_size - runtime->control->appl_ptr;
+
+#if defined TARGET_OS2 && ACPI
+       if ( runtime->buffer_size > runtime->control->appl_ptr)
+          avail = runtime->status->hw_ptr + runtime->buffer_size - runtime->control->appl_ptr;
+       else
+       {
+
+          avail = runtime->control->appl_ptr - runtime->status->hw_ptr;
+          if ( avail > runtime->buffer_size )
+             avail = 0;
+          else
+             avail = runtime->buffer_size - avail;
+       }
+#endif /* TARGET_OS2 && ACPI */
 	if (avail < 0)
 		avail += runtime->boundary;
 	else if ((snd_pcm_uframes_t) avail >= runtime->boundary)
