@@ -991,6 +991,7 @@ __next:
                            pHwParams->ulNumChannels, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
                           pHwParams->ulSampleRate, 0);
+#if 0
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, 
                           periodsize, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 
@@ -1001,6 +1002,7 @@ __next:
                           periodsize*nrperiods, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 
                           periodbytes*nrperiods, 0);
+#endif
 //#ifdef DEBUG_PK
     printk("Hardware parameters: sample rate %i, data type %i, channels %i, period size %i, periods %i\n",
              pHwParams->ulSampleRate, pHwParams->ulDataType, pHwParams->ulNumChannels, periodsize, nrperiods);
