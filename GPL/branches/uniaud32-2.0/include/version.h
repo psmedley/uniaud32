@@ -13,7 +13,7 @@
 #define PRODUCT_NAME            "Universal Audio Driver for OS/2 and eComStation"
 #define VENDOR_NAME             "Netlabs"
 #define PRODUCT_TIMESTAMP       20080401L       // YYYYMMDD
-#define UNIAUD_VERSION          "1.9.1"
+#define UNIAUD_VERSION          "1.9.1-SVN r333"
 #define ALSA_VERSION            "1.0.16"
  
  
