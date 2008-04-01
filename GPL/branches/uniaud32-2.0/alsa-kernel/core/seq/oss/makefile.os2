@@ -1,30 +1,45 @@
-CINCLUDES = ..\..\include;..\include;$(%WATCOM)\H
+CINCLUDES = ..\..\..\..\include;..\..\..\include;$(%WATCOM)\H
 AINCLUDES = $(DDK_BASE)\H
 
 CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
 
 32BIT=1
-!include ..\..\makefile.inc
+!include ..\..\..\..\makefile.inc
 
-NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG) 
+NMAKEOPTS=-f makefile.os2 $(LOGO)
+
+!if "$(DEBUG)" == "1"
+NMAKEOPTS += DEBUG=1
+!endif
+
+!if "$(KEE)" == "0"
+NMAKEOPTS += KEE=0
+KEE=0
+!else
+NMAKEOPTS += KEE=1
+KEE=1
+!endif
+
+!if "$(DEBUG)" == "1"
+!Message BUILDING DEBUG VERSION
+!else
+!Message BUILDING RELEASE VERSION
+!endif
 
 #===================================================================
 #
 #   List of source files
 #
 #===================================================================
-FILE1    = util_mem.obj
-FILE2    = 
-FILE3    = 
+FILE1    = seq_oss.obj seq_oss_init.obj seq_oss_timer.obj seq_oss_ioctl.obj
+FILE2    = seq_oss_event.obj seq_oss_rw.obj seq_oss_synth.obj
+FILE3    = seq_oss_midi.obj seq_oss_readq.obj seq_oss_writeq.obj
 FILE4    = 
 FILE5    = 
-FILE6    = 
-FILE7    = 
-FILE8    = 
 FILELAST =
 FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10) $(FILE11) $(FILE12)
 
-TARGET   = synth
+TARGET   = seq-oss
 
 LNKFILE  = $(OBJDIR)\$(TARGET).lnk
 
@@ -46,17 +61,17 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 subdirs: .SYMBOLIC
-    @echo BUILDING emux
-    @cd emux
-    @wmake $(NMAKEOPTS)
-    @cd ..
+#    @echo BUILDING instr
+#    @cd instr
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
 
 clean: .SYMBOLIC
-    @echo CLEANING emux
-    @cd emux
-    @wmake $(NMAKEOPTS) clean
-    @cd ..
+#    @echo BUILDING instr
+#    @cd instr
+#    @wmake $(NMAKEOPTS) clean
+#    @cd ..
     -@rm *.err 2>nul
     @cd $(OBJDIR)
     -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
-    @cd ..\..
+    @cd ../..

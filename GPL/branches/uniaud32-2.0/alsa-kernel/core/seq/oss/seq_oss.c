@@ -36,8 +36,10 @@ MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("OSS-compatible sequencer module");
 MODULE_LICENSE("GPL");
 /* Takashi says this is really only for sound-service-0-, but this is OK. */
+#ifndef TARGET_OS2
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_SEQUENCER);
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_MUSIC);
+#endif
 
 #ifdef SNDRV_SEQ_OSS_DEBUG
 module_param(seq_oss_debug, int, 0644);
@@ -193,6 +195,17 @@ odev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #define odev_ioctl_compat	NULL
 #endif
 
+#ifndef CONFIG_SND_HAVE_NEW_IOCTL
+/* need to unlock BKL to allow preemption */
+static int odev_ioctl_old(struct inode *inode, struct file * file,
+			  unsigned int cmd, unsigned long arg)
+{
+	int err;
+	err = odev_ioctl(file, cmd, arg);
+	return err;
+}
+#endif
+
 static unsigned int
 odev_poll(struct file *file, poll_table * wait)
 {
@@ -208,14 +221,20 @@ odev_poll(struct file *file, poll_table * wait)
 
 static const struct file_operations seq_oss_f_ops =
 {
+#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
+#endif
 	.read =		odev_read,
 	.write =	odev_write,
 	.open =		odev_open,
 	.release =	odev_release,
 	.poll =		odev_poll,
+#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	odev_ioctl,
 	.compat_ioctl =	odev_ioctl_compat,
+#else
+	.ioctl =	odev_ioctl_old,
+#endif
 };
 
 static int __init

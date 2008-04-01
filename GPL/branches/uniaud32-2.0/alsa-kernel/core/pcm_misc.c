@@ -444,6 +444,7 @@ int snd_pcm_limit_hw_rates(struct snd_pcm_runtime *runtime)
 			runtime->hw.rate_max = snd_pcm_known_rates.list[i];
 			break;
 		}
+
 	}
 	return 0;
 }

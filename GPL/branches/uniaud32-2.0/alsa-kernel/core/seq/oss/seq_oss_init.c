@@ -20,6 +20,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
+#ifdef TARGET_OS2
+#include <sound/initval.h>
+#endif
 #include "seq_oss_device.h"
 #include "seq_oss_synth.h"
 #include "seq_oss_midi.h"

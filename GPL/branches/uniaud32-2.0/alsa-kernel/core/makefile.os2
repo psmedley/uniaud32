@@ -6,25 +6,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 32BIT=1
 !include ..\..\makefile.inc
 
-NMAKEOPTS=-f makefile.os2 $(LOGO)
-
-!if "$(DEBUG)" == "1"
-NMAKEOPTS += DEBUG=1
-!endif
-
-!if "$(KEE)" == "0"
-NMAKEOPTS += KEE=0
-KEE=0
-!else
-NMAKEOPTS += KEE=1
-KEE=1
-!endif
-
-!if "$(DEBUG)" == "1"
-!Message BUILDING DEBUG VERSION
-!else
-!Message BUILDING RELEASE VERSION
-!endif
+NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG) 
 
 #===================================================================
 #
@@ -33,7 +15,7 @@ KEE=1
 #===================================================================
 FILE1    = sound.obj init.obj memory.obj memalloc.obj sgbuf.obj
 FILE2    = control.obj device.obj misc.obj wrappers.obj 
-#FILE3    = sound_oss.obj info_oss.obj isadma.obj
+FILE3    = sound_oss.obj info_oss.obj 
 FILE4    = pcm.obj pcm_native.obj pcm_lib.obj pcm_misc.obj pcm_timer.obj pcm_memory.obj
 FILE5    = rawmidi.obj
 FILE6    = timer.obj
@@ -69,10 +51,18 @@ subdirs: .SYMBOLIC
     @cd seq
     @wmake $(NMAKEOPTS)
     @cd ..
+    @echo BUILDING oss
+    @cd oss
+    @wmake $(NMAKEOPTS)
+    @cd ..
 
 clean: .SYMBOLIC
     @echo CLEARING seq
     @cd seq
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEARING oss
+    @cd oss
     @wmake $(NMAKEOPTS) clean
     @cd ..
     -@rm *.err

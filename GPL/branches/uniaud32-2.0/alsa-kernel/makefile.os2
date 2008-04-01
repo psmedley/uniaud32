@@ -1,26 +1,6 @@
 LOGO=-h
 
-NMAKEOPTS=-f makefile.os2 $(LOGO)
-
-!if "$(DEBUG)" == "1"
-NMAKEOPTS += DEBUG=1
-!endif
-
-!if "$(KEE)" == "0"
-NMAKEOPTS += KEE=0
-KEE=0
-!else
-NMAKEOPTS += KEE=1
-KEE=1
-!endif
-
-
-!if "$(DEBUG)" == "1"
-!Message BUILDING DEBUG VERSION
-!else
-!Message BUILDING RELEASE VERSION
-!endif
-
+NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG) 
 
 #===================================================================
 #

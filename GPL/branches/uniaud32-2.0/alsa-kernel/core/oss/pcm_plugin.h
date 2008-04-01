@@ -178,7 +178,11 @@ static inline int snd_pcm_plug_slave_format(int format, struct snd_mask *format_
 #ifdef PLUGIN_DEBUG
 #define pdprintf( fmt, args... ) printk( "plugin: " fmt, ##args)
 #else
+#ifndef TARGET_OS2
 #define pdprintf( fmt, args... ) 
+#else
+#define pdprintf printk
+#endif
 #endif
 
 #endif				/* __PCM_PLUGIN_H */

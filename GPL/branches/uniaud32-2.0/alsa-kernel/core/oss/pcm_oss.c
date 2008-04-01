@@ -44,7 +44,11 @@
 #define OSS_ALSAEMULVER		_SIOR ('M', 249, int)
 
 static int dsp_map[SNDRV_CARDS];
+#ifndef TARGET_OS2
 static int adsp_map[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS-1)] = 1};
+#else
+static int adsp_map[SNDRV_CARDS] = {1,1,1,1,1,1,1,1};
+#endif
 static int nonblock_open = 1;
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>, Abramo Bagnara <abramo@alsa-project.org>");
@@ -56,8 +60,10 @@ module_param_array(adsp_map, int, NULL, 0444);
 MODULE_PARM_DESC(adsp_map, "PCM device number assigned to 2nd OSS device.");
 module_param(nonblock_open, bool, 0644);
 MODULE_PARM_DESC(nonblock_open, "Don't block opening busy PCM devices.");
+#ifndef TARGET_OS2
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_PCM);
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_PCM1);
+#endif
 
 extern int snd_mixer_oss_ioctl_card(struct snd_card *card, unsigned int cmd, unsigned long arg);
 static int snd_pcm_oss_get_rate(struct snd_pcm_oss_file *pcm_oss_file);
@@ -465,7 +471,11 @@ static int snd_pcm_hw_param_near(struct snd_pcm_substream *pcm,
 	return v;
 }
 
+#ifndef TARGET_OS2
 static int _snd_pcm_hw_param_set(struct snd_pcm_hw_params *params,
+#else
+int _snd_pcm_hw_param_set(struct snd_pcm_hw_params *params,
+#endif
 				 snd_pcm_hw_param_t var, unsigned int val,
 				 int dir)
 {
@@ -1627,7 +1637,11 @@ static int snd_pcm_oss_sync(struct snd_pcm_oss_file *pcm_oss_file)
 					snd_leave_user(fs);
 				}
 			} else if (runtime->access == SNDRV_PCM_ACCESS_RW_NONINTERLEAVED) {
+#ifndef TARGET_OS2
 				void __user *buffers[runtime->channels];
+#else
+				void __user *buffers[32];
+#endif
 				memset(buffers, 0, runtime->channels * sizeof(void *));
 				snd_pcm_lib_writev(substream, buffers, size);
 			}
@@ -2338,7 +2352,11 @@ static int snd_pcm_oss_open(struct inode *inode, struct file *file)
 	int nonblock;
 	wait_queue_t wait;
 
+#ifndef TARGET_OS2
 	pcm = snd_lookup_oss_minor_data(iminor(inode),
+#else
+	pcm = snd_lookup_oss_minor_data(MINOR(inode->i_rdev),
+#endif
 					SNDRV_OSS_DEVICE_TYPE_PCM);
 	if (pcm == NULL) {
 		err = -ENODEV;
@@ -2372,7 +2390,11 @@ static int snd_pcm_oss_open(struct inode *inode, struct file *file)
 	mutex_lock(&pcm->open_mutex);
 	while (1) {
 		err = snd_pcm_oss_open_file(file, pcm, &pcm_oss_file,
+#ifndef TARGET_OS2
 					    iminor(inode), setup);
+#else
+					    MINOR(inode->i_rdev), setup);
+#endif
 		if (err >= 0)
 			break;
 		if (err == -EAGAIN) {
@@ -2592,6 +2614,17 @@ static long snd_pcm_oss_ioctl(struct file *file, unsigned int cmd, unsigned long
 #define snd_pcm_oss_ioctl_compat	snd_pcm_oss_ioctl
 #else
 #define snd_pcm_oss_ioctl_compat	NULL
+#endif
+
+#ifndef CONFIG_SND_HAVE_NEW_IOCTL
+/* need to unlock BKL to allow preemption */
+static int snd_pcm_oss_ioctl_old(struct inode *inode, struct file * file,
+				 unsigned int cmd, unsigned long arg)
+{
+	int err;
+	err = snd_pcm_oss_ioctl(file, cmd, arg);
+	return err;
+}
 #endif
 
 static ssize_t snd_pcm_oss_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
@@ -2921,15 +2954,23 @@ static void snd_pcm_oss_proc_done(struct snd_pcm *pcm)
 
 static const struct file_operations snd_pcm_oss_f_reg =
 {
+#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
+#endif
 	.read =		snd_pcm_oss_read,
 	.write =	snd_pcm_oss_write,
 	.open =		snd_pcm_oss_open,
 	.release =	snd_pcm_oss_release,
 	.poll =		snd_pcm_oss_poll,
+#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	snd_pcm_oss_ioctl,
 	.compat_ioctl =	snd_pcm_oss_ioctl_compat,
+#else
+	.ioctl =	snd_pcm_oss_ioctl_old,
+#endif
+#ifndef TARGET_OS2
 	.mmap =		snd_pcm_oss_mmap,
+#endif
 };
 
 static void register_oss_dsp(struct snd_pcm *pcm, int index)

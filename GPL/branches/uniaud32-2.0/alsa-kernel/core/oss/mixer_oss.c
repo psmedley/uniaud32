@@ -35,7 +35,9 @@
 MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Mixer OSS emulation for ALSA.");
 MODULE_LICENSE("GPL");
+#ifndef TARGET_OS2
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_MIXER);
+#endif
 
 static int snd_mixer_oss_open(struct inode *inode, struct file *file)
 {
@@ -43,7 +45,11 @@ static int snd_mixer_oss_open(struct inode *inode, struct file *file)
 	struct snd_mixer_oss_file *fmixer;
 	int err;
 
+#ifndef TARGET_OS2
 	card = snd_lookup_oss_minor_data(iminor(inode),
+#else
+	card = snd_lookup_oss_minor_data(MINOR(inode->i_rdev),
+#endif
 					 SNDRV_OSS_DEVICE_TYPE_MIXER);
 	if (card == NULL)
 		return -ENODEV;
@@ -384,17 +390,34 @@ int snd_mixer_oss_ioctl_card(struct snd_card *card, unsigned int cmd, unsigned l
 #define snd_mixer_oss_ioctl_compat	NULL
 #endif
 
+#ifndef CONFIG_SND_HAVE_NEW_IOCTL
+/* need to unlock BKL to allow preemption */
+static int snd_mixer_oss_ioctl_old(struct inode *inode, struct file * file,
+				   unsigned int cmd, unsigned long arg)
+{
+	int err;
+	err = snd_mixer_oss_ioctl(file, cmd, arg);
+	return err;
+}
+#endif
+
 /*
  *  REGISTRATION PART
  */
 
 static const struct file_operations snd_mixer_oss_f_ops =
 {
+#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
+#endif
 	.open =		snd_mixer_oss_open,
 	.release =	snd_mixer_oss_release,
+#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	snd_mixer_oss_ioctl,
 	.compat_ioctl =	snd_mixer_oss_ioctl_compat,
+#else
+	.ioctl =	snd_mixer_oss_ioctl_old,
+#endif	
 };
 
 /*

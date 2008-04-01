@@ -6,25 +6,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 32BIT=1
 !include ..\..\..\makefile.inc
 
-NMAKEOPTS=-f makefile.os2 $(LOGO)
-
-!if "$(DEBUG)" == "1"
-NMAKEOPTS += DEBUG=1
-!endif
-
-!if "$(KEE)" == "0"
-NMAKEOPTS += KEE=0
-KEE=0
-!else
-NMAKEOPTS += KEE=1
-KEE=1
-!endif
-
-!if "$(DEBUG)" == "1"
-!Message BUILDING DEBUG VERSION
-!else
-!Message BUILDING RELEASE VERSION
-!endif
+NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG) 
 
 #===================================================================
 #
@@ -61,16 +43,16 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 subdirs: .SYMBOLIC
-#    @echo BUILDING instr
-#    @cd instr
-#    @wmake $(NMAKEOPTS)
-#    @cd ..
+    @echo BUILDING oss
+    @cd oss
+    @wmake $(NMAKEOPTS)
+    @cd ..
 
 clean: .SYMBOLIC
-#    @echo BUILDING instr
-#    @cd instr
-#    @wmake $(NMAKEOPTS) clean
-#    @cd ..
+    @echo BUILDING oss
+    @cd oss
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
     -@rm *.err 2>nul
     @cd $(OBJDIR)
     -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul

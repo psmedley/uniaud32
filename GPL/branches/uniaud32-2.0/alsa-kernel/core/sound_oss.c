@@ -18,9 +18,11 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
+#ifdef TARGET_OS2
+#include <sound/config.h>
+#endif
 
 #ifdef CONFIG_SND_OSSEMUL
-
 #if !defined(CONFIG_SOUND) && !(defined(MODULE) && defined(CONFIG_SOUND_MODULE))
 #error "Enable the OSS soundcore multiplexer (CONFIG_SOUND) in the kernel."
 #endif
@@ -132,6 +134,7 @@ int snd_register_oss_device(int type, struct snd_card *card, int dev,
 		track2 = SNDRV_MINOR_OSS(cidx, SNDRV_MINOR_OSS_DMMIDI1);
 		break;
 	}
+#ifndef TARGET_OS2
 	register1 = register_sound_special_device(f_ops, minor, carddev);
 	if (register1 != minor)
 		goto __end;
@@ -142,6 +145,7 @@ int snd_register_oss_device(int type, struct snd_card *card, int dev,
 			goto __end;
 		snd_oss_minors[track2] = preg;
 	}
+#endif
 	mutex_unlock(&sound_oss_mutex);
 	return 0;
 

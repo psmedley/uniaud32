@@ -56,7 +56,12 @@ struct seq_oss_midi {
 static int max_midi_devs;
 static struct seq_oss_midi *midi_devs[SNDRV_SEQ_OSS_MAX_MIDI_DEVS];
 
+#ifndef TARGET_OS2
 static DEFINE_SPINLOCK(register_lock);
+#else
+spinlock_t register_lock = SPIN_LOCK_UNLOCKED;
+#endif
+
 
 /*
  * prototypes

@@ -92,12 +92,14 @@ static void snd_sndstat_proc_read(struct snd_info_entry *entry,
 				  struct snd_info_buffer *buffer)
 {
 	snd_iprintf(buffer, "Sound Driver:3.8.1a-980706 (ALSA v" CONFIG_SND_VERSION " emulation code)\n");
+#ifndef TARGET_OS2
 	snd_iprintf(buffer, "Kernel: %s %s %s %s %s\n",
 		    init_utsname()->sysname,
 		    init_utsname()->nodename,
 		    init_utsname()->release,
 		    init_utsname()->version,
 		    init_utsname()->machine);
+#endif
 	snd_iprintf(buffer, "Config options: 0\n");
 	snd_iprintf(buffer, "\nInstalled drivers: \n");
 	snd_iprintf(buffer, "Type 10: ALSA emulation\n");
