@@ -43,16 +43,16 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 subdirs: .SYMBOLIC
-    @echo BUILDING oss
-    @cd oss
-    @wmake $(NMAKEOPTS)
-    @cd ..
+#    @echo BUILDING oss
+#    @cd oss
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
 
 clean: .SYMBOLIC
-    @echo BUILDING oss
-    @cd oss
-    @wmake $(NMAKEOPTS) clean
-    @cd ..
+#    @echo BUILDING oss
+#    @cd oss
+#    @wmake $(NMAKEOPTS) clean
+#    @cd ..
     -@rm *.err 2>nul
     @cd $(OBJDIR)
     -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul

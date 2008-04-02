@@ -31,7 +31,7 @@ KEE=1
 #   List of source files
 #
 #===================================================================
-FILE1    = mixer_oss.obj pcm_oss.obj 
+FILE1    = pcm_oss.obj 
 FILE2    = 
 FILE3    = 
 FILE4    = 

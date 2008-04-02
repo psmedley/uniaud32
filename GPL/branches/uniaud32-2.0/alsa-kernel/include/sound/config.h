@@ -281,7 +281,6 @@ extern int this_module[64];
 #define CONFIG_SND_SEQUENCER
 #define CONFIG_SND_OSSEMUL
 #define CONFIG_SND_PCM_OSS
-#define CONFIG_SND_MIXER_OSS
 #define SNDRV_LITTLE_ENDIAN
 #define EXPORT_SYMBOL(a)
 #define CONFIG_SOUND
