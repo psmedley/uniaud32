@@ -30,6 +30,7 @@
 #include <dbgos2.h>
 #include <devhelp.h>
 #include <unicard.h>
+#include <version.h>
 #ifdef KEE
 #include <kee.h>
 #endif
@@ -108,7 +109,7 @@ OSSRET OSS32_Initialize(void)
         DebugInt3();
         return OSSERR_INIT_FAILED;
     }
-
+    dprintf(("Uniaud version %s",UNIAUD_VERSION));
     dprintf(("OSS32_Initialize. Start address: %X", OffsetBeginCS32));
 //    DebugInt3();
 
