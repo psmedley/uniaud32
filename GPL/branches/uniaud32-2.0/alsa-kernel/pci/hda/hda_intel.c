@@ -62,23 +62,23 @@ static int probe_mask[SNDRV_CARDS] = {-1};
 static int single_cmd;
 static int enable_msi;
 
-//module_param_array(index, int, NULL, 0444);
+module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for Intel HD audio interface.");
-//module_param_array(id, charp, NULL, 0444);
+module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for Intel HD audio interface.");
-//module_param_array(enable, bool, NULL, 0444);
+module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable Intel HD audio interface.");
-//module_param_array(model, charp, NULL, 0444);
+module_param_array(model, charp, NULL, 0444);
 MODULE_PARM_DESC(model, "Use the given board model.");
-//module_param_array(position_fix, int, NULL, 0444);
+module_param_array(position_fix, int, NULL, 0444);
 MODULE_PARM_DESC(position_fix, "Fix DMA pointer "
 		 "(0 = auto, 1 = none, 2 = POSBUF, 3 = FIFO size).");
-//module_param_array(probe_mask, int, NULL, 0444);
+module_param_array(probe_mask, int, NULL, 0444);
 MODULE_PARM_DESC(probe_mask, "Bitmask to probe codecs (default = -1).");
-//module_param(single_cmd, bool, 0444);
+module_param(single_cmd, bool, 0444);
 MODULE_PARM_DESC(single_cmd, "Use single command to communicate with codecs "
 		 "(for debugging only).");
-//module_param(enable_msi, int, 0444);
+module_param(enable_msi, int, 0444);
 MODULE_PARM_DESC(enable_msi, "Enable Message Signaled Interrupt (MSI)");
 
 #ifdef CONFIG_SND_HDA_POWER_SAVE
@@ -89,7 +89,7 @@ MODULE_PARM_DESC(enable_msi, "Enable Message Signaled Interrupt (MSI)");
  * wake up.
  */
 static int power_save_controller = 1;
-//module_param(power_save_controller, bool, 0644);
+module_param(power_save_controller, bool, 0644);
 MODULE_PARM_DESC(power_save_controller, "Reset controller in power save mode.");
 #endif
 

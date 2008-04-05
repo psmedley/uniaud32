@@ -808,11 +808,13 @@ tryagain:
     samplesize = snd_pcm_format_size(OSSToALSADataType[pHwParams->ulDataType], 1);
     pHandle->doublesamplesize  = samplesize * 2;
     pHandle->doublesamplesize *= pHwParams->ulNumChannels;
-    periodbytes = pHwParams->ulPeriodSize;
-    periodsize  = bytes_to_samples(periodbytes);
+//    periodbytes = pHwParams->ulPeriodSize;
+//    periodsize  = bytes_to_samples(periodbytes);
+    periodsize = pHwParams->ulPeriodSize;
+    periodbytes = samples_to_bytes(periodsize);
     // checking number of channels
 
-    printk("channels: %i, period size: %i\n",pHwParams->ulNumChannels, periodbytes);
+    printk("channels: %i, period bytes: %i\n",pHwParams->ulNumChannels, periodbytes);
     _snd_pcm_hw_params_any(&params);
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
     ulMinRate     = hw_param_interval(&params, SNDRV_PCM_HW_PARAM_RATE)->min;
@@ -925,7 +927,6 @@ __next:
     if(periodbytes > maxperiodbytes) {
         periodbytes = maxperiodbytes;
     }
-
     minperiodsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_SIZE)->min;
     maxperiodsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_SIZE)->max;
     if(periodsize < minperiodsize) {
@@ -935,7 +936,6 @@ __next:
     if(periodsize > maxperiodsize) {
         periodsize = maxperiodsize;
     }
-
     if(samples_to_bytes(periodsize) < periodbytes) {
         periodbytes = samples_to_bytes(periodsize);
     }
@@ -943,7 +943,6 @@ __next:
     if(bytes_to_samples(periodbytes) < periodsize) {
         periodsize = bytes_to_samples(periodbytes);
     }
-
     //make sure period size is a whole fraction of the buffer size
     bufsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_BUFFER_BYTES)->max;
     if(periodsize) {
@@ -991,7 +990,6 @@ __next:
                            pHwParams->ulNumChannels, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
                           pHwParams->ulSampleRate, 0);
-#if 0
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, 
                           periodsize, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 
@@ -1002,13 +1000,14 @@ __next:
                           periodsize*nrperiods, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 
                           periodbytes*nrperiods, 0);
-#endif
+
 //#ifdef DEBUG_PK
     printk("Hardware parameters: sample rate %i, data type %i, channels %i, period size %i, periods %i\n",
              pHwParams->ulSampleRate, pHwParams->ulDataType, pHwParams->ulNumChannels, periodsize, nrperiods);
 //#endif
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)__Stack32ToFlat(&params));
-    if (ret == -77 && fTryAgain == FALSE)
+    printk("OSS32_WaveSetHwParams return %d after SNDRV_PCM_IOCTL_HW_PARAMS ioctl", ret);
+    if (ret == -77 && fTryAgain == FALSE) 
     {
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
         fTryAgain = TRUE;

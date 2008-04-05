@@ -29,11 +29,11 @@
 #include <sound/initval.h>
 
 static int preallocate_dma = 1;
-//module_param(preallocate_dma, int, 0444);
+module_param(preallocate_dma, int, 0444);
 MODULE_PARM_DESC(preallocate_dma, "Preallocate DMA memory when the PCM devices are initialized.");
 
 static int maximum_substreams = 4;
-//module_param(maximum_substreams, int, 0444);
+module_param(maximum_substreams, int, 0444);
 MODULE_PARM_DESC(maximum_substreams, "Maximum substreams with preallocated DMA memory.");
 
 static const size_t snd_minimum_buffer = 16384;

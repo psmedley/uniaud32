@@ -44,7 +44,7 @@ MODULE_LICENSE("GPL");
 
 static int enable_loopback;
 
-//module_param(enable_loopback, bool, 0444);
+module_param(enable_loopback, bool, 0444);
 MODULE_PARM_DESC(enable_loopback, "Enable AC97 ADC/DAC Loopback Control");
 
 #ifdef CONFIG_SND_AC97_POWER_SAVE
