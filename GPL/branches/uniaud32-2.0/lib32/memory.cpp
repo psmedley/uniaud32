@@ -195,8 +195,8 @@ __again:
     if (rc == 0) {
         *pAddr = (LINEAR)addr;
         if (flags & VMDHA_USEHIGHMEM)
-            dprintf((("allocated %X in HIGH memory"), size));
-        else dprintf((("allocated %X in LOW memory"), size));
+            dprintf((("allocated %X in HIGH memory\n"), size));
+        else dprintf((("allocated %X in LOW memory\n"), size));
     }
     if ((rc == 87) &&
         (flags & VMDHA_USEHIGHMEM))
