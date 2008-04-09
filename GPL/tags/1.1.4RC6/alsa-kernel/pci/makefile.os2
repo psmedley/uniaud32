@@ -1,0 +1,160 @@
+CINCLUDES = ..\..\include;..\include;$(%WATCOM)\H
+AINCLUDES = $(DDK_BASE)\H
+
+CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
+
+32BIT=1
+!include ..\..\makefile.inc
+
+NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG)
+
+
+#===================================================================
+#
+#   List of source files
+#
+#===================================================================
+FILE1    = cmipci.obj ens1370.obj ens1371.obj cs4281.obj  es1938.obj
+FILE2    = es1968.obj intel8x0.obj maestro3.obj via82xx.obj als4000.obj
+FILE3    = fm801.obj atiixp.obj bt87x.obj
+#ice1712.obj fm801.obj  rme96.obj sonicvibes.obj 
+FILE4    = 
+FILE5    = 
+FILE6    = 
+FILE7    = 
+FILE8    = 
+FILELAST =
+FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10) $(FILE11) $(FILE12)
+
+TARGET   = pci
+
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
+
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: $(OBJDIR)\$(TARGET).lib subdirs
+
+
+$(LNKFILE): makefile.os2
+    @%create $(LNKFILE)
+    @for %f in ($(FILES)) do @%append $(LNKFILE) -+$(OBJDIR)\%f
+
+$(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
+    $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
+    copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
+
+
+subdirs: .SYMBOLIC
+    @echo BUILDING hda
+    @cd hda
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING ac97
+    @cd ac97
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING ali5451
+    @cd ali5451
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING cs46xx
+    @cd cs46xx
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING emu10k1
+    @cd emu10k1
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING ca0106
+    @cd ca0106
+    @wmake $(NMAKEOPTS)
+    @cd ..
+##    @echo BUILDING korg1212
+##    @cd korg1212
+##    @wmake $(NMAKEOPTS)
+##    @cd ..
+    @echo BUILDING nm256
+    @cd nm256
+    @wmake $(NMAKEOPTS)
+    @cd ..
+#    @echo BUILDING rme9652
+#    @cd rme9652
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
+    @echo BUILDING trident
+    @cd trident
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING ymfpci
+    @cd ymfpci
+    @wmake $(NMAKEOPTS)
+    @cd ..
+#    @echo BUILDING vortex
+#    @cd au88x0
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
+
+
+##    @echo BUILDING wavefront
+##    @cd wavefront
+##    @nmake $(NMAKEOPTS)
+##    @cd ..
+    
+
+clean: .SYMBOLIC
+    @echo CLEANING ac97
+    @cd ac97
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING ali5451
+    @cd ali5451
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING cs46xx
+    @cd cs46xx
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING emu10k1
+    @cd emu10k1
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING ca0106
+    @cd ca0106
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING korg1212
+    @cd korg1212
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING nm256
+    @cd nm256
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING rme9652
+    @cd rme9652
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING trident
+    @cd trident
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING ymfpci
+    @cd ymfpci
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING vortex
+    @cd au88x0
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+#    @echo CLEANING wavefront
+#    @cd wavefront
+#    @nmake $(NMAKEOPTS) clean
+#    @cd ..
+    -@rm  *.err 2>nul
+    @cd $(OBJDIR)
+    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+    @cd ../..

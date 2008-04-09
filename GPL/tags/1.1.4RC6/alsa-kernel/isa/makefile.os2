@@ -1,0 +1,97 @@
+CINCLUDES = ..\..\include;..\include;$(%WATCOM)\H
+AINCLUDES = $(DDK_BASE)\H
+
+CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
+
+32BIT=1
+!include ..\..\makefile.inc
+
+NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG)
+
+
+#===================================================================
+#
+#   List of source files
+#
+#===================================================================
+FILE1    = opl3sa2.obj
+#als100.obj azt2320.obj cmi8330.obj dt0197h.obj es18xx.obj
+FILE2    = 
+# sgalaxy.obj
+FILE3    = 
+FILE4    = 
+FILE5    = 
+FILE6    = 
+FILE7    = 
+FILE8    = 
+FILELAST =
+FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10) $(FILE11) $(FILE12)
+
+TARGET   = isa
+
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
+
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: $(OBJDIR)\$(TARGET).lib subdirs
+
+
+$(LNKFILE): makefile.os2
+    @%create $(LNKFILE)
+    @for %f in ($(FILES)) do @%append $(LNKFILE) -+$(OBJDIR)\%f
+
+$(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
+    $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
+    copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
+
+
+subdirs: .SYMBOLIC
+#    @echo BUILDING ad1816a
+#    @cd ad1816a
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
+#    @echo BUILDING ad1848
+#    @cd ad1848
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
+#    @echo BUILDING cs423x
+#    @cd cs423x
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
+#    @echo BUILDING es1688
+#    @cd es1688
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
+#    @echo BUILDING gus
+#    @cd gus
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
+#    @echo BUILDING opti9xx
+#    @cd opti9xx
+#    @wmake $(NMAKEOPTS)
+#    @cd ..
+    @echo BUILDING sb
+    @cd sb
+    @wmake $(NMAKEOPTS)
+    @cd ..
+
+
+##    @echo BUILDING wavefront
+##    @cd wavefront
+##    @nmake $(NMAKEOPTS)
+##    @cd ..
+    
+
+clean: .SYMBOLIC
+    @echo CLEANING sb
+    @cd sb
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    -@rm  *.err 2>nul
+    @cd $(OBJDIR)
+    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+    @cd ..

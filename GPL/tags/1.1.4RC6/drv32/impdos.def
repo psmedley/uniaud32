@@ -1,0 +1,58 @@
+;*
+;* Import definitions for DOSCALLS APIs
+;*
+;* (C) 2000-2002 InnoTek Systemberatung GmbH
+;* (C) 2000-2001 Sander van Leeuwen (sandervl@xs4all.nl)
+;*
+;* This program is free software; you can redistribute it and/or
+;* modify it under the terms of the GNU General Public License as
+;* published by the Free Software Foundation; either version 2 of
+;* the License, or (at your option) any later version.
+;*
+;* This program is distributed in the hope that it will be useful,
+;* but WITHOUT ANY WARRANTY; without even the implied warranty of
+;* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;* GNU General Public License for more details.
+;*
+;* You should have received a copy of the GNU General Public
+;* License along with this program; if not, write to the Free
+;* Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139,
+;* USA.
+;*
+
+
+;; ImpDos.def
+;;
+;; Export/import information for DOS* APIs callable at Init time.
+;;
+;; History:
+;;
+;; Sep 30, 94  David Bollo         Initial version
+;; Jan 22, 97  Sander van Leeuwen  Added DOSFLATCS & DOSFLATDS
+
+LIBRARY DOSCALLS
+
+EXPORTS
+    DOSBEEP                   @50
+    DOSCHGFILEPTR             @58
+    DOSCLOSE                  @59
+    DOSOPEN                   @70
+    DOSDELETE                 @60
+    DOSDEVCONFIG              @52
+    DOSDEVIOCTL               @53
+    DOSFINDCLOSE              @63
+    DOSFINDFIRST              @64
+    DOSFINDNEXT               @65
+    DOSGETENV                 @91
+    DOSGETHUGESHIFT           @41
+    DOSGETMACHINEMODE         @49
+    DOSGETVERSION             @92
+    DOSQCURDIR                @71
+    DOSQCURDISK               @72
+    DOSQFILEINFO              @74
+    DOSQFILEMODE              @75
+    DOSREAD                   @137
+    DOSWRITE                  @138
+    DOS32FLATDS               @370
+    DOS32FLATCS               @369
+    DOSIODELAYCNT             @427
