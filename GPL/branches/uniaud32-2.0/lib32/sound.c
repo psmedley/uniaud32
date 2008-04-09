@@ -777,6 +777,7 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
     ULONG               periodbytes, minperiodbytes, maxperiodbytes;
     BOOL                fTryAgain = FALSE;
     ULONG ulMinRate, ulMaxRate;
+    struct snd_pcm_info      *pcminfo = NULL;
 
 #ifdef DEBUG
     dprintf(("OSS32_WaveSetHwParams"));
@@ -801,6 +802,14 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
         DebugInt3();
         return OSSERR_INVALID_PARAMETER;
     }
+
+    // Get pcminfo so that we have the device & mixer name so we can do chipset specific hacks 
+    pcminfo = (struct snd_pcm_info *)kmalloc(sizeof(struct snd_pcm_info)+sizeof(struct snd_pcm_hw_params), GFP_KERNEL);
+    //set operation to non-blocking
+    pHandle->file.f_flags = O_NONBLOCK;
+    
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_INFO, (ULONG)pcminfo);
+
 tryagain:
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
@@ -1002,7 +1011,7 @@ __next:
                           periodbytes*nrperiods, 0);
 
 //#ifdef DEBUG_PK
-    printk("Hardware parameters: sample rate %i, data type %i, channels %i, period size %i, periods %i\n",
+    printk("Hardware parameters: sample rate %i, data type %i, channels %i, period size %i, nrperiods %i\n",
              pHwParams->ulSampleRate, pHwParams->ulDataType, pHwParams->ulNumChannels, periodsize, nrperiods);
 //#endif
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)__Stack32ToFlat(&params));

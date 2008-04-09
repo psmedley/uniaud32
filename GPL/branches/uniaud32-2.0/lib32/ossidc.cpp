@@ -109,7 +109,7 @@ OSSRET OSS32_Initialize(void)
         DebugInt3();
         return OSSERR_INIT_FAILED;
     }
-    dprintf(("Uniaud version %s\n",UNIAUD_VERSION));
+    dprintf(("\nUniaud version %s\n",UNIAUD_VERSION));
     dprintf(("OSS32_Initialize. Start address: %X", OffsetBeginCS32));
 //    DebugInt3();
 
