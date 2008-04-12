@@ -1054,6 +1054,7 @@ __next:
     per_bytes = periodbytes;
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
     if ( ((status.state != SNDRV_PCM_STATE_PREPARED) &&
+          (status.state != SNDRV_PCM_STATE_SETUP) &&
           (status.state != SNDRV_PCM_STATE_RUNNING) &&
           (status.state != SNDRV_PCM_STATE_DRAINING))) {
         printk("Device is not in proper state: %i. Calling prepare\n", status.state);
