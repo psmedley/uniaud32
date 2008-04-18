@@ -155,9 +155,9 @@ BOOL RMRequestIRQ(ULONG ulIrq, BOOL fShared)
   APIRET		rc;
 
   Resource.ResourceType          = RS_TYPE_IRQ;
-  Resource.IRQResource.IRQLevel  = (USHORT)ulIrq;
+  Resource.IRQResource.IRQLevel  = (USHORT)ulIrq & 0xff;
   Resource.IRQResource.IRQFlags  = ( fShared ) ? RS_IRQ_SHARED : RS_IRQ_EXCLUSIVE;
-  Resource.IRQResource.PCIIrqPin = RS_PCI_INT_NONE;
+  Resource.IRQResource.PCIIrqPin = (USHORT)( (ulIrq >> 8) & 0xf);
 
   rc = RMAllocResource(DriverHandle,			// Handle to driver.
 		       FlatToSel((ULONG)&hres),		// OUT:  "allocated" resource node handle
