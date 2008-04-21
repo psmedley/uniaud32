@@ -15,12 +15,24 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/interrupt.h>
+#include <linux/slab.h>
+#include <linux/ioport.h>
+#include <sound/core.h>
 #include <sound/ad1816a.h>
+
+#include <asm/io.h>
+#include <asm/dma.h>
+
+MODULE_AUTHOR("Massimo Piccioni <dafastidio@libero.it>");
+MODULE_DESCRIPTION("lowlevel code for Analog Devices AD1816A chip");
+MODULE_LICENSE("GPL");
 
 #define chip_t ad1816a_t
 
@@ -232,7 +244,7 @@ static int snd_ad1816a_playback_prepare(snd_pcm_substream_t *substream)
 	snd_ad1816a_out_mask(chip, AD1816A_PLAYBACK_CONFIG,
 		AD1816A_PLAYBACK_ENABLE | AD1816A_PLAYBACK_PIO, 0x00);
 
-	snd_dma_program(chip->dma1, runtime->dma_area, size,
+	snd_dma_program(chip->dma1, runtime->dma_addr, size,
 			DMA_MODE_WRITE | DMA_AUTOINIT);
 
 	snd_ad1816a_write(chip, AD1816A_PLAYBACK_SAMPLE_RATE, runtime->rate);
@@ -261,7 +273,7 @@ static int snd_ad1816a_capture_prepare(snd_pcm_substream_t *substream)
 	snd_ad1816a_out_mask(chip, AD1816A_CAPTURE_CONFIG,
 		AD1816A_CAPTURE_ENABLE | AD1816A_CAPTURE_PIO, 0x00);
 
-	snd_dma_program(chip->dma2, runtime->dma_area, size,
+	snd_dma_program(chip->dma2, runtime->dma_addr, size,
 			DMA_MODE_READ | DMA_AUTOINIT);
 
 	snd_ad1816a_write(chip, AD1816A_CAPTURE_SAMPLE_RATE, runtime->rate);
@@ -284,7 +296,7 @@ static snd_pcm_uframes_t snd_ad1816a_playback_pointer(snd_pcm_substream_t *subst
 	size_t ptr;
 	if (!(chip->mode & AD1816A_MODE_PLAYBACK))
 		return 0;
-	ptr = chip->p_dma_size - snd_dma_residue(chip->dma1);
+	ptr = snd_dma_pointer(chip->dma1, chip->p_dma_size);
 	return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -294,14 +306,14 @@ static snd_pcm_uframes_t snd_ad1816a_capture_pointer(snd_pcm_substream_t *substr
 	size_t ptr;
 	if (!(chip->mode & AD1816A_MODE_CAPTURE))
 		return 0;
-	ptr = chip->c_dma_size - snd_dma_residue(chip->dma2);
+	ptr = snd_dma_pointer(chip->dma2, chip->c_dma_size);
 	return bytes_to_frames(substream->runtime, ptr);
 }
 
 
-static void snd_ad1816a_interrupt(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t snd_ad1816a_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
-	ad1816a_t *chip = snd_magic_cast(ad1816a_t, dev_id, return);
+	ad1816a_t *chip = snd_magic_cast(ad1816a_t, dev_id, return IRQ_NONE);
 	unsigned char status;
 
 	spin_lock(&chip->lock);
@@ -320,85 +332,47 @@ static void snd_ad1816a_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 	spin_lock(&chip->lock);
 	snd_ad1816a_out(chip, AD1816A_INTERRUPT_STATUS, 0x00);
 	spin_unlock(&chip->lock);
+	return IRQ_HANDLED;
 }
 
-#ifdef TARGET_OS2
+
 static snd_pcm_hardware_t snd_ad1816a_playback = {
-/*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_MMAP_VALID),
-/*	formats:	  */	(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW |
+	.formats =		(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW |
 				 SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE |
 				 SNDRV_PCM_FMTBIT_S16_BE),
-/*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-/*	rate_min:	  */	4000,
-/*	rate_max:	  */	55200,
-/*	channels_min:	  */	1,
-/*	channels_max:	  */	2,
-/*	buffer_bytes_max:  */	(128*1024),
-/*	period_bytes_min:  */	64,
-/*	period_bytes_max:  */	(128*1024),
-/*	periods_min:	  */	1,
-/*	periods_max:	  */	1024,
-/*	fifo_size:	  */	0,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		55200,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static snd_pcm_hardware_t snd_ad1816a_capture = {
-/*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_MMAP_VALID),
-/*	formats:	  */	(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW |
+	.formats =		(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW |
 				 SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE |
 				 SNDRV_PCM_FMTBIT_S16_BE),
-/*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-/*	rate_min:	  */	4000,
-/*	rate_max:	  */	55200,
-/*	channels_min:	  */	1,
-/*	channels_max:	  */	2,
-/*	buffer_bytes_max:  */	(128*1024),
-/*	period_bytes_min:  */	64,
-/*	period_bytes_max:  */	(128*1024),
-/*	periods_min:	  */	1,
-/*	periods_max:	  */	1024,
-/*	fifo_size:	  */	0,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		55200,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
-#else
-static snd_pcm_hardware_t snd_ad1816a_playback = {
-	info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-				 SNDRV_PCM_INFO_MMAP_VALID),
-	formats:		(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW |
-				 SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE |
-				 SNDRV_PCM_FMTBIT_S16_BE),
-	rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-	rate_min:		4000,
-	rate_max:		55200,
-	channels_min:		1,
-	channels_max:		2,
-	buffer_bytes_max:	(128*1024),
-	period_bytes_min:	64,
-	period_bytes_max:	(128*1024),
-	periods_min:		1,
-	periods_max:		1024,
-	fifo_size:		0,
-};
-
-static snd_pcm_hardware_t snd_ad1816a_capture = {
-	info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-				 SNDRV_PCM_INFO_MMAP_VALID),
-	formats:		(SNDRV_PCM_FMTBIT_MU_LAW | SNDRV_PCM_FMTBIT_A_LAW |
-				 SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE |
-				 SNDRV_PCM_FMTBIT_S16_BE),
-	rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-	rate_min:		4000,
-	rate_max:		55200,
-	channels_min:		1,
-	channels_max:		2,
-	buffer_bytes_max:	(128*1024),
-	period_bytes_min:	64,
-	period_bytes_max:	(128*1024),
-	periods_min:		1,
-	periods_max:		1024,
-	fifo_size:		0,
-};
-#endif
 
 static int snd_ad1816a_timer_close(snd_timer_t *timer)
 {
@@ -453,29 +427,17 @@ static int snd_ad1816a_timer_stop(snd_timer_t *timer)
 	return 0;
 }
 
-#ifdef TARGET_OS2
 static struct _snd_timer_hardware snd_ad1816a_timer_table = {
-	SNDRV_TIMER_HW_AUTO,
-	10000,
-	65535,
-	snd_ad1816a_timer_open,
-	snd_ad1816a_timer_close,
-	snd_ad1816a_timer_resolution,
-	snd_ad1816a_timer_start,
-	snd_ad1816a_timer_stop,
+	.flags =	SNDRV_TIMER_HW_AUTO,
+	.resolution =	10000,
+	.ticks =	65535,
+	.open =		snd_ad1816a_timer_open,
+	.close =	snd_ad1816a_timer_close,
+	.c_resolution =	snd_ad1816a_timer_resolution,
+	.start =	snd_ad1816a_timer_start,
+	.stop =		snd_ad1816a_timer_stop,
 };
-#else
-static struct _snd_timer_hardware snd_ad1816a_timer_table = {
-	flags:		SNDRV_TIMER_HW_AUTO,
-	resolution:	10000,
-	ticks:		65535,
-	open:		snd_ad1816a_timer_open,
-	close:		snd_ad1816a_timer_close,
-	c_resolution:	snd_ad1816a_timer_resolution,
-	start:		snd_ad1816a_timer_start,
-	stop:		snd_ad1816a_timer_stop,
-};
-#endif
+
 
 static int snd_ad1816a_playback_open(snd_pcm_substream_t *substream)
 {
@@ -489,6 +451,7 @@ static int snd_ad1816a_playback_open(snd_pcm_substream_t *substream)
 	runtime->hw = snd_ad1816a_playback;
 	snd_pcm_limit_isa_dma_size(chip->dma1, &runtime->hw.buffer_bytes_max);
 	snd_pcm_limit_isa_dma_size(chip->dma1, &runtime->hw.period_bytes_max);
+	chip->playback_substream = substream;
 	return 0;
 }
 
@@ -504,6 +467,7 @@ static int snd_ad1816a_capture_open(snd_pcm_substream_t *substream)
 	runtime->hw = snd_ad1816a_capture;
 	snd_pcm_limit_isa_dma_size(chip->dma2, &runtime->hw.buffer_bytes_max);
 	snd_pcm_limit_isa_dma_size(chip->dma2, &runtime->hw.period_bytes_max);
+	chip->capture_substream = substream;
 	return 0;
 }
 
@@ -572,8 +536,10 @@ static int snd_ad1816a_probe(ad1816a_t *chip)
 
 static int snd_ad1816a_free(ad1816a_t *chip)
 {
-	if (chip->res_port)
+	if (chip->res_port) {
 		release_resource(chip->res_port);
+		kfree_nocheck(chip->res_port);
+	}
 	if (chip->irq >= 0)
 		free_irq(chip->irq, (void *) chip);
 	if (chip->dma1 >= 0) {
@@ -611,15 +577,9 @@ int snd_ad1816a_create(snd_card_t *card,
 		       unsigned long port, int irq, int dma1, int dma2,
 		       ad1816a_t **rchip)
 {
-#ifdef TARGET_OS2
         static snd_device_ops_t ops = {
-		snd_ad1816a_dev_free,0,0
+		.dev_free =	snd_ad1816a_dev_free,
 	};
-#else
-        static snd_device_ops_t ops = {
-		dev_free:       snd_ad1816a_dev_free,
-	};
-#endif
 	int error;
 	ad1816a_t *chip;
 
@@ -633,20 +593,24 @@ int snd_ad1816a_create(snd_card_t *card,
 	chip->dma2 = -1;
 
 	if ((chip->res_port = request_region(port, 16, "AD1816A")) == NULL) {
+		snd_printk(KERN_ERR "ad1816a: can't grab port 0x%lx\n", port);
 		snd_ad1816a_free(chip);
 		return -EBUSY;
 	}
 	if (request_irq(irq, snd_ad1816a_interrupt, SA_INTERRUPT, "AD1816A", (void *) chip)) {
+		snd_printk(KERN_ERR "ad1816a: can't grab IRQ %d\n", irq);
 		snd_ad1816a_free(chip);
 		return -EBUSY;
 	}
 	chip->irq = irq;
 	if (request_dma(dma1, "AD1816A - 1")) {
+		snd_printk(KERN_ERR "ad1816a: can't grab DMA1 %d\n", dma1);
 		snd_ad1816a_free(chip);
 		return -EBUSY;
 	}
 	chip->dma1 = dma1;
 	if (request_dma(dma2, "AD1816A - 2")) {
+		snd_printk(KERN_ERR "ad1816a: can't grab DMA2 %d\n", dma2);
 		snd_ad1816a_free(chip);
 		return -EBUSY;
 	}
@@ -673,51 +637,27 @@ int snd_ad1816a_create(snd_card_t *card,
 	return 0;
 }
 
-#ifdef TARGET_OS2
 static snd_pcm_ops_t snd_ad1816a_playback_ops = {
-	snd_ad1816a_playback_open,
-	snd_ad1816a_playback_close,
-	snd_pcm_lib_ioctl,
-	snd_ad1816a_hw_params,
-	snd_ad1816a_hw_free,
-	snd_ad1816a_playback_prepare,
-	snd_ad1816a_playback_trigger,
-	snd_ad1816a_playback_pointer,0,0
+	.open =		snd_ad1816a_playback_open,
+	.close =	snd_ad1816a_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_ad1816a_hw_params,
+	.hw_free =	snd_ad1816a_hw_free,
+	.prepare =	snd_ad1816a_playback_prepare,
+	.trigger =	snd_ad1816a_playback_trigger,
+	.pointer =	snd_ad1816a_playback_pointer,
 };
 
 static snd_pcm_ops_t snd_ad1816a_capture_ops = {
-	snd_ad1816a_capture_open,
-	snd_ad1816a_capture_close,
-	snd_pcm_lib_ioctl,
-	snd_ad1816a_hw_params,
-	snd_ad1816a_hw_free,
-	snd_ad1816a_capture_prepare,
-	snd_ad1816a_capture_trigger,
-	snd_ad1816a_capture_pointer,0,0
+	.open =		snd_ad1816a_capture_open,
+	.close =	snd_ad1816a_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_ad1816a_hw_params,
+	.hw_free =	snd_ad1816a_hw_free,
+	.prepare =	snd_ad1816a_capture_prepare,
+	.trigger =	snd_ad1816a_capture_trigger,
+	.pointer =	snd_ad1816a_capture_pointer,
 };
-#else
-static snd_pcm_ops_t snd_ad1816a_playback_ops = {
-	open:		snd_ad1816a_playback_open,
-	close:		snd_ad1816a_playback_close,
-	ioctl:		snd_pcm_lib_ioctl,
-	hw_params:	snd_ad1816a_hw_params,
-	hw_free:	snd_ad1816a_hw_free,
-	prepare:	snd_ad1816a_playback_prepare,
-	trigger:	snd_ad1816a_playback_trigger,
-	pointer:	snd_ad1816a_playback_pointer,
-};
-
-static snd_pcm_ops_t snd_ad1816a_capture_ops = {
-	open:		snd_ad1816a_capture_open,
-	close:		snd_ad1816a_capture_close,
-	ioctl:		snd_pcm_lib_ioctl,
-	hw_params:	snd_ad1816a_hw_params,
-	hw_free:	snd_ad1816a_hw_free,
-	prepare:	snd_ad1816a_capture_prepare,
-	trigger:	snd_ad1816a_capture_trigger,
-	pointer:	snd_ad1816a_capture_pointer,
-};
-#endif
 
 static void snd_ad1816a_pcm_free(snd_pcm_t *pcm)
 {
@@ -744,7 +684,9 @@ int snd_ad1816a_pcm(ad1816a_t *chip, int device, snd_pcm_t **rpcm)
 	strcpy(pcm->name, snd_ad1816a_chip_id(chip));
 	snd_ad1816a_init(chip);
 
-	snd_pcm_lib_preallocate_pages_for_all(pcm, 64*1024, chip->dma1 > 3 || chip->dma2 > 3 ? 128*1024 : 64*1024, GFP_KERNEL|GFP_DMA);
+	snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
+					      snd_dma_isa_data(),
+					      64*1024, chip->dma1 > 3 || chip->dma2 > 3 ? 128*1024 : 64*1024);
 
 	chip->pcm = pcm;
 	if (rpcm)
@@ -834,17 +776,10 @@ static int snd_ad1816a_put_mux(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_t *
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define AD1816A_SINGLE(xname, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0,xname, 0, 0, 0, snd_ad1816a_info_single, \
-  snd_ad1816a_get_single, snd_ad1816a_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#else
-#define AD1816A_SINGLE(xname, reg, shift, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, info: snd_ad1816a_info_single, \
-  get: snd_ad1816a_get_single, put: snd_ad1816a_put_single, \
-  private_value: reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .info = snd_ad1816a_info_single, \
+  .get = snd_ad1816a_get_single, .put = snd_ad1816a_put_single, \
+  .private_value = reg | (shift << 8) | (mask << 16) | (invert << 24) }
 
 static int snd_ad1816a_info_single(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -898,17 +833,10 @@ static int snd_ad1816a_put_single(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 	return change;
 }
 
-#ifdef TARGET_OS2
 #define AD1816A_DOUBLE(xname, reg, shift_left, shift_right, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0, 0, xname, 0, 0, 0, snd_ad1816a_info_double, \
-  snd_ad1816a_get_double, snd_ad1816a_put_double, \
-  reg | (shift_left << 8) | (shift_right << 12) | (mask << 16) | (invert << 24) }
-#else
-#define AD1816A_DOUBLE(xname, reg, shift_left, shift_right, mask, invert) \
-{ iface: SNDRV_CTL_ELEM_IFACE_MIXER, name: xname, info: snd_ad1816a_info_double, \
-  get: snd_ad1816a_get_double, put: snd_ad1816a_put_double, \
-  private_value: reg | (shift_left << 8) | (shift_right << 12) | (mask << 16) | (invert << 24) }
-#endif
+{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .info = snd_ad1816a_info_double, \
+  .get = snd_ad1816a_get_double, .put = snd_ad1816a_put_double, \
+  .private_value = reg | (shift_left << 8) | (shift_right << 12) | (mask << 16) | (invert << 24) }
 
 static int snd_ad1816a_info_double(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
 {
@@ -977,40 +905,32 @@ static int snd_ad1816a_put_double(snd_kcontrol_t * kcontrol, snd_ctl_elem_value_
 
 static snd_kcontrol_new_t snd_ad1816a_controls[] = {
 AD1816A_DOUBLE("Master Playback Switch", AD1816A_MASTER_ATT, 15, 7, 1, 1),
-AD1816A_DOUBLE("Master Playback Volume", AD1816A_MASTER_ATT, 8, 0, 31, 0),
+AD1816A_DOUBLE("Master Playback Volume", AD1816A_MASTER_ATT, 8, 0, 31, 1),
 AD1816A_DOUBLE("PCM Playback Switch", AD1816A_VOICE_ATT, 15, 7, 1, 1),
-AD1816A_DOUBLE("PCM Playback Volume", AD1816A_VOICE_ATT, 8, 0, 63, 0),
+AD1816A_DOUBLE("PCM Playback Volume", AD1816A_VOICE_ATT, 8, 0, 63, 1),
 AD1816A_DOUBLE("Line Playback Switch", AD1816A_LINE_GAIN_ATT, 15, 7, 1, 1),
-AD1816A_DOUBLE("Line Playback Volume", AD1816A_LINE_GAIN_ATT, 8, 0, 31, 0),
+AD1816A_DOUBLE("Line Playback Volume", AD1816A_LINE_GAIN_ATT, 8, 0, 31, 1),
 AD1816A_DOUBLE("CD Playback Switch", AD1816A_CD_GAIN_ATT, 15, 7, 1, 1),
-AD1816A_DOUBLE("CD Playback Volume", AD1816A_CD_GAIN_ATT, 8, 0, 31, 0),
+AD1816A_DOUBLE("CD Playback Volume", AD1816A_CD_GAIN_ATT, 8, 0, 31, 1),
 AD1816A_DOUBLE("Synth Playback Switch", AD1816A_SYNTH_GAIN_ATT, 15, 7, 1, 1),
-AD1816A_DOUBLE("Synth Playback Volume", AD1816A_SYNTH_GAIN_ATT, 8, 0, 31, 0),
+AD1816A_DOUBLE("Synth Playback Volume", AD1816A_SYNTH_GAIN_ATT, 8, 0, 31, 1),
 AD1816A_DOUBLE("FM Playback Switch", AD1816A_FM_ATT, 15, 7, 1, 1),
-AD1816A_DOUBLE("FM Playback Volume", AD1816A_FM_ATT, 8, 0, 63, 0),
+AD1816A_DOUBLE("FM Playback Volume", AD1816A_FM_ATT, 8, 0, 63, 1),
 AD1816A_SINGLE("Mic Playback Switch", AD1816A_MIC_GAIN_ATT, 15, 1, 1),
-AD1816A_SINGLE("Mic Playback Volume", AD1816A_MIC_GAIN_ATT, 8, 63, 0),
+AD1816A_SINGLE("Mic Playback Volume", AD1816A_MIC_GAIN_ATT, 8, 31, 1),
 AD1816A_SINGLE("Mic Boost", AD1816A_MIC_GAIN_ATT, 14, 1, 0),
 AD1816A_DOUBLE("Video Playback Switch", AD1816A_VID_GAIN_ATT, 15, 7, 1, 1),
-AD1816A_DOUBLE("Video Playback Volume", AD1816A_VID_GAIN_ATT, 8, 0, 31, 0),
+AD1816A_DOUBLE("Video Playback Volume", AD1816A_VID_GAIN_ATT, 8, 0, 31, 1),
 AD1816A_SINGLE("Phone Capture Switch", AD1816A_PHONE_IN_GAIN_ATT, 15, 1, 1),
-AD1816A_SINGLE("Phone Capture Volume", AD1816A_PHONE_IN_GAIN_ATT, 0, 31, 0),
+AD1816A_SINGLE("Phone Capture Volume", AD1816A_PHONE_IN_GAIN_ATT, 0, 15, 1),
 AD1816A_SINGLE("Phone Playback Switch", AD1816A_PHONE_OUT_ATT, 7, 1, 1),
-AD1816A_SINGLE("Phone Playback Volume", AD1816A_PHONE_OUT_ATT, 0, 31, 0),
+AD1816A_SINGLE("Phone Playback Volume", AD1816A_PHONE_OUT_ATT, 0, 31, 1),
 {
-#ifdef TARGET_OS2
-	SNDRV_CTL_ELEM_IFACE_MIXER,0,0,
-	"Capture Source",0,0, 0,
-	snd_ad1816a_info_mux,
-	snd_ad1816a_get_mux,
-	snd_ad1816a_put_mux,0
-#else
-	iface: SNDRV_CTL_ELEM_IFACE_MIXER,
-	name: "Capture Source",
-	info: snd_ad1816a_info_mux,
-	get: snd_ad1816a_get_mux,
-	put: snd_ad1816a_put_mux,
-#endif
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Capture Source",
+	.info = snd_ad1816a_info_mux,
+	.get = snd_ad1816a_get_mux,
+	.put = snd_ad1816a_put_mux,
 },
 AD1816A_DOUBLE("Capture Switch", AD1816A_ADC_PGA, 15, 7, 1, 1),
 AD1816A_DOUBLE("Capture Volume", AD1816A_ADC_PGA, 8, 0, 15, 0),
@@ -1021,7 +941,8 @@ AD1816A_SINGLE("3D Control - Level", AD1816A_3D_PHAT_CTRL, 0, 15, 0),
 int snd_ad1816a_mixer(ad1816a_t *chip)
 {
 	snd_card_t *card;
-	int err, idx;
+	unsigned int idx;
+	int err;
 
 	snd_assert(chip != NULL && chip->card != NULL, return -EINVAL);
 
@@ -1051,4 +972,3 @@ static void __exit alsa_ad1816a_exit(void)
 
 module_init(alsa_ad1816a_init)
 module_exit(alsa_ad1816a_exit)
-

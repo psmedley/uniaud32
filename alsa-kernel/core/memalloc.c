@@ -22,9 +22,13 @@
  */
 
 #include <sound/driver.h>
+#include <sound/core.h>
 #include <sound/info.h>
 #include <linux/proc_fs.h>
 #include <sound/memalloc.h>
+#ifdef CONFIG_SBUS
+#include <asm/sbus.h>
+#endif
 
 
 MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>, Jaroslav Kysela <perex@suse.cz>");
@@ -63,12 +67,11 @@ struct snd_mem_list {
 
 #ifdef CONFIG_PCI
 #if defined(__i386__) || defined(__ppc__) || defined(__x86_64__)
-#define HACK_PCI_ALLOC_CONSISTENT
 
 /*
- * A hack to allocate large buffers via pci_alloc_consistent()
+ * A hack to allocate large buffers via dma_alloc_coherent()
  *
- * since pci_alloc_consistent always tries GFP_DMA when the requested
+ * since dma_alloc_coherent always tries GFP_DMA when the requested
  * pci memory region is below 32bit, it happens quite often that even
  * 2 order of pages cannot be allocated.
  *
@@ -76,43 +79,41 @@ struct snd_mem_list {
  * allocation will be done without GFP_DMA.  if the area doesn't match
  * with the requested region, then realloate with the original dma_mask
  * again.
+ *
+ * Really, we want to move this type of thing into dma_alloc_coherent()
+ * so dma_mask doesn't have to be messed with.
  */
 
-static void *snd_pci_hack_alloc_consistent(struct pci_dev *hwdev, size_t size,
-				    dma_addr_t *dma_handle)
+static void *snd_dma_hack_alloc_coherent(struct device *dev, size_t size,
+					 dma_addr_t *dma_handle, int flags)
 {
 	void *ret;
-	u64 dma_mask, cdma_mask;
-	unsigned long mask;
+	u64 dma_mask;
 
-	if (hwdev == NULL)
-		return pci_alloc_consistent(hwdev, size, dma_handle);
-	dma_mask = hwdev->dma_mask;
-	cdma_mask = hwdev->consistent_dma_mask;
-	mask = (unsigned long)dma_mask && (unsigned long)cdma_mask;
-	hwdev->dma_mask = 0xffffffff; /* do without masking */
-	hwdev->consistent_dma_mask = 0xffffffff; /* do without masking */
-	ret = pci_alloc_consistent(hwdev, size, dma_handle);
-	hwdev->dma_mask = dma_mask; /* restore */
-	hwdev->consistent_dma_mask = cdma_mask; /* restore */
+	if (dev == NULL || !dev->dma_mask)
+		return dma_alloc_coherent(dev, size, dma_handle, flags);
+	dma_mask = *dev->dma_mask;
+	*dev->dma_mask = 0xffffffff; 	/* do without masking */
+	ret = dma_alloc_coherent(dev, size, dma_handle, flags);
+	*dev->dma_mask = dma_mask;	/* restore */
 	if (ret) {
 		/* obtained address is out of range? */
-		if (((unsigned long)*dma_handle + size - 1) & ~mask) {
+		if (((unsigned long)*dma_handle + size - 1) & ~dma_mask) {
 			/* reallocate with the proper mask */
-			pci_free_consistent(hwdev, size, ret, *dma_handle);
-			ret = pci_alloc_consistent(hwdev, size, dma_handle);
+			dma_free_coherent(dev, size, ret, *dma_handle);
+			ret = dma_alloc_coherent(dev, size, dma_handle, flags);
 		}
 	} else {
 		/* wish to success now with the proper mask... */
-		if (mask != 0xffffffffUL)
-			ret = pci_alloc_consistent(hwdev, size, dma_handle);
+		if (dma_mask != 0xffffffffUL)
+			ret = dma_alloc_coherent(dev, size, dma_handle, flags);
 	}
 	return ret;
 }
 
-/* redefine pci_alloc_consistent for some architectures */
-#undef pci_alloc_consistent
-#define pci_alloc_consistent snd_pci_hack_alloc_consistent
+/* redefine dma_alloc_coherent for some architectures */
+#undef dma_alloc_coherent
+#define dma_alloc_coherent snd_dma_hack_alloc_coherent
 
 #endif /* arch */
 /* for 2.2/2.4 kernels */
@@ -393,7 +394,7 @@ static inline void dec_snd_pages(int order)
  *
  * Returns the pointer of the buffer, or NULL if no enoguh memory.
  */
-void *snd_malloc_pages(unsigned long size, unsigned int dma_flags)
+void *snd_malloc_pages(size_t size, unsigned int dma_flags)
 {
     int pg;
     void *res;
@@ -414,7 +415,7 @@ void *snd_malloc_pages(unsigned long size, unsigned int dma_flags)
  *
  * Releases the buffer allocated via snd_malloc_pages().
  */
-void snd_free_pages(void *ptr, unsigned long size)
+void snd_free_pages(void *ptr, size_t size)
 {
     int pg;
     struct page *page, *last_page;
@@ -720,6 +721,17 @@ static struct prealloc_dev prealloc_devices[] __initdata = {
 	{0 }, /* terminator */
 };
 
+/*
+ * compose a snd_dma_device struct for the PCI device
+ */
+static inline void snd_dma_device_pci(struct snd_dma_device *dev, struct pci_dev *pci, unsigned int id)
+{
+	memset(dev, 0, sizeof(*dev));
+	dev->type = SNDRV_DMA_TYPE_DEV;
+	dev->dev = snd_dma_pci_data(pci);
+	dev->id = id;
+}
+
 static void __init preallocate_cards(void)
 {
 	struct pci_dev *pci = NULL;
@@ -844,7 +856,9 @@ __setup("snd-page-alloc=", snd_mem_setup);
  * exports
  */
 EXPORT_SYMBOL(snd_dma_alloc_pages);
+EXPORT_SYMBOL(snd_dma_alloc_pages_fallback);
 EXPORT_SYMBOL(snd_dma_free_pages);
+
 EXPORT_SYMBOL(snd_dma_get_reserved);
 EXPORT_SYMBOL(snd_dma_free_reserved);
 EXPORT_SYMBOL(snd_dma_set_reserved);
@@ -852,21 +866,3 @@ EXPORT_SYMBOL(snd_dma_set_reserved);
 EXPORT_SYMBOL(snd_malloc_pages);
 EXPORT_SYMBOL(snd_malloc_pages_fallback);
 EXPORT_SYMBOL(snd_free_pages);
-#if defined(CONFIG_ISA) && ! defined(CONFIG_PCI)
-EXPORT_SYMBOL(snd_malloc_isa_pages);
-EXPORT_SYMBOL(snd_malloc_isa_pages_fallback);
-#endif
-#ifdef CONFIG_PCI
-EXPORT_SYMBOL(snd_malloc_pci_pages);
-EXPORT_SYMBOL(snd_malloc_pci_pages_fallback);
-EXPORT_SYMBOL(snd_malloc_pci_page);
-EXPORT_SYMBOL(snd_free_pci_pages);
-EXPORT_SYMBOL(snd_malloc_sgbuf_pages);
-EXPORT_SYMBOL(snd_free_sgbuf_pages);
-#endif
-#ifdef CONFIG_SBUS
-EXPORT_SYMBOL(snd_malloc_sbus_pages);
-EXPORT_SYMBOL(snd_malloc_sbus_pages_fallback);
-EXPORT_SYMBOL(snd_free_sbus_pages);
-#endif
-

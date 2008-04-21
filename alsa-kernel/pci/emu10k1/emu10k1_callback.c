@@ -427,7 +427,6 @@ start_voice(struct snd_emux_voice *vp)
 
                 /* invalidate maps */
                 temp = ((unsigned int)hw->silent_page.addr << 1) | MAP_PTI_MASK;
-//		temp = ((unsigned int)hw->silent_page_dmaaddr << 1) | MAP_PTI_MASK;
 		snd_emu10k1_ptr_write(hw, MAPA, ch, temp);
 		snd_emu10k1_ptr_write(hw, MAPB, ch, temp);
 		

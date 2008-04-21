@@ -94,18 +94,26 @@
  *	places.
  */
 
-#define __SND_OSS_COMPAT__
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
+#include <linux/pci.h>
+#include <linux/slab.h>
+#include <linux/gameport.h>
+#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/mpu401.h>
 #include <sound/ac97_codec.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
 
+#define chip_t es1968_t
+
 #define CARD_NAME "ESS Maestro1/2"
 #define DRIVER_NAME "ES1968"
 
-EXPORT_NO_SYMBOLS;
 MODULE_DESCRIPTION("ESS Maestro");
 MODULE_CLASSES("{sound}");
 MODULE_LICENSE("GPL");
@@ -113,6 +121,10 @@ MODULE_DEVICES("{{ESS,Maestro 2e},"
                "{ESS,Maestro 2},"
                "{ESS,Maestro 1},"
                "{TerraTec,DMX}}");
+
+#if defined(CONFIG_GAMEPORT) || (defined(MODULE) && defined(CONFIG_GAMEPORT_MODULE))
+#define SUPPORT_JOYSTICK 1
+#endif
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 1-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
@@ -123,6 +135,9 @@ static int pcm_substreams_c[SNDRV_CARDS] = { REPEAT_SNDRV(1) };
 static int clock[SNDRV_CARDS] = { REPEAT_SNDRV(0) };
 static int use_pm[SNDRV_CARDS] = { REPEAT_SNDRV(2) };
 static int enable_mpu[SNDRV_CARDS] = { REPEAT_SNDRV(1) };
+#ifdef SUPPORT_JOYSTICK
+static int joystick[SNDRV_CARDS];
+#endif
 
 MODULE_PARM(index, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(index, "Index value for " CARD_NAME " soundcard.");
@@ -151,6 +166,11 @@ MODULE_PARM_SYNTAX(use_pm, SNDRV_ENABLED ",allows:{{0,1,2}},skill:advanced");
 MODULE_PARM(enable_mpu, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(enable_mpu, "Enable MPU401.  (0 = off, 1 = on, 2 = auto)");
 MODULE_PARM_SYNTAX(enable_mpu, SNDRV_ENABLED "," SNDRV_BOOLEAN_TRUE_DESC);
+#ifdef SUPPORT_JOYSTICK
+MODULE_PARM(joystick, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
+MODULE_PARM_DESC(joystick, "Enable joystick.");
+MODULE_PARM_SYNTAX(joystick, SNDRV_ENABLED "," SNDRV_BOOLEAN_FALSE_DESC);
+#endif
 
 
 /* PCI Dev ID's */
@@ -604,6 +624,11 @@ struct snd_es1968 {
 #ifdef CONFIG_PM
     u16 apu_map[NR_APUS][NR_APU_REGS];
 #endif
+
+#ifdef SUPPORT_JOYSTICK
+	struct gameport gameport;
+	struct resource *res_joystick;
+#endif
 };
 
 static irqreturn_t snd_es1968_interrupt(int irq, void *dev_id, struct pt_regs *regs);
@@ -660,6 +685,11 @@ inline static u16 maestro_read(es1968_t *chip, u16 reg)
     return result;
 }
 
+#define big_mdelay(msec) do {\
+	set_current_state(TASK_UNINTERRUPTIBLE);\
+	schedule_timeout(((msec) * HZ + 999) / 1000);\
+} while (0)
+	
 /* Wait for the codec bus to be free */
 static int snd_es1968_ac97_wait(es1968_t *chip)
 {
@@ -1322,45 +1352,45 @@ static snd_pcm_uframes_t snd_es1968_pcm_pointer(snd_pcm_substream_t *substream)
 }
 
 static snd_pcm_hardware_t snd_es1968_playback = {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP |
+	.info =			(SNDRV_PCM_INFO_MMAP |
                                  SNDRV_PCM_INFO_MMAP_VALID |
                                  SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_BLOCK_TRANSFER |
                                  /*SNDRV_PCM_INFO_PAUSE |*/
                                  SNDRV_PCM_INFO_RESUME),
-                                 /*	formats:	  */	SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	4000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max: */	65536,
-                                 /*	period_bytes_min: */	256,
-                                 /*	period_bytes_max: */	65536,
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 /*	fifo_size:	  */	0,
+	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	65536,
+	.period_bytes_min =	256,
+	.period_bytes_max =	65536,
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static snd_pcm_hardware_t snd_es1968_capture = {
-    /*	info:		  */	(SNDRV_PCM_INFO_NONINTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_NONINTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP |
                                  SNDRV_PCM_INFO_MMAP_VALID |
                                  SNDRV_PCM_INFO_BLOCK_TRANSFER |
                                  /*SNDRV_PCM_INFO_PAUSE |*/
                                  SNDRV_PCM_INFO_RESUME),
-                                 /*	formats:	  */	/*SNDRV_PCM_FMTBIT_U8 |*/ SNDRV_PCM_FMTBIT_S16_LE,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
-                                 /*	rate_min:	  */	4000,
-                                 /*	rate_max:	  */	48000,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max: */	65536,
-                                 /*	period_bytes_min: */	256,
-                                 /*	period_bytes_max: */	65536,
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 /*	fifo_size:	  */	0,
+	.formats =		/*SNDRV_PCM_FMTBIT_U8 |*/ SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	65536,
+	.period_bytes_min =	256,
+	.period_bytes_max =	65536,
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 /* *************************
@@ -1586,6 +1616,7 @@ static int snd_es1968_playback_open(snd_pcm_substream_t *substream)
     snd_pcm_runtime_t *runtime = substream->runtime;
     esschan_t *es;
     int apu1;
+	unsigned long flags;
 
     /* search 2 APUs */
     apu1 = snd_es1968_alloc_apu_pair(chip, ESM_APU_PCM_PLAY);
@@ -1627,6 +1658,7 @@ static int snd_es1968_capture_open(snd_pcm_substream_t *substream)
     es1968_t *chip = snd_pcm_substream_chip(substream);
     esschan_t *es;
     int apu1, apu2;
+	unsigned long flags;
 
     apu1 = snd_es1968_alloc_apu_pair(chip, ESM_APU_PCM_CAPTURE);
     if (apu1 < 0)
@@ -1685,6 +1717,7 @@ static int snd_es1968_playback_close(snd_pcm_substream_t * substream)
 {
     es1968_t *chip = snd_pcm_substream_chip(substream);
     esschan_t *es;
+	unsigned long flags;
 
     if (substream->runtime->private_data == NULL)
         return 0;
@@ -1702,6 +1735,7 @@ static int snd_es1968_capture_close(snd_pcm_substream_t * substream)
 {
     es1968_t *chip = snd_pcm_substream_chip(substream);
     esschan_t *es;
+	unsigned long flags;
 
     if (substream->runtime->private_data == NULL)
         return 0;
@@ -1716,29 +1750,27 @@ static int snd_es1968_capture_close(snd_pcm_substream_t * substream)
 
     return 0;
 }
+
 static snd_pcm_ops_t snd_es1968_playback_ops = {
-    /*	open:	  */	snd_es1968_playback_open,
-    /*	close:	  */	snd_es1968_playback_close,
-    /*	ioctl:	  */	snd_pcm_lib_ioctl,
-    /*	hw_params:*/	snd_es1968_hw_params,
-    /*	hw_free:  */	snd_es1968_hw_free,
-    /*	prepare:  */	snd_es1968_pcm_prepare,
-    /*	trigger:  */	snd_es1968_pcm_trigger,
-    /*	pointer:  */	snd_es1968_pcm_pointer,
-    0,0
+	.open =		snd_es1968_playback_open,
+	.close =	snd_es1968_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_es1968_hw_params,
+	.hw_free =	snd_es1968_hw_free,
+	.prepare =	snd_es1968_pcm_prepare,
+	.trigger =	snd_es1968_pcm_trigger,
+	.pointer =	snd_es1968_pcm_pointer,
 };
 
 static snd_pcm_ops_t snd_es1968_capture_ops = {
-    /*	open:	  */	snd_es1968_capture_open,
-    /*	close:	  */	snd_es1968_capture_close,
-    /*	ioctl:	  */	snd_pcm_lib_ioctl,
-    /*	hw_params:*/	snd_es1968_hw_params,
-    /*	hw_free:  */	snd_es1968_hw_free,
-    /*	prepare:  */	snd_es1968_pcm_prepare,
-    /*	trigger:  */	snd_es1968_pcm_trigger,
-    /*	pointer:  */	snd_es1968_pcm_pointer,
-    /*	copy:	  */	0,
-    0
+	.open =		snd_es1968_capture_open,
+	.close =	snd_es1968_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_es1968_hw_params,
+	.hw_free =	snd_es1968_hw_free,
+	.prepare =	snd_es1968_pcm_prepare,
+	.trigger =	snd_es1968_pcm_trigger,
+	.pointer =	snd_es1968_pcm_pointer,
 };
 
 
@@ -1907,7 +1939,7 @@ static void snd_es1968_update_pcm(es1968_t *chip, esschan_t *es)
     es->hwptr = hwptr;
     es->count += diff;
 
-    if (es->count > es->frag_size) {
+	if (es->count > es->frag_size) {
         spin_unlock(&chip->substream_lock);
         snd_pcm_period_elapsed(subs);
         spin_lock(&chip->substream_lock);
@@ -2004,9 +2036,9 @@ static irqreturn_t snd_es1968_interrupt(int irq, void *dev_id, struct pt_regs *r
     }
 
     if (event & ESM_SOUND_IRQ) {
-        struct list_head *p;
+		struct list_head *p;
         spin_lock(&chip->substream_lock);
-        list_for_each(p, &chip->substream_list) {
+		list_for_each(p, &chip->substream_list) {
             esschan_t *es = list_entry(p, esschan_t, list);
             if (es->running)
                 snd_es1968_update_pcm(chip, es);
@@ -2492,6 +2524,13 @@ static int snd_es1968_free(es1968_t *chip)
     }
     if (chip->irq >= 0)
         free_irq(chip->irq, (void *)chip);
+#ifdef SUPPORT_JOYSTICK
+	if (chip->res_joystick) {
+		gameport_unregister_port(&chip->gameport);
+		release_resource(chip->res_joystick);
+		kfree_nocheck(chip->res_joystick);
+	}
+#endif
     snd_es1968_set_acpi(chip, ACPI_D3);
     chip->master_switch = NULL;
     chip->master_volume = NULL;
@@ -2533,15 +2572,9 @@ static int __devinit snd_es1968_create(snd_card_t * card,
                                        int do_pm,
                                        es1968_t **chip_ret)
 {
-#ifdef TARGET_OS2
     static snd_device_ops_t ops = {
-        snd_es1968_dev_free,0,0,0
+		.dev_free =	snd_es1968_dev_free,
     };
-#else
-    static snd_device_ops_t ops = {
-    dev_free:       snd_es1968_dev_free,
-    };
-#endif
     es1968_t *chip;
     int i, err;
 
@@ -2551,11 +2584,11 @@ static int __devinit snd_es1968_create(snd_card_t * card,
     if ((err = pci_enable_device(pci)) < 0)
         return err;
     /* check, if we can restrict PCI DMA transfers to 28 bits */
-    if (!pci_dma_supported(pci, 0x0fffffff)) {
+	if (pci_set_dma_mask(pci, 0x0fffffff) < 0 ||
+	    pci_set_consistent_dma_mask(pci, 0x0fffffff) < 0) {
         snd_printk("architecture does not support 28bit PCI busmaster DMA\n");
         return -ENXIO;
     }
-    pci_set_consistent_dma_mask(pci, 0x0fffffff);
 
     chip = kcalloc(1, sizeof(*chip), GFP_KERNEL);
     if (! chip)
@@ -2630,62 +2663,13 @@ static int __devinit snd_es1968_create(snd_card_t * card,
         return err;
     }
 
+	snd_card_set_dev(card, &pci->dev);
+
     *chip_ret = chip;
 
     return 0;
 }
 
-
-/*
- * joystick
- */
-
-static int snd_es1968_joystick_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t *uinfo)
-{
-    uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
-    uinfo->count = 1;
-    uinfo->value.integer.min = 0;
-    uinfo->value.integer.max = 1;
-    return 0;
-}
-
-static int snd_es1968_joystick_get(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
-{
-    es1968_t *chip = snd_kcontrol_chip(kcontrol);
-    u16 val;
-
-    pci_read_config_word(chip->pci, ESM_LEGACY_AUDIO_CONTROL, &val);
-    ucontrol->value.integer.value[0] = (val & 0x04) ? 1 : 0;
-    return 0;
-}
-
-static int snd_es1968_joystick_put(snd_kcontrol_t *kcontrol, snd_ctl_elem_value_t *ucontrol)
-{
-    es1968_t *chip = snd_kcontrol_chip(kcontrol);
-    u16 val, oval;
-
-    pci_read_config_word(chip->pci, ESM_LEGACY_AUDIO_CONTROL, &oval);
-    val = oval & ~0x04;
-    if (ucontrol->value.integer.value[0])
-        val |= 0x04;
-    if (val != oval) {
-        pci_write_config_word(chip->pci, ESM_LEGACY_AUDIO_CONTROL, val);
-        return 1;
-    }
-    return 0;
-}
-
-#define num_controls(ary) (sizeof(ary) / sizeof(snd_kcontrol_new_t))
-
-static snd_kcontrol_new_t snd_es1968_control_switches[] __devinitdata = {
-    {
-        /* .iface = */SNDRV_CTL_ELEM_IFACE_CARD,0,0,
-        /* .name =  */"Joystick",0,0,0,
-        /* .info =  */snd_es1968_joystick_info,
-        /* .get =   */snd_es1968_joystick_get,
-        /* .put =   */snd_es1968_joystick_put,
-    }
-};
 
 /*
  */
@@ -2784,14 +2768,17 @@ static int __devinit snd_es1968_probe(struct pci_dev *pci,
 
         printk("snd_es1968_probe cp8\n");
 
-    /* card switches */
-    for (i = 0; i < num_controls(snd_es1968_control_switches); i++) {
-        err = snd_ctl_add(card, snd_ctl_new1(&snd_es1968_control_switches[i], chip));
-        if (err < 0) {
-            snd_card_free(card);
-            return err;
-        }
-    }
+#ifdef SUPPORT_JOYSTICK
+#define JOYSTICK_ADDR	0x200
+	if (joystick[dev] &&
+	    (chip->res_joystick = request_region(JOYSTICK_ADDR, 8, "ES1968 gameport")) != NULL) {
+		u16 val;
+		pci_read_config_word(pci, ESM_LEGACY_AUDIO_CONTROL, &val);
+		pci_write_config_word(pci, ESM_LEGACY_AUDIO_CONTROL, val | 0x04);
+		chip->gameport.io = JOYSTICK_ADDR;
+		gameport_register_port(&chip->gameport);
+	}
+#endif
         printk("snd_es1968_probe cp9\n");
 
 
@@ -2826,12 +2813,11 @@ static void __devexit snd_es1968_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-    0, 0, 0,
-    "ES1968 (ESS Maestro)",
-    snd_es1968_ids,
-    snd_es1968_probe,
-    snd_es1968_remove,
-    SND_PCI_PM_CALLBACKS
+	.name = "ES1968 (ESS Maestro)",
+	.id_table = snd_es1968_ids,
+	.probe = snd_es1968_probe,
+	.remove = __devexit_p(snd_es1968_remove),
+	SND_PCI_PM_CALLBACKS
 };
 
 static int __init alsa_card_es1968_init(void)
@@ -2840,7 +2826,7 @@ static int __init alsa_card_es1968_init(void)
 
     if ((err = pci_module_init(&driver)) < 0) {
 #ifdef MODULE
-        //		snd_printk("ESS Maestro soundcard not found or device busy\n");
+//		snd_printk(KERN_ERR "ESS Maestro soundcard not found or device busy\n");
 #endif
         return err;
     }
@@ -2866,7 +2852,8 @@ module_exit(alsa_card_es1968_exit)
  pcm_substreams_c,
  clock,
  use_pm,
- enable_mpu
+			 enable_mpu,
+			 joystick
  */
 
 static int __init alsa_card_es1968_setup(char *str)
@@ -2883,7 +2870,11 @@ static int __init alsa_card_es1968_setup(char *str)
            get_option(&str,&pcm_substreams_c[nr_dev]) == 2 &&
            get_option(&str,&clock[nr_dev]) == 2 &&
            get_option(&str,&use_pm[nr_dev]) == 2 &&
-           get_option(&str,&enable_mpu[nr_dev]) == 2);
+	       get_option(&str,&enable_mpu[nr_dev]) == 2
+#ifdef SUPPORT_JOYSTICK
+	       && get_option(&str,&joystick[nr_dev]) == 2
+#endif
+	       );
     nr_dev++;
     return 1;
 }

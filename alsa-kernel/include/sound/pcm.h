@@ -410,6 +410,10 @@ struct snd_pcm_str {
 	unsigned int xrun_debug;	/* 0 = disabled, 1 = verbose, 2 = stacktrace */
 	struct snd_info_entry *proc_xrun_debug_entry;
 #endif
+#ifdef CONFIG_SND_DEBUG
+	unsigned int xrun_debug: 1;
+	snd_info_entry_t *proc_xrun_debug_entry;
+#endif
 };
 
 struct snd_pcm {

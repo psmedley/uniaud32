@@ -15,7 +15,7 @@ NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG)
 #
 #===================================================================
 FILE1    = opl3sa2.obj
-#als100.obj azt2320.obj cmi8330.obj dt0197h.obj es18xx.obj
+#als100.obj azt2320.obj cmi8330.obj dt019x.obj es18xx.obj
 FILE2    = 
 # sgalaxy.obj
 FILE3    = 

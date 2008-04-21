@@ -10,6 +10,12 @@
  *  Note: 16-bit wide is assigned to first direction which made request.
  *        With full duplex - playback is preferred with abstract layer.
  *
+ *  Note: Some chip revisions have hardware bug. Changing capture
+ *        channel from full-duplex 8bit DMA to 16bit DMA will block
+ *        16bit DMA transfers from DSP chip (capture) until 8bit transfer
+ *        to DSP chip (playback) starts. This bug can be avoided with
+ *        "16bit DMA Allocation" setting set to Playback or Capture.
+ *
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,17 +29,27 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#define SNDRV_MAIN_OBJECT_FILE
 #include <sound/driver.h>
+#include <asm/io.h>
+#include <asm/dma.h>
+#include <linux/init.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/sb.h>
 #include <sound/sb16_csp.h>
 #include <sound/mpu401.h>
 #include <sound/control.h>
 #include <sound/info.h>
+
+MODULE_AUTHOR("Jaroslav Kysela <perex@suse.cz>");
+MODULE_DESCRIPTION("Routines for control of 16-bit SoundBlaster cards and clones");
+MODULE_LICENSE("GPL");
+
+#define chip_t sb_t
 
 #ifdef CONFIG_SND_SB16_CSP
 static void snd_sb16_csp_playback_prepare(sb_t *chip, snd_pcm_runtime_t *runtime)
@@ -44,7 +60,7 @@ static void snd_sb16_csp_playback_prepare(sb_t *chip, snd_pcm_runtime_t *runtime
         if (csp->running & SNDRV_SB_CSP_ST_LOADED) {
             /* manually loaded codec */
             if ((csp->mode & SNDRV_SB_CSP_MODE_DSP_WRITE) &&
-                ((1 << runtime->format) == csp->acc_format)) {
+			    ((1U << runtime->format) == csp->acc_format)) {
                 /* Supported runtime PCM format for playback */
                 if (csp->ops.csp_use(csp) == 0) {
                     /* If CSP was successfully acquired */
@@ -92,7 +108,7 @@ static void snd_sb16_csp_capture_prepare(sb_t *chip, snd_pcm_runtime_t *runtime)
         if (csp->running & SNDRV_SB_CSP_ST_LOADED) {
             /* manually loaded codec */
             if ((csp->mode & SNDRV_SB_CSP_MODE_DSP_READ) &&
-                ((1 << runtime->format) == csp->acc_format)) {
+			    ((1U << runtime->format) == csp->acc_format)) {
                 /* Supported runtime PCM format for capture */
                 if (csp->ops.csp_use(csp) == 0) {
                     /* If CSP was successfully acquired */
@@ -199,11 +215,11 @@ static void snd_sb16_csp_capture_close(sb_t *chip)
 #else
 #define snd_sb16_csp_playback_prepare(chip, runtime)	/*nop*/
 #define snd_sb16_csp_capture_prepare(chip, runtime)	/*nop*/
-#define snd_sb16_csp_update(chip)		/*nop*/
+#define snd_sb16_csp_update(chip)			/*nop*/
 #define snd_sb16_csp_playback_open(chip, runtime)	/*nop*/
-#define snd_sb16_csp_playback_close(chip)	/*nop*/
+#define snd_sb16_csp_playback_close(chip)		/*nop*/
 #define snd_sb16_csp_capture_open(chip, runtime)	/*nop*/
-#define snd_sb16_csp_capture_close(chip)       	/*nop*/
+#define snd_sb16_csp_capture_close(chip)      	 	/*nop*/
 #endif
 
 
@@ -260,7 +276,7 @@ static int snd_sb16_playback_prepare(snd_pcm_substream_t * substream)
     snd_sb16_setup_rate(chip, runtime->rate, SNDRV_PCM_STREAM_PLAYBACK);
     size = chip->p_dma_size = snd_pcm_lib_buffer_bytes(substream);
     dma = (chip->mode & SB_MODE_PLAYBACK_8) ? chip->dma8 : chip->dma16;
-    snd_dma_program(dma, runtime->dma_area, size, DMA_MODE_WRITE | DMA_AUTOINIT);
+	snd_dma_program(dma, runtime->dma_addr, size, DMA_MODE_WRITE | DMA_AUTOINIT);
 
     count = snd_pcm_lib_period_bytes(substream);
     spin_lock_irqsave(&chip->reg_lock, flags);
@@ -327,7 +343,7 @@ static int snd_sb16_capture_prepare(snd_pcm_substream_t * substream)
     snd_sb16_setup_rate(chip, runtime->rate, SNDRV_PCM_STREAM_CAPTURE);
     size = chip->c_dma_size = snd_pcm_lib_buffer_bytes(substream);
     dma = (chip->mode & SB_MODE_CAPTURE_8) ? chip->dma8 : chip->dma16;
-    snd_dma_program(dma, runtime->dma_area, size, DMA_MODE_READ | DMA_AUTOINIT);
+	snd_dma_program(dma, runtime->dma_addr, size, DMA_MODE_READ | DMA_AUTOINIT);
 
     count = snd_pcm_lib_period_bytes(substream);
     spin_lock_irqsave(&chip->reg_lock, flags);
@@ -377,7 +393,7 @@ static int snd_sb16_capture_trigger(snd_pcm_substream_t * substream,
     return result;
 }
 
-void snd_sb16dsp_interrupt(int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t snd_sb16dsp_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 {
     sb_t *chip = dev_id;
     unsigned char status;
@@ -386,8 +402,8 @@ void snd_sb16dsp_interrupt(int irq, void *dev_id, struct pt_regs *regs)
     spin_lock(&chip->mixer_lock);
     status = snd_sbmixer_read(chip, SB_DSP4_IRQSTATUS);
     spin_unlock(&chip->mixer_lock);
-    if ((status & SB_IRQTYPE_MPUIN) && chip->rmidi)
-        snd_mpu401_uart_interrupt(irq, chip->rmidi->private_data, regs);
+	if ((status & SB_IRQTYPE_MPUIN) && chip->rmidi_callback)
+		chip->rmidi_callback(irq, chip->rmidi->private_data, regs);
     if (status & SB_IRQTYPE_8BIT) {
         ok = 0;
         if (chip->mode & SB_MODE_PLAYBACK_8) {
@@ -422,6 +438,7 @@ void snd_sb16dsp_interrupt(int irq, void *dev_id, struct pt_regs *regs)
         snd_sb_ack_16bit(chip);
         spin_unlock(&chip->reg_lock);
     }
+	return IRQ_HANDLED;
 }
 
 /*
@@ -435,7 +452,7 @@ static snd_pcm_uframes_t snd_sb16_playback_pointer(snd_pcm_substream_t * substre
     size_t ptr;
 
     dma = (chip->mode & SB_MODE_PLAYBACK_8) ? chip->dma8 : chip->dma16;
-    ptr = chip->p_dma_size - snd_dma_residue(dma);
+	ptr = snd_dma_pointer(dma, chip->p_dma_size);
     return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -446,7 +463,7 @@ static snd_pcm_uframes_t snd_sb16_capture_pointer(snd_pcm_substream_t * substrea
     size_t ptr;
 
     dma = (chip->mode & SB_MODE_CAPTURE_8) ? chip->dma8 : chip->dma16;
-    ptr = chip->c_dma_size - snd_dma_residue(dma);
+	ptr = snd_dma_pointer(dma, chip->c_dma_size);
     return bytes_to_frames(substream->runtime, ptr);
 }
 
@@ -454,79 +471,41 @@ static snd_pcm_uframes_t snd_sb16_capture_pointer(snd_pcm_substream_t * substrea
 
 */
 
-#ifdef TARGET_OS2
 static snd_pcm_hardware_t snd_sb16_playback =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP_VALID),
-                                 /*	formats:	  */	0,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
-                                 /*	rate_min:	  */	4000,
-                                 /*	rate_max:	  */	44100,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	(128*1024),
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	(128*1024),
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 /*	fifo_size:	  */	0,
+	.formats =		0,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
+	.rate_min =		4000,
+	.rate_max =		44100,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
 
 static snd_pcm_hardware_t snd_sb16_capture =
 {
-    /*	info:		  */	(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
                                  SNDRV_PCM_INFO_MMAP_VALID),
-                                 /*	formats:	  */	0,
-                                 /*	rates:		  */	SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
-                                 /*	rate_min:	  */	4000,
-                                 /*	rate_max:	  */	44100,
-                                 /*	channels_min:	  */	1,
-                                 /*	channels_max:	  */	2,
-                                 /*	buffer_bytes_max:  */	(128*1024),
-                                 /*	period_bytes_min:  */	64,
-                                 /*	period_bytes_max:  */	(128*1024),
-                                 /*	periods_min:	  */	1,
-                                 /*	periods_max:	  */	1024,
-                                 /*	fifo_size:	  */	0,
+	.formats =		0,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
+	.rate_min =		4000,
+	.rate_max =		44100,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	(128*1024),
+	.period_bytes_min =	64,
+	.period_bytes_max =	(128*1024),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
 };
-#else
-static snd_pcm_hardware_t snd_sb16_playback =
-{
-info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                         SNDRV_PCM_INFO_MMAP_VALID),
-    formats:		0,
-    rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
-    rate_min:		4000,
-    rate_max:		44100,
-    channels_min:		1,
-    channels_max:		2,
-    buffer_bytes_max:	(128*1024),
-    period_bytes_min:	64,
-    period_bytes_max:	(128*1024),
-    periods_min:		1,
-    periods_max:		1024,
-    fifo_size:		0,
-};
-
-static snd_pcm_hardware_t snd_sb16_capture =
-{
-info:			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
-                         SNDRV_PCM_INFO_MMAP_VALID),
-    formats:		0,
-    rates:			SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_44100,
-    rate_min:		4000,
-    rate_max:		44100,
-    channels_min:		1,
-    channels_max:		2,
-    buffer_bytes_max:	(128*1024),
-    period_bytes_min:	64,
-    period_bytes_max:	(128*1024),
-    periods_min:		1,
-    periods_max:		1024,
-    fifo_size:		0,
-};
-#endif
 
 /*
  *  open/close
@@ -752,19 +731,11 @@ static int snd_sb16_dma_control_put(snd_kcontrol_t * kcontrol, snd_ctl_elem_valu
 }
 
 snd_kcontrol_new_t snd_sb16_dma_control = {
-#ifdef TARGET_OS2
-    SNDRV_CTL_ELEM_IFACE_PCM,0,0,
-    "16-bit DMA Allocation",0,0, 0,
-    snd_sb16_dma_control_info,
-    snd_sb16_dma_control_get,
-    snd_sb16_dma_control_put,0
-#else
-iface: SNDRV_CTL_ELEM_IFACE_PCM,
-name: "16-bit DMA Allocation",
-info: snd_sb16_dma_control_info,
-get: snd_sb16_dma_control_get,
-put: snd_sb16_dma_control_put
-#endif
+	.iface = SNDRV_CTL_ELEM_IFACE_PCM,
+	.name = "16-bit DMA Allocation",
+	.info = snd_sb16_dma_control_info,
+	.get = snd_sb16_dma_control_get,
+	.put = snd_sb16_dma_control_put
 };
 
 /*
@@ -814,7 +785,7 @@ int snd_sb16dsp_configure(sb_t * chip)
             return -EINVAL;
         }
     }
-    if (chip->dma16 >= 0) {
+	if (chip->dma16 >= 0 && chip->dma16 != chip->dma8) {
         switch (chip->dma16) {
         case 5:
             dmareg |= SB_DMASETUP_DMA5;
@@ -860,51 +831,27 @@ int snd_sb16dsp_configure(sb_t * chip)
     return 0;
 }
 
-#ifdef TARGET_OS2
 static snd_pcm_ops_t snd_sb16_playback_ops = {
-    snd_sb16_playback_open,
-    snd_sb16_playback_close,
-    snd_pcm_lib_ioctl,
-    snd_sb16_hw_params,
-    snd_sb16_hw_free,
-    snd_sb16_playback_prepare,
-    snd_sb16_playback_trigger,
-    snd_sb16_playback_pointer,0,0
+	.open =		snd_sb16_playback_open,
+	.close =	snd_sb16_playback_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_sb16_hw_params,
+	.hw_free =	snd_sb16_hw_free,
+	.prepare =	snd_sb16_playback_prepare,
+	.trigger =	snd_sb16_playback_trigger,
+	.pointer =	snd_sb16_playback_pointer,
 };
 
 static snd_pcm_ops_t snd_sb16_capture_ops = {
-    snd_sb16_capture_open,
-    snd_sb16_capture_close,
-    snd_pcm_lib_ioctl,
-    snd_sb16_hw_params,
-    snd_sb16_hw_free,
-    snd_sb16_capture_prepare,
-    snd_sb16_capture_trigger,
-    snd_sb16_capture_pointer,0
+	.open =		snd_sb16_capture_open,
+	.close =	snd_sb16_capture_close,
+	.ioctl =	snd_pcm_lib_ioctl,
+	.hw_params =	snd_sb16_hw_params,
+	.hw_free =	snd_sb16_hw_free,
+	.prepare =	snd_sb16_capture_prepare,
+	.trigger =	snd_sb16_capture_trigger,
+	.pointer =	snd_sb16_capture_pointer,
 };
-#else
-static snd_pcm_ops_t snd_sb16_playback_ops = {
-open:			snd_sb16_playback_open,
-    close:			snd_sb16_playback_close,
-    ioctl:			snd_pcm_lib_ioctl,
-    hw_params:		snd_sb16_hw_params,
-    hw_free:		snd_sb16_hw_free,
-    prepare:		snd_sb16_playback_prepare,
-    trigger:		snd_sb16_playback_trigger,
-    pointer:		snd_sb16_playback_pointer,
-};
-
-static snd_pcm_ops_t snd_sb16_capture_ops = {
-open:			snd_sb16_capture_open,
-    close:			snd_sb16_capture_close,
-    ioctl:			snd_pcm_lib_ioctl,
-    hw_params:		snd_sb16_hw_params,
-    hw_free:		snd_sb16_hw_free,
-    prepare:		snd_sb16_capture_prepare,
-    trigger:		snd_sb16_capture_trigger,
-    pointer:		snd_sb16_capture_pointer,
-};
-#endif
 
 static void snd_sb16dsp_pcm_free(snd_pcm_t *pcm)
 {
@@ -929,16 +876,28 @@ int snd_sb16dsp_pcm(sb_t * chip, int device, snd_pcm_t ** rpcm)
     snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &snd_sb16_playback_ops);
     snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &snd_sb16_capture_ops);
 
+	if (chip->dma16 >= 0 && chip->dma8 != chip->dma16)
     snd_ctl_add(card, snd_ctl_new1(&snd_sb16_dma_control, chip));
+	else
+		pcm->info_flags = SNDRV_PCM_INFO_HALF_DUPLEX;
 
-    snd_pcm_lib_preallocate_pages_for_all(pcm, 64*1024, 128*1024, GFP_KERNEL|GFP_DMA);
+	snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
+					      snd_dma_isa_data(),
+					      64*1024, 128*1024);
 
     if (rpcm)
         *rpcm = pcm;
     return 0;
 }
 
+const snd_pcm_ops_t *snd_sb16dsp_get_pcm_ops(int direction)
+{
+	return direction == SNDRV_PCM_STREAM_PLAYBACK ?
+		&snd_sb16_playback_ops : &snd_sb16_capture_ops;
+}
+
 EXPORT_SYMBOL(snd_sb16dsp_pcm);
+EXPORT_SYMBOL(snd_sb16dsp_get_pcm_ops);
 EXPORT_SYMBOL(snd_sb16dsp_configure);
 EXPORT_SYMBOL(snd_sb16dsp_interrupt);
 

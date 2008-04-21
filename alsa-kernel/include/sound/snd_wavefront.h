@@ -1,5 +1,5 @@
-#ifndef __SND_WAVEFRONT_H__
-#define __SND_WAVEFRONT_H__
+#ifndef __SOUND_SND_WAVEFRONT_H__
+#define __SOUND_SND_WAVEFRONT_H__
 
 #include "cs4231.h"
 #include "mpu401.h"
@@ -91,18 +91,19 @@ struct _snd_wavefront {
 	int samples_used;                  /* how many */
 	char interrupts_are_midi;          /* h/w MPU interrupts enabled ? */
 	char rom_samples_rdonly;           /* can we write on ROM samples */
+	spinlock_t irq_lock;
 	wait_queue_head_t interrupt_sleeper; 
         snd_wavefront_midi_t midi;         /* ICS2115 MIDI interface */
 };
 
 struct _snd_wavefront_card {
 	snd_wavefront_t wavefront;
-#ifdef __ISAPNP__
-	struct isapnp_dev *wss;
-	struct isapnp_dev *ctrl;
-	struct isapnp_dev *mpu;
-	struct isapnp_dev *synth;
-#endif /* CONFIG_ISAPNP */
+#ifdef CONFIG_PNP
+	struct pnp_dev *wss;
+	struct pnp_dev *ctrl;
+	struct pnp_dev *mpu;
+	struct pnp_dev *synth;
+#endif /* CONFIG_PNP */
 };
 
 extern void snd_wavefront_internal_interrupt (snd_wavefront_card_t *card);
@@ -138,5 +139,4 @@ extern int snd_wavefront_fx_release (snd_hwdep_t *, struct file *);
 
 #define LOGNAME "WaveFront: "
 
-#endif  /* __SND_WAVEFRONT_H__ */
-
+#endif  /* __SOUND_SND_WAVEFRONT_H__ */

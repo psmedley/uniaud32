@@ -16,10 +16,11 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
 #include "emu8000_local.h"
+#include <asm/uaccess.h>
 
 MODULE_PARM(emu8000_reset_addr, "i");
 MODULE_PARM_DESC(emu8000_reset_addr, "reset write address at each time (makes slowdown)");
@@ -81,7 +82,7 @@ snd_emu8000_close_dma(emu8000_t *emu)
  * 8bit samples etc.
  */
 static unsigned short
-read_word(const void *buf, int offset, int mode)
+read_word(const void __user *buf, int offset, int mode)
 {
 	unsigned short c;
 	if (mode & SNDRV_SFNT_SAMPLE_8BITS) {
@@ -145,7 +146,7 @@ write_word(emu8000_t *emu, int *offset, unsigned short data)
  */
 int
 snd_emu8000_sample_new(snd_emux_t *rec, snd_sf_sample_t *sp,
-		       snd_util_memhdr_t *hdr, const void *data, long count)
+		       snd_util_memhdr_t *hdr, const void __user *data, long count)
 {
 	int  i;
 	int  rc;
@@ -228,6 +229,11 @@ snd_emu8000_sample_new(snd_emux_t *rec, snd_sf_sample_t *sp,
 		s = read_word(data, offset, sp->v.mode_flags);
 		offset++;
 		write_word(emu, &dram_offset, s);
+
+		/* we may take too long time in this loop.
+		 * so give controls back to kernel if needed.
+		 */
+		cond_resched();
 
 		if (i == sp->v.loopend &&
 		    (sp->v.mode_flags & (SNDRV_SFNT_SAMPLE_BIDIR_LOOP|SNDRV_SFNT_SAMPLE_REVERSE_LOOP)))

@@ -2166,6 +2166,7 @@ int patch_ad1985(struct snd_ac97 * ac97)
 	/* switch front/surround line-out/hp-out */
 	/* AD-compatible mode */
 	/* Stereo mutes enabled */
+	/* in accordance with ADI driver: misc | 0x5c28 */
 	snd_ac97_write_cache(ac97, AC97_AD_MISC, misc |
 			     AC97_AD198X_LOSEL |
 			     AC97_AD198X_HPSEL |

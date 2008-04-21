@@ -91,6 +91,9 @@ struct snd_mpu401 {
 	spinlock_t output_lock;
 	spinlock_t timer_lock;
 	
+	atomic_t rx_loop;
+	atomic_t tx_loop;
+
 	struct timer_list timer;
 
 	void (*write) (struct snd_mpu401 * mpu, unsigned char data, unsigned long addr);

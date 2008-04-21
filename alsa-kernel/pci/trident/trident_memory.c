@@ -24,7 +24,10 @@
  */
 
 #include <sound/driver.h>
+#include <asm/io.h>
 #include <linux/pci.h>
+#include <linux/time.h>
+#include <sound/core.h>
 #include <sound/trident.h>
 
 /* page arguments of these two macros are Trident page (4096 bytes), not like
@@ -76,8 +79,6 @@ static inline void set_silent_tlb(struct snd_trident *trident, int page)
     page <<= 1;
     __set_tlb_bus(trident, page, (unsigned long)trident->tlb.silent_page.area, trident->tlb.silent_page.addr);
     __set_tlb_bus(trident, page+1, (unsigned long)trident->tlb.silent_page.area, trident->tlb.silent_page.addr);
-//	__set_tlb_bus(trident, page, (unsigned long)trident->tlb.silent_page, trident->tlb.silent_page_dmaaddr);
-//	__set_tlb_bus(trident, page+1, (unsigned long)trident->tlb.silent_page, trident->tlb.silent_page_dmaaddr);
 }
 
 #else
@@ -112,7 +113,6 @@ static inline void set_silent_tlb(struct snd_trident *trident, int page)
 	page *= UNIT_PAGES;
         for (i = 0; i < UNIT_PAGES; i++, page++)
             __set_tlb_bus(trident, page, (unsigned long)trident->tlb.silent_page.area, trident->tlb.silent_page.addr);
-	    //    __set_tlb_bus(trident, page, (unsigned long)trident->tlb.silent_page, trident->tlb.silent_page_dmaaddr);
 }
 
 #endif /* PAGE_SIZE */
