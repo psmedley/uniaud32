@@ -4,27 +4,10 @@ AINCLUDES = $(DDK_BASE)\H
 CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
 
 32BIT=1
-!include ..\..\..\..\makefile.inc
+!include ..\..\..\makefile.inc
 
-NMAKEOPTS=-f makefile.os2 $(LOGO)
+NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG)
 
-!if "$(DEBUG)" == "1"
-NMAKEOPTS += DEBUG=1
-!endif
-
-!if "$(KEE)" == "0"
-NMAKEOPTS += KEE=0
-KEE=0
-!else
-NMAKEOPTS += KEE=1
-KEE=1
-!endif
-
-!if "$(DEBUG)" == "1"
-!Message BUILDING DEBUG VERSION
-!else
-!Message BUILDING RELEASE VERSION
-!endif
 
 #===================================================================
 #
