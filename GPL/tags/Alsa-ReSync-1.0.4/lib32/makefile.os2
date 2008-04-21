@@ -1,0 +1,60 @@
+CINCLUDES = ..\include;..\runtime;..\alsa-kernel\include;$(%WATCOM)\H;$(%WATCOM)\H\OS2;
+AINCLUDES = $(DDK_BASE)\H
+
+CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
+
+!if "$(IBM_BUILD)" == "1"
+CDEFINES += -DIBM_BUILD
+!endif
+
+32BIT=1
+!include ..\makefile.inc
+
+
+#===================================================================
+#
+#   List of source files
+#
+#===================================================================
+FILE1    = spinlock.obj malloc.obj pci.obj irq.obj ioctl.obj
+FILE2    = memory.obj debug.obj sound.obj soundmixer.obj soundmidi.obj 
+FILE3    = ossidc.obj semaphore.obj waitqueue.obj misc.obj fminstrload.obj
+FILE4    = strncpy.obj task.obj 
+FILE5    = strncmp.obj timer.obj
+FILE6    = instropl2.obj instropl3.obj vsprintf.obj
+!if $(KEE) == 0
+FILE7    = stack.obj
+!else
+FILE7    = 
+!endif
+FILE8    = 
+FILELAST =
+FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9)
+
+TARGET   = linuxlib
+
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
+
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: $(OBJDIR)\$(TARGET).lib
+
+
+$(LNKFILE): makefile.os2
+    @%create $(LNKFILE)
+    @for %f in ($(FILES)) do @%append $(LNKFILE) -+$(OBJDIR)\%f
+
+$(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
+    $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
+    copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
+
+
+clean: .SYMBOLIC
+    -@rm  *.err 2>nul
+    @cd $(OBJDIR)
+    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+    @cd ../..
