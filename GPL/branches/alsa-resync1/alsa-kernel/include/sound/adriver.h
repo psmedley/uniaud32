@@ -57,6 +57,7 @@ void snd_compat_request_module(const char *name, ...);
 #define request_module(name, args...) snd_compat_request_module(name, ##args)
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 #ifndef TARGET_OS2
 #include <linux/compiler.h>
 #endif /* !TARGET_OS2 */
@@ -64,9 +65,8 @@ void snd_compat_request_module(const char *name, ...);
 #define __user
 #endif
 
-#ifdef CONFIG_PCI
+/* for compat layer */
 #include <linux/pci.h>
-#endif
 
 #ifndef __iomem
 #define __iomem
@@ -180,14 +180,17 @@ static inline struct proc_dir_entry *PDE(const struct inode *inode)
 #define MODULE_LICENSE(license)
 #endif
 
-#if !defined CONFIG_HAVE_STRLCPY && !defined TARGET_OS2
+#endif /* < 2.6.0 */
+
+#ifndef TARGET_OS2
+#ifndef CONFIG_HAVE_STRLCPY
 size_t snd_compat_strlcpy(char *dest, const char *src, size_t size);
 #define strlcpy(dest, src, size) snd_compat_strlcpy(dest, src, size)
 size_t snd_compat_strlcat(char *dest, const char *src, size_t size);
 #define strlcat(dest, src, size) snd_compat_strlcat(dest, src, size)
 #endif
 
-#if !defined CONFIG_HAVE_SNPRINTF && !defined TARGET_OS2
+#ifndef CONFIG_HAVE_SNPRINTF
 #include <stdarg.h>
 int snd_compat_snprintf(char * buf, size_t size, const char * fmt, ...);
 int snd_compat_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
@@ -195,7 +198,6 @@ int snd_compat_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
 #define vsnprintf(buf,size,fmt,args) snd_compat_vsnprintf(buf,size,fmt,args)
 #endif
 
-#ifndef TARGET_OS2
 #ifndef CONFIG_HAVE_SCNPRINTF
 #define scnprintf(buf,size,fmt,args...) snprintf(buf,size,fmt,##args)
 #define vscnprintf(buf,size,fmt,args) vsnprintf(buf,size,fmt,args)
@@ -329,6 +331,13 @@ unsigned long snd_compat_msleep_interruptible(unsigned int msecs);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)
 #define snd_card_set_dev(card,dev) /* no struct device */
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 0)
+#define snd_dma_pci_data(pci)	((struct device *)(pci))
+#define snd_dma_isa_data()	NULL
+#define snd_dma_sbus_data(sbus)	((struct device *)(sbus))
+#define snd_dma_continuous_data(x)	((struct device *)(unsigned long)(x))
 #endif
 
 /* pm_message_t type */

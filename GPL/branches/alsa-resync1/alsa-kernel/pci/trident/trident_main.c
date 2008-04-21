@@ -3580,6 +3580,10 @@ int __devinit snd_trident_create(snd_card_t * card,
     }
     trident->irq = pci->irq;
 
+	memset(&trident->dma_dev, 0, sizeof(trident->dma_dev));
+	trident->dma_dev.type = SNDRV_DMA_TYPE_DEV;
+	trident->dma_dev.dev = snd_dma_pci_data(pci);
+
     /* allocate 16k-aligned TLB for NX cards */
     trident->tlb.entries = NULL;
     trident->tlb.buffer.area = NULL;

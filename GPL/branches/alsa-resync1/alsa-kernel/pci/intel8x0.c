@@ -107,7 +107,7 @@ MODULE_PARM_DESC(ac97_clock, "AC'97 codec clock (0 = auto-detect).");
 MODULE_PARM_SYNTAX(ac97_clock, SNDRV_ENABLED ",default:0");
 MODULE_PARM(ac97_quirk, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(ac97_quirk, "AC'97 workaround for strange hardware.");
-MODULE_PARM_SYNTAX(ac97_quirk, SNDRV_ENABLED ",allows:{{-1,3}},dialog:list,default:-1");
+MODULE_PARM_SYNTAX(ac97_quirk, SNDRV_ENABLED ",allows:{{-1,4}},dialog:list,default:-1");
 #ifdef SUPPORT_JOYSTICK
 MODULE_PARM(joystick, "1-" __MODULE_STRING(SNDRV_CARDS) "i");
 MODULE_PARM_DESC(joystick, "Enable joystick for Intel i8x0 soundcard.");
@@ -861,7 +861,6 @@ static irqreturn_t snd_intel8x0_interrupt(int irq, void *dev_id, struct pt_regs 
         return IRQ_NONE;
 
     if ((status & chip->int_sta_mask) == 0) {
-        static int err_count = 10;
         if (status) {
             /* ack */
             iputdword(chip, chip->int_sta_reg, status);
@@ -2981,7 +2980,7 @@ port_inited:
      are much bigger, so we don't care (on i386) */
 	/* workaround for 440MX */
 	if (chip->fix_nocache)
-		fill_nocache(chip->bdbars, chip->bdbars_count * sizeof(u32) * ICH_MAX_FRAGS * 2, 1);
+		fill_nocache(chip->bdbars.area, chip->bdbars.bytes, 1);
     int_sta_masks = 0;
     for (i = 0; i < chip->bdbars_count; i++) {
         ichdev = &chip->ichd[i];
@@ -3236,6 +3235,7 @@ static int __devinit snd_intel8x0_joystick_probe(struct pci_dev *pci,
 
     pci_read_config_word(pci, 0xe6, &val);
 #ifdef SUPPORT_JOYSTICK
+	val &= ~0x100;
     if (joystick[dev]) {
         if (! request_region(ich_gameport.io, 8, "ICH gameport")) {
             printk(KERN_WARNING "intel8x0: cannot grab gameport 0x%x\n",  ich_gameport.io);
@@ -3248,6 +3248,7 @@ static int __devinit snd_intel8x0_joystick_probe(struct pci_dev *pci,
     }
 #endif
 #ifdef SUPPORT_MIDI
+	val &= ~0x20;
     if (mpu_port[dev] > 0) {
         if (mpu_port[dev] == 0x300 || mpu_port[dev] == 0x330) {
             u8 b;

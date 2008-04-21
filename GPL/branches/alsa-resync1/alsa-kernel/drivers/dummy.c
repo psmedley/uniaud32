@@ -357,7 +357,7 @@ static int snd_card_dummy_playback_open(snd_pcm_substream_t * substream)
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
         return -ENOMEM;
-    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, (unsigned long *) &runtime->dma_bytes)) == NULL) {
+    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, &runtime->dma_bytes)) == NULL) {
         kfree(dpcm);
         return -ENOMEM;
     }
@@ -392,7 +392,7 @@ static int snd_card_dummy_capture_open(snd_pcm_substream_t * substream)
     dpcm = kcalloc(1, sizeof(*dpcm), GFP_KERNEL);
     if (dpcm == NULL)
         return -ENOMEM;
-    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, (unsigned long *) &runtime->dma_bytes)) == NULL) {
+    if ((runtime->dma_area = snd_malloc_pages_fallback(MAX_BUFFER_SIZE, GFP_KERNEL, &runtime->dma_bytes)) == NULL) {
         kfree(dpcm);
         return -ENOMEM;
     }

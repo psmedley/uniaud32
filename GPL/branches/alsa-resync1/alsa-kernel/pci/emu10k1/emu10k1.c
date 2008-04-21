@@ -100,7 +100,9 @@ MODULE_PARM_DESC(subsystem, "Force card subsystem model.");
 
 static struct pci_device_id snd_emu10k1_ids[] = {
     { 0x1102, 0x0002, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* EMU10K1 */
+#if 0 /* FIXME: not working! */
 	{ 0x1102, 0x0006, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },	/* Dell OEM version (EMU10K1) */
+#endif
     { 0x1102, 0x0004, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 1 },	/* Audigy */
     { 0x1102, 0x0008, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 1 },    /* Audigy 2 Value SB0400 */
     { 0, }

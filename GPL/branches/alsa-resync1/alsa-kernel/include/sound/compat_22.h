@@ -10,6 +10,14 @@
 #include <linux/pagemap.h>
 #include <linux/ioport.h>
 
+#ifndef likely
+#if __GNUC__ == 2 && __GNUC_MINOR__ < 96
+#define __builtin_expect(x, expected_value) (x)
+#endif
+#define likely(x)	__builtin_expect((x),1)
+#define unlikely(x)	__builtin_expect((x),0)
+#endif
+
 #if defined(SND_NEED_USB_WRAPPER) && (defined(CONFIG_USB) || defined(CONFIG_USB_MODULE))
 /* include linux/usb.h at first since it defines another compatibility layers, which
  * conflicts with ours...
@@ -219,8 +227,15 @@ void snd_wrapper_request_region(unsigned long from, unsigned long extent, const 
 struct resource *snd_compat_request_region(unsigned long start, unsigned long size, const char *name, int is_memory);
 int snd_compat_release_resource(struct resource *resource);
 
-#if 0
-//#ifdef CONFIG_PCI
+/* these functions are used for ISA buffer allocation, too, so they stay
+ * outside of CONFIG_PCI
+ */
+#define pci_alloc_consistent snd_pci_compat_alloc_consistent
+#define pci_free_consistent snd_pci_compat_free_consistent
+void *snd_pci_compat_alloc_consistent(struct pci_dev *, long, dma_addr_t *);
+void snd_pci_compat_free_consistent(struct pci_dev *, long, void *, dma_addr_t);
+
+#ifdef CONFIG_PCI
 
 /* New-style probing supporting hot-pluggable devices */
 
@@ -241,8 +256,6 @@ int snd_compat_release_resource(struct resource *resource);
 #define pci_unregister_driver snd_pci_compat_unregister_driver
 //#define pci_set_power_state snd_pci_compat_set_power_state
 
-#define pci_alloc_consistent snd_pci_compat_alloc_consistent
-#define pci_free_consistent snd_pci_compat_free_consistent
 #define pci_dma_supported snd_pci_compat_dma_supported
 
 #define pci_dev_g(n) list_entry(n, struct pci_dev, global_list)
@@ -307,8 +320,6 @@ int snd_pci_compat_set_power_state(struct pci_dev *dev, int new_state);
 int snd_pci_compat_enable_device(struct pci_dev *dev);
 void snd_pci_compat_disable_device(struct pci_dev *dev);
 int snd_pci_compat_find_capability(struct pci_dev *dev, int cap);
-void *snd_pci_compat_alloc_consistent(struct pci_dev *, long, dma_addr_t *);
-void snd_pci_compat_free_consistent(struct pci_dev *, long, void *, dma_addr_t);
 int snd_pci_compat_dma_supported(struct pci_dev *, dma_addr_t mask);
 unsigned long snd_pci_compat_get_dma_mask(struct pci_dev *);
 int snd_pci_compat_set_dma_mask(struct pci_dev *, unsigned long mask);
@@ -475,9 +486,6 @@ extern inline int pm_send(struct pm_dev *dev, pm_request_t rqst, void *data)
 #ifndef DECLARE_BITMAP
 #define DECLARE_BITMAP(name,bits) \
         unsigned long name[((bits)+BITS_PER_LONG-1)/BITS_PER_LONG]
-#endif
-#ifndef __user
-#define __user
 #endif
 
 /**

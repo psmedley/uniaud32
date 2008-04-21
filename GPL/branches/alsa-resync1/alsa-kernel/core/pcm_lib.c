@@ -187,6 +187,7 @@ static inline int snd_pcm_update_hw_ptr_post(snd_pcm_substream_t *substream,
 				   substream->pcm->card->number,
 				   substream->pcm->device,
 				   substream->stream ? 'c' : 'p');
+			if (substream->pstr->xrun_debug > 1)
 			dump_stack();
 		}
 #endif
@@ -218,8 +219,11 @@ static inline int snd_pcm_update_hw_ptr_interrupt(snd_pcm_substream_t *substream
     if (delta > 0) {
         if ((snd_pcm_uframes_t)delta < runtime->buffer_size / 2) {
 #ifdef CONFIG_SND_DEBUG
-            if (runtime->periods > 1)
+			if (runtime->periods > 1 && substream->pstr->xrun_debug) {
                 snd_printd(KERN_ERR "Unexpected hw_pointer value [1] (stream = %i, delta: -%ld, max jitter = %ld): wrong interrupt acknowledge?\n", substream->stream, (long) delta, runtime->buffer_size / 2);
+				if (substream->pstr->xrun_debug > 1)
+					dump_stack();
+			}
 #endif
             return 0;
         }
@@ -260,8 +264,11 @@ int snd_pcm_update_hw_ptr(snd_pcm_substream_t *substream)
     if (delta > 0) {
         if ((snd_pcm_uframes_t)delta < runtime->buffer_size / 2) {
 #ifdef CONFIG_SND_DEBUG
-            if (runtime->periods > 2)
+			if (runtime->periods > 2 && substream->pstr->xrun_debug) {
                 snd_printd(KERN_ERR "Unexpected hw_pointer value [2] (stream = %i, delta: -%ld, max jitter = %ld): wrong interrupt acknowledge?\n", substream->stream, (long) delta, runtime->buffer_size / 2);
+				if (substream->pstr->xrun_debug > 1)
+					dump_stack();
+			}
 #endif
             return 0;
         }
@@ -2688,20 +2695,6 @@ EXPORT_SYMBOL(snd_pcm_lib_preallocate_free);
 EXPORT_SYMBOL(snd_pcm_lib_preallocate_free_for_all);
 EXPORT_SYMBOL(snd_pcm_lib_preallocate_pages);
 EXPORT_SYMBOL(snd_pcm_lib_preallocate_pages_for_all);
+EXPORT_SYMBOL(snd_pcm_sgbuf_ops_page);
 EXPORT_SYMBOL(snd_pcm_lib_malloc_pages);
 EXPORT_SYMBOL(snd_pcm_lib_free_pages);
-#ifdef CONFIG_ISA
-EXPORT_SYMBOL(snd_pcm_lib_preallocate_isa_pages);
-EXPORT_SYMBOL(snd_pcm_lib_preallocate_isa_pages_for_all);
-#endif
-#ifdef CONFIG_PCI
-EXPORT_SYMBOL(snd_pcm_lib_preallocate_pci_pages);
-EXPORT_SYMBOL(snd_pcm_lib_preallocate_pci_pages_for_all);
-EXPORT_SYMBOL(snd_pcm_lib_preallocate_sg_pages);
-EXPORT_SYMBOL(snd_pcm_lib_preallocate_sg_pages_for_all);
-EXPORT_SYMBOL(snd_pcm_sgbuf_ops_page);
-#endif
-#ifdef CONFIG_SBUS
-EXPORT_SYMBOL(snd_pcm_lib_preallocate_sbus_pages);
-EXPORT_SYMBOL(snd_pcm_lib_preallocate_sbus_pages_for_all);
-#endif
