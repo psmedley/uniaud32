@@ -4,6 +4,7 @@
 #include <dbgos2.h>
 
 #include <asm/param.h>	/* for HZ */
+#include <asm/atomic.h>	
 
 #define TASK_RUNNING		0
 #define TASK_INTERRUPTIBLE	1

@@ -139,7 +139,7 @@ typedef int irqreturn_t;
 #define PCI_NEW_SUSPEND
 #endif
 #ifndef virt_to_page
-//#define virt_to_page(x) (&mem_map[MAP_NR(x)])
+#define virt_to_page(x) (&mem_map[MAP_NR(x)])
 #endif
 #define snd_request_region request_region
 #ifndef rwlock_init
@@ -297,6 +297,7 @@ extern int this_module[64];
 #define CONFIG_SND_HDA_HWDEP
 #define CONFIG_PM
 #define CONFIG_HAVE_PCI_DEV_PRESENT
+#define CONFIG_SND_DEBUG_DETECT
 #define CONFIG_SYSFS_DEPRECATED
 #undef interrupt
 

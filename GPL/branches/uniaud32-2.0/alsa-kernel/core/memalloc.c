@@ -249,7 +249,11 @@ void snd_free_pages(void *ptr, size_t size)
 
 #ifdef CONFIG_HAS_DMA
 /* allocate the coherent DMA pages */
+#ifndef TARGET_OS2
 static void *snd_malloc_dev_pages(struct device *dev, size_t size, dma_addr_t *dma)
+#else
+void *snd_malloc_dev_pages(struct device *dev, size_t size, dma_addr_t *dma)
+#endif
 {
 	int pg;
 	void *res;
@@ -270,7 +274,11 @@ static void *snd_malloc_dev_pages(struct device *dev, size_t size, dma_addr_t *d
 }
 
 /* free the coherent DMA pages */
+#ifndef TARGET_OS2
 static void snd_free_dev_pages(struct device *dev, size_t size, void *ptr,
+#else
+void snd_free_dev_pages(struct device *dev, size_t size, void *ptr,
+#endif
 			       dma_addr_t dma)
 {
 	int pg;
@@ -339,6 +347,9 @@ static void snd_free_sbus_pages(struct device *dev, size_t size,
 int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 			struct snd_dma_buffer *dmab)
 {
+#ifdef DEBUG
+    dprintf(("snd_dma_alloc_pages with size = %d",size));
+#endif
 	snd_assert(size > 0, return -ENXIO);
 	snd_assert(dmab != NULL, return -ENXIO);
 

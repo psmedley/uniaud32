@@ -281,7 +281,11 @@ int snd_add_device_sysfs_file(int type, struct snd_card *card, int dev,
 
 #ifdef CONFIG_SND_OSSEMUL
 int snd_register_oss_device(int type, struct snd_card *card, int dev,
+#ifndef TARGET_OS2
 			    const struct file_operations *f_ops, void *private_data,
+#else
+			    struct file_operations *f_ops, void *private_data,
+#endif
 			    const char *name);
 int snd_unregister_oss_device(int type, struct snd_card *card, int dev);
 void *snd_lookup_oss_minor_data(unsigned int minor, int type);
