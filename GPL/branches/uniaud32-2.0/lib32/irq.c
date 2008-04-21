@@ -68,7 +68,7 @@ static IRQ_SLOT *FindSlot(unsigned irq)
 int request_irq(unsigned irq, irq_handler_t handler,
 		    unsigned long x0, const char *x1, void *x2)
 {
-    IRQ_SLOT 	*pSlot = FindSlot(irq);
+    IRQ_SLOT 	*pSlot = FindSlot(irq & 0xff);
     unsigned 	u, uSlotNo = (unsigned)-1;
     if( !pSlot )
     {
@@ -85,7 +85,7 @@ int request_irq(unsigned irq, irq_handler_t handler,
 
     if( pSlot )
     {
-        if(RMRequestIRQ(/*hResMgr,*/ irq, (x0 & SA_SHIRQ) != 0) == FALSE) {
+	if(RMRequestIRQ(/*hResMgr,*/ irq , (x0 & SA_SHIRQ) != 0) == FALSE) {
             dprintf(("RMRequestIRQ failed for irq %d", irq));
             //	return 0;
         }
@@ -94,14 +94,14 @@ int request_irq(unsigned irq, irq_handler_t handler,
         {
             if( pSlot->irqHandlers[u].handler == NULL )
             {
-                pSlot->irqNo = irq;
+                pSlot->irqNo = irq & 0xff;
                 pSlot->irqHandlers[u].handler = handler;
                 pSlot->irqHandlers[u].x0 = x0;
                 pSlot->irqHandlers[u].x1 = (char *)x1;
                 pSlot->irqHandlers[u].x2 = x2;
 
                 if( pSlot->flHandlers != 0 ||
-                   ALSA_SetIrq(irq, uSlotNo, (x0 & SA_SHIRQ) != 0) )
+                   ALSA_SetIrq( irq & 0xff, uSlotNo, (x0 & SA_SHIRQ) != 0) )
                 {
                     pSlot->flHandlers |= 1 << u;
                     return 0;
@@ -112,7 +112,7 @@ int request_irq(unsigned irq, irq_handler_t handler,
         }
     }
 
-    dprintf(("request_irq: Unable to register irq handler for irq %d\n", irq));
+    dprintf(("request_irq: Unable to register irq handler for irq %d\n", irq & 0xff ));
     return 1;
 }
 
@@ -161,7 +161,7 @@ void eoi_irq(unsigned int irq)
 
      if( pSlot )	pSlot->fEOI = 1;
      */
-    eoiIrq[irq]++;
+    eoiIrq[irq & 0xff]++;
 }
 
 

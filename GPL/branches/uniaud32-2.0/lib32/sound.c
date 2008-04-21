@@ -777,7 +777,6 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
     ULONG               periodbytes, minperiodbytes, maxperiodbytes;
     BOOL                fTryAgain = FALSE;
     ULONG ulMinRate, ulMaxRate;
-    struct snd_pcm_info      *pcminfo = NULL;
 
 #ifdef DEBUG
     dprintf(("OSS32_WaveSetHwParams"));
@@ -802,14 +801,6 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
         DebugInt3();
         return OSSERR_INVALID_PARAMETER;
     }
-
-    // Get pcminfo so that we have the device & mixer name so we can do chipset specific hacks 
-    pcminfo = (struct snd_pcm_info *)kmalloc(sizeof(struct snd_pcm_info)+sizeof(struct snd_pcm_hw_params), GFP_KERNEL);
-    //set operation to non-blocking
-    pHandle->file.f_flags = O_NONBLOCK;
-    
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_INFO, (ULONG)pcminfo);
-
 tryagain:
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
@@ -929,6 +920,7 @@ __next:
     //check period size against lower and upper boundaries
     minperiodbytes = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_BYTES)->min;
     maxperiodbytes = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_BYTES)->max;
+
     if(periodbytes < minperiodbytes) {
         periodbytes = minperiodbytes;
     }
@@ -954,6 +946,8 @@ __next:
     }
     //make sure period size is a whole fraction of the buffer size
     bufsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_BUFFER_BYTES)->max;
+
+#if 0
     if(periodsize) {
         nrperiods = bufsize/periodbytes;
     }
@@ -963,6 +957,9 @@ __next:
         DebugInt3();
         return OSSERR_INVALID_PARAMETER;
     }
+#else
+    nrperiods = 3;
+#endif
     //check nr of periods against lower and upper boundaries
     minnrperiods = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIODS)->min;
     maxnrperiods = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIODS)->max;
@@ -1011,8 +1008,8 @@ __next:
                           periodbytes*nrperiods, 0);
 
 //#ifdef DEBUG_PK
-    printk("Hardware parameters: sample rate %i, data type %i, channels %i, period size %i, nrperiods %i\n",
-             pHwParams->ulSampleRate, pHwParams->ulDataType, pHwParams->ulNumChannels, periodsize, nrperiods);
+    printk("Hardware parameters: sample rate %i, data type %i, channels %i, period bytes %i, period size %i, nrperiods %i\n",
+             pHwParams->ulSampleRate, pHwParams->ulDataType, pHwParams->ulNumChannels, periodbytes, periodsize, nrperiods);
 //#endif
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)__Stack32ToFlat(&params));
     printk("OSS32_WaveSetHwParams return %d after SNDRV_PCM_IOCTL_HW_PARAMS ioctl", ret);
