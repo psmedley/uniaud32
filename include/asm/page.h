@@ -1,4 +1,3 @@
-/* $Id: page.h,v 1.1.1.1 2003/07/02 13:56:58 eleph Exp $ */
 
 #ifndef _I386_PAGE_H
 #define _I386_PAGE_H
@@ -34,14 +33,14 @@ typedef struct { unsigned long pmd; } pmd_t;
 typedef struct { unsigned long pgd; } pgd_t;
 #endif
 
-typedef struct { unsigned long pgprot; } pgprot_t;
+typedef struct { unsigned long long pgprot; } pgprot_t;
 
 #define pte_val(x)	((x).pte)
 #define pmd_val(x)	((x).pmd)
 #define pgd_val(x)	((x).pgd)
 #define pgprot_val(x)	((x).pgprot)
 
-#define __pgprot(x)	((pgprot_t) { (x) } )
+pgprot_t __pgprot(int x);
 
 #endif /* !__ASSEMBLY__ */
 
@@ -68,6 +67,9 @@ typedef struct { unsigned long pgprot; } pgprot_t;
 #define __va(x)			((void *)((unsigned long)(x)+PAGE_OFFSET))
 #define MAP_NR(addr)		(__pa(addr) >> PAGE_SHIFT)
 #define PHYSMAP_NR(addr)	((unsigned long)(addr) >> PAGE_SHIFT)
+#ifndef virt_to_page
+#define virt_to_page(x) (&mem_map[MAP_NR(x)])
+#endif
 
 #endif /* __KERNEL__ */
 

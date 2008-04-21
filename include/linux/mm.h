@@ -134,8 +134,6 @@ extern int free_pages(unsigned long addr, unsigned long order);
 #define virt_to_bus virt_to_phys
 extern unsigned long virt_to_phys(void * address);
 
-extern mem_map_t *virt_to_page(int x);
-
 extern void * phys_to_virt(unsigned long address);
 
 #define __get_free_page(gfp_mask) __get_free_pages((gfp_mask),0)
@@ -160,10 +158,6 @@ extern int remap_page_range(unsigned long from, unsigned long to, unsigned long 
 struct vm_operations_struct {
 	void (*open)(struct vm_area_struct * area);
 	void (*close)(struct vm_area_struct * area);
-	void (*unmap)(struct vm_area_struct *area, unsigned long, size_t);
-	void (*protect)(struct vm_area_struct *area, unsigned long, size_t, unsigned int newprot);
-	int (*sync)(struct vm_area_struct *area, unsigned long, size_t, unsigned int flags);
-	void (*advise)(struct vm_area_struct *area, unsigned long, size_t, unsigned int advise);
 	struct page * (*nopage)(struct vm_area_struct * area, unsigned long address, int write_access);
 	struct page * (*wppage)(struct vm_area_struct * area, unsigned long address, struct page * page);
 	int (*swapout)(struct page *, struct file *);
