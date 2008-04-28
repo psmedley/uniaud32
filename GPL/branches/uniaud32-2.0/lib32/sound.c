@@ -808,10 +808,8 @@ tryagain:
     samplesize = snd_pcm_format_size(OSSToALSADataType[pHwParams->ulDataType], 1);
     pHandle->doublesamplesize  = samplesize * 2;
     pHandle->doublesamplesize *= pHwParams->ulNumChannels;
-//    periodbytes = pHwParams->ulPeriodSize;
-//    periodsize  = bytes_to_samples(periodbytes);
-    periodsize = pHwParams->ulPeriodSize;
-    periodbytes = samples_to_bytes(periodsize);
+    periodbytes = pHwParams->ulPeriodSize;
+    periodsize  = bytes_to_samples(periodbytes);
     // checking number of channels
 
     printk("channels: %i, period bytes: %i\n",pHwParams->ulNumChannels, periodbytes);
@@ -947,7 +945,6 @@ __next:
     //make sure period size is a whole fraction of the buffer size
     bufsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_BUFFER_BYTES)->max;
 
-#if 0
     if(periodsize) {
         nrperiods = bufsize/periodbytes;
     }
@@ -957,9 +954,7 @@ __next:
         DebugInt3();
         return OSSERR_INVALID_PARAMETER;
     }
-#else
-    nrperiods = 3;
-#endif
+
     //check nr of periods against lower and upper boundaries
     minnrperiods = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIODS)->min;
     maxnrperiods = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIODS)->max;
