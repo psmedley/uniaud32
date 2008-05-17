@@ -1,4 +1,3 @@
-/* $Id: sound.c,v 1.2 2003/08/08 15:09:03 vladest Exp $ */
 /*
  * MMPM/2 to OSS interface translation layer
  *
@@ -42,7 +41,6 @@
 #undef bytes_to_samples
 #define samples_to_bytes(a)     ((a*pHandle->doublesamplesize)/2)
 #define bytes_to_samples(a)    (pHandle->doublesamplesize ? ((a*2)/pHandle->doublesamplesize) : a)
-
 int GetMaxChannels(ULONG deviceid, int type);
 
 struct file_operations oss_devices[OSS32_MAX_DEVICES] = {0};
@@ -770,93 +768,40 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
 {
     soundhandle        *pHandle = (soundhandle *)streamid;
     struct snd_pcm_hw_params params;
-    struct snd_pcm_status    status;
     struct snd_pcm_sw_params swparams;
-    int                 ret, ret1, nrperiods, minnrperiods, maxnrperiods, samplesize, i;
+
+    int                 ret, nrperiods, minnrperiods, maxnrperiods, samplesize;
     ULONG               bufsize, periodsize, minperiodsize, maxperiodsize;
     ULONG               periodbytes, minperiodbytes, maxperiodbytes;
     BOOL                fTryAgain = FALSE;
-    ULONG ulMinRate, ulMaxRate;
 
-#ifdef DEBUG
-    dprintf(("OSS32_WaveSetHwParams"));
-#endif
     if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
-        printk("OSS32_WaveSetHwParams error. Invalid handle: %x\n", pHandle);
-        DebugInt3();
-        return OSSERR_INVALID_STREAMID;
+          DebugInt3();
+          return OSSERR_INVALID_STREAMID;
     }
     if(pHwParams == NULL) {
-        printk("OSS32_WaveSetHwParams error. params = NULL\n");
-        DebugInt3();
-        return OSSERR_INVALID_PARAMETER;
+          DebugInt3();
+          return OSSERR_INVALID_PARAMETER;
     }
     if(pHwParams->ulDataType >= OSS32_PCM_MAX_FORMATS) {
-        printk("OSS32_WaveSetHwParams error. Too high PCM format\n");
-        DebugInt3();
-        return OSSERR_INVALID_PARAMETER;
+          DebugInt3();
+          return OSSERR_INVALID_PARAMETER;
     }
-    if ((int)pHwParams->ulNumChannels <= 0) {
-        printk("OSS32_WaveSetHwParams error. Invalid number of channels: %i\n", pHwParams->ulNumChannels);
-        DebugInt3();
-        return OSSERR_INVALID_PARAMETER;
-    }
-tryagain:
+
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
+
     //size of two samples (adpcm sample can be as small as 4 bits (mono), so take two)
     samplesize = snd_pcm_format_size(OSSToALSADataType[pHwParams->ulDataType], 1);
     pHandle->doublesamplesize  = samplesize * 2;
     pHandle->doublesamplesize *= pHwParams->ulNumChannels;
     periodbytes = pHwParams->ulPeriodSize;
     periodsize  = bytes_to_samples(periodbytes);
-    // checking number of channels
-
-    printk("channels: %i, period bytes: %i\n",pHwParams->ulNumChannels, periodbytes);
-    _snd_pcm_hw_params_any(&params);
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
-    ulMinRate     = hw_param_interval(&params, SNDRV_PCM_HW_PARAM_RATE)->min;
-    ulMaxRate     = hw_param_interval(&params, SNDRV_PCM_HW_PARAM_RATE)->max;
-
-    _snd_pcm_hw_params_any(&params);
-    do {
-        _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS,
-                              SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
-        _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_CHANNELS,
-                              pHwParams->ulNumChannels, 0);
-        ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
-        if (ret == 0) break;
-        pHwParams->ulNumChannels--;
-    } while(ret < 0 && pHwParams->ulNumChannels > 1);
-
-    printk("channels selected: %i\n",pHwParams->ulNumChannels);
 
     //get all hardware parameters
     _snd_pcm_hw_params_any(&params);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS,
                           SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FORMAT,
-                          OSSToALSADataType[pHwParams->ulDataType], 0);
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
-    if(ret != 0) {
-        printk("invalid format %i\n", OSSToALSADataType[pHwParams->ulDataType]);
-        return UNIXToOSSError(ret);
-    }
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
-                          pHwParams->ulBitsPerSample, 0);
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
-    if(ret != 0) {
-        printk("invalid number of sample bits %i\n", pHwParams->ulBitsPerSample);
-        return UNIXToOSSError(ret);
-    }
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
-                          pHwParams->ulBitsPerSample*pHwParams->ulNumChannels, 0);
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
-    if(ret != 0) {
-        printk("invalid number of frame bits %i\n", pHwParams->ulBitsPerSample*pHwParams->ulNumChannels);
-        return UNIXToOSSError(ret);
-    }
-
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
                           pHwParams->ulBitsPerSample, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
@@ -867,58 +812,15 @@ tryagain:
                            pHwParams->ulNumChannels, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
                           pHwParams->ulSampleRate, 0);
-
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
     if(ret != 0) {
-        printk("OSS32_WaveSetHwParams (first pass) error %i\n", ret);
-        printk("bps: %i\n",pHwParams->ulBitsPerSample);
-        printk("format: %i\n",OSSToALSADataType[pHwParams->ulDataType]);
-        printk("channels: %i\n",pHwParams->ulNumChannels);
-        printk("sample rate: %i\n",pHwParams->ulSampleRate);
-
-//        printk("OSS32_WaveSetHwParams invalid sample rate %i\n", pHwParams->ulSampleRate);
-        //        printk("will set to nearest\n");
-        _snd_pcm_hw_params_any(&params);
-        for (i=0; i<(sizeof(rates)/sizeof(unsigned))-1;i++)
-        {
-            if (pHwParams->ulSampleRate >= rates[i] &&
-                pHwParams->ulSampleRate <= rates[i+1])
-            {
-                pHwParams->ulSampleRate = rates[i];
-                _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
-                                      pHwParams->ulSampleRate, 0);
-                ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
-                if(ret == 0)
-                {
-                    _snd_pcm_hw_params_any(&params);
-                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
-                                          pHwParams->ulBitsPerSample, 0);
-                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
-                                          pHwParams->ulBitsPerSample*pHwParams->ulNumChannels, 0);
-                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FORMAT,
-                                          OSSToALSADataType[pHwParams->ulDataType], 0);
-                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_CHANNELS,
-                                          pHwParams->ulNumChannels, 0);
-                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
-                                          pHwParams->ulSampleRate, 0);
-                    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
-                    goto __next;
-                }
-            }
-        }
-
-//        ret1 = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         DebugInt3();
         return UNIXToOSSError(ret);
     }
-__next:
-
-    printk("sample rate: %i\n",pHwParams->ulSampleRate);
 
     //check period size against lower and upper boundaries
     minperiodbytes = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_BYTES)->min;
     maxperiodbytes = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_BYTES)->max;
-
     if(periodbytes < minperiodbytes) {
         periodbytes = minperiodbytes;
     }
@@ -926,6 +828,7 @@ __next:
     if(periodbytes > maxperiodbytes) {
         periodbytes = maxperiodbytes;
     }
+
     minperiodsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_SIZE)->min;
     maxperiodsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_SIZE)->max;
     if(periodsize < minperiodsize) {
@@ -935,6 +838,7 @@ __next:
     if(periodsize > maxperiodsize) {
         periodsize = maxperiodsize;
     }
+
     if(samples_to_bytes(periodsize) < periodbytes) {
         periodbytes = samples_to_bytes(periodsize);
     }
@@ -942,19 +846,16 @@ __next:
     if(bytes_to_samples(periodbytes) < periodsize) {
         periodsize = bytes_to_samples(periodbytes);
     }
+
     //make sure period size is a whole fraction of the buffer size
     bufsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_BUFFER_BYTES)->max;
-
     if(periodsize) {
         nrperiods = bufsize/periodbytes;
     }
     else {
-        printk("OSS32_WaveSetHwParams error. Invalid periodsize (=0). closing file\n");
-//        ret1 = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         DebugInt3();
         return OSSERR_INVALID_PARAMETER;
     }
-
     //check nr of periods against lower and upper boundaries
     minnrperiods = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIODS)->min;
     maxnrperiods = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIODS)->max;
@@ -969,15 +870,13 @@ __next:
     //so we make sure it's an even number.
     if(nrperiods == 1) {
         DebugInt3();
-        printk("OSS32_WaveSetHwParams error. Invalid number of periods(=1). closing file\n");
-//        ret1 = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         return OSSERR_INVALID_PARAMETER;
     }
     nrperiods &= ~1;
 
     //initialize parameter block & set sample rate, nr of channels and sample format, nr of periods,
     //period size and buffer size
-//tryagain:
+tryagain:
     _snd_pcm_hw_params_any(&params);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS,
                           SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
@@ -1002,18 +901,10 @@ __next:
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 
                           periodbytes*nrperiods, 0);
 
-//#ifdef DEBUG_PK
-    printk("Hardware parameters: sample rate %i, data type %i, channels %i, period bytes %i, period size %i, nrperiods %i\n",
-             pHwParams->ulSampleRate, pHwParams->ulDataType, pHwParams->ulNumChannels, periodbytes, periodsize, nrperiods);
-//#endif
+    dprintf(("Hardware parameters: sample rate %d, data type %d, channels %d, period size %d, periods %d", 
+             pHwParams->ulSampleRate, pHwParams->ulDataType, pHwParams->ulNumChannels, periodsize, nrperiods));
+
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)__Stack32ToFlat(&params));
-    printk("OSS32_WaveSetHwParams return %d after SNDRV_PCM_IOCTL_HW_PARAMS ioctl", ret);
-    if (ret == -77 && fTryAgain == FALSE) 
-    {
-        ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
-        fTryAgain = TRUE;
-        goto tryagain;
-    }
     if(ret) {
         if(fTryAgain == FALSE) {
             minperiodsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_SIZE)->min;
@@ -1026,15 +917,6 @@ __next:
                 goto tryagain;
             }
         }
-        printk("OSS32_WaveSetHwParams (second pass) error %i\n", ret);
-        printk("bps: %i\n",pHwParams->ulBitsPerSample);
-        printk("format: %i\n",OSSToALSADataType[pHwParams->ulDataType]);
-        printk("channels: %i\n",pHwParams->ulNumChannels);
-        printk("sample rate: %i\n",pHwParams->ulSampleRate);
-        printk("periodsize: %i\n",periodsize);
-        printk("periodbytes: %i\n",periodbytes);
-        printk("periods: %i\n",nrperiods);
-//        ret1 = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
         return UNIXToOSSError(ret);
     }
 
@@ -1058,17 +940,6 @@ __next:
 
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_SW_PARAMS, (ULONG)__Stack32ToFlat(&swparams));
     }
-    total = 0;
-    per_bytes = periodbytes;
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
-    if ( ((status.state != SNDRV_PCM_STATE_PREPARED) &&
-          (status.state != SNDRV_PCM_STATE_SETUP) &&
-          (status.state != SNDRV_PCM_STATE_RUNNING) &&
-          (status.state != SNDRV_PCM_STATE_DRAINING))) {
-        printk("Device is not in proper state: %i. Calling prepare\n", status.state);
-        ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
-    }
-    printk("OSS32_WaveSetHwParams return %d after SNDRV_PCM_IOCTL_SW_PARAMS ioctl, streamid %X", ret,(ULONG)pHandle);
     return UNIXToOSSError(ret);
 }
 
