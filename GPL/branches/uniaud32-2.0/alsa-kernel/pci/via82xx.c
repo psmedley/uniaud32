@@ -1757,6 +1757,12 @@ static struct ac97_quirk ac97_quirks[] = {
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
+		.subvendor = 0x1019,
+		.subdevice = 0x1841,
+		.name = "ECS K7VTA3",
+		.type = AC97_TUNE_HP_ONLY
+	},
+	{
 		.subvendor = 0x1849,
 		.subdevice = 0x3059,
 		.name = "ASRock K7VM2",
@@ -2236,7 +2242,7 @@ static int snd_via82xx_free(struct via82xx *chip)
 	/* disable interrupts */
 	for (i = 0; i < chip->num_devs; i++)
 		snd_via82xx_channel_reset(chip, &chip->devs[i]);
-	synchronize_irq(chip->irq);
+
 	if (chip->irq >= 0)
 		free_irq(chip->irq, chip);
  __end_hw:
@@ -2405,8 +2411,10 @@ static int __devinit check_dxs_list(struct pci_dev *pci, int revision)
 
 	w = snd_pci_quirk_lookup(pci, dxs_whitelist);
 	if (w) {
+#ifndef TARGET_OS2
 		snd_printdd(KERN_INFO "via82xx: DXS white list for %s found\n",
 			    w->name);
+#endif
 		return w->value;
 	}
 

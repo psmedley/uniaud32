@@ -124,63 +124,6 @@ struct snd_mem_list {
 #error "Need a bus for dma_alloc_coherent()"
 #endif
 
-#if defined(__i386__)
-/*
- * A hack to allocate large buffers via dma_alloc_coherent()
- *
- * since dma_alloc_coherent always tries GFP_DMA when the requested
- * pci memory region is below 32bit, it happens quite often that even
- * 2 order of pages cannot be allocated.
- *
- * so in the following, we allocate at first without dma_mask, so that
- * allocation will be done without GFP_DMA.  if the area doesn't match
- * with the requested region, then realloate with the original dma_mask
- * again.
- *
- * Really, we want to move this type of thing into dma_alloc_coherent()
- * so dma_mask doesn't have to be messed with.
- */
-
-static void *snd_dma_hack_alloc_coherent(struct device *dev, size_t size,
-					 dma_addr_t *dma_handle,
-					 gfp_t flags)
-{
-	void *ret;
-	u64 dma_mask, coherent_dma_mask;
-
-	if (dev == NULL || !dev->dma_mask)
-		return dma_alloc_coherent(dev, size, dma_handle, flags);
-	dma_mask = *dev->dma_mask;
-	coherent_dma_mask = dev->coherent_dma_mask;
-	*dev->dma_mask = 0xffffffff; 	/* do without masking */
-	dev->coherent_dma_mask = 0xffffffff; 	/* do without masking */
-	ret = dma_alloc_coherent(dev, size, dma_handle, flags);
-	*dev->dma_mask = dma_mask;	/* restore */
-	dev->coherent_dma_mask = coherent_dma_mask;	/* restore */
-	if (ret) {
-		/* obtained address is out of range? */
-		if (((unsigned long)*dma_handle + size - 1) & ~dma_mask) {
-			/* reallocate with the proper mask */
-			dma_free_coherent(dev, size, ret, *dma_handle);
-			ret = dma_alloc_coherent(dev, size, dma_handle, flags);
-		}
-	} else {
-		/* wish to success now with the proper mask... */
-		if (dma_mask != 0xffffffffUL) {
-			/* allocation with GFP_ATOMIC to avoid the long stall */
-			flags &= ~GFP_KERNEL;
-			flags |= GFP_ATOMIC;
-			ret = dma_alloc_coherent(dev, size, dma_handle, flags);
-		}
-	}
-	return ret;
-}
-
-/* redefine dma_alloc_coherent for some architectures */
-#undef dma_alloc_coherent
-#define dma_alloc_coherent snd_dma_hack_alloc_coherent
-
-#endif /* arch */
 
 /*
  *
@@ -686,9 +629,8 @@ static int __init snd_mem_init(void)
 {
 #ifdef CONFIG_PROC_FS
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
-	snd_mem_proc = create_proc_entry(SND_MEM_PROC_FILE, 0644, NULL);
-	if (snd_mem_proc)
-		snd_mem_proc->proc_fops = &snd_mem_proc_fops;
+	snd_mem_proc = proc_create(SND_MEM_PROC_FILE, 0644, NULL,
+				   &snd_mem_proc_fops);
 #endif
 #endif
 	return 0;

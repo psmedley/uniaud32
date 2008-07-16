@@ -1,7 +1,7 @@
 CINCLUDES = ..\..\..\include;..\..\include;$(%WATCOM)\H
 AINCLUDES = $(DDK_BASE)\H
 
-CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_ 
+CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
 
 32BIT=1
 !include ..\..\..\makefile.inc
@@ -12,14 +12,14 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #   List of source files
 #
 #===================================================================
-FILE1    = hda_intel.obj hda_codec.obj vmaster.obj hda_proc.obj hda_hwdep.obj hda_generic.obj patch_realtek.obj 
-FILE2    = patch_cmedia.obj patch_analog.obj patch_sigmatel.obj
-FILE3    = patch_si3054.obj patch_atihdmi.obj patch_conexant.obj
-FILE4    = patch_via.obj
-FILE5    = 
-FILE6    = 
-FILE7    = 
-FILE8    = 
+FILE1    = hda_intel.obj hda_codec.obj hda_proc.obj hda_hwdep.obj hda_generic.obj
+FILE2    = patch_realtek.obj patch_cmedia.obj patch_analog.obj patch_sigmatel.obj
+FILE3    = patch_si3054.obj patch_atihdmi.obj patch_conexant.obj patch_via.obj
+FILE4    =
+FILE5    =
+FILE6    =
+FILE7    =
+FILE8    =
 FILELAST =
 FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10) $(FILE11) $(FILE12)
 
@@ -33,7 +33,7 @@ LNKFILE  = $(OBJDIR)\$(TARGET).lnk
 #   Specific dependencies
 #
 #===================================================================
-all: $(OBJDIR)\$(TARGET).lib 
+all: $(OBJDIR)\$(TARGET).lib
 
 
 $(LNKFILE): makefile.os2
@@ -42,10 +42,10 @@ $(LNKFILE): makefile.os2
 
 $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
-    copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB) 
+    copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 clean: .SYMBOLIC
     -@rm  *.err 2>nul
     @cd $(OBJDIR)
     -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
-    @cd ..\..
+    @cd ../..

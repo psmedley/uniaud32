@@ -27,6 +27,7 @@
 #include <sound/core.h>
 #include "hda_codec.h"
 #include "hda_local.h"
+#include "hda_patch.h"
 
 struct atihdmi_spec {
 	struct hda_multi_out multiout;
@@ -116,6 +117,7 @@ static int atihdmi_build_pcms(struct hda_codec *codec)
 	codec->pcm_info = info;
 
 	info->name = "ATI HDMI";
+	info->pcm_type = HDA_PCM_TYPE_HDMI;
 	info->stream[SNDRV_PCM_STREAM_PLAYBACK] = atihdmi_pcm_digital_playback;
 
 	return 0;
@@ -162,6 +164,7 @@ struct hda_codec_preset snd_hda_preset_atihdmi[] = {
 	{ .id = 0x10027919, .name = "ATI RS600 HDMI", .patch = patch_atihdmi },
 	{ .id = 0x1002791a, .name = "ATI RS690/780 HDMI", .patch = patch_atihdmi },
 	{ .id = 0x1002aa01, .name = "ATI R6xx HDMI", .patch = patch_atihdmi },
-	{ .id = 0x10951392, .name = "SI HDMI", .patch = patch_atihdmi },
+	{ .id = 0x10951392, .name = "SiI1392 HDMI", .patch = patch_atihdmi },
+	{ .id = 0x17e80047, .name = "Chrontel HDMI",  .patch = patch_atihdmi },
 	{0} /* terminator */
 };

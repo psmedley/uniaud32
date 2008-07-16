@@ -236,6 +236,14 @@ typedef enum sndrv_pcm_xrun snd_pcm_xrun_t;
 typedef enum sndrv_timer_global snd_timer_global_t;
 #endif
 
+/* redefine INIT_WORK() */
+static inline void snd_INIT_WORK(struct work_struct *w, void (*f)(struct work_struct *))
+{
+	INIT_WORK(w, (void(*)(void*))(f), w);
+}
+#undef INIT_WORK
+#define INIT_WORK(w,f) snd_INIT_WORK(w,f)
+
 #ifdef CONFIG_SND_DEBUG_MEMORY
 void *snd_wrapper_kmalloc(size_t, int);
 #undef kmalloc
@@ -596,5 +604,19 @@ void __iomem *ioport_map(unsigned long port, unsigned int nr);
 void ioport_unmap(void __iomem *addr);
 void __iomem *pci_iomap(struct pci_dev *dev, int bar, unsigned long maxlen);
 void pci_iounmap(struct pci_dev *dev, void __iomem * addr);
+
+#ifndef upper_32_bits
+#define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
+#endif
+
+#ifdef __SMP__
+#define smp_mb()	mb()
+#define smp_rmb()	rmb()
+#define smp_wmb()	wmb()
+#else
+#define smp_mb()	barrier()
+#define smp_rmb()	barrier()
+#define smp_wmb()	barrier()
+#endif
 
 #endif //__ALSA_CONFIG_H__

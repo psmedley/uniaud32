@@ -78,7 +78,7 @@ enum {
 #define AC_VERB_GET_BEEP_CONTROL		0x0f0a
 #define AC_VERB_GET_EAPD_BTLENABLE		0x0f0c
 #define AC_VERB_GET_DIGI_CONVERT_1		0x0f0d
-#define AC_VERB_GET_DIGI_CONVERT_2		0x0f0e
+#define AC_VERB_GET_DIGI_CONVERT_2		0x0f0e /* unused */
 #define AC_VERB_GET_VOLUME_KNOB_CONTROL		0x0f0f
 /* f10-f1a: GPIO */
 #define AC_VERB_GET_GPIO_DATA			0x0f15
@@ -500,7 +500,11 @@ struct hda_bus {
 	/* link caddr -> codec */
 	struct hda_codec *caddr_tbl[HDA_MAX_CODEC_ADDRESS + 1];
 
+#ifndef TARGET_OS2
+	struct mutex cmd_mutex;
+#else
 	struct semaphore cmd_mutex;
+#endif
 
 	/* unsolicited event queue */
 	struct hda_bus_unsolicited *unsol;
@@ -590,11 +594,21 @@ struct hda_pcm_stream {
 	struct hda_pcm_ops ops;
 };
 
+/* PCM types */
+enum {
+	HDA_PCM_TYPE_AUDIO,
+	HDA_PCM_TYPE_SPDIF,
+	HDA_PCM_TYPE_HDMI,
+	HDA_PCM_TYPE_MODEM,
+	HDA_PCM_NTYPES
+};
+
 /* for PCM creation */
 struct hda_pcm {
 	char *name;
 	struct hda_pcm_stream stream[2];
-	unsigned int is_modem;	/* modem codec? */
+	unsigned int pcm_type;	/* HDA_PCM_TYPE_XXX */
+	int device;	/* assigned device number */
 };
 
 /* codec information */
@@ -632,7 +646,11 @@ struct hda_codec {
 	struct hda_cache_rec amp_cache;	/* cache for amp access */
 	struct hda_cache_rec cmd_cache;	/* cache for other commands */
 
+#ifndef TARGET_OS2
+	struct mutex spdif_mutex;
+#else
 	struct semaphore spdif_mutex;
+#endif
 	unsigned int spdif_status;	/* IEC958 status bits */
 	unsigned short spdif_ctls;	/* SPDIF control bits */
 	unsigned int spdif_in_enable;	/* SPDIF input enable? */
@@ -712,6 +730,7 @@ int snd_hda_build_pcms(struct hda_bus *bus);
 void snd_hda_codec_setup_stream(struct hda_codec *codec, hda_nid_t nid,
 				u32 stream_tag,
 				int channel_id, int format);
+void snd_hda_codec_cleanup_stream(struct hda_codec *codec, hda_nid_t nid);
 unsigned int snd_hda_calc_stream_format(unsigned int rate,
 					unsigned int channels,
 					unsigned int format,

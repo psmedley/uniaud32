@@ -300,8 +300,8 @@ int snd_minor_info_done(void);
 int snd_minor_info_oss_init(void);
 int snd_minor_info_oss_done(void);
 #else
-#define snd_minor_info_oss_init() /*NOP*/
-#define snd_minor_info_oss_done() /*NOP*/
+static inline int snd_minor_info_oss_init(void) { return 0; }
+static inline int snd_minor_info_oss_done(void) { return 0; }
 #endif
 
 /* memory.c */
@@ -333,7 +333,7 @@ int snd_card_file_add(struct snd_card *card, struct file *file);
 int snd_card_file_remove(struct snd_card *card, struct file *file);
 
 #ifndef snd_card_set_dev
-#define snd_card_set_dev(card,devptr) ((card)->dev = (devptr))
+#define snd_card_set_dev(card, devptr) ((card)->dev = (devptr))
 #endif
 
 /* device.c */
@@ -400,7 +400,7 @@ void snd_verbose_printd(const char *file, int line, const char *format, ...)
  * snd_printd - debug printk
  * @fmt: format string
  *
- * Compiled only when Works like snd_printk() for debugging purpose.
+ * Works like snd_printk() for debugging purposes.
  * Ignored when CONFIG_SND_DEBUG is not set.
  */
 #define snd_printd(fmt, args...) \
@@ -451,13 +451,13 @@ void snd_verbose_printd(const char *file, int line, const char *format, ...)
 
 #endif /* CONFIG_SND_DEBUG */
 
-#ifdef CONFIG_SND_DEBUG_DETECT
+#ifdef CONFIG_SND_DEBUG_VERBOSE
 /**
  * snd_printdd - debug printk
  * @format: format string
  *
- * Compiled only when Works like snd_printk() for debugging purpose.
- * Ignored when CONFIG_SND_DEBUG_DETECT is not set.
+ * Works like snd_printk() for debugging purposes.
+ * Ignored when CONFIG_SND_DEBUG_VERBOSE is not set.
  */
 #ifndef TARGET_OS2
 #define snd_printdd(format, args...) snd_printk(format, ##args)
@@ -489,7 +489,7 @@ struct snd_pci_quirk {
 	unsigned short subvendor;	/* PCI subvendor ID */
 	unsigned short subdevice;	/* PCI subdevice ID */
 	int value;			/* value */
-#ifdef CONFIG_SND_DEBUG_DETECT
+#ifdef CONFIG_SND_DEBUG_VERBOSE
 	const char *name;		/* name of the device (optional) */
 #endif
 };
@@ -497,7 +497,7 @@ struct snd_pci_quirk {
 #define _SND_PCI_QUIRK_ID(vend,dev) \
 	.subvendor = (vend), .subdevice = (dev)
 #define SND_PCI_QUIRK_ID(vend,dev) {_SND_PCI_QUIRK_ID(vend, dev)}
-#ifdef CONFIG_SND_DEBUG_DETECT
+#ifdef CONFIG_SND_DEBUG_VERBOSE
 #define SND_PCI_QUIRK(vend,dev,xname,val) \
 	{_SND_PCI_QUIRK_ID(vend, dev), .value = (val), .name = (xname)}
 #else

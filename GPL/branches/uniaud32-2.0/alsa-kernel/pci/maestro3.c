@@ -2072,7 +2072,7 @@ static int __devinit snd_m3_mixer(struct snd_m3 *chip)
 {
 	struct snd_ac97_bus *pbus;
 	struct snd_ac97_template ac97;
-	struct snd_ctl_elem_id id;
+	struct snd_ctl_elem_id elem_id;
 	int err;
 	static struct snd_ac97_bus_ops ops = {
 		.write = snd_m3_ac97_write,
@@ -2092,14 +2092,14 @@ static int __devinit snd_m3_mixer(struct snd_m3 *chip)
 	schedule_timeout_uninterruptible(msecs_to_jiffies(100));
 	snd_ac97_write(chip->ac97, AC97_PCM, 0);
 
-	memset(&id, 0, sizeof(id));
-	id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-	strcpy(id.name, "Master Playback Switch");
-	chip->master_switch = snd_ctl_find_id(chip->card, &id);
-	memset(&id, 0, sizeof(id));
-	id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-	strcpy(id.name, "Master Playback Volume");
-	chip->master_volume = snd_ctl_find_id(chip->card, &id);
+	memset(&elem_id, 0, sizeof(elem_id));
+	elem_id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+	strcpy(elem_id.name, "Master Playback Switch");
+	chip->master_switch = snd_ctl_find_id(chip->card, &elem_id);
+	memset(&elem_id, 0, sizeof(elem_id));
+	elem_id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+	strcpy(elem_id.name, "Master Playback Volume");
+	chip->master_volume = snd_ctl_find_id(chip->card, &elem_id);
 
 	return 0;
 }
@@ -2431,6 +2431,29 @@ snd_m3_amp_enable(struct snd_m3 *chip, int enable)
 	outw(0xffff, io + GPIO_MASK);
 }
 
+static void
+snd_m3_hv_init(struct snd_m3 *chip)
+{
+	unsigned long io = chip->iobase;
+	u16 val = GPI_VOL_DOWN | GPI_VOL_UP;
+
+	if (!chip->is_omnibook)
+		return;
+
+	/*
+	 * Volume buttons on some HP OmniBook laptops
+	 * require some GPIO magic to work correctly.
+	 */
+	outw(0xffff, io + GPIO_MASK);
+	outw(0x0000, io + GPIO_DATA);
+
+	outw(~val, io + GPIO_MASK);
+	outw(inw(io + GPIO_DIRECTION) & ~val, io + GPIO_DIRECTION);
+	outw(val, io + GPIO_MASK);
+
+	outw(0xffff, io + GPIO_MASK);
+}
+
 static int
 snd_m3_chip_init(struct snd_m3 *chip)
 {
@@ -2446,21 +2469,6 @@ snd_m3_chip_init(struct snd_m3 *chip)
 	       DISABLE_LEGACY);
 	pci_write_config_word(pcidev, PCI_LEGACY_AUDIO_CTRL, w);
 
-	if (chip->is_omnibook) {
-		/*
-		 * Volume buttons on some HP OmniBook laptops don't work
-		 * correctly. This makes them work for the most part.
-		 *
-		 * Volume up and down buttons on the laptop side work.
-		 * Fn+cursor_up (volme up) works.
-		 * Fn+cursor_down (volume down) doesn't work.
-		 * Fn+F7 (mute) works acts as volume up.
-		 */
-		outw(~(GPI_VOL_DOWN|GPI_VOL_UP), io + GPIO_MASK);
-		outw(inw(io + GPIO_DIRECTION) & ~(GPI_VOL_DOWN|GPI_VOL_UP), io + GPIO_DIRECTION);
-		outw((GPI_VOL_DOWN|GPI_VOL_UP), io + GPIO_DATA);
-		outw(0xffff, io + GPIO_MASK);
-	}
 	pci_read_config_dword(pcidev, PCI_ALLEGRO_CONFIG, &n);
 	n &= ~(HV_CTRL_ENABLE | REDUCED_DEBOUNCE | HV_BUTTON_FROM_GD);
 	n |= chip->hv_config;
@@ -2546,10 +2554,8 @@ static int snd_m3_free(struct snd_m3 *chip)
 	vfree(chip->suspend_mem);
 #endif
 
-	if (chip->irq >= 0) {
-		synchronize_irq(chip->irq);
+	if (chip->irq >= 0)
 		free_irq(chip->irq, chip);
-	}
 
 	if (chip->iobase)
 		pci_release_regions(chip->pci);
@@ -2573,7 +2579,7 @@ static int m3_suspend(struct pci_dev *pci, pm_message_t state)
 {
 	struct snd_card *card = pci_get_drvdata(pci);
 	struct snd_m3 *chip = card->private_data;
-	int i, index;
+	int i, dsp_index;
 
 	if (chip->suspend_mem == NULL)
 		return 0;
@@ -2587,12 +2593,12 @@ static int m3_suspend(struct pci_dev *pci, pm_message_t state)
 	snd_m3_assp_halt(chip);
 
 	/* save dsp image */
-	index = 0;
+	dsp_index = 0;
 	for (i = REV_B_CODE_MEMORY_BEGIN; i <= REV_B_CODE_MEMORY_END; i++)
-		chip->suspend_mem[index++] = 
+		chip->suspend_mem[dsp_index++] =
 			snd_m3_assp_read(chip, MEMTYPE_INTERNAL_CODE, i);
 	for (i = REV_B_DATA_MEMORY_BEGIN ; i <= REV_B_DATA_MEMORY_END; i++)
-		chip->suspend_mem[index++] = 
+		chip->suspend_mem[dsp_index++] =
 			snd_m3_assp_read(chip, MEMTYPE_INTERNAL_DATA, i);
 
 	pci_disable_device(pci);
@@ -2605,7 +2611,7 @@ static int m3_resume(struct pci_dev *pci)
 {
 	struct snd_card *card = pci_get_drvdata(pci);
 	struct snd_m3 *chip = card->private_data;
-	int i, index;
+	int i, dsp_index;
 
 	if (chip->suspend_mem == NULL)
 		return 0;
@@ -2629,13 +2635,13 @@ static int m3_resume(struct pci_dev *pci)
 	snd_m3_ac97_reset(chip);
 
 	/* restore dsp image */
-	index = 0;
+	dsp_index = 0;
 	for (i = REV_B_CODE_MEMORY_BEGIN; i <= REV_B_CODE_MEMORY_END; i++)
 		snd_m3_assp_write(chip, MEMTYPE_INTERNAL_CODE, i, 
-				  chip->suspend_mem[index++]);
+				  chip->suspend_mem[dsp_index++]);
 	for (i = REV_B_DATA_MEMORY_BEGIN ; i <= REV_B_DATA_MEMORY_END; i++)
 		snd_m3_assp_write(chip, MEMTYPE_INTERNAL_DATA, i, 
-				  chip->suspend_mem[index++]);
+				  chip->suspend_mem[dsp_index++]);
 
 	/* tell the dma engine to restart itself */
 	snd_m3_assp_write(chip, MEMTYPE_INTERNAL_DATA, 
@@ -2647,6 +2653,8 @@ static int m3_resume(struct pci_dev *pci)
 	snd_m3_assp_continue(chip);
 	snd_m3_enable_ints(chip);
 	snd_m3_amp_enable(chip, 1);
+
+	snd_m3_hv_init(chip);
 
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
 	return 0;
@@ -2790,6 +2798,8 @@ snd_m3_create(struct snd_card *card, struct pci_dev *pci,
 	snd_m3_ac97_reset(chip);
 
 	snd_m3_amp_enable(chip, 1);
+
+	snd_m3_hv_init(chip);
 
 	tasklet_init(&chip->hwvol_tq, snd_m3_update_hw_volume, (unsigned long)chip);
 

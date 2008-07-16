@@ -32,6 +32,7 @@
 #include <sound/asoundef.h>
 #include "hda_codec.h"
 #include "hda_local.h"
+#include "hda_patch.h"
 
 #define NUM_CONTROL_ALLOC	32
 #define STAC_PWR_EVENT		0x20
@@ -51,6 +52,7 @@ enum {
 	STAC_9200_DELL_M26,
 	STAC_9200_DELL_M27,
 	STAC_9200_GATEWAY,
+	STAC_9200_PANASONIC,
 	STAC_9200_MODELS
 };
 
@@ -64,11 +66,14 @@ enum {
 
 enum {
 	STAC_92HD73XX_REF,
+	STAC_DELL_M6,
 	STAC_92HD73XX_MODELS
 };
 
 enum {
 	STAC_92HD71BXX_REF,
+	STAC_DELL_M4_1,
+	STAC_DELL_M4_2,
 	STAC_92HD71BXX_MODELS
 };
 
@@ -124,6 +129,7 @@ struct sigmatel_spec {
 	unsigned int hp_detect: 1;
 
 	/* gpio lines */
+	unsigned int eapd_mask;
 	unsigned int gpio_mask;
 	unsigned int gpio_dir;
 	unsigned int gpio_data;
@@ -136,6 +142,7 @@ struct sigmatel_spec {
 	/* power management */
 	unsigned int num_pwrs;
 	hda_nid_t *pwr_nids;
+	hda_nid_t *dac_list;
 
 	/* playback */
 	struct hda_input_mux *mono_mux;
@@ -174,6 +181,7 @@ struct sigmatel_spec {
 	/* i/o switches */
 	unsigned int io_switch[2];
 	unsigned int clfe_swap;
+	unsigned int hp_switch;
 	unsigned int aloopback;
 
 	struct hda_pcm pcm_rec[2];	/* PCM information */
@@ -185,9 +193,6 @@ struct sigmatel_spec {
 	struct hda_input_mux private_dimux;
 	struct hda_input_mux private_imux;
 	struct hda_input_mux private_mono_mux;
-
-	/* virtual master */
-	unsigned int vmaster_tlv[4];
 };
 
 static hda_nid_t stac9200_adc_nids[1] = {
@@ -245,7 +250,7 @@ static hda_nid_t stac92hd71bxx_dmux_nids[1] = {
 	0x1c,
 };
 
-static hda_nid_t stac92hd71bxx_dac_nids[2] = {
+static hda_nid_t stac92hd71bxx_dac_nids[1] = {
 	0x10, /*0x11, */
 };
 
@@ -291,6 +296,10 @@ static hda_nid_t stac927x_mux_nids[3] = {
         0x15, 0x16, 0x17
 };
 
+static hda_nid_t stac927x_dac_nids[6] = {
+	0x02, 0x03, 0x04, 0x05, 0x06, 0
+};
+
 static hda_nid_t stac927x_dmux_nids[1] = {
 	0x1b,
 };
@@ -332,10 +341,10 @@ static hda_nid_t stac922x_pin_nids[10] = {
 	0x0f, 0x10, 0x11, 0x15, 0x1b,
 };
 
-static hda_nid_t stac92hd73xx_pin_nids[12] = {
+static hda_nid_t stac92hd73xx_pin_nids[13] = {
 	0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
 	0x0f, 0x10, 0x11, 0x12, 0x13,
-	0x14, 0x22
+	0x14, 0x1e, 0x22
 };
 
 static hda_nid_t stac92hd71bxx_pin_nids[10] = {
@@ -528,6 +537,43 @@ static struct hda_verb stac92hd73xx_6ch_core_init[] = {
 	{0}
 };
 
+static struct hda_verb dell_eq_core_init[] = {
+	/* set master volume to max value without distortion
+	 * and direct control */
+	{ 0x1f, AC_VERB_SET_VOLUME_KNOB_CONTROL, 0xec},
+	/* setup audio connections */
+	{ 0x0d, AC_VERB_SET_CONNECT_SEL, 0x00},
+	{ 0x0a, AC_VERB_SET_CONNECT_SEL, 0x01},
+	{ 0x0f, AC_VERB_SET_CONNECT_SEL, 0x02},
+	/* setup adcs to point to mixer */
+	{ 0x20, AC_VERB_SET_CONNECT_SEL, 0x0b},
+	{ 0x21, AC_VERB_SET_CONNECT_SEL, 0x0b},
+	/* setup import muxs */
+	{ 0x28, AC_VERB_SET_CONNECT_SEL, 0x01},
+	{ 0x29, AC_VERB_SET_CONNECT_SEL, 0x01},
+	{ 0x2a, AC_VERB_SET_CONNECT_SEL, 0x01},
+	{ 0x2b, AC_VERB_SET_CONNECT_SEL, 0x00},
+	{0}
+};
+
+static struct hda_verb dell_m6_core_init[] = {
+	/* set master volume and direct control */
+	{ 0x1f, AC_VERB_SET_VOLUME_KNOB_CONTROL, 0xff},
+	/* setup audio connections */
+	{ 0x0d, AC_VERB_SET_CONNECT_SEL, 0x00},
+	{ 0x0a, AC_VERB_SET_CONNECT_SEL, 0x01},
+	{ 0x0f, AC_VERB_SET_CONNECT_SEL, 0x02},
+	/* setup adcs to point to mixer */
+	{ 0x20, AC_VERB_SET_CONNECT_SEL, 0x0b},
+	{ 0x21, AC_VERB_SET_CONNECT_SEL, 0x0b},
+	/* setup import muxs */
+	{ 0x28, AC_VERB_SET_CONNECT_SEL, 0x01},
+	{ 0x29, AC_VERB_SET_CONNECT_SEL, 0x01},
+	{ 0x2a, AC_VERB_SET_CONNECT_SEL, 0x01},
+	{ 0x2b, AC_VERB_SET_CONNECT_SEL, 0x00},
+	{0}
+};
+
 static struct hda_verb stac92hd73xx_8ch_core_init[] = {
 	/* set master volume and direct control */
 	{ 0x1f, AC_VERB_SET_VOLUME_KNOB_CONTROL, 0xff},
@@ -590,21 +636,28 @@ static struct hda_verb stac92hd71bxx_core_init[] = {
 	{ 0x0f, AC_VERB_SET_AMP_GAIN_MUTE, AMP_IN_UNMUTE(0)},
 };
 
+#define HD_DISABLE_PORTF 3
 static struct hda_verb stac92hd71bxx_analog_core_init[] = {
+	/* start of config #1 */
+
+	/* connect port 0f to audio mixer */
+	{ 0x0f, AC_VERB_SET_CONNECT_SEL, 0x2},
+	{ 0x0f, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT}, /* Speaker */
+	/* unmute right and left channels for node 0x0f */
+	{ 0x0f, AC_VERB_SET_AMP_GAIN_MUTE, AMP_IN_UNMUTE(0)},
+	/* start of config #2 */
+
 	/* set master volume and direct control */
 	{ 0x28, AC_VERB_SET_VOLUME_KNOB_CONTROL, 0xff},
 	/* connect headphone jack to dac1 */
 	{ 0x0a, AC_VERB_SET_CONNECT_SEL, 0x01},
-	/* connect ports 0d and 0f to audio mixer */
+	/* connect port 0d to audio mixer */
 	{ 0x0d, AC_VERB_SET_CONNECT_SEL, 0x2},
-	{ 0x0f, AC_VERB_SET_CONNECT_SEL, 0x2},
-	{ 0x0f, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT}, /* Speaker */
 	/* unmute dac0 input in audio mixer */
 	{ 0x17, AC_VERB_SET_AMP_GAIN_MUTE, 0x701f},
-	/* unmute right and left channels for nodes 0x0a, 0xd, 0x0f */
+	/* unmute right and left channels for nodes 0x0a, 0xd */
 	{ 0x0a, AC_VERB_SET_AMP_GAIN_MUTE, AMP_IN_UNMUTE(0)},
 	{ 0x0d, AC_VERB_SET_AMP_GAIN_MUTE, AMP_IN_UNMUTE(0)},
-	{ 0x0f, AC_VERB_SET_AMP_GAIN_MUTE, AMP_IN_UNMUTE(0)},
 	{0}
 };
 
@@ -772,6 +825,9 @@ static struct snd_kcontrol_new stac92hd71bxx_analog_mixer[] = {
 	HDA_CODEC_MUTE_IDX("Capture Switch", 0x1, 0x1d, 0x0, HDA_OUTPUT),
 	HDA_CODEC_VOLUME_IDX("Capture Mux Volume", 0x1, 0x1b, 0x0, HDA_OUTPUT),
 
+	HDA_CODEC_VOLUME("PC Beep Volume", 0x17, 0x2, HDA_INPUT),
+	HDA_CODEC_MUTE("PC Beep Switch", 0x17, 0x2, HDA_INPUT),
+
 	HDA_CODEC_MUTE("Analog Loopback 1", 0x17, 0x3, HDA_INPUT),
 	HDA_CODEC_MUTE("Analog Loopback 2", 0x17, 0x4, HDA_INPUT),
 	{0} /* end */
@@ -794,7 +850,7 @@ static struct snd_kcontrol_new stac92hd71bxx_mixer[] = {
 static struct snd_kcontrol_new stac925x_mixer[] = {
 	STAC_INPUT_SOURCE(1),
 	HDA_CODEC_VOLUME("Capture Volume", 0x09, 0, HDA_OUTPUT),
-	HDA_CODEC_MUTE("Capture Switch", 0x09, 0, HDA_OUTPUT),
+	HDA_CODEC_MUTE("Capture Switch", 0x14, 0, HDA_OUTPUT),
 	HDA_CODEC_VOLUME("Capture Mux Volume", 0x0f, 0, HDA_OUTPUT),
 	{0} /* end */
 };
@@ -911,6 +967,11 @@ static int stac92xx_build_controls(struct hda_codec *codec)
 		err = snd_hda_create_spdif_out_ctls(codec, spec->multiout.dig_out_nid);
 		if (err < 0)
 			return err;
+		err = snd_hda_create_spdif_share_sw(codec,
+						    &spec->multiout);
+		if (err < 0)
+			return err;
+		spec->multiout.share_spdif = 1;
 	}
 	if (spec->dig_in_nid) {
 		err = snd_hda_create_spdif_in_ctls(codec, spec->dig_in_nid);
@@ -920,10 +981,11 @@ static int stac92xx_build_controls(struct hda_codec *codec)
 
 	/* if we have no master control, let's create it */
 	if (!snd_hda_find_mixer_ctl(codec, "Master Playback Volume")) {
+		unsigned int vmaster_tlv[4];
 		snd_hda_set_vmaster_tlv(codec, spec->multiout.dac_nids[0],
-					HDA_OUTPUT, spec->vmaster_tlv);
+					HDA_OUTPUT, vmaster_tlv);
 		err = snd_hda_add_vmaster(codec, "Master Playback Volume",
-					  spec->vmaster_tlv, slave_vols);
+					  vmaster_tlv, slave_vols);
 		if (err < 0)
 			return err;
 	}
@@ -1072,6 +1134,7 @@ static unsigned int *stac9200_brd_tbl[STAC_9200_MODELS] = {
 	[STAC_9200_DELL_M25] = dell9200_m25_pin_configs,
 	[STAC_9200_DELL_M26] = dell9200_m26_pin_configs,
 	[STAC_9200_DELL_M27] = dell9200_m27_pin_configs,
+	[STAC_9200_PANASONIC] = ref9200_pin_configs,
 };
 
 static const char *stac9200_models[STAC_9200_MODELS] = {
@@ -1088,6 +1151,7 @@ static const char *stac9200_models[STAC_9200_MODELS] = {
 	[STAC_9200_DELL_M26] = "dell-m26",
 	[STAC_9200_DELL_M27] = "dell-m27",
 	[STAC_9200_GATEWAY] = "gateway",
+	[STAC_9200_PANASONIC] = "panasonic",
 };
 
 static struct snd_pci_quirk stac9200_cfg_tbl[] = {
@@ -1154,7 +1218,7 @@ static struct snd_pci_quirk stac9200_cfg_tbl[] = {
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x01f6,
 		      "unknown Dell", STAC_9200_DELL_M26),
 	/* Panasonic */
-	SND_PCI_QUIRK(0x10f7, 0x8338, "Panasonic CF-74", STAC_REF),
+	SND_PCI_QUIRK(0x10f7, 0x8338, "Panasonic CF-74", STAC_9200_PANASONIC),
 	/* Gateway machines needs EAPD to be set on resume */
 	SND_PCI_QUIRK(0x107b, 0x0205, "Gateway S-7110M", STAC_9200_GATEWAY),
 	SND_PCI_QUIRK(0x107b, 0x0317, "Gateway MT3423, MX341*",
@@ -1212,24 +1276,48 @@ static struct snd_pci_quirk stac925x_cfg_tbl[] = {
 	{0} /* terminator */
 };
 
-static unsigned int ref92hd73xx_pin_configs[12] = {
+static unsigned int ref92hd73xx_pin_configs[13] = {
 	0x02214030, 0x02a19040, 0x01a19020, 0x02214030,
 	0x0181302e, 0x01014010, 0x01014020, 0x01014030,
 	0x02319040, 0x90a000f0, 0x90a000f0, 0x01452050,
+	0x01452050,
+};
+
+static unsigned int dell_m6_pin_configs[13] = {
+	0x0321101f, 0x4f00000f, 0x4f0000f0, 0x90170110,
+	0x03a11020, 0x0321101f, 0x4f0000f0, 0x4f0000f0,
+	0x4f0000f0, 0x90a60160, 0x4f0000f0, 0x4f0000f0,
+	0x4f0000f0,
 };
 
 static unsigned int *stac92hd73xx_brd_tbl[STAC_92HD73XX_MODELS] = {
-	[STAC_92HD73XX_REF] = ref92hd73xx_pin_configs,
+	[STAC_92HD73XX_REF]	= ref92hd73xx_pin_configs,
+	[STAC_DELL_M6]	= dell_m6_pin_configs,
 };
 
 static const char *stac92hd73xx_models[STAC_92HD73XX_MODELS] = {
 	[STAC_92HD73XX_REF] = "ref",
+	[STAC_DELL_M6] = "dell-m6",
 };
 
 static struct snd_pci_quirk stac92hd73xx_cfg_tbl[] = {
 	/* SigmaTel reference board */
 	SND_PCI_QUIRK(PCI_VENDOR_ID_INTEL, 0x2668,
-		      "DFI LanParty", STAC_92HD73XX_REF),
+				"DFI LanParty", STAC_92HD73XX_REF),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0254,
+				"unknown Dell", STAC_DELL_M6),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0255,
+				"unknown Dell", STAC_DELL_M6),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0256,
+				"unknown Dell", STAC_DELL_M6),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0257,
+				"unknown Dell", STAC_DELL_M6),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x025e,
+				"unknown Dell", STAC_DELL_M6),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x025f,
+				"unknown Dell", STAC_DELL_M6),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0271,
+				"unknown Dell", STAC_DELL_M6),
 	{0} /* terminator */
 };
 
@@ -1239,18 +1327,56 @@ static unsigned int ref92hd71bxx_pin_configs[10] = {
 	0x90a000f0, 0x01452050,
 };
 
+static unsigned int dell_m4_1_pin_configs[10] = {
+	0x0421101f, 0x04a11221, 0x40f000f0, 0x90170110,
+	0x23a1902e, 0x23014250, 0x40f000f0, 0x90a000f0,
+	0x40f000f0, 0x4f0000f0,
+};
+
+static unsigned int dell_m4_2_pin_configs[10] = {
+	0x0421101f, 0x04a11221, 0x90a70330, 0x90170110,
+	0x23a1902e, 0x23014250, 0x40f000f0, 0x40f000f0,
+	0x40f000f0, 0x044413b0,
+};
+
 static unsigned int *stac92hd71bxx_brd_tbl[STAC_92HD71BXX_MODELS] = {
 	[STAC_92HD71BXX_REF] = ref92hd71bxx_pin_configs,
+	[STAC_DELL_M4_1]	= dell_m4_1_pin_configs,
+	[STAC_DELL_M4_2]	= dell_m4_2_pin_configs,
 };
 
 static const char *stac92hd71bxx_models[STAC_92HD71BXX_MODELS] = {
 	[STAC_92HD71BXX_REF] = "ref",
+	[STAC_DELL_M4_1] = "dell-m4-1",
+	[STAC_DELL_M4_2] = "dell-m4-2",
 };
 
 static struct snd_pci_quirk stac92hd71bxx_cfg_tbl[] = {
 	/* SigmaTel reference board */
 	SND_PCI_QUIRK(PCI_VENDOR_ID_INTEL, 0x2668,
 		      "DFI LanParty", STAC_92HD71BXX_REF),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0233,
+				"unknown Dell", STAC_DELL_M4_1),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0234,
+				"unknown Dell", STAC_DELL_M4_1),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0250,
+				"unknown Dell", STAC_DELL_M4_1),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x024f,
+				"unknown Dell", STAC_DELL_M4_1),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x024d,
+				"unknown Dell", STAC_DELL_M4_1),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0251,
+				"unknown Dell", STAC_DELL_M4_1),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0277,
+				"unknown Dell", STAC_DELL_M4_1),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0263,
+				"unknown Dell", STAC_DELL_M4_2),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0265,
+				"unknown Dell", STAC_DELL_M4_2),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0262,
+				"unknown Dell", STAC_DELL_M4_2),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0264,
+				"unknown Dell", STAC_DELL_M4_2),
 	{0} /* terminator */
 };
 
@@ -1638,11 +1764,7 @@ static struct snd_pci_quirk stac9205_cfg_tbl[] = {
 		      "unknown Dell", STAC_9205_DELL_M42),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x01f8,
 		      "Dell Precision", STAC_9205_DELL_M43),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x021c,
-			  "Dell Precision", STAC_9205_DELL_M43),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x01f9,
-		      "Dell Precision", STAC_9205_DELL_M43),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x021b,
 		      "Dell Precision", STAC_9205_DELL_M43),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x01fa,
 		      "Dell Precision", STAC_9205_DELL_M43),
@@ -1654,18 +1776,14 @@ static struct snd_pci_quirk stac9205_cfg_tbl[] = {
 		      "Dell Precision", STAC_9205_DELL_M43),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x01ff,
 		      "Dell Precision M4300", STAC_9205_DELL_M43),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0206,
-		      "Dell Precision", STAC_9205_DELL_M43),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x01f1,
-		      "Dell Inspiron", STAC_9205_DELL_M44),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x01f2,
-		      "Dell Inspiron", STAC_9205_DELL_M44),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x01fc,
-		      "Dell Inspiron", STAC_9205_DELL_M44),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x01fd,
-		      "Dell Inspiron", STAC_9205_DELL_M44),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0204,
 		      "unknown Dell", STAC_9205_DELL_M42),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0206,
+		      "Dell Precision", STAC_9205_DELL_M43),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x021b,
+		      "Dell Precision", STAC_9205_DELL_M43),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x021c,
+		      "Dell Precision", STAC_9205_DELL_M43),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x021f,
 		      "Dell Inspiron", STAC_9205_DELL_M44),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0228,
@@ -1743,7 +1861,8 @@ static int stac92xx_playback_pcm_open(struct hda_pcm_stream *hinfo,
 				      struct snd_pcm_substream *substream)
 {
 	struct sigmatel_spec *spec = codec->spec;
-	return snd_hda_multi_out_analog_open(codec, &spec->multiout, substream);
+	return snd_hda_multi_out_analog_open(codec, &spec->multiout, substream,
+					     hinfo);
 }
 
 static int stac92xx_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
@@ -1817,7 +1936,7 @@ static int stac92xx_capture_pcm_cleanup(struct hda_pcm_stream *hinfo,
 {
 	struct sigmatel_spec *spec = codec->spec;
 
-	snd_hda_codec_setup_stream(codec, spec->adc_nids[substream->number], 0, 0, 0);
+	snd_hda_codec_cleanup_stream(codec, spec->adc_nids[substream->number]);
 	return 0;
 }
 
@@ -1899,6 +2018,7 @@ static int stac92xx_build_pcms(struct hda_codec *codec)
 		codec->num_pcms++;
 		info++;
 		info->name = "STAC92xx Digital";
+		info->pcm_type = HDA_PCM_TYPE_SPDIF;
 		if (spec->multiout.dig_out_nid) {
 			info->stream[SNDRV_PCM_STREAM_PLAYBACK] = stac92xx_pcm_digital_playback;
 			info->stream[SNDRV_PCM_STREAM_PLAYBACK].nid = spec->multiout.dig_out_nid;
@@ -1933,6 +2053,34 @@ static void stac92xx_auto_set_pinctl(struct hda_codec *codec, hda_nid_t nid, int
 {
 	snd_hda_codec_write_cache(codec, nid, 0,
 				  AC_VERB_SET_PIN_WIDGET_CONTROL, pin_type);
+}
+
+#define stac92xx_hp_switch_info		snd_ctl_boolean_mono_info
+
+static int stac92xx_hp_switch_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	struct hda_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct sigmatel_spec *spec = codec->spec;
+
+	ucontrol->value.integer.value[0] = spec->hp_switch;
+	return 0;
+}
+
+static int stac92xx_hp_switch_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	struct hda_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct sigmatel_spec *spec = codec->spec;
+
+	spec->hp_switch = ucontrol->value.integer.value[0];
+
+	/* check to be sure that the ports are upto date with
+	 * switch changes
+	 */
+	codec->patch_ops.unsol_event(codec, STAC_HP_EVENT << 26);
+
+	return 1;
 }
 
 #define stac92xx_io_switch_info		snd_ctl_boolean_mono_info
@@ -2006,6 +2154,15 @@ static int stac92xx_clfe_switch_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+#define STAC_CODEC_HP_SWITCH(xname) \
+	{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
+	  .name = xname, \
+	  .index = 0, \
+	  .info = stac92xx_hp_switch_info, \
+	  .get = stac92xx_hp_switch_get, \
+	  .put = stac92xx_hp_switch_put, \
+	}
+
 #define STAC_CODEC_IO_SWITCH(xname, xpval) \
 	{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
 	  .name = xname, \
@@ -2030,6 +2187,7 @@ enum {
 	STAC_CTL_WIDGET_VOL,
 	STAC_CTL_WIDGET_MUTE,
 	STAC_CTL_WIDGET_MONO_MUX,
+	STAC_CTL_WIDGET_HP_SWITCH,
 	STAC_CTL_WIDGET_IO_SWITCH,
 	STAC_CTL_WIDGET_CLFE_SWITCH
 };
@@ -2038,6 +2196,7 @@ static struct snd_kcontrol_new stac92xx_control_templates[] = {
 	HDA_CODEC_VOLUME(NULL, 0, 0, 0),
 	HDA_CODEC_MUTE(NULL, 0, 0, 0),
 	STAC_MONO_MUX,
+	STAC_CODEC_HP_SWITCH(NULL),
 	STAC_CODEC_IO_SWITCH(NULL, 0),
 	STAC_CODEC_CLFE_SWITCH(NULL, 0),
 };
@@ -2232,6 +2391,29 @@ static int create_controls(struct sigmatel_spec *spec, const char *pfx, hda_nid_
 	return 0;
 }
 
+static int add_spec_dacs(struct sigmatel_spec *spec, hda_nid_t nid)
+{
+	if (!spec->multiout.hp_nid)
+		spec->multiout.hp_nid = nid;
+	else if (spec->multiout.num_dacs > 4) {
+		printk(KERN_WARNING "stac92xx: No space for DAC 0x%x\n", nid);
+		return 1;
+	} else {
+		spec->multiout.dac_nids[spec->multiout.num_dacs] = nid;
+		spec->multiout.num_dacs++;
+	}
+	return 0;
+}
+
+static int check_in_dac_nids(struct sigmatel_spec *spec, hda_nid_t nid)
+{
+	if (is_in_dac_nids(spec, nid))
+		return 1;
+	if (spec->multiout.hp_nid == nid)
+		return 1;
+	return 0;
+}
+
 /* add playback controls from the parsed DAC table */
 static int stac92xx_auto_create_multi_out_ctls(struct hda_codec *codec,
 					       const struct auto_pin_cfg *cfg)
@@ -2246,7 +2428,7 @@ static int stac92xx_auto_create_multi_out_ctls(struct hda_codec *codec,
 	unsigned int wid_caps, pincap;
 
 
-	for (i = 0; i < cfg->line_outs; i++) {
+	for (i = 0; i < cfg->line_outs && i < spec->multiout.num_dacs; i++) {
 		if (!spec->multiout.dac_nids[i])
 			continue;
 
@@ -2279,6 +2461,14 @@ static int stac92xx_auto_create_multi_out_ctls(struct hda_codec *codec,
 		}
 	}
 
+	if (cfg->hp_outs > 1) {
+		err = stac92xx_add_control(spec,
+			STAC_CTL_WIDGET_HP_SWITCH,
+			"Headphone as Line Out Switch", 0);
+		if (err < 0)
+			return err;
+	}
+
 	if (spec->line_switch) {
 		nid = cfg->input_pins[AUTO_PIN_LINE];
 		pincap = snd_hda_param_read(codec, nid,
@@ -2294,10 +2484,11 @@ static int stac92xx_auto_create_multi_out_ctls(struct hda_codec *codec,
 
 	if (spec->mic_switch) {
 		unsigned int def_conf;
-		nid = cfg->input_pins[AUTO_PIN_MIC];
+		unsigned int mic_pin = AUTO_PIN_MIC;
+again:
+		nid = cfg->input_pins[mic_pin];
 		def_conf = snd_hda_codec_read(codec, nid, 0,
 						AC_VERB_GET_CONFIG_DEFAULT, 0);
-
 		/* some laptops have an internal analog microphone
 		 * which can't be used as a output */
 		if (get_defcfg_connect(def_conf) != AC_JACK_PORT_FIXED) {
@@ -2307,35 +2498,19 @@ static int stac92xx_auto_create_multi_out_ctls(struct hda_codec *codec,
 				err = stac92xx_add_control(spec,
 					STAC_CTL_WIDGET_IO_SWITCH,
 					"Mic as Output Switch", (nid << 8) | 1);
+				nid = snd_hda_codec_read(codec, nid, 0,
+					 AC_VERB_GET_CONNECT_LIST, 0) & 0xff;
+				if (!check_in_dac_nids(spec, nid))
+					add_spec_dacs(spec, nid);
 				if (err < 0)
 					return err;
 			}
+		} else if (mic_pin == AUTO_PIN_MIC) {
+			mic_pin = AUTO_PIN_FRONT_MIC;
+			goto again;
 		}
 	}
 
-	return 0;
-}
-
-static int check_in_dac_nids(struct sigmatel_spec *spec, hda_nid_t nid)
-{
-	if (is_in_dac_nids(spec, nid))
-		return 1;
-	if (spec->multiout.hp_nid == nid)
-		return 1;
-	return 0;
-}
-
-static int add_spec_dacs(struct sigmatel_spec *spec, hda_nid_t nid)
-{
-	if (!spec->multiout.hp_nid)
-		spec->multiout.hp_nid = nid;
-	else if (spec->multiout.num_dacs > 4) {
-		printk(KERN_WARNING "stac92xx: No space for DAC 0x%x\n", nid);
-		return 1;
-	} else {
-		spec->multiout.dac_nids[spec->multiout.num_dacs] = nid;
-		spec->multiout.num_dacs++;
-	}
 	return 0;
 }
 
@@ -2388,12 +2563,8 @@ static int stac92xx_auto_create_hp_ctls(struct hda_codec *codec,
 			return err;
 	}
 	if (spec->multiout.hp_nid) {
-		const char *pfx;
-		if (old_num_dacs == spec->multiout.num_dacs)
-			pfx = "Master";
-		else
-			pfx = "Headphone";
-		err = create_controls(spec, pfx, spec->multiout.hp_nid, 3);
+		err = create_controls(spec, "Headphone",
+				      spec->multiout.hp_nid, 3);
 		if (err < 0)
 			return err;
 	}
@@ -2501,7 +2672,6 @@ found:
 
 	return 0;
 }
-
 
 /* create playback/capture controls for input pins */
 static int stac92xx_auto_create_analog_input_ctls(struct hda_codec *codec, const struct auto_pin_cfg *cfg)
@@ -2756,7 +2926,7 @@ static int stac9200_auto_create_lfe_ctls(struct hda_codec *codec,
 	 */
 	for (i = 0; i < spec->autocfg.speaker_outs && lfe_pin == 0x0; i++) {
 		hda_nid_t pin = spec->autocfg.speaker_pins[i];
-		unsigned long wcaps = get_wcaps(codec, pin);
+		unsigned int wcaps = get_wcaps(codec, pin);
 		wcaps &= (AC_WCAP_STEREO | AC_WCAP_OUT_AMP);
 		if (wcaps == AC_WCAP_OUT_AMP)
 			/* found a mono speaker with an amp, must be lfe */
@@ -2767,12 +2937,12 @@ static int stac9200_auto_create_lfe_ctls(struct hda_codec *codec,
 	if (lfe_pin == 0 && spec->autocfg.speaker_outs == 0) {
 		for (i = 0; i < spec->autocfg.line_outs && lfe_pin == 0x0; i++) {
 			hda_nid_t pin = spec->autocfg.line_out_pins[i];
-			unsigned long cfg;
-			cfg = snd_hda_codec_read(codec, pin, 0,
+			unsigned int defcfg;
+			defcfg = snd_hda_codec_read(codec, pin, 0,
 						 AC_VERB_GET_CONFIG_DEFAULT,
 						 0x00);
-			if (get_defcfg_device(cfg) == AC_JACK_SPEAKER) {
-				unsigned long wcaps = get_wcaps(codec, pin);
+			if (get_defcfg_device(defcfg) == AC_JACK_SPEAKER) {
+				unsigned int wcaps = get_wcaps(codec, pin);
 				wcaps &= (AC_WCAP_STEREO | AC_WCAP_OUT_AMP);
 				if (wcaps == AC_WCAP_OUT_AMP)
 					/* found a mono speaker with an amp,
@@ -2877,6 +3047,19 @@ static int is_nid_hp_pin(struct auto_pin_cfg *cfg, hda_nid_t nid)
 	return 0; /* nid is not a HP-Out */
 };
 
+static void stac92xx_power_down(struct hda_codec *codec)
+{
+	struct sigmatel_spec *spec = codec->spec;
+
+	/* power down inactive DACs */
+	hda_nid_t *dac;
+	for (dac = spec->dac_list; *dac; dac++)
+		if (!is_in_dac_nids(spec, *dac) &&
+			spec->multiout.hp_nid != *dac)
+			snd_hda_codec_write_cache(codec, *dac, 0,
+					AC_VERB_SET_POWER_STATE, AC_PWRST_D3);
+}
+
 static int stac92xx_init(struct hda_codec *codec)
 {
 	struct sigmatel_spec *spec = codec->spec;
@@ -2920,16 +3103,24 @@ static int stac92xx_init(struct hda_codec *codec)
 					? STAC_HP_EVENT : STAC_PWR_EVENT;
 		int pinctl = snd_hda_codec_read(codec, spec->pwr_nids[i],
 					0, AC_VERB_GET_PIN_WIDGET_CONTROL, 0);
+		int def_conf = snd_hda_codec_read(codec, spec->pwr_nids[i],
+					0, AC_VERB_GET_CONFIG_DEFAULT, 0);
+		def_conf = get_defcfg_connect(def_conf);
 		/* outputs are only ports capable of power management
 		 * any attempts on powering down a input port cause the
 		 * referenced VREF to act quirky.
 		 */
 		if (pinctl & AC_PINCTL_IN_EN)
 			continue;
+		/* skip any ports that don't have jacks since presence
+ 		 * detection is useless */
+		if (def_conf && def_conf != AC_JACK_PORT_FIXED)
+			continue;
 		enable_pin_detect(codec, spec->pwr_nids[i], event | i);
 		codec->patch_ops.unsol_event(codec, (event | i) << 26);
 	}
-
+	if (spec->dac_list)
+		stac92xx_power_down(codec);
 	if (cfg->dig_out_pin)
 		stac92xx_auto_set_pinctl(codec, cfg->dig_out_pin,
 					 AC_PINCTL_OUT_EN);
@@ -3025,6 +3216,7 @@ static void stac92xx_hp_detect(struct hda_codec *codec, unsigned int res)
 {
 	struct sigmatel_spec *spec = codec->spec;
 	struct auto_pin_cfg *cfg = &spec->autocfg;
+	int nid = cfg->hp_pins[cfg->hp_outs - 1];
 	int i, presence;
 
 	presence = 0;
@@ -3035,26 +3227,42 @@ static void stac92xx_hp_detect(struct hda_codec *codec, unsigned int res)
 	for (i = 0; i < cfg->hp_outs; i++) {
 		if (presence)
 			break;
+		if (spec->hp_switch && cfg->hp_pins[i] == nid)
+			break;
 		presence = get_hp_pin_presence(codec, cfg->hp_pins[i]);
 	}
 
 	if (presence) {
 		/* disable lineouts, enable hp */
+		if (spec->hp_switch)
+			stac92xx_reset_pinctl(codec, nid, AC_PINCTL_OUT_EN);
 		for (i = 0; i < cfg->line_outs; i++)
 			stac92xx_reset_pinctl(codec, cfg->line_out_pins[i],
 						AC_PINCTL_OUT_EN);
 		for (i = 0; i < cfg->speaker_outs; i++)
 			stac92xx_reset_pinctl(codec, cfg->speaker_pins[i],
 						AC_PINCTL_OUT_EN);
+		if (spec->eapd_mask)
+			stac_gpio_set(codec, spec->gpio_mask,
+				spec->gpio_dir, spec->gpio_data &
+				~spec->eapd_mask);
 	} else {
 		/* enable lineouts, disable hp */
+		if (spec->hp_switch)
+			stac92xx_set_pinctl(codec, nid, AC_PINCTL_OUT_EN);
 		for (i = 0; i < cfg->line_outs; i++)
 			stac92xx_set_pinctl(codec, cfg->line_out_pins[i],
 						AC_PINCTL_OUT_EN);
 		for (i = 0; i < cfg->speaker_outs; i++)
 			stac92xx_set_pinctl(codec, cfg->speaker_pins[i],
 						AC_PINCTL_OUT_EN);
+		if (spec->eapd_mask)
+			stac_gpio_set(codec, spec->gpio_mask,
+				spec->gpio_dir, spec->gpio_data |
+				spec->eapd_mask);
 	}
+	if (!spec->hp_switch && cfg->hp_outs > 1 && presence)
+		stac92xx_set_pinctl(codec, nid, AC_PINCTL_OUT_EN);
 } 
 
 static void stac92xx_pin_sense(struct hda_codec *codec, int idx)
@@ -3102,6 +3310,9 @@ static int stac92xx_resume(struct hda_codec *codec)
 		spec->gpio_dir, spec->gpio_data);
 	snd_hda_codec_resume_amp(codec);
 	snd_hda_codec_resume_cache(codec);
+	/* power down inactive DACs */
+	if (spec->dac_list)
+		stac92xx_power_down(codec);
 	/* invoke unsolicited event to reset the HP state */
 	if (spec->hp_detect)
 		codec->patch_ops.unsol_event(codec, STAC_HP_EVENT << 26);
@@ -3165,6 +3376,11 @@ static int patch_stac9200(struct hda_codec *codec)
 		spec->init = stac9200_core_init;
 	spec->mixer = stac9200_mixer;
 
+	if (spec->board_config == STAC_9200_PANASONIC) {
+		spec->gpio_mask = spec->gpio_dir = 0x09;
+		spec->gpio_data = 0x00;
+	}
+
 	err = stac9200_parse_auto_config(codec);
 	if (err < 0) {
 		stac92xx_free(codec);
@@ -3191,7 +3407,7 @@ static int patch_stac925x(struct hda_codec *codec)
 	spec->board_config = snd_hda_check_board_config(codec, STAC_925x_MODELS,
 							stac925x_models,
 							stac925x_cfg_tbl);
-again:
+ again:
 	if (spec->board_config < 0) {
 		snd_printdd(KERN_INFO "hda_codec: Unknown model for STAC925x," 
 				      "using BIOS defaults\n");
@@ -3305,6 +3521,7 @@ again:
 
 	switch (spec->multiout.num_dacs) {
 	case 0x3: /* 6 Channel */
+		spec->multiout.hp_nid = 0x17;
 		spec->mixer = stac92hd73xx_6ch_mixer;
 		spec->init = stac92hd73xx_6ch_core_init;
 		break;
@@ -3330,12 +3547,41 @@ again:
 
 	spec->num_muxes = ARRAY_SIZE(stac92hd73xx_mux_nids);
 	spec->num_adcs = ARRAY_SIZE(stac92hd73xx_adc_nids);
-	spec->num_dmics = STAC92HD73XX_NUM_DMICS;
 	spec->num_dmuxes = ARRAY_SIZE(stac92hd73xx_dmux_nids);
 	spec->dinput_mux = &stac92hd73xx_dmux;
 	/* GPIO0 High = Enable EAPD */
-	spec->gpio_mask = spec->gpio_dir = 0x1;
+	spec->eapd_mask = spec->gpio_mask = spec->gpio_dir = 0x1;
 	spec->gpio_data = 0x01;
+
+	switch (spec->board_config) {
+	case STAC_DELL_M6:
+		spec->init = dell_eq_core_init;
+		switch (codec->subsystem_id) {
+		case 0x1028025e: /* Analog Mics */
+		case 0x1028025f:
+			stac92xx_set_config_reg(codec, 0x0b, 0x90A70170);
+			spec->num_dmics = 0;
+			break;
+		case 0x10280271: /* Digital Mics */
+		case 0x10280272:
+			spec->init = dell_m6_core_init;
+			/* fall-through */
+		case 0x10280254:
+		case 0x10280255:
+			stac92xx_set_config_reg(codec, 0x13, 0x90A60160);
+			spec->num_dmics = 1;
+			break;
+		case 0x10280256: /* Both */
+		case 0x10280057:
+			stac92xx_set_config_reg(codec, 0x0b, 0x90A70170);
+			stac92xx_set_config_reg(codec, 0x13, 0x90A60160);
+			spec->num_dmics = 1;
+			break;
+		}
+		break;
+	default:
+		spec->num_dmics = STAC92HD73XX_NUM_DMICS;
+	}
 
 	spec->num_pwrs = ARRAY_SIZE(stac92hd73xx_pwr_nids);
 	spec->pwr_nids = stac92hd73xx_pwr_nids;
@@ -3373,6 +3619,7 @@ static int patch_stac92hd71bxx(struct hda_codec *codec)
 
 	codec->spec = spec;
 	spec->num_pins = ARRAY_SIZE(stac92hd71bxx_pin_nids);
+	spec->num_pwrs = ARRAY_SIZE(stac92hd71bxx_pwr_nids);
 	spec->pin_nids = stac92hd71bxx_pin_nids;
 	spec->board_config = snd_hda_check_board_config(codec,
 							STAC_92HD71BXX_MODELS,
@@ -3401,6 +3648,19 @@ again:
 		spec->mixer = stac92hd71bxx_mixer;
 		spec->init = stac92hd71bxx_core_init;
 		break;
+	case 0x111d7608: /* 5 Port with Analog Mixer */
+		/* no output amps */
+		spec->num_pwrs = 0;
+		spec->mixer = stac92hd71bxx_analog_mixer;
+
+		/* disable VSW */
+		spec->init = &stac92hd71bxx_analog_core_init[HD_DISABLE_PORTF];
+		stac92xx_set_config_reg(codec, 0xf, 0x40f000f0);
+		break;
+	case 0x111d7603: /* 6 Port with Analog Mixer */
+		/* no output amps */
+		spec->num_pwrs = 0;
+		/* fallthru */
 	default:
 		spec->mixer = stac92hd71bxx_analog_mixer;
 		spec->init = stac92hd71bxx_analog_core_init;
@@ -3410,22 +3670,22 @@ again:
 	spec->aloopback_shift = 0;
 
 	/* GPIO0 High = EAPD */
-	spec->gpio_mask = spec->gpio_dir = spec->gpio_data = 0x1;
+	spec->gpio_mask = 0x01;
+	spec->gpio_dir = 0x01;
+	spec->gpio_data = 0x01;
 
 	spec->mux_nids = stac92hd71bxx_mux_nids;
 	spec->adc_nids = stac92hd71bxx_adc_nids;
 	spec->dmic_nids = stac92hd71bxx_dmic_nids;
 	spec->dmux_nids = stac92hd71bxx_dmux_nids;
+	spec->pwr_nids = stac92hd71bxx_pwr_nids;
 
 	spec->num_muxes = ARRAY_SIZE(stac92hd71bxx_mux_nids);
 	spec->num_adcs = ARRAY_SIZE(stac92hd71bxx_adc_nids);
 	spec->num_dmics = STAC92HD71BXX_NUM_DMICS;
 	spec->num_dmuxes = ARRAY_SIZE(stac92hd71bxx_dmux_nids);
 
-	spec->num_pwrs = ARRAY_SIZE(stac92hd71bxx_pwr_nids);
-	spec->pwr_nids = stac92hd71bxx_pwr_nids;
-
-	spec->multiout.num_dacs = 2;
+	spec->multiout.num_dacs = 1;
 	spec->multiout.hp_nid = 0x11;
 	spec->multiout.dac_nids = stac92hd71bxx_dac_nids;
 
@@ -3500,7 +3760,7 @@ static int patch_stac922x(struct hda_codec *codec)
 		}
 	}
 
-again:
+ again:
 	if (spec->board_config < 0) {
 		snd_printdd(KERN_INFO "hda_codec: Unknown model for STAC922x, "
 			"using BIOS defaults\n");
@@ -3589,13 +3849,14 @@ static int patch_stac927x(struct hda_codec *codec)
 	spec->num_adcs = ARRAY_SIZE(stac927x_adc_nids);
 	spec->mux_nids = stac927x_mux_nids;
 	spec->num_muxes = ARRAY_SIZE(stac927x_mux_nids);
+	spec->dac_list = stac927x_dac_nids;
 	spec->multiout.dac_nids = spec->dac_nids;
 
 	switch (spec->board_config) {
 	case STAC_D965_3ST:
 	case STAC_D965_5ST:
 		/* GPIO0 High = Enable EAPD */
-		spec->gpio_mask = spec->gpio_dir = 0x01;
+		spec->eapd_mask = spec->gpio_mask = spec->gpio_dir = 0x01;
 		spec->gpio_data = 0x01;
 		spec->num_dmics = 0;
 
@@ -3603,14 +3864,23 @@ static int patch_stac927x(struct hda_codec *codec)
 		spec->mixer = stac927x_mixer;
 		break;
 	case STAC_DELL_BIOS:
+		switch (codec->subsystem_id) {
+		case 0x10280209:
+		case 0x1028022e:
+			/* correct the device field to SPDIF out */
+			stac92xx_set_config_reg(codec, 0x21, 0x01442070);
+			break;
+		};
+		/* configure the analog microphone on some laptops */
+		stac92xx_set_config_reg(codec, 0x0c, 0x90a79130);
 		/* correct the front output jack as a hp out */
-		stac92xx_set_config_reg(codec, 0x0f, 0x02270110);
+		stac92xx_set_config_reg(codec, 0x0f, 0x0227011f);
 		/* correct the front input jack as a mic */
 		stac92xx_set_config_reg(codec, 0x0e, 0x02a79130);
 		/* fallthru */
 	case STAC_DELL_3ST:
 		/* GPIO2 High = Enable EAPD */
-		spec->gpio_mask = spec->gpio_dir = 0x04;
+		spec->eapd_mask = spec->gpio_mask = spec->gpio_dir = 0x04;
 		spec->gpio_data = 0x04;
 		spec->dmic_nids = stac927x_dmic_nids;
 		spec->num_dmics = STAC927X_NUM_DMICS;
@@ -3622,7 +3892,7 @@ static int patch_stac927x(struct hda_codec *codec)
 		break;
 	default:
 		/* GPIO0 High = Enable EAPD */
-		spec->gpio_mask = spec->gpio_dir = 0x1;
+		spec->eapd_mask = spec->gpio_mask = spec->gpio_dir = 0x1;
 		spec->gpio_data = 0x01;
 		spec->num_dmics = 0;
 
@@ -3681,7 +3951,7 @@ static int patch_stac9205(struct hda_codec *codec)
 	spec->board_config = snd_hda_check_board_config(codec, STAC_9205_MODELS,
 							stac9205_models,
 							stac9205_cfg_tbl);
-again:
+ again:
 	if (spec->board_config < 0) {
 		snd_printdd(KERN_INFO "hda_codec: Unknown model for STAC9205, using BIOS defaults\n");
 		err = stac92xx_save_bios_config_regs(codec);
@@ -3726,6 +3996,7 @@ again:
 					  (AC_USRSP_EN | STAC_HP_EVENT));
 
 		spec->gpio_dir = 0x0b;
+		spec->eapd_mask = 0x01;
 		spec->gpio_mask = 0x1b;
 		spec->gpio_mute = 0x10;
 		/* GPIO0 High = EAPD, GPIO1 Low = Headphone Mute,
@@ -3735,7 +4006,7 @@ again:
 		break;
 	default:
 		/* GPIO0 High = EAPD */
-		spec->gpio_mask = spec->gpio_dir = 0x1;
+		spec->eapd_mask = spec->gpio_mask = spec->gpio_dir = 0x1;
 		spec->gpio_data = 0x01;
 		break;
 	}
@@ -4027,13 +4298,15 @@ struct hda_codec_preset snd_hda_preset_sigmatel[] = {
  	{ .id = 0x83847626, .name = "STAC9271X", .patch = patch_stac927x },
  	{ .id = 0x83847627, .name = "STAC9271D", .patch = patch_stac927x },
  	{ .id = 0x83847628, .name = "STAC9274X5NH", .patch = patch_stac927x },
-	{ .id = 0x83847629, .name = "STAC9274D5NH", .patch = patch_stac927x },
+ 	{ .id = 0x83847629, .name = "STAC9274D5NH", .patch = patch_stac927x },
 	{ .id = 0x83847632, .name = "STAC9202",  .patch = patch_stac925x },
 	{ .id = 0x83847633, .name = "STAC9202D", .patch = patch_stac925x },
 	{ .id = 0x83847634, .name = "STAC9250", .patch = patch_stac925x },
 	{ .id = 0x83847635, .name = "STAC9250D", .patch = patch_stac925x },
 	{ .id = 0x83847636, .name = "STAC9251", .patch = patch_stac925x },
 	{ .id = 0x83847637, .name = "STAC9250D", .patch = patch_stac925x },
+	{ .id = 0x83847645, .name = "92HD206X", .patch = patch_stac927x },
+	{ .id = 0x83847646, .name = "92HD206D", .patch = patch_stac927x },
  	/* The following does not take into account .id=0x83847661 when subsys =
  	 * 104D0C00 which is STAC9225s. Because of this, some SZ Notebooks are
  	 * currently not fully supported.
@@ -4049,10 +4322,11 @@ struct hda_codec_preset snd_hda_preset_sigmatel[] = {
  	{ .id = 0x838476a5, .name = "STAC9255D", .patch = patch_stac9205 },
  	{ .id = 0x838476a6, .name = "STAC9254", .patch = patch_stac9205 },
  	{ .id = 0x838476a7, .name = "STAC9254D", .patch = patch_stac9205 },
+	{ .id = 0x111d7603, .name = "92HD75B3X5", .patch = patch_stac92hd71bxx},
+	{ .id = 0x111d7608, .name = "92HD75B2X5", .patch = patch_stac92hd71bxx},
 	{ .id = 0x111d7674, .name = "92HD73D1X5", .patch = patch_stac92hd73xx },
 	{ .id = 0x111d7675, .name = "92HD73C1X5", .patch = patch_stac92hd73xx },
 	{ .id = 0x111d7676, .name = "92HD73E1X5", .patch = patch_stac92hd73xx },
-	{ .id = 0x111d7608, .name = "92HD71BXX", .patch = patch_stac92hd71bxx },
 	{ .id = 0x111d76b0, .name = "92HD71B8X", .patch = patch_stac92hd71bxx },
 	{ .id = 0x111d76b1, .name = "92HD71B8X", .patch = patch_stac92hd71bxx },
 	{ .id = 0x111d76b2, .name = "92HD71B7X", .patch = patch_stac92hd71bxx },

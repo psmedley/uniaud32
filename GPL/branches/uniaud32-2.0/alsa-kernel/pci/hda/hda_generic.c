@@ -480,13 +480,13 @@ static const char *get_input_type(struct hda_gnode *node, unsigned int *pinctl)
 			return "Front Aux";
 		return "Aux";
 	case AC_JACK_MIC_IN:
-	if (pinctl &&
-	    (node->pin_caps &
-	     (AC_PINCAP_VREF_80 << AC_PINCAP_VREF_SHIFT)))
-		*pinctl |= AC_PINCTL_VREF_80;
-	if ((location & 0x0f) == AC_JACK_LOC_FRONT)
-		return "Front Mic";
-	return "Mic";
+		if (pinctl &&
+		    (node->pin_caps &
+		     (AC_PINCAP_VREF_80 << AC_PINCAP_VREF_SHIFT)))
+			*pinctl |= AC_PINCTL_VREF_80;
+		if ((location & 0x0f) == AC_JACK_LOC_FRONT)
+			return "Front Mic";
+		return "Mic";
 	case AC_JACK_SPDIF_IN:
 		return "SPDIF";
 	case AC_JACK_DIG_OTHER_IN:
@@ -679,7 +679,6 @@ static int parse_input(struct hda_codec *codec)
 	return 0;
 }
 
-
 #ifdef CONFIG_SND_HDA_POWER_SAVE
 static void add_input_loopback(struct hda_codec *codec, hda_nid_t nid,
 			       int dir, int idx)
@@ -727,7 +726,6 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		knew.get = snd_hda_mixer_amp_switch_get;
 		knew.put = snd_hda_mixer_amp_switch_put;
 		knew.private_value = (node->nid | (3 << 16) | (HDA_INPUT << 18) | (index << 19));
-
 		if (is_loopback)
 			add_input_loopback(codec, node->nid, HDA_INPUT, index);
 		snd_printdd("[%s] NID=0x%x, DIR=IN, IDX=0x%x\n", name, node->nid, index);
@@ -772,12 +770,12 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 	} else if ((node->wid_caps & AC_WCAP_OUT_AMP) &&
 		   (node->amp_out_caps & AC_AMPCAP_NUM_STEPS)) {
 		/*knew = (struct snd_kcontrol_new)HDA_CODEC_VOLUME(name, node->nid, 0, HDA_OUTPUT);*/
-        knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-        knew.name = name;
-        knew.info = snd_hda_mixer_amp_volume_info;
-        knew.get = snd_hda_mixer_amp_volume_get;
-        knew.put = snd_hda_mixer_amp_volume_put;
-        knew.private_value = (node->nid | (3 << 16) | (HDA_OUTPUT << 18) | (0 << 19));
+	        knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+        	knew.name = name;
+	        knew.info = snd_hda_mixer_amp_volume_info;
+        	knew.get = snd_hda_mixer_amp_volume_get;
+	        knew.put = snd_hda_mixer_amp_volume_put;
+	        knew.private_value = (node->nid | (3 << 16) | (HDA_OUTPUT << 18) | (0 << 19));
 		snd_printdd("[%s] NID=0x%x, DIR=OUT\n", name, node->nid);
 		if ((err = snd_ctl_add(codec->bus->card, snd_ctl_new1(&knew, codec))) < 0)
 			return err;
@@ -890,10 +888,10 @@ static int build_input_controls(struct hda_codec *codec)
 		char name[32];
 		sprintf(name, "%s Capture Volume",
 			spec->input_mux.items[i].label);
-		/*knew = (struct snd_kcontrol_new)
+/*		knew = (struct snd_kcontrol_new)
 			HDA_CODEC_VOLUME(name, adc_node->nid,
 					 spec->input_mux.items[i].index,
-                                         HDA_INPUT);*/
+					 HDA_INPUT);*/
                 knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
                 knew.name = name;
                 knew.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |
@@ -904,7 +902,6 @@ static int build_input_controls(struct hda_codec *codec)
                 knew.put = snd_hda_mixer_amp_volume_put;
                 knew.tlv.c = snd_hda_mixer_amp_tlv,
                 knew.private_value = (adc_node->nid | (3 << 16) | (HDA_INPUT << 18) | (spec->input_mux.items[i].index << 19));
-
 		if ((err = snd_ctl_add(codec->bus->card,
 				       snd_ctl_new1(&knew, codec))) < 0)
 			return err;
@@ -1046,8 +1043,8 @@ static int generic_pcm2_cleanup(struct hda_pcm_stream *hinfo,
 {
 	struct hda_gspec *spec = codec->spec;
 
-	snd_hda_codec_setup_stream(codec, hinfo->nid, 0, 0, 0);
-	snd_hda_codec_setup_stream(codec, spec->dac_node[1]->nid, 0, 0, 0);
+	snd_hda_codec_cleanup_stream(codec, hinfo->nid);
+	snd_hda_codec_cleanup_stream(codec, spec->dac_node[1]->nid);
 	return 0;
 }
 
