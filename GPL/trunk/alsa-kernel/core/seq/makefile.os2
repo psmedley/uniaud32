@@ -51,11 +51,11 @@ subdirs: .SYMBOLIC
     @cd ..
 
 clean: .SYMBOLIC
-    @echo BUILDING instr
+    @echo CLEANING instr
     @cd instr
     @wmake $(NMAKEOPTS) clean
     @cd ..
-    -@rm *.err 2>nul
+    -@rm *.err
     @cd $(OBJDIR)
-    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib
     @cd ../..

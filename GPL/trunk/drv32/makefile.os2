@@ -145,7 +145,7 @@ $(OBJDIR)\$(TARGET).sym: $(LIBS)
      copy $(OBJDIR)\$(TARGET).sym $(ALSA_BIN)
 
 clean: .SYMBOLIC
-     -@rm *.err 2>nul
+     -@rm *.err
      @cd $(OBJDIR)
-     -rm *.obj *.lnk *.lrf *.def *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+     -rm *.obj *.lnk *.lrf *.def *.sys *.sym *.lst *.map *.wmap *.lib
      @cd ..\..
