@@ -149,3 +149,6 @@ clean: .SYMBOLIC
      @cd $(OBJDIR)
      -rm *.obj *.lnk *.lrf *.def *.sys *.sym *.lst *.map *.wmap *.lib
      @cd ..\..
+     -@rm $(ALSA_BIN_)\$(TARGET)*.sys
+     -@rm $(ALSA_BIN)\$(TARGET).sy*
+     -@rm $(ALSA_LIB)\*.lib
