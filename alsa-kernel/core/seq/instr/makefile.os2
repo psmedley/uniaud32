@@ -43,6 +43,7 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
 
 
 clean: .SYMBOLIC
+     -@rm *.err
      @cd $(OBJDIR)
-     -rm *.obj *.err *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+     -rm *.obj *.err *.lnk *.sys *.sym *.lst *.map *.wmap *.lib
      @cd ../..
