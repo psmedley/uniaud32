@@ -64,13 +64,14 @@ BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
     }
 
     if (rc != 0) {                    // If error ...
+        dprintf(("ERROR: RMSetIrq %d %d %x - failed to set shared - trying exclusive!!", ulIrq, fShared, ulSlotNo));
 	rc = DevIRQSet((WORD16) *pISR[ulSlotNo],
                        (WORD16)ulIrq,
                        0);   // failed, so try exclusive instead
     }
 
     if (rc != 0) {                    // If error ...
-        dprintf(("ERROR: RMSetIrq %d %d %x FAILED!!", ulIrq, fShared, ulSlotNo));
+        dprintf(("ERROR: RMSetIrq %d %d %x FAILED shared and exclusive mode!!", ulIrq, fShared, ulSlotNo));
         DebugInt3();
         return FALSE;
     }

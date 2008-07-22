@@ -909,7 +909,7 @@ int UniaudIoctlHWRefine(OSSSTREAMID streamid, void *pHwParams)
     int ret;
     soundhandle        *pHandle = (soundhandle *)streamid;
     struct snd_pcm_hw_params *params = NULL;
-
+    printk("PS UniaudIoctlHWRefine\n");
     params = (struct snd_pcm_hw_params *)pHwParams;
 
     if (!params) return -1001;
@@ -926,7 +926,7 @@ int UniaudIoctlHWParamSet(OSSSTREAMID streamid, void *pHwParams)
     int ret;
     soundhandle        *pHandle = (soundhandle *)streamid;
     struct snd_pcm_hw_params *params = NULL;
-
+    printk("PS UniaudIoctlHWParamSet\n");
     params = (struct snd_pcm_hw_params *)pHwParams;
 
     if (!params) return -1001;
@@ -942,7 +942,7 @@ int UniaudIoctlSWParamSet(OSSSTREAMID streamid, void *pSwParams)
     int ret;
     soundhandle        *pHandle = (soundhandle *)streamid;
     struct snd_pcm_sw_params *params = NULL;
-
+    printk("PS UniaudIoctlSWParamSet\n");
     params = (struct snd_pcm_sw_params *)pSwParams;
 
     if (!params) return -1001;
