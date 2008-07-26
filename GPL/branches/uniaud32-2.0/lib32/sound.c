@@ -401,18 +401,11 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
         pWaveCaps->ulMinRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->min;
         pWaveCaps->ulMaxRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->max;
 
-        mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
-        printk("rate flags1: %X", mask);
-
         mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
-        printk("rate flags2: %X", mask);
 
         pWaveCaps->ulRateFlags   = mask->bits[0];
-
-        printk("rate flags3: %X", pWaveCaps->ulRateFlags);
+ 
         pWaveCaps->ulRateFlags   = ALSAToOSSRateFlags(pWaveCaps->ulRateFlags);
-
-        printk("rate flags4: %X", pWaveCaps->ulRateFlags);
 
         pWaveCaps->ulDataFormats = 0;
 
@@ -432,6 +425,7 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
         streamid = 0;
 
     }
+
     //Check support for MPU401, FM & Wavetable MIDI
     if(OSS32_MidiOpen(deviceid, OSS32_STREAM_MPU401_MIDIOUT, &streamid) == OSSERR_SUCCESS) 
     {
@@ -457,6 +451,7 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
         OSS32_MidiClose(streamid);
         streamid = 0;
     }
+
     if(OSS32_MixQueryName(deviceid, &pDevCaps->szMixerName, sizeof(pDevCaps->szMixerName)) != OSSERR_SUCCESS) {
         DebugInt3();
         printk("OSS32_QueryDevCaps: OSS32_MixQueryName error\n");
@@ -880,16 +875,20 @@ tryagain:
     _snd_pcm_hw_params_any(&params);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS,
                           SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
+#if 0 
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
                           pHwParams->ulBitsPerSample, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
                           pHwParams->ulBitsPerSample*pHwParams->ulNumChannels, 0);
+#endif
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FORMAT,
                           OSSToALSADataType[pHwParams->ulDataType], 0);
+
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_CHANNELS,
                            pHwParams->ulNumChannels, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
                           pHwParams->ulSampleRate, 0);
+#if 0
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, 
                           periodsize, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 
@@ -900,7 +899,7 @@ tryagain:
                           periodsize*nrperiods, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 
                           periodbytes*nrperiods, 0);
-
+#endif
     dprintf(("Hardware parameters: sample rate %d, data type %d, channels %d, period size %d, periods %d", 
              pHwParams->ulSampleRate, pHwParams->ulDataType, pHwParams->ulNumChannels, periodsize, nrperiods));
 
