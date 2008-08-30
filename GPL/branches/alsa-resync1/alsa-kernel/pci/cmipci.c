@@ -2626,7 +2626,8 @@ static int __devinit snd_cmipci_mixer_new(struct cmipci *cm, int pcm_spdif_devic
  * proc interface
  */
 
-static void snd_cmipci_proc_read(struct snd_info_entry *entry,
+#ifdef CONFIG_PROC_FS
+static void snd_cmipci_proc_read(struct snd_info_entry *entry, 
                                  struct snd_info_buffer *buffer)
 {
     struct cmipci *cm = entry->private_data;
@@ -2648,9 +2649,14 @@ static void snd_cmipci_proc_read(struct snd_info_entry *entry,
 static void __devinit snd_cmipci_proc_init(struct cmipci *cm)
 {
     struct snd_info_entry *entry;
+
     if (! snd_card_proc_new(cm->card, "cmipci", &entry))
         snd_info_set_text_ops(entry, cm, 1024, snd_cmipci_proc_read);
 }
+#else /* !CONFIG_PROC_FS */
+static inline void snd_cmipci_proc_init(struct cmipci *cm) {}
+#endif
+
 
 static struct pci_device_id snd_cmipci_ids[] = {
     {PCI_VENDOR_ID_CMEDIA, PCI_DEVICE_ID_CMEDIA_CM8338A, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},

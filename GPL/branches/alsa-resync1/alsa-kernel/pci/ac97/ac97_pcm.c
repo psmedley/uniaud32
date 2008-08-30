@@ -212,24 +212,6 @@ static int set_spdif_rate(struct snd_ac97 *ac97, unsigned short rate)
 		snd_ac97_update_bits_nolock(ac97, AC97_EXTENDED_STATUS, AC97_EA_SPDIF, 0);
 		snd_ac97_update_bits_nolock(ac97, reg, mask, bits);
 		/* update the internal spdif bits */
-		sbits = ac97->spdif_status;
-		if (sbits & IEC958_AES0_PROFESSIONAL) {
-			sbits &= ~IEC958_AES0_PRO_FS;
-			switch (rate) {
-			case 44100: sbits |= IEC958_AES0_PRO_FS_44100; break;
-			case 48000: sbits |= IEC958_AES0_PRO_FS_48000; break;
-			case 32000: sbits |= IEC958_AES0_PRO_FS_32000; break;
-			}
-		} else {
-			sbits &= ~(IEC958_AES3_CON_FS << 24);
-			switch (rate) {
-			case 44100: sbits |= IEC958_AES3_CON_FS_44100<<24; break;
-			case 48000: sbits |= IEC958_AES3_CON_FS_48000<<24; break;
-			case 32000: sbits |= IEC958_AES3_CON_FS_32000<<24; break;
-			}
-		}
-		ac97->spdif_status = sbits;
-		/* update the internal spdif bits */
 #ifndef TARGET_OS2
 		spin_lock(&ac97->reg_lock);
 #endif /* !TARGET_OS2 */

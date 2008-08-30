@@ -41,6 +41,9 @@
 #include <sound/mpu401.h>
 #define SNDRV_GET_ID
 #include <sound/initval.h>
+/* for 440MX workaround */
+#include <asm/pgtable.h>
+#include <asm/cacheflush.h>
 
 #define I810_DEBUG
 
@@ -81,6 +84,7 @@ static int ac97_clock[SNDRV_CARDS] = {REPEAT_SNDRV(0)};
 static char *ac97_quirk[SNDRV_CARDS];
 #else
 static int ac97_clock[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 0};
+static int ac97_quirk[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = AC97_TUNE_DEFAULT};
 #endif
 #ifdef SUPPORT_JOYSTICK
 static int joystick[SNDRV_CARDS];
@@ -864,17 +868,14 @@ static irqreturn_t snd_intel8x0_interrupt(int irq, void *dev_id, struct pt_regs 
         if (status) {
             /* ack */
             iputdword(chip, chip->int_sta_reg, status);
-            /* FIXME: on some ICH5 board shows the same
-             *        problem.  So we return IRQ_HANDLED
-             *        in any cases.
-             * (or, maybe add a new module param to control this?)
-             */
-#if 0
-            if (chip->device_type != DEVICE_NFORCE)
-                status ^= igetdword(chip, chip->int_sta_reg);
-#endif
+			/* some Nforce[2] boards have problems when
+			   IRQ_NONE is returned here.
+			*/
+			if (chip->device_type != DEVICE_NFORCE)
+				status = 0;
         }
-        return IRQ_NONE/*RETVAL(status)*/;
+		spin_unlock(&chip->reg_lock);
+        return IRQ_RETVAL(status);
     }
 #ifdef TARGET_OS2
     fOurIrq = TRUE;
