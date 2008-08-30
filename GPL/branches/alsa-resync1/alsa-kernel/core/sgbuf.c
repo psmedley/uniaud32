@@ -128,7 +128,7 @@ void *snd_malloc_sgbuf_pages(const struct snd_dma_device *dev,
             }
 
             sgbuf->size = size;
-#ifndef TARGET_OS2
+#ifndef TARGET_OS2 //TODO: implement vmap() and friends
 	dmab->area = vmap(sgbuf->page_table, sgbuf->pages, VM_MAP, PAGE_KERNEL);
 #else
 	dmab->area = NULL;
