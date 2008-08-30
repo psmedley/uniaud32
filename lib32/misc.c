@@ -1,4 +1,3 @@
-/* $Id: misc.c,v 1.1.1.1 2003/07/02 13:57:02 eleph Exp $ */
 /*
  * OS/2 implementation of misc. Linux kernel services
  *
@@ -116,16 +115,6 @@ unsigned int hweight32(unsigned int w)
 	res = (res & 0x0F0F0F0F) + ((res >> 4) & 0x0F0F0F0F);
 	res = (res & 0x00FF00FF) + ((res >> 8) & 0x00FF00FF);
 	return (res & 0x0000FFFF) + ((res >> 16) & 0x0000FFFF);
-}
-//******************************************************************************
-//******************************************************************************
-pgprot_t __pgprot(int x)
-{
-	unsigned long long cast_x;
-	pgprot_t pg;
-	cast_x = (unsigned long long) (x);
-	pg.pgprot = cast_x;
-	return (pg);
 }
 //******************************************************************************
 //******************************************************************************
