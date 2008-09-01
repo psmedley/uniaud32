@@ -282,6 +282,14 @@ static int snd_emu10k1_resume(struct pci_dev *pci)
 #endif
 
 static struct pci_driver driver = {
+#ifdef TARGET_OS2
+        0, 0, 0,
+/*	name:    */ "EMU10K1/Audigy",
+/*	id_table:*/ snd_emu10k1_ids,
+/*	probe:   */ snd_card_emu10k1_probe,
+/*	remove:  */ snd_card_emu10k1_remove,
+        0, 0
+#else /* TARGET_OS2 */
 	.name = "EMU10K1_Audigy",
 	.id_table = snd_emu10k1_ids,
 	.probe = snd_card_emu10k1_probe,
@@ -290,6 +298,7 @@ static struct pci_driver driver = {
 	.suspend = snd_emu10k1_suspend,
 	.resume = snd_emu10k1_resume,
 #endif
+#endif /* !TARGET_OS2 */
 };
 
 static int __init alsa_card_emu10k1_init(void)
