@@ -599,7 +599,7 @@ static unsigned int azx_rirb_get_response(struct hda_codec *codec)
 		if (time_after(jiffies, timeout))
 			break;
 #ifdef TARGET_OS2
-		if (count >= 5000) /* Hack on OS/2 to stop infinite loop as jiffies don't increment *.
+		if (count >= 5000) /* Hack on OS/2 to stop infinite loop as jiffies don't increment */
 			break;
 #endif
 		if (codec->bus->needs_damn_long_delay)
