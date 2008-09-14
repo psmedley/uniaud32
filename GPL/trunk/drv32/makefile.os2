@@ -68,7 +68,7 @@ FILE10   = end.obj
 
 FILES    = $(FILEFIRST) $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10)
 
-LIBS     = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\drivers.lib $(ALSA_LIB)\ac97.lib $(ALSA_LIB)\pci.lib $(ALSA_LIB)\emu10k1.lib $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\hda.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib $(ALSA_LIB)\mpu401.lib $(ALSA_LIB)\instr.lib $(ALSA_LIB)\synth.lib $(ALSA_LIB)\cs46xx.lib $(ALSA_LIB)\ymfpci.lib $(ALSA_LIB)\ali5451.lib $(ALSA_LIB)\trident.lib $(ALSA_LIB)\nm256.lib $(ALSA_LIB)\sb.lib
+LIBS     = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\drivers.lib $(ALSA_LIB)\ac97.lib $(ALSA_LIB)\pci.lib $(ALSA_LIB)\emu10k1.lib $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib $(ALSA_LIB)\mpu401.lib $(ALSA_LIB)\instr.lib $(ALSA_LIB)\synth.lib $(ALSA_LIB)\cs46xx.lib $(ALSA_LIB)\ymfpci.lib $(ALSA_LIB)\ali5451.lib $(ALSA_LIB)\trident.lib $(ALSA_LIB)\nm256.lib $(ALSA_LIB)\sb.lib
 WMAPNAME = $(OBJDIR)\$(TARGET).wmap
 # $(ALSA_LIB)\au88xx.lib 
 #===================================================================
