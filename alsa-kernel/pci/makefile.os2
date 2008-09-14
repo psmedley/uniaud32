@@ -49,10 +49,6 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
 
 
 subdirs: .SYMBOLIC
-    @echo BUILDING hda
-    @cd hda
-    @wmake $(NMAKEOPTS)
-    @cd ..
     @echo BUILDING ac97
     @cd ac97
     @wmake $(NMAKEOPTS)
