@@ -957,7 +957,10 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 	struct azx *chip = dev_id;
 	struct azx_dev *azx_dev;
 	u32 status;
-	int i;
+  #ifdef TARGET_OS2
+  u32 ignore_irq = 0;
+  #endif
+  int i;
 
 	spin_lock(&chip->reg_lock);
 
@@ -976,7 +979,10 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 			/* ignore the first dummy IRQ (due to pos_adj) */
 			if (azx_dev->irq_ignore) {
 				azx_dev->irq_ignore = 0;
-				continue;
+              #ifdef TARGET_OS2
+              ignore_irq |= azx_dev->sd_int_sta_mask; 
+              #endif
+              continue;
 			}
 			/* check whether this IRQ is really acceptable */
 			if (azx_position_ok(chip, azx_dev)) {
@@ -1008,7 +1014,13 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 		azx_writeb(chip, STATESTS, 0x04);
 #endif
 	spin_unlock(&chip->reg_lock);
-	
+
+   #ifdef TARGET_OS2
+   if ((status & RIRB_INT_MASK) || ignore_irq) {
+       return 2;
+   }
+   #endif
+
 	return IRQ_HANDLED;
 }
 

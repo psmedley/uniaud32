@@ -204,6 +204,18 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
                 rc = pSlot->irqHandlers[u].handler(pSlot->irqNo,
                                                    pSlot->irqHandlers[u].x2);
 #endif
+
+                // HDA Hardware generates controller interrupts and stream interrupts 
+                // the uniaud16 driver only cares about stream interrupts.
+                // azx_process_interrupt will return rc 2 if the interttupt is from the 
+                // controller. There is no need to call uniaud16 for these interrupts
+                if ( rc == 2 ) { 
+                    fInInterrupt = FALSE;
+                    *pulIrq = pSlot->irqNo;
+                    eoiIrq[pSlot->irqNo] = 0;
+                    return TRUE;
+                }
+
                 if (rc == 1) eoi_irq(pSlot->irqNo);
                 rc = (eoiIrq[pSlot->irqNo] > 0);
                 fInInterrupt = FALSE;
