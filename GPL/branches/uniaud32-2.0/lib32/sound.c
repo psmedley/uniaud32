@@ -764,26 +764,36 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
     soundhandle        *pHandle = (soundhandle *)streamid;
     struct snd_pcm_hw_params params;
     struct snd_pcm_sw_params swparams;
+    struct snd_pcm_status    status;
 
-    int                 ret, nrperiods, minnrperiods, maxnrperiods, samplesize;
+    int                 ret, nrperiods, minnrperiods, maxnrperiods, samplesize,i;
     ULONG               bufsize, periodsize, minperiodsize, maxperiodsize;
     ULONG               periodbytes, minperiodbytes, maxperiodbytes;
     BOOL                fTryAgain = FALSE;
-
+    ULONG ulMinRate, ulMaxRate;
+          
     if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
+
           DebugInt3();
           return OSSERR_INVALID_STREAMID;
     }
     if(pHwParams == NULL) {
+
           DebugInt3();
           return OSSERR_INVALID_PARAMETER;
     }
     if(pHwParams->ulDataType >= OSS32_PCM_MAX_FORMATS) {
+
           DebugInt3();
           return OSSERR_INVALID_PARAMETER;
     }
-
-    //set operation to non-blocking
+    if ((int)pHwParams->ulNumChannels <= 0) {
+        printk("OSS32_WaveSetHwParams error. Invalid number of channels: %i\n", pHwParams->ulNumChannels);
+        DebugInt3();
+        return OSSERR_INVALID_PARAMETER;
+    }
+tryagain:
+        //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
 
     //size of two samples (adpcm sample can be as small as 4 bits (mono), so take two)
@@ -792,11 +802,50 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
     pHandle->doublesamplesize *= pHwParams->ulNumChannels;
     periodbytes = pHwParams->ulPeriodSize;
     periodsize  = bytes_to_samples(periodbytes);
+    // checking number of channels
+
+    dprintf(("channels: %ld, period size: %lx",pHwParams->ulNumChannels, periodbytes));
+
+    _snd_pcm_hw_params_any(&params);
+    do {
+        _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS,
+                              SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
+        _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_CHANNELS,
+                              pHwParams->ulNumChannels, 0);
+        ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+        if (ret == 0) break;
+        pHwParams->ulNumChannels--;
+    } while(ret < 0 && pHwParams->ulNumChannels > 1);
+
+    dprintf(("channels selected: %d",pHwParams->ulNumChannels));
 
     //get all hardware parameters
     _snd_pcm_hw_params_any(&params);
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS,
-                          SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS, 
+                           SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FORMAT, 
+                           OSSToALSADataType[pHwParams->ulDataType], 0);
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+    if(ret != 0) {
+        dprintf(("invalid format %lx\n", OSSToALSADataType[pHwParams->ulDataType]));
+        return UNIXToOSSError(ret);
+    }
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
+                          pHwParams->ulBitsPerSample, 0);
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+    if(ret != 0) {
+        dprintf(("invalid number of sample bits %d\n", pHwParams->ulBitsPerSample));
+        return UNIXToOSSError(ret);
+    }
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
+                          pHwParams->ulBitsPerSample*pHwParams->ulNumChannels, 0);
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+    if(ret != 0) {
+        dprintf(("invalid number of frame bits %d\n", pHwParams->ulBitsPerSample*pHwParams->ulNumChannels));
+        return UNIXToOSSError(ret);
+    }
+
+    //_snd_pcm_hw_params_any(&params);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
                           pHwParams->ulBitsPerSample, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
@@ -809,9 +858,46 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
                           pHwParams->ulSampleRate, 0);
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
     if(ret != 0) {
+        dprintf(("32_WSetHwPms (first pass) error %d bps:%d fmt: %d ch: %d sr: %d\n", 
+                  ret, 
+                  pHwParams->ulBitsPerSample,
+                  OSSToALSADataType[pHwParams->ulDataType],
+                  pHwParams->ulNumChannels,
+                  pHwParams->ulSampleRate));
+        //printk("OSS32_WaveSetHwParams invalid sample rate %i\n", pHwParams->ulSampleRate);
+        //        printk("will set to nearest\n");
+        _snd_pcm_hw_params_any(&params);
+        for (i=0; i<(sizeof(rates)/sizeof(unsigned))-1;i++)
+        {
+            if (pHwParams->ulSampleRate >= rates[i] &&
+                pHwParams->ulSampleRate <= rates[i+1])
+            {
+                pHwParams->ulSampleRate = rates[i];
+                _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
+                                      pHwParams->ulSampleRate, 0);
+                ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+                if(ret == 0)
+                {
+                    _snd_pcm_hw_params_any(&params);
+                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
+                                          pHwParams->ulBitsPerSample, 0);
+                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
+                                          pHwParams->ulBitsPerSample*pHwParams->ulNumChannels, 0);
+                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FORMAT,
+                                          OSSToALSADataType[pHwParams->ulDataType], 0);
+                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_CHANNELS,
+                                          pHwParams->ulNumChannels, 0);
+                    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
+                                          pHwParams->ulSampleRate, 0);
+                    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+                    goto __next;
+                }
+            }
+        }
         DebugInt3();
         return UNIXToOSSError(ret);
     }
+   __next:
 
     //check period size against lower and upper boundaries
     minperiodbytes = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_BYTES)->min;
@@ -848,6 +934,7 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
         nrperiods = bufsize/periodbytes;
     }
     else {
+        dprintf(("32_WSHwPrms error. Invalid periodsize (=0). closing file\n"));
         DebugInt3();
         return OSSERR_INVALID_PARAMETER;
     }
@@ -864,6 +951,7 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
     //an odd nr of periods is not always a good thing (CMedia -> clicks during 8 bps playback),
     //so we make sure it's an even number.
     if(nrperiods == 1) {
+        dprintf(("32_WSHwPrms error. Invalid Num periods(=1). closing file\n"));
         DebugInt3();
         return OSSERR_INVALID_PARAMETER;
     }
@@ -871,39 +959,44 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
 
     //initialize parameter block & set sample rate, nr of channels and sample format, nr of periods,
     //period size and buffer size
-tryagain:
+
     _snd_pcm_hw_params_any(&params);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS,
-                          SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
-#if 0 
+                           SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
                           pHwParams->ulBitsPerSample, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
-                          pHwParams->ulBitsPerSample*pHwParams->ulNumChannels, 0);
-#endif
+                           pHwParams->ulBitsPerSample*pHwParams->ulNumChannels, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FORMAT,
-                          OSSToALSADataType[pHwParams->ulDataType], 0);
-
+                           OSSToALSADataType[pHwParams->ulDataType], 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_CHANNELS,
                            pHwParams->ulNumChannels, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
-                          pHwParams->ulSampleRate, 0);
-#if 0
+                           pHwParams->ulSampleRate, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, 
-                          periodsize, 0);
+                           periodsize, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 
-                          periodbytes, 0);
+                           periodbytes, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIODS, 
-                          nrperiods, 0);
+                           nrperiods, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_SIZE, 
-                          periodsize*nrperiods, 0);
+                           periodsize*nrperiods, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 
-                          periodbytes*nrperiods, 0);
-#endif
-    dprintf(("Hardware parameters: sample rate %d, data type %d, channels %d, period size %d, periods %d", 
-             pHwParams->ulSampleRate, pHwParams->ulDataType, pHwParams->ulNumChannels, periodsize, nrperiods));
+                           periodbytes*nrperiods, 0);
+
+
+    dprintf(("HWP: SR rate %ld, BPS %ld, CH %ld, PRSZ %lx, periods %lx", 
+             pHwParams->ulSampleRate, pHwParams->ulBitsPerSample, pHwParams->ulNumChannels, periodsize, nrperiods));
 
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)__Stack32ToFlat(&params));
+    if (ret == -77 && fTryAgain == FALSE)
+    {
+        ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
+        fTryAgain = TRUE;
+        dprintf((" Error -77 from first IOCTL HW Parms"));
+        goto tryagain;
+    }
+
     if(ret) {
         if(fTryAgain == FALSE) {
             minperiodsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_SIZE)->min;
@@ -912,10 +1005,12 @@ tryagain:
                 //ALSA doesn't like the period size; try suggested one
                 periodsize  = maxperiodsize;
                 periodbytes = samples_to_bytes(periodsize);
+                dprintf((" Peroid size error IOCTL HW Parms"));
                 fTryAgain = TRUE;
                 goto tryagain;
             }
         }
+        dprintf(("Error second time.. Bailing"));
         return UNIXToOSSError(ret);
     }
 
@@ -939,8 +1034,20 @@ tryagain:
 
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_SW_PARAMS, (ULONG)__Stack32ToFlat(&swparams));
     }
+
+    total = 0;
+    per_bytes = periodbytes;
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+    if ( ((status.state != SNDRV_PCM_STATE_PREPARED) &&
+           (status.state != SNDRV_PCM_STATE_SETUP) &&
+           (status.state != SNDRV_PCM_STATE_RUNNING) &&
+           (status.state != SNDRV_PCM_STATE_DRAINING))) {
+        dprintf(("Device is not in proper state: %lx. Calling prepare\n", status.state));
+        ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
+    }
     return UNIXToOSSError(ret);
 }
+
 
 //******************************************************************************
 ULONG CountWv=0;

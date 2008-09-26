@@ -580,9 +580,6 @@ static unsigned int azx_rirb_get_response(struct hda_codec *codec)
 {
 	struct azx *chip = codec->bus->private_data;
 	unsigned long timeout;
-#ifdef TARGET_OS2
-	int count=0;
-#endif
 
  again:
 	timeout = jiffies + msecs_to_jiffies(1000);
@@ -598,17 +595,10 @@ static unsigned int azx_rirb_get_response(struct hda_codec *codec)
 		}
 		if (time_after(jiffies, timeout))
 			break;
-#ifdef TARGET_OS2
-		if (count >= 5000) /* Hack on OS/2 to stop infinite loop as jiffies don't increment */
-			break;
-#endif
 		if (codec->bus->needs_damn_long_delay)
 			msleep(2); /* temporary workaround */
 		else {
 			udelay(10);
-#ifdef TARGET_OS2
-			count=count+1;
-#endif
 			cond_resched();
 		}
 	}
