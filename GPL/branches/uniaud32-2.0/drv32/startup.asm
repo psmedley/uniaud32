@@ -1315,7 +1315,9 @@ Interrupt32 proc far
 	mov	es, eax
 
         pushfd
-        cli
+        ; At this point a cli is redundant
+        ; we enter the interrupt handler with interrupts disabled.
+        ;cli
 
 IFDEF FLATSTACK
         DevThunkStackTo32
