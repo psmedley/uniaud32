@@ -1,18 +1,20 @@
 #ifndef _LINUX_FIRMWARE_H
 #define _LINUX_FIRMWARE_H
-#define FIRMWARE_NAME_MAX 30
-
+#include <linux/module.h>
+#include <linux/types.h>
+#define FIRMWARE_NAME_MAX 30 
 struct firmware {
-	unsigned int size;
-	unsigned char *data;
+	size_t size;
+	u8 *data;
 };
+struct device;
+int request_firmware(const struct firmware **fw, const char *name,
+		     struct device *device);
+int request_firmware_nowait(
+	struct module *module,
+	const char *name, struct device *device, void *context,
+	void (*cont)(const struct firmware *fw, void *context));
 
-int snd_compat_request_firmware(const struct firmware **fw, const char *name);
-void snd_compat_release_firmware(const struct firmware *fw);
-
-#define request_firmware(fw, name, device) snd_compat_request_firmware(fw, name)
-#define release_firmware(fw) snd_compat_release_firmware(fw)
-
-#define NEEDS_COMPAT_FW_LOADER
-
+void release_firmware(const struct firmware *fw);
+void register_firmware(const char *name, const u8 *data, size_t size);
 #endif

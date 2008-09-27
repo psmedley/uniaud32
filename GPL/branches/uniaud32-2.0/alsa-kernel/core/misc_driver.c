@@ -4,9 +4,9 @@
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
+#include <linux/firmware.h>
 #include <sound/core.h>
 
-#define NEEDS_COMPAT_FW_LOADER 
 /*
  * platform_device wrapper
  */
@@ -389,13 +389,6 @@ EXPORT_SYMBOL(pm_send);
 /* wait-for-completion handler emulation */
 
 /* we know this is used below exactly once for at most one waiter */
-#if 0
-struct completion {
-	int done;
-	wait_queue_head_t wait;
-};
-#endif
-
 static inline void init_completion(struct completion *comp)
 {
 	comp->done = 0;
@@ -448,13 +441,6 @@ static int work_caller(void *data)
 	return 0;
 }
 
-#if 0
-int snd_compat_schedule_work(struct work_struct *works)
-{
-	return kernel_thread(work_caller, works, 0) >= 0;
-}
-EXPORT_SYMBOL(snd_compat_schedule_work);
-#endif
 struct workqueue_struct {
 	spinlock_t lock;
 	const char *name;
@@ -487,41 +473,6 @@ static void run_workqueue(struct workqueue_struct *wq)
 	spin_unlock_irqrestore(&wq->lock, flags);
 }
 
-void snd_compat_flush_workqueue(struct workqueue_struct *wq)
-{
-	if (wq->task == current) {
-		run_workqueue(wq);
-	} else {
-		wait_queue_t wait;
-
-		init_waitqueue_entry(&wait, current);
-		set_current_state(TASK_UNINTERRUPTIBLE);
-		spin_lock_irq(&wq->lock);
-		add_wait_queue(&wq->work_done, &wait);
-		while (!list_empty(&wq->worklist)) {
-			spin_unlock_irq(&wq->lock);
-			schedule();
-			spin_lock_irq(&wq->lock);
-		}
-		set_current_state(TASK_RUNNING);
-		remove_wait_queue(&wq->work_done, &wait);
-		spin_unlock_irq(&wq->lock);
-	}
-}
-EXPORT_SYMBOL(snd_compat_flush_workqueue);
-
-void snd_compat_destroy_workqueue(struct workqueue_struct *wq)
-{
-	snd_compat_flush_workqueue(wq);
-#if 0
-	kill_proc(wq->task_pid, SIGKILL, 1);
-	if (wq->task_pid >= 0)
-		wait_for_completion(&wq->thread_exited);
-#endif
-	kfree(wq);
-}
-EXPORT_SYMBOL(snd_compat_destroy_workqueue);
-
 static int xworker_thread(void *data)
 {
 	struct workqueue_struct *wq = data;
@@ -542,34 +493,6 @@ static int xworker_thread(void *data)
 #endif
 }
 
-struct workqueue_struct *snd_compat_create_workqueue(const char *name)
-{
-	struct workqueue_struct *wq;
-	
-	BUG_ON(strlen(name) > 10);
-	
-	wq = kmalloc(sizeof(*wq), GFP_KERNEL);
-	if (!wq)
-		return NULL;
-	memset(wq, 0, sizeof(*wq));
-	
-	spin_lock_init(&wq->lock);
-	INIT_LIST_HEAD(&wq->worklist);
-	init_waitqueue_head(&wq->more_work);
-	init_waitqueue_head(&wq->work_done);
-	init_completion(&wq->thread_exited);
-	wq->name = name;
-	wq->task_pid = kernel_thread(xworker_thread, wq, 0);
-	if (wq->task_pid < 0) {
-		printk(KERN_ERR "snd: failed to start thread %s\n", name);
-		snd_compat_destroy_workqueue(wq);
-		wq = NULL;
-	}
-	wq->task = find_task_by_pid(wq->task_pid);
-	return wq;
-}
-EXPORT_SYMBOL(snd_compat_create_workqueue);
-
 static void __x_queue_work(struct workqueue_struct *wq, struct work_struct *work)
 {
 	unsigned long flags;
@@ -580,16 +503,6 @@ static void __x_queue_work(struct workqueue_struct *wq, struct work_struct *work
 	wake_up(&wq->more_work);
 	spin_unlock_irqrestore(&wq->lock, flags);
 }
-
-int snd_compat_queue_work(struct workqueue_struct *wq, struct work_struct *work)
-{
-	if (!test_and_set_bit(0, &work->pending)) {
-		__x_queue_work(wq, work);
-		return 1;
-	}
-	return 0;
-}
-EXPORT_SYMBOL(snd_compat_queue_work);
 
 static void delayed_work_timer_fn(unsigned long __data)
 {
@@ -602,87 +515,11 @@ static void delayed_work_timer_fn(unsigned long __data)
 		snd_compat_schedule_work(work);
 }
 
-int snd_compat_queue_delayed_work(struct workqueue_struct *wq, struct delayed_work *dwork, unsigned long delay)
-{
-	struct work_struct *work = &dwork->work;
-	struct timer_list *timer = &work->timer;
 
-	if (!test_and_set_bit(0, &work->pending)) {
-		work->wq_data = wq;
-		timer->expires = jiffies + delay;
-		timer->data = (unsigned long)work;
-		timer->function = delayed_work_timer_fn;
-		add_timer(timer);
-		return 1;
-	}
-	return 0;
-}
-EXPORT_SYMBOL(snd_compat_queue_delayed_work);
-
-#if 0
-int snd_compat_cancel_delayed_work(struct delayed_work *dwork)
-{
-	struct work_struct *work = &dwork->work;
-	int ret;
-
-	ret = del_timer_sync(&work->timer);
-	if (ret)
-		clear_bit(0, &work->pending);
-	return ret;
-}
-#endif
 EXPORT_SYMBOL(snd_compat_cancel_delayed_work);
 
 #endif
 
-#if 0
-#ifndef CONFIG_HAVE_KZALLOC
-#ifndef CONFIG_SND_DEBUG_MEMORY
-/* Don't put this to wrappers.c.  We need to call the kmalloc wrapper here. */
-void *snd_compat_kzalloc(size_t size, unsigned int __nocast flags)
-{
-	void *ret;
-	ret = kmalloc(size, flags);
-	if (ret)
-		memset(ret, 0, size);
-	return ret;
-}
-EXPORT_SYMBOL(snd_compat_kzalloc);
-#endif
-#endif
-
-#ifndef CONFIG_HAVE_KCALLOC
-#ifndef CONFIG_SND_DEBUG_MEMORY
-/* Don't put this to wrappers.c.  We need to call the kmalloc wrapper here. */
-void *snd_compat_kcalloc(size_t n, size_t size, unsigned int __nocast flags)
-{
-	if (n != 0 && size > INT_MAX / n)
-		return NULL;
-	return snd_compat_kzalloc(n * size, flags);
-}
-EXPORT_SYMBOL(snd_compat_kcalloc);
-#endif
-#endif
-
-#ifndef CONFIG_HAVE_KSTRDUP
-#ifndef CONFIG_SND_DEBUG_MEMORY
-char *snd_compat_kstrdup(const char *s, unsigned int __nocast gfp_flags)
-{
-	int len;
-	char *buf;
-
-	if (!s) return NULL;
-
-	len = strlen(s) + 1;
-	buf = kmalloc(len, gfp_flags);
-	if (buf)
-		memcpy(buf, s, len);
-	return buf;
-}
-EXPORT_SYMBOL(snd_compat_kstrdup);
-#endif
-#endif
-#endif
 #ifdef CONFIG_CREATE_WORKQUEUE_FLAGS
 
 #include <linux/workqueue.h>
@@ -873,12 +710,10 @@ EXPORT_SYMBOL(snd_pnp_register_card_driver);
 #endif /* 2.6 */
 #endif /* PNP && PM */
 
-#if 0
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)
-#include <linux/firmware.h>
-#ifdef NEEDS_COMPAT_FW_LOADER
-
-extern int mod_firmware_load(const char *fn, char **fp);
+int mod_firmware_load(const char *fn, char **fp)
+{
+    return 0;
+}
 
 static int snd_try_load_firmware(const char *path, const char *name,
 				 struct firmware *firmware)
@@ -892,7 +727,8 @@ static int snd_try_load_firmware(const char *path, const char *name,
 	return firmware->size;
 }
 
-int snd_compat_request_firmware(const struct firmware **fw, const char *name)
+int request_firmware(const struct firmware **fw, const char *name,
+		     struct device *device)
 {
 	struct firmware *firmware;
 
@@ -909,20 +745,14 @@ int snd_compat_request_firmware(const struct firmware **fw, const char *name)
 	*fw = firmware;
 	return 0;
 }
-EXPORT_SYMBOL(snd_compat_request_firmware);
 
-void snd_compat_release_firmware(const struct firmware *fw)
+void release_firmware(const struct firmware *fw)
 {
 	if (fw) {
 		vfree(fw->data);
 		kfree(fw);
 	}
 }
-EXPORT_SYMBOL(snd_compat_release_firmware);
-
-#endif /* NEEDS_COMPAT_FW_LOADER */
-#endif /* !2.6 */
-#endif
 
 /* ISA drivers */
 #ifdef CONFIG_ISA
