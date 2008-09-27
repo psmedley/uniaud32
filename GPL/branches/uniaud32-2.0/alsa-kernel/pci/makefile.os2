@@ -65,7 +65,7 @@ subdirs: .SYMBOLIC
     @cd ..
     @echo BUILDING emu10k1
     @cd emu10k1
-#    @wmake $(NMAKEOPTS)
+    @wmake $(NMAKEOPTS)
     @cd ..
     @echo BUILDING ca0106
     @cd ca0106
@@ -100,6 +100,10 @@ subdirs: .SYMBOLIC
     
 
 clean: .SYMBOLIC
+    @echo CLEANING hda
+    @cd hda
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
     @echo CLEANING ac97
     @cd ac97
     @wmake $(NMAKEOPTS) clean

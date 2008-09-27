@@ -574,8 +574,6 @@ static inline void list_move_tail(struct list_head *list,
 }
 
 #define assert(a)
-#define CONFIG_SND_YMFPCI_FIRMWARE_IN_KERNEL
-#define CONFIG_SND_MAESTRO3_FIRMWARE_IN_KERNEL
 
 #ifndef fastcall
 #define fastcall
@@ -618,5 +616,12 @@ void pci_iounmap(struct pci_dev *dev, void __iomem * addr);
 #define smp_rmb()	barrier()
 #define smp_wmb()	barrier()
 #endif
+
+#define GFP_DMA32 0		/* driver must check for 32-bit address */
+#define __GFP_COMP	0
+#define __GFP_NOWARN	0
+#define __GFP_NORETRY	0
+
+#define page_to_pfn(page)       (page_to_phys(page) >> PAGE_SHIFT)
 
 #endif //__ALSA_CONFIG_H__
