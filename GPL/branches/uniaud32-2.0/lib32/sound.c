@@ -203,7 +203,7 @@ OSSRET UNIXToOSSError(int unixerror)
 //******************************************************************************
 int ALSAToOSSDataType(ULONG ALSADataType)
 {
-    switch(ALSADataType) 
+    switch(ALSADataType)
     {
     case SNDRV_PCM_FORMAT_S8:
         return OSS32_CAPS_PCM_FORMAT_S8;          //signed 8 bits sample
@@ -338,12 +338,12 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
     pDevCaps->ulCaps     = OSS32_CAPS_WAVE_PLAYBACK | OSS32_CAPS_WAVE_CAPTURE;
 
     //query wave in & out caps
-    for(i=0;i<2;i++) 
+    for(i=0;i<2;i++)
     {
         PWAVE_CAPS pWaveCaps = (i == 0) ? &pDevCaps->waveOutCaps : &pDevCaps->waveInCaps;
 
         ret = OSS32_WaveOpen(deviceid, (i == 0) ? OSS32_STREAM_WAVEOUT : OSS32_STREAM_WAVEIN, &streamid, 0, 0);
-        if(ret != OSSERR_SUCCESS) 
+        if(ret != OSSERR_SUCCESS)
         {
             printk("OSS32_QueryDevCaps: wave open error %i\n", ret);
             DebugInt3();
@@ -357,7 +357,7 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
         }
         //set operation to non-blocking
         pHandle->file.f_flags = O_NONBLOCK;
-    
+
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_INFO, (ULONG)pcminfo);
         if(ret != 0) {
             printk("OSS32_QueryDevCaps: SNDRV_PCM_IOCTL_INFO error %i\n", ret);
@@ -372,7 +372,7 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
         }
         printk("Device name: %s", pDevCaps->szDeviceName);
         pWaveCaps->nrStreams = pcminfo->subdevices_count;
-    
+
         //get all hardware parameters
         _snd_pcm_hw_params_any(params);
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)params);
@@ -404,16 +404,16 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
         mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
 
         pWaveCaps->ulRateFlags   = mask->bits[0];
- 
+
         pWaveCaps->ulRateFlags   = ALSAToOSSRateFlags(pWaveCaps->ulRateFlags);
 
         pWaveCaps->ulDataFormats = 0;
 
         mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
         format_mask = mask->bits[0];
-        for(fmt=0;fmt<32;fmt++) 
+        for(fmt=0;fmt<32;fmt++)
         {
-            if(format_mask & (1 << fmt)) 
+            if(format_mask & (1 << fmt))
             {
                 int f = ALSAToOSSDataType(fmt);
                 if (f >= 0)
@@ -427,25 +427,25 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
     }
 
     //Check support for MPU401, FM & Wavetable MIDI
-    if(OSS32_MidiOpen(deviceid, OSS32_STREAM_MPU401_MIDIOUT, &streamid) == OSSERR_SUCCESS) 
+    if(OSS32_MidiOpen(deviceid, OSS32_STREAM_MPU401_MIDIOUT, &streamid) == OSSERR_SUCCESS)
     {
         pDevCaps->ulCaps |= OSS32_CAPS_MPU401_PLAYBACK;
         OSS32_MidiClose(streamid);
         streamid = 0;
     }
-    if(OSS32_MidiOpen(deviceid, OSS32_STREAM_MPU401_MIDIIN, &streamid) == OSSERR_SUCCESS) 
+    if(OSS32_MidiOpen(deviceid, OSS32_STREAM_MPU401_MIDIIN, &streamid) == OSSERR_SUCCESS)
     {
         pDevCaps->ulCaps |= OSS32_CAPS_MPU401_CAPTURE;
         OSS32_MidiClose(streamid);
         streamid = 0;
     }
-    if(OSS32_MidiOpen(deviceid, OSS32_STREAM_FM_MIDIOUT, &streamid) == OSSERR_SUCCESS) 
+    if(OSS32_MidiOpen(deviceid, OSS32_STREAM_FM_MIDIOUT, &streamid) == OSSERR_SUCCESS)
     {
         pDevCaps->ulCaps |= OSS32_CAPS_FMSYNTH_PLAYBACK;
         OSS32_MidiClose(streamid);
         streamid = 0;
     }
-    if(OSS32_MidiOpen(deviceid, OSS32_STREAM_WAVETABLE_MIDIOUT, &streamid) == OSSERR_SUCCESS) 
+    if(OSS32_MidiOpen(deviceid, OSS32_STREAM_WAVETABLE_MIDIOUT, &streamid) == OSSERR_SUCCESS)
     {
         pDevCaps->ulCaps |= OSS32_CAPS_WAVETABLE_PLAYBACK;
         OSS32_MidiClose(streamid);
@@ -771,7 +771,7 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
     ULONG               periodbytes, minperiodbytes, maxperiodbytes;
     BOOL                fTryAgain = FALSE;
     ULONG ulMinRate, ulMaxRate;
-          
+
     if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
 
           DebugInt3();
@@ -821,9 +821,9 @@ tryagain:
 
     //get all hardware parameters
     _snd_pcm_hw_params_any(&params);
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS, 
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_ACCESS,
                            SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FORMAT, 
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FORMAT,
                            OSSToALSADataType[pHwParams->ulDataType], 0);
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
     if(ret != 0) {
@@ -858,8 +858,8 @@ tryagain:
                           pHwParams->ulSampleRate, 0);
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
     if(ret != 0) {
-        dprintf(("32_WSetHwPms (first pass) error %d bps:%d fmt: %d ch: %d sr: %d\n", 
-                  ret, 
+        dprintf(("32_WSetHwPms (first pass) error %d bps:%d fmt: %d ch: %d sr: %d\n",
+                  ret,
                   pHwParams->ulBitsPerSample,
                   OSSToALSADataType[pHwParams->ulDataType],
                   pHwParams->ulNumChannels,
@@ -973,19 +973,19 @@ tryagain:
                            pHwParams->ulNumChannels, 0);
     _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
                            pHwParams->ulSampleRate, 0);
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, 
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
                            periodsize, 0);
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
                            periodbytes, 0);
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIODS, 
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIODS,
                            nrperiods, 0);
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_SIZE, 
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
                            periodsize*nrperiods, 0);
-    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 
+    _snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_BYTES,
                            periodbytes*nrperiods, 0);
 
 
-    dprintf(("HWP: SR rate %ld, BPS %ld, CH %ld, PRSZ %lx, periods %lx", 
+    dprintf(("HWP: SR rate %ld, BPS %ld, CH %ld, PRSZ %lx, periods %lx",
              pHwParams->ulSampleRate, pHwParams->ulBitsPerSample, pHwParams->ulNumChannels, periodsize, nrperiods));
 
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)__Stack32ToFlat(&params));
@@ -1015,7 +1015,7 @@ tryagain:
     }
 
     //set silence threshold (all sizes in frames) (only needed for playback)
-    if(pHandle->file.f_mode == FMODE_WRITE) 
+    if(pHandle->file.f_mode == FMODE_WRITE)
     {
         swparams.avail_min         = periodsize;
         swparams.period_step       = 1;
@@ -1103,7 +1103,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
     printk("OSS32_WaveAddBuffer N:%d hw %d app %d avail %d, orig size: %d, size %d\n",CountWv, samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr), samples_to_bytes(status.avail), size1, size);
 #endif
 
-    if (size == 0) 
+    if (size == 0)
     {
 #ifdef DEBUG_PK
         printk("OSS32_WaveAddBuffer: no room left in hardware buffer!!\n");
@@ -1123,7 +1123,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
     case SNDRV_MINOR_PCM_PLAYBACK:
         // size should be aligned to channels number * samplesize  //PS+++ what is it and why?!?!?!
         j = 10;            // 10 try if error
-        while (size && j && ret) 
+        while (size && j && ret)
         {
                for (i=0; i < 1000; i++)
                {
@@ -1131,7 +1131,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
                      // If here any state and have free buffer to any byte
                      if ((status.state != SNDRV_PCM_STATE_XRUN ) && samples_to_bytes(status.avail) )
                          break;
-                     if (i > 998) 
+                     if (i > 998)
                      {
 //                         printk("timeout stat %x avail:%d hw:%d app:%d\n",status.state,samples_to_bytes(status.avail),samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr));
                          ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
@@ -1146,13 +1146,13 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
 
                ret = pHandle->file.f_op->write(&pHandle->file, (char *)buffer, size, &pHandle->file.f_pos);
 
-               if (ret < 0 ) 
+               if (ret < 0 )
                {  // We have any error, don't try more
                   j--;
                   if ( ret != -11 )
                       ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
 //                  printk("Error ret:%i ret1:%i trans: %d need %d tot:%d\n",ret,ret1,transferred, size,size1);
-                  continue; 
+                  continue;
                }
                if (ret == 0)  continue;
                transferred += ret;
@@ -1249,6 +1249,40 @@ OSSRET OSS32_WaveGetSpace(ULONG streamid, ULONG *pBytesAvail)
     *pBytesAvail = ret > 752? ret - 752 : 0;
     return OSSERR_SUCCESS;
 }
+//******************************************************************************
+//******************************************************************************
+OSSRET OSS32_WaveGetHwPtr(ULONG streamid, ULONG *pPosition)
+{
+    soundhandle        *pHandle = (soundhandle *)streamid;
+    struct snd_pcm_status    status;
+    int                 ret;
+    ULONG               delta;
+
+    if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
+        DebugInt3();
+        return OSSERR_INVALID_STREAMID;
+    }
+    if(pPosition == NULL) {
+        DebugInt3();
+        return OSSERR_INVALID_PARAMETER;
+    }
+
+    //set operation to non-blocking
+    pHandle->file.f_flags = O_NONBLOCK;
+
+    //Get the status of the stream
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+
+    if(ret) {
+        DebugInt3();
+        return UNIXToOSSError(ret);
+    }
+
+    dprintf(("OSS32_WaveGetHwPtr: %lx", samples_to_bytes(status.appl_ptr)));
+    *pPosition = samples_to_bytes(status.appl_ptr);  //return new hardware position
+    return OSSERR_SUCCESS;
+}
+
 //******************************************************************************
 //******************************************************************************
 OSSRET OSS32_WaveSetVolume(OSSSTREAMID streamid, ULONG volume)
