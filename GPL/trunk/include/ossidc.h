@@ -38,7 +38,7 @@ typedef ULONG OSSSTREAMID;	//stream id
 typedef ULONG OSSRET;		//OSS error code
 
 //IDC communication packet
-typedef struct 
+typedef struct
 {
   OSSSTREAMID streamid;	//IN:  stream id
   ULONG       fileid;
@@ -163,6 +163,7 @@ typedef struct
 #define IDC32_WAVE_SETHWPARAMS        	0x1A
 #define IDC32_WAVE_GETPOS             	0x1B
 #define IDC32_WAVE_SETVOLUME           	0x1C
+#define IDC32_WAVE_GETHWPTR             0x1D
 
 #define IDC32_MIXER_OPEN                0x20
 #define IDC32_MIXER_SETVOLUME		0x21
@@ -277,7 +278,7 @@ typedef struct
 #define SIZE_DEVICE_NAME            32
 
 
-typedef struct 
+typedef struct
 {
     char  name[SIZE_DEVICE_NAME];
     ULONG fuCtrlCaps;
@@ -286,7 +287,7 @@ typedef struct
 
 
 #define SIZE_DEVICE_NAME            32
-typedef struct 
+typedef struct
 {
     ULONG nrchannels;
     ULONG devicetype;
@@ -366,8 +367,8 @@ typedef struct
 
 typedef struct {
     ULONG  nrStreams;            //nr of activate wave streams supported
-    ULONG  ulMinChannels;        //min nr of channels 
-    ULONG  ulMaxChannels;        //max nr of channels 
+    ULONG  ulMinChannels;        //min nr of channels
+    ULONG  ulMaxChannels;        //max nr of channels
     ULONG  ulChanFlags;          //channel flags
     ULONG  ulMinRate;            //min sample rate
     ULONG  ulMaxRate;            //max sample rate
