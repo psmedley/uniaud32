@@ -102,10 +102,10 @@ subdirs: .SYMBOLIC
     
 
 clean: .SYMBOLIC
-    @echo CLEANING hda
-    @cd hda
-    @wmake $(NMAKEOPTS) clean
-    @cd ..
+#    @echo CLEANING hda
+#    @cd hda
+#    @wmake $(NMAKEOPTS) clean
+#    @cd ..
     @echo CLEANING ac97
     @cd ac97
     @wmake $(NMAKEOPTS) clean
