@@ -136,6 +136,15 @@ OSSRET OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket)
        return rc;
   }
 
+       case IDC32_WAVE_GETHWPTR:
+  {
+       ULONG position = 0;
+       rc = OSS32_WaveGetHwPtr(pPacket->streamid, &position);
+       pPacket->getpos.position = position;
+       return rc;
+  }
+
+
   case IDC32_WAVE_SETVOLUME:
        return OSS32_WaveSetVolume(pPacket->streamid, pPacket->setwavevol.volume);
 
