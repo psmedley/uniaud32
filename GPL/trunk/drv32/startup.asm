@@ -1,4 +1,4 @@
-; $Id: startup.asm,v 1.1.1.1 2003/07/02 13:56:56 eleph Exp $ 
+; $Id: startup.asm,v 1.1.1.1 2003/07/02 13:56:56 eleph Exp $
 ;*
 ;* 16bit entrypoints to the PDD with thunks to the 32bit functions
 ;*
@@ -41,7 +41,7 @@ DATA16 segment
 		public uniaud_header
 		public _MSG_TABLE16
 		public DevHelpInit
-		public fOpen	
+		public fOpen
 		public InitPktSeg
 		public InitPktOff
 		public _MESSAGE_STR
@@ -164,11 +164,11 @@ help_stub_strategy proc far
         movzx 	eax, byte ptr es:[bx].reqCommand
         cmp 	eax, 04h			; DosRead
         je 	uniaud_stub_strategy
-        
+
         enter   0, 0
         and     sp, 0fffch			; align stack
 
-	pushad  
+	pushad
 	push	ds
 	push	es
 	push	fs
@@ -207,7 +207,7 @@ help_stub_strategy proc far
 
         leave
 	ret
-		
+
 @@help_init:
 	mov	eax, dword ptr es:[bx].i_devHelp
 	mov	dword ptr DevHelpInit, eax
@@ -217,7 +217,7 @@ help_stub_strategy proc far
 @@help_ret_ok:
 	mov	ax, STDON
 	jmp	short @@help_ret
-	
+
 @@help_close:
 	call	far ptr FLAT:HelpClose
 	jmp	short @@help_ret_ok
@@ -234,7 +234,7 @@ uniaud_stub_strategy proc far
         enter   0, 0
         and     sp, 0fffch			; align stack
 
-	pushad  
+	pushad
 	push	ds
 	push	es
 	push	fs
@@ -250,7 +250,7 @@ uniaud_stub_strategy proc far
 	push	ebx
 	push	es
 	mov	ax, bx
-	xor	ebx, ebx			
+	xor	ebx, ebx
 	mov	bx, ax
 	mov	ax, es
 	mov	fs, ax				; fs:ebx = req. packet
@@ -327,7 +327,7 @@ uniaud_stub_timer endp
 ;;*****************************************************************************
 ; device_init
 ;
-; Use DosOpen to tell the 1st driver to handle init for us. We must do it this 
+; Use DosOpen to tell the 1st driver to handle init for us. We must do it this
 ; way since right now our CPL is 3 and the flat code selector has DPL 0, so
 ; we can't load it. In the open strategy request, CPL is 0
 ;;*****************************************************************************
@@ -599,13 +599,13 @@ _RMDeallocResourceOrg proc far
                 push    cs
                 call    near ptr _CallRM
                 mov     sp,bp
-                ret16     
+                ret16
 DeAllocL1:      test    byte ptr _RMFlags,02H
                 je      short DeAllocL2
                 sub     ax,ax
-                ret16     
+                ret16
 DeAllocL2:      mov     ax,0001H
-                ret16     
+                ret16
 _RMDeallocResourceOrg endp
 
                 ALIGN 2
@@ -621,7 +621,7 @@ _RMDeallocResource16 proc far
 _RMDeallocResource16 endp
 
                 ALIGN 2
-                PUBLIC  MY_DEVHELP_ATTACHDD 
+                PUBLIC  MY_DEVHELP_ATTACHDD
 MY_DEVHELP_ATTACHDD proc near
                 push    bp
                 mov     bp,sp
@@ -637,11 +637,11 @@ MY_DEVHELP_ATTACHDD proc near
                 sub     ax,ax
 		pop	es
                 pop     di
-                leave   
+                leave
                 ret     0004H
 L2:		pop	es
 		pop	di
-                leave   	
+                leave
                 ret     0004H
 MY_DEVHELP_ATTACHDD endp
 
@@ -658,7 +658,7 @@ CreateDrL3:     lea     ax, [bp+6]
                 push    cs
                 call    near ptr _CallRM
                 add     sp,0006H
-                ret16     
+                ret16
 CreateDrL4:     test    byte ptr _RMFlags,02H
                 je      short CreateDrL6
 CreateDrL5:     push	es
@@ -669,12 +669,12 @@ CreateDrL5:     push	es
                 sub     ax,ax
 		pop	bx
 		pop	es
-                ret16     
+                ret16
 CreateDrL6:     mov     ax, word ptr DevHelpInit + 2H
                 or      ax, word ptr DevHelpInit
                 jne     short CreateDrL7
                 mov     ax,0008H
-                ret16    
+                ret16
 CreateDrL7:     push    offset ResMgr
                 push    offset _RMIDCTable
                 push    cs
@@ -707,7 +707,7 @@ _RMCreateDriver16 proc far
 _RMCreateDriver16 endp
 
                 ALIGN 2
-                PUBLIC  _CallRM 
+                PUBLIC  _CallRM
 _CallRM proc near
 	        enter   0002H,00H
                 call    near ptr _GetCS
@@ -718,11 +718,11 @@ _CallRM proc near
                 push    word ptr +6H[bp]
                 call    dword ptr _RM_Help3
                 add     sp,0006H
-                leave   
+                leave
                 ret
 L1:             push    word ptr +6H[bp]
                 call    dword ptr _RM_Help0
-                leave   
+                leave
                 ret
 _CallRM endp
 
@@ -732,8 +732,8 @@ _GetCS proc near
                 push    cs
                 pop     word ptr -2H[bp]
                 mov     ax,word ptr -2H[bp]
-                leave   
-                ret     
+                leave
+                ret
 _GetCS endp
 
                 ALIGN 2
@@ -753,7 +753,7 @@ _RMDestroyDriverOrg proc far
 DestroyDrvL1:   test    byte ptr _RMFlags,02H
                 je      short DestroyDrvL2
                 sub     ax,ax
-                ret16   
+                ret16
 DestroyDrvL2:   mov     ax,0001H
                 ret16
 _RMDestroyDriverOrg endp
@@ -787,7 +787,7 @@ _RMGetNodeInfoOrg proc far
                 ret16
 GetNodeInfo_L1: mov     ax,0014H
                 ret16
-                nop     
+                nop
 GetNodeInfo_L2: test    byte ptr _RMFlags,02H
                 je      short GetNodeInfo_L3
                 mov     ax,0015H
@@ -798,11 +798,11 @@ _RMGetNodeInfoOrg endp
 
                 ALIGN 2
                 PUBLIC  _RMGetNodeInfo16
-_RMGetNodeInfo16  proc far 
+_RMGetNodeInfo16  proc far
 		enter32
 		xor	eax, eax
-		push	word ptr  [bp+18]	;pushed as dword by watcom	
-		push	dword ptr [bp+14]	
+		push	word ptr  [bp+18]	;pushed as dword by watcom
+		push	dword ptr [bp+14]
 		push	dword ptr [bp+10]
 		call	_RMGetNodeInfoOrg
 		add	sp, 10
@@ -824,25 +824,25 @@ _RMDevIDToHandleListOrg proc far
                 call    near ptr _CallRM
                 mov     sp,bp
 		ret16
-RMDevIDToHandleList_L1:             
+RMDevIDToHandleList_L1:
 		mov     ax,0014H
 		ret16
-                nop     
-RMDevIDToHandleList_L2:             
+                nop
+RMDevIDToHandleList_L2:
                 test    byte ptr _RMFlags,02H
                 je      short RMDevIDToHandleList_L3
                 sub     ax,ax
 		ret16
-	        nop     
-RMDevIDToHandleList_L3: 
+	        nop
+RMDevIDToHandleList_L3:
 	        mov     ax,0001H
 		ret16
-                nop     
+                nop
 _RMDevIDToHandleListOrg endp
 
                 ALIGN 2
                 PUBLIC  _RMDevIDToHandleList16
-_RMDevIDToHandleList16  proc far 
+_RMDevIDToHandleList16  proc far
 		enter32
 		xor	eax, eax
 		push	dword ptr [bp+42]
@@ -873,26 +873,26 @@ _RMHandleToResourceHandleListOrg proc far
                 push    cs
                 call    near ptr _CallRM
                 ret16
-                nop     
+                nop
 RMHandleToResourceHandleList_L1:
                 mov     ax,0014H
                 ret16
-                nop     
+                nop
 RMHandleToResourceHandleList_L2:
                 test    byte ptr _RMFlags,02H
                 je      short RMHandleToResourceHandleList_L3
                 sub     ax,ax
                 ret16
-                nop     
+                nop
 RMHandleToResourceHandleList_L3:
                  mov     ax,0001H
                 ret16
-                nop     
+                nop
 _RMHandleToResourceHandleListOrg endp
 
                 ALIGN 2
                 PUBLIC  _RMHandleToResourceHandleList16
-_RMHandleToResourceHandleList16  proc far 
+_RMHandleToResourceHandleList16  proc far
 		enter32
 		xor	eax, eax
 		push	dword ptr [bp+14]
@@ -984,7 +984,7 @@ ASSUME CS:FLAT, DS:FLAT, ES:FLAT
 
 	public __GETDS
         public thunk1632_devhelp
-	public thunk1632_devhelp_modified_ds	
+	public thunk1632_devhelp_modified_ds
         public DevHlp
         public DevHlp_ModifiedDS
 	public STRATEGY_
@@ -1081,14 +1081,14 @@ FixSelDPL proc near
 	mov	edx, eax
 	shr	edx, 13
 	and	edx, 3
-        
+
         ;has the OS/2 kernel finally changed the DPL to 0?
 	cmp	edx, 0
 	jne	@@changedpl
 	mov 	fWrongDPL, 0		;don't bother anymore
 	mov 	SelRef, 0
 	jmp	short @@endchange
-        
+
 @@changedpl:
 	mov 	oldDPL, eax
 	and 	eax, NOT 6000h		;clear bits 5 & 6 in the high word (DPL)
@@ -1100,8 +1100,8 @@ FixSelDPL proc near
 @@fixdpl_endfix:
 	inc     SelRef
 @@fixdpl_end:
-        ret        
-FixSelDPL endp        
+        ret
+FixSelDPL endp
 ;;******************************************************************************
 ; RestoreSelDPL:
 ;
@@ -1113,7 +1113,7 @@ FixSelDPL endp
 RestoreSelDPL proc near
 	cmp 	fWrongDPL, 1
 	jne 	short @@restdpl_end
-        
+
 	cmp 	SelRef, 1
 	jne 	short @@restdpl_endrest
 	push	eax
@@ -1137,7 +1137,7 @@ ENDIF
 
 ;*******************************************************************************
 ;Copy parameters to 16 bits stack and call 16:32 IDC handler
-; 
+;
 ; Paramters: IDC16_HANDLER pHandler
 ;            ULONG         cmd
 ;            ULONG         param1
@@ -1158,7 +1158,7 @@ _CallPDD16 proc near
         push dword ptr [ebx+8]     ;cmd
         call fword ptr [ebx]
         add  sp, 12
-        
+
         DevThunkStackTo32_Int
 
         pop  ebx
@@ -1172,7 +1172,7 @@ _CallPDD16 endp
 ;  fs:ebx -> request packet pointer
 ;*******************************************************************************
         ALIGN 4
-STRATEGY_ proc far	
+STRATEGY_ proc far
         push	ds
 	push	es
 	push	fs
@@ -1197,7 +1197,7 @@ ENDIF
         DevThunkStackTo32
         cmp     eax, 0
         jne     @@stackswitchfail_strat
-           
+
 	call 	ALSA_STRATEGY
 
         DevThunkStackTo16
@@ -1223,7 +1223,7 @@ STRATEGY_ endp
 ;return value in eax
 ;*******************************************************************************
         ALIGN 4
-IDC_ proc far       
+IDC_ proc far
 	push	ds
 	push	es
 	push	fs
@@ -1260,7 +1260,7 @@ IDC_ endp
 ;
 ;*******************************************************************************
         ALIGN 4
-TIMER_ proc far       
+TIMER_ proc far
 	push	ds
 	push	es
 	push	fs
@@ -1315,7 +1315,10 @@ Interrupt32 proc far
 	mov	es, eax
 
         pushfd
-        cli
+
+        ; At this point a cli is redundant
+        ; we enter the interrupt handler with interrupts disabled.
+        ;cli
 
 IFDEF FLATSTACK
         DevThunkStackTo32
@@ -1326,7 +1329,7 @@ IFDEF FLATSTACK
 	call 	ALSA_Interrupt
 
         DevThunkStackTo16
-        
+
 @@stackswitchfail_irq:
 ELSE
         int     3
@@ -1345,7 +1348,7 @@ irqhandled:
         clc			;tell OS/2 kernel this interrupt was ours
 
 endofirq:
-       
+
 	pop	gs
 	pop	fs
 	pop	es
@@ -1357,7 +1360,7 @@ endofirq:
 Interrupt32 endp
 
         ALIGN 4
-HelpClose proc far	
+HelpClose proc far
         push	ds
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
@@ -1458,8 +1461,8 @@ _RMDestroyDriver endp
 _RMGetNodeInfo  proc near
 	enterKEERM
 	xor	eax, eax
-	push	dword ptr [edi+16]	
-	push	dword ptr [edi+12]	
+	push	dword ptr [edi+16]
+	push	dword ptr [edi+12]
 	push	dword ptr [edi+8]
 	call	fword ptr RMGetNodeInfo1632
 	add	sp, 12
@@ -1531,7 +1534,7 @@ IFDEF KEE
     public  stacksel
 
     stackbase dd 0
-    stacksel  dd 0    
+    stacksel  dd 0
 ELSE
 
     public  gdtsave
@@ -1557,8 +1560,8 @@ ENDIF
 
     _MSG_TABLE32     dw OFFSET  DATA16:_MSG_TABLE16
     		     dw SEG     DATA16:_MSG_TABLE16
-          
-;16:16 address of driver name   
+
+;16:16 address of driver name
     PDDName          dw OFFSET  DATA16:pddname16
 		     dw SEG     DATA16:pddname16
 

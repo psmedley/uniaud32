@@ -91,17 +91,22 @@ ULONG ALSA_Interrupt(ULONG ulSlotNo)
 {
     ULONG	ulIrqNo;
 
+    // enable interrupts that have higher priority we should
+    // allow higher priority interrupts
+    sti();
     if( process_interrupt(ulSlotNo, &ulIrqNo) ) {
+        // We've cleared all service requests.
+        // Clear (disable) Interrupts, Send EOI
+        // and clear the carry flag (tells OS/2 kernel that Int was handled).
+        // Note carry flag is handled in setup.asm
         cli();
-        // We've cleared all service requests.  Send EOI and clear
-        // the carry flag (tells OS/2 kernel that Int was handled).
         DevEOI( (WORD16)ulIrqNo );
         return TRUE;
-   }
-   // Indicate Interrupt not serviced by setting carry flag before
-   // returning to OS/2 kernel.  OS/2 will then shut down the interrupt!
-   // NOTE: Make sure interrupts are not turned on again when this irq isn't ours!
-   return FALSE;
+    }
+    // Indicate Interrupt not serviced by setting carry flag before
+    // returning to OS/2 kernel.  OS/2 will then shut down the interrupt!
+    // NOTE: Make sure interrupts are not turned on again when this irq isn't ours!
+    return FALSE;
 }
 //******************************************************************************
 //******************************************************************************
