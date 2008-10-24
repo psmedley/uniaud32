@@ -1,5 +1,5 @@
-#ifndef __PCM_OSS_H
-#define __PCM_OSS_H
+#ifndef __SOUND_PCM_OSS_H
+#define __SOUND_PCM_OSS_H
 
 /*
  *  Digital Audio (PCM) - OSS compatibility abstract layer

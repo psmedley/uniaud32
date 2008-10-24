@@ -1,5 +1,5 @@
-#ifndef __EMU8000_H
-#define __EMU8000_H
+#ifndef __SOUND_EMU8000_H
+#define __SOUND_EMU8000_H
 /*
  *  Defines for the emu8000 (AWE32/64)
  *
@@ -18,10 +18,9 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#include "driver.h"
 #include "emux_synth.h"
 #include "seq_kernel.h"
 

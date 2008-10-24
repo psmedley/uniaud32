@@ -1,5 +1,5 @@
-#ifndef __INITVAL_H
-#define __INITVAL_H
+#ifndef __SOUND_INITVAL_H
+#define __SOUND_INITVAL_H
 
 /*
  *  Init values for soundcard modules
@@ -17,7 +17,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 

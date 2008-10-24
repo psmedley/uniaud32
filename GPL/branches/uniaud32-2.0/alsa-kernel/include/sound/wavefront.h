@@ -1,5 +1,5 @@
-#ifndef __WAVEFRONT_H__
-#define __WAVEFRONT_H__
+#ifndef __SOUND_WAVEFRONT_H__
+#define __SOUND_WAVEFRONT_H__
 
 /*
  *  Driver for Turtle Beach Wavefront cards (Maui,Tropez,Tropez+)
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
 #if (!defined(__GNUC__) && !defined(__GNUG__))
@@ -64,12 +64,21 @@
    between a 16-bit view of the world and a 32-bit one. 
  */   
 
-typedef short INT16;
-typedef unsigned short UINT16;
-typedef int INT32;
-typedef unsigned int UINT32;
-typedef char CHAR8;
-typedef unsigned char UCHAR8;
+#ifndef __KERNEL__
+/* keep them for compatibility */
+typedef short s16;
+typedef unsigned short u16;
+typedef int s32;
+typedef unsigned int u32;
+typedef char s8;
+typedef unsigned char u8;
+typedef s16 INT16;
+typedef u16 UINT16;
+typedef s32 INT32;
+typedef u32 UINT32;
+typedef s8 CHAR8;
+typedef u8 UCHAR8;
+#endif
 
 /* Pseudo-commands not part of the WaveFront command set.
    These are used for various driver controls and direct
@@ -197,111 +206,111 @@ typedef unsigned char UCHAR8;
 
 struct wf_envelope
 {
-    UCHAR8 attack_time:7;
-    UCHAR8 Unused1:1;
+    u8 attack_time:7;
+    u8 Unused1:1;
 
-    UCHAR8 decay1_time:7;
-    UCHAR8 Unused2:1;
+    u8 decay1_time:7;
+    u8 Unused2:1;
 
-    UCHAR8 decay2_time:7;
-    UCHAR8 Unused3:1;
+    u8 decay2_time:7;
+    u8 Unused3:1;
 
-    UCHAR8 sustain_time:7;
-    UCHAR8 Unused4:1;
+    u8 sustain_time:7;
+    u8 Unused4:1;
 
-    UCHAR8 release_time:7;
-    UCHAR8 Unused5:1;
+    u8 release_time:7;
+    u8 Unused5:1;
 
-    UCHAR8 release2_time:7;
-    UCHAR8 Unused6:1;
+    u8 release2_time:7;
+    u8 Unused6:1;
 
-    CHAR8 attack_level;
-    CHAR8 decay1_level;
-    CHAR8 decay2_level;
-    CHAR8 sustain_level;
-    CHAR8 release_level;
+    s8 attack_level;
+    s8 decay1_level;
+    s8 decay2_level;
+    s8 sustain_level;
+    s8 release_level;
 
-    UCHAR8 attack_velocity:7;
-    UCHAR8 Unused7:1;
+    u8 attack_velocity:7;
+    u8 Unused7:1;
 
-    UCHAR8 volume_velocity:7;
-    UCHAR8 Unused8:1;
+    u8 volume_velocity:7;
+    u8 Unused8:1;
 
-    UCHAR8 keyboard_scaling:7;
-    UCHAR8 Unused9:1;
+    u8 keyboard_scaling:7;
+    u8 Unused9:1;
 };
 typedef struct wf_envelope wavefront_envelope;
 
 struct wf_lfo
 {
-    UCHAR8 sample_number;
+    u8 sample_number;
 
-    UCHAR8 frequency:7;
-    UCHAR8 Unused1:1;
+    u8 frequency:7;
+    u8 Unused1:1;
 
-    UCHAR8 am_src:4;
-    UCHAR8 fm_src:4;
+    u8 am_src:4;
+    u8 fm_src:4;
 
-    CHAR8 fm_amount;
-    CHAR8 am_amount;
-    CHAR8 start_level;
-    CHAR8 end_level;
+    s8 fm_amount;
+    s8 am_amount;
+    s8 start_level;
+    s8 end_level;
 
-    UCHAR8 ramp_delay:7;
-    UCHAR8 wave_restart:1; /* for LFO2 only */
+    u8 ramp_delay:7;
+    u8 wave_restart:1; /* for LFO2 only */
 
-    UCHAR8 ramp_time:7;
-    UCHAR8 Unused2:1;
+    u8 ramp_time:7;
+    u8 Unused2:1;
 };
 typedef struct wf_lfo wavefront_lfo;
 
 struct wf_patch
 {
-    INT16  frequency_bias;         /*  ** THIS IS IN MOTOROLA FORMAT!! ** */
+    s16  frequency_bias;         /*  ** THIS IS IN MOTOROLA FORMAT!! ** */
 
-    UCHAR8 amplitude_bias:7;
-    UCHAR8 Unused1:1;
+    u8 amplitude_bias:7;
+    u8 Unused1:1;
 
-    UCHAR8 portamento:7;
-    UCHAR8 Unused2:1;
+    u8 portamento:7;
+    u8 Unused2:1;
 
-    UCHAR8 sample_number;
+    u8 sample_number;
 
-    UCHAR8 pitch_bend:4;
-    UCHAR8 sample_msb:1;
-    UCHAR8 Unused3:3;
+    u8 pitch_bend:4;
+    u8 sample_msb:1;
+    u8 Unused3:3;
 
-    UCHAR8 mono:1;
-    UCHAR8 retrigger:1;
-    UCHAR8 nohold:1;
-    UCHAR8 restart:1;
-    UCHAR8 filterconfig:2; /* SDK says "not used" */
-    UCHAR8 reuse:1;
-    UCHAR8 reset_lfo:1;    
+    u8 mono:1;
+    u8 retrigger:1;
+    u8 nohold:1;
+    u8 restart:1;
+    u8 filterconfig:2; /* SDK says "not used" */
+    u8 reuse:1;
+    u8 reset_lfo:1;    
 
-    UCHAR8 fm_src2:4;
-    UCHAR8 fm_src1:4;   
+    u8 fm_src2:4;
+    u8 fm_src1:4;   
 
-    CHAR8 fm_amount1;
-    CHAR8 fm_amount2;
+    s8 fm_amount1;
+    s8 fm_amount2;
 
-    UCHAR8 am_src:4;
-    UCHAR8 Unused4:4;
+    u8 am_src:4;
+    u8 Unused4:4;
 
-    CHAR8 am_amount;
+    s8 am_amount;
 
-    UCHAR8 fc1_mode:4;
-    UCHAR8 fc2_mode:4;
+    u8 fc1_mode:4;
+    u8 fc2_mode:4;
 
-    CHAR8 fc1_mod_amount;
-    CHAR8 fc1_keyboard_scaling;
-    CHAR8 fc1_bias;
-    CHAR8 fc2_mod_amount;
-    CHAR8 fc2_keyboard_scaling;
-    CHAR8 fc2_bias;
+    s8 fc1_mod_amount;
+    s8 fc1_keyboard_scaling;
+    s8 fc1_bias;
+    s8 fc2_mod_amount;
+    s8 fc2_keyboard_scaling;
+    s8 fc2_bias;
 
-    UCHAR8 randomizer:7;
-    UCHAR8 Unused5:1;
+    u8 randomizer:7;
+    u8 Unused5:1;
 
     struct wf_envelope envelope1;
     struct wf_envelope envelope2;
@@ -312,18 +321,18 @@ typedef struct wf_patch wavefront_patch;
 
 struct wf_layer
 {
-    UCHAR8 patch_number;
+    u8 patch_number;
 
-    UCHAR8 mix_level:7;
-    UCHAR8 mute:1;
+    u8 mix_level:7;
+    u8 mute:1;
 
-    UCHAR8 split_point:7;
-    UCHAR8 play_below:1;
+    u8 split_point:7;
+    u8 play_below:1;
 
-    UCHAR8 pan_mod_src:2;
-    UCHAR8 pan_or_mod:1;
-    UCHAR8 pan:4;
-    UCHAR8 split_type:1;
+    u8 pan_mod_src:2;
+    u8 pan_or_mod:1;
+    u8 pan:4;
+    u8 split_type:1;
 };
 typedef struct wf_layer wavefront_layer;
 
@@ -335,9 +344,9 @@ typedef struct wf_program wavefront_program;
 
 struct wf_sample_offset
 {
-    INT32 Fraction:4;
-    INT32 Integer:20;
-    INT32 Unused:8;
+    s32 Fraction:4;
+    s32 Integer:20;
+    s32 Unused:8;
 };
 typedef struct wf_sample_offset wavefront_sample_offset;          
      
@@ -491,7 +500,7 @@ typedef struct wf_drumkit {
 } wavefront_drumkit;
 
 typedef struct wf_channel_programs {
-    UCHAR8 Program[NUM_MIDICHANNELS];
+    u8 Program[NUM_MIDICHANNELS];
 } wavefront_channel_programs;
 
 /* How to get MIDI channel status from the data returned by
@@ -522,15 +531,15 @@ typedef struct wf_patch_info {
        only, and are unused by the current user-level library.
     */
 
-    INT16   key;               /* Use WAVEFRONT_PATCH here */
-    UINT16  devno;             /* fill in when sending */
-    UCHAR8  subkey;            /* WF_ST_{SAMPLE,ALIAS,etc.} */
+    s16   key;               /* Use WAVEFRONT_PATCH here */
+    u16  devno;             /* fill in when sending */
+    u8  subkey;            /* WF_ST_{SAMPLE,ALIAS,etc.} */
 
 #define WAVEFRONT_FIND_FREE_SAMPLE_SLOT 999
 
-    UINT16  number;            /* patch/sample/prog number */
+    u16  number;            /* patch/sample/prog number */
 
-    UINT32  size;              /* size of any data included in 
+    u32  size;              /* size of any data included in 
 				  one of the fields in `hdrptr', or
 				  as `dataptr'.
 
@@ -545,8 +554,8 @@ typedef struct wf_patch_info {
 				  WF_{GET,SET}_CHANNEL above.
 
 			       */
-    wavefront_any *hdrptr;      /* user-space ptr to hdr bytes */
-    UINT16 *dataptr;            /* actual sample data */
+    wavefront_any __user *hdrptr;      /* user-space ptr to hdr bytes */
+    u16 __user *dataptr;            /* actual sample data */
 
     wavefront_any hdr;          /* kernel-space copy of hdr bytes */         
 } wavefront_patch_info;
@@ -678,10 +687,9 @@ typedef struct wf_fx_info {
 
 /* Allow direct user-space control over FX memory/coefficient data.
    In theory this could be used to download the FX microprogram,
-   but it would be a little slower, and involve some wierd code.
+   but it would be a little slower, and involve some weird code.
  */
 
 #define WFFX_MEMSET              69
 
-#endif /* __WAVEFRONT_H__ */
-
+#endif /* __SOUND_WAVEFRONT_H__ */

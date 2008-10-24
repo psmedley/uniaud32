@@ -1,3 +1,6 @@
+#ifndef __SOUND_SEQ_OSS_H
+#define __SOUND_SEQ_OSS_H
+
 /*
  * OSS compatible sequencer driver
  *
@@ -15,11 +18,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
-
-#ifndef __SEQ_OSS_H
-#define __SEQ_OSS_H
 
 #include "asequencer.h"
 #include "seq_kernel.h"
@@ -93,4 +93,4 @@ struct snd_seq_oss_reg {
 /* device id */
 #define SNDRV_SEQ_DEV_ID_OSS		"seq-oss"
 
-#endif
+#endif /* __SOUND_SEQ_OSS_H */

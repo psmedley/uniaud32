@@ -1,6 +1,5 @@
-
-#ifndef __AD1816A_H
-#define __AD1816A_H
+#ifndef __SOUND_AD1816A_H
+#define __SOUND_AD1816A_H
 
 /*
     ad1816a.h - definitions for ADI SoundPort AD1816A chip.
@@ -18,7 +17,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 */
 
 #include "control.h"
@@ -137,6 +136,7 @@ struct snd_ad1816a {
 	spinlock_t lock;
 
 	unsigned short mode;
+	unsigned int clock_freq;
 
 	struct snd_card *card;
 	struct snd_pcm *pcm;
@@ -170,5 +170,4 @@ extern int snd_ad1816a_create(struct snd_card *card, unsigned long port,
 extern int snd_ad1816a_pcm(struct snd_ad1816a *chip, int device, struct snd_pcm **rpcm);
 extern int snd_ad1816a_mixer(struct snd_ad1816a *chip);
 
-#endif	/* __AD1816A_H */
-
+#endif	/* __SOUND_AD1816A_H */

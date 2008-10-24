@@ -28,9 +28,6 @@
 #include <linux/wait.h>
 #include <linux/mutex.h>
 
-#ifdef TARGET_OS2x
-#define tasklet_struct		tq_struct 
-#endif
 #if defined(CONFIG_SND_SEQUENCER) || defined(CONFIG_SND_SEQUENCER_MODULE)
 #include "seq_device.h"
 #endif

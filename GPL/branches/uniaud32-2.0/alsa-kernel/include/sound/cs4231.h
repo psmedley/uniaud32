@@ -1,5 +1,5 @@
-#ifndef __CS4231_H
-#define __CS4231_H
+#ifndef __SOUND_CS4231_H
+#define __SOUND_CS4231_H
 
 /*
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -44,6 +44,7 @@
 #define CS4231_HW_CS4231_MASK   0x0100	/* CS4231 serie */
 #define CS4231_HW_CS4231        0x0100	/* CS4231 chip */
 #define CS4231_HW_CS4231A       0x0101	/* CS4231A chip */
+#define CS4231_HW_AD1845	0x0102	/* AD1845 chip */
 #define CS4231_HW_CS4232_MASK   0x0200	/* CS4232 serie (has control ports) */
 #define CS4231_HW_CS4232        0x0200	/* CS4232 */
 #define CS4231_HW_CS4232A       0x0201	/* CS4232A */
@@ -151,36 +152,22 @@ int snd_cs4236_mixer(struct snd_cs4231 * chip);
  *  mixer library
  */
 
-#ifndef TARGET_OS2
 #define CS4231_SINGLE(xname, xindex, reg, shift, mask, invert) \
 { .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
   .info = snd_cs4231_info_single, \
   .get = snd_cs4231_get_single, .put = snd_cs4231_put_single, \
   .private_value = reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#else
-#define CS4231_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_cs4231_info_single, \
-  snd_cs4231_get_single, snd_cs4231_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+
 int snd_cs4231_info_single(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_info *uinfo);
 int snd_cs4231_get_single(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol);
 int snd_cs4231_put_single(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol);
 
-#ifndef TARGET_OS2
 #define CS4231_DOUBLE(xname, xindex, left_reg, right_reg, shift_left, shift_right, mask, invert) \
 { .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, .index = xindex, \
   .info = snd_cs4231_info_double, \
   .get = snd_cs4231_get_double, .put = snd_cs4231_put_double, \
   .private_value = left_reg | (right_reg << 8) | (shift_left << 16) | (shift_right << 19) | (mask << 24) | (invert << 22) }
-#else
-#define CS4231_SINGLE(xname, xindex, reg, shift, mask, invert) \
-{ SNDRV_CTL_ELEM_IFACE_MIXER, 0,0, xname, xindex, \
-  0, 0, snd_cs4231_info_single, \
-  snd_cs4231_get_single, snd_cs4231_put_single, \
-  reg | (shift << 8) | (mask << 16) | (invert << 24) }
-#endif
+
 int snd_cs4231_info_double(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_info *uinfo);
 int snd_cs4231_get_double(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol);
 int snd_cs4231_put_double(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol);

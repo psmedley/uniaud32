@@ -1,5 +1,5 @@
-#ifndef __SND_I2C_H
-#define __SND_I2C_H
+#ifndef __SOUND_I2C_H
+#define __SOUND_I2C_H
 
 /*
  *

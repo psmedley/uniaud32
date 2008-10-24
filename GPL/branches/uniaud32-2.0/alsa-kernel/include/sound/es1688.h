@@ -1,5 +1,5 @@
-#ifndef __ES1688_H
-#define __ES1688_H
+#ifndef __SOUND_ES1688_H
+#define __SOUND_ES1688_H
 
 /*
  *  Header file for ES488/ES1688
@@ -18,12 +18,13 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
 #include "control.h"
 #include "pcm.h"
+#include <linux/interrupt.h>
 
 #define ES1688_HW_AUTO		0x0000
 #define ES1688_HW_688		0x0001
@@ -117,4 +118,4 @@ int snd_es1688_create(struct snd_card *card,
 int snd_es1688_pcm(struct snd_es1688 *chip, int device, struct snd_pcm ** rpcm);
 int snd_es1688_mixer(struct snd_es1688 *chip);
 
-#endif				/* __ES1688_H */
+#endif /* __SOUND_ES1688_H */

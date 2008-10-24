@@ -1,5 +1,5 @@
-#ifndef __EMU8000_REG_H
-#define __EMU8000_REG_H
+#ifndef __SOUND_EMU8000_REG_H
+#define __SOUND_EMU8000_REG_H
 /*
  *  Register operations for the EMU8000
  *
@@ -19,7 +19,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -204,4 +204,4 @@
 #define EMU8000_00A0_WRITE(emu, chan, val) \
 	snd_emu8000_poke_dw((emu), EMU8000_DATA0(emu), EMU8000_CMD(5, (chan)), (val))
 
-#endif
+#endif /* __SOUND_EMU8000_REG_H */

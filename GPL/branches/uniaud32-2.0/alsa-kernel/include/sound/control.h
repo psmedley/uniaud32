@@ -1,5 +1,5 @@
-#ifndef __CONTROL_H
-#define __CONTROL_H
+#ifndef __SOUND_CONTROL_H
+#define __SOUND_CONTROL_H
 
 /*
  *  Header file for control interface
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -181,4 +181,3 @@ struct snd_kcontrol *snd_ctl_make_virtual_master(char *name,
 int snd_ctl_add_slave(struct snd_kcontrol *master, struct snd_kcontrol *slave);
 		      
 #endif	/* __SOUND_CONTROL_H */
-

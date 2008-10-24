@@ -1,5 +1,5 @@
-#ifndef __PCM_PARAMS_H
-#define __PCM_PARAMS_H
+#ifndef __SOUND_PCM_PARAMS_H
+#define __SOUND_PCM_PARAMS_H
 
 /*
  *  PCM params helpers
@@ -18,7 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
@@ -323,18 +323,19 @@ static inline int snd_interval_eq(const struct snd_interval *i1, const struct sn
 		i1->max == i2->max && i1->openmax == i2->openmax;
 }
 
-INLINE unsigned int add(unsigned int a, unsigned int b)
+static inline unsigned int add(unsigned int a, unsigned int b)
 {
 	if (a >= UINT_MAX - b)
 		return UINT_MAX;
 	return a + b;
 }
 
-INLINE unsigned int sub(unsigned int a, unsigned int b)
+static inline unsigned int sub(unsigned int a, unsigned int b)
 {
 	if (a > b)
 		return a - b;
 	return 0;
 }
 
-#endif
+#endif /* __SOUND_PCM_PARAMS_H */
+

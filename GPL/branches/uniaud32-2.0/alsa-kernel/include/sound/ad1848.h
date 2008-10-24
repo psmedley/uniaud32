@@ -1,5 +1,5 @@
-#ifndef __AD1848_H
-#define __AD1848_H
+#ifndef __SOUND_AD1848_H
+#define __SOUND_AD1848_H
 
 /*
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
@@ -18,12 +18,12 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
 
-#include "control.h"
 #include "pcm.h"
+#include <linux/interrupt.h>
 
 /* IO ports */
 
@@ -111,6 +111,7 @@
 #define AD1848_MODE_CAPTURE	0x0002
 #define AD1848_MODE_TIMER	0x0004
 #define AD1848_MODE_OPEN	(AD1848_MODE_PLAY|AD1848_MODE_CAPTURE|AD1848_MODE_TIMER)
+#define AD1848_MODE_RUNNING	0x0010
 
 /* defines for codec.hardware */
 
@@ -119,6 +120,12 @@
 #define AD1848_HW_AD1848	0x0002	/* AD1848 chip */
 #define AD1848_HW_CS4248	0x0003	/* CS4248 chip */
 #define AD1848_HW_CMI8330	0x0004	/* CMI8330 chip */
+#define AD1848_HW_THINKPAD	0x0005	/* Thinkpad 360/750/755 */
+
+/* IBM Thinkpad specific stuff */
+#define AD1848_THINKPAD_CTL_PORT1		0x15e8
+#define AD1848_THINKPAD_CTL_PORT2		0x15e9
+#define AD1848_THINKPAD_CS4248_ENABLE_BIT	0x02
 
 struct snd_ad1848 {
 	unsigned long port;		/* i/o port */
@@ -138,8 +145,8 @@ struct snd_ad1848 {
 	unsigned char image[32];	/* SGalaxy needs an access to extended registers */
 	int mce_bit;
 	int calibrate_mute;
-        int dma_size;
-        int thinkpad_flag;              /* Thinkpad CS4248 needs some extra help */
+	int dma_size;
+	int thinkpad_flag;		/* Thinkpad CS4248 needs some extra help */
 
 #ifdef CONFIG_PM
 	void (*suspend)(struct snd_ad1848 *chip);
