@@ -12,7 +12,7 @@ BUILDVERSION = 1.9.10
 # Use this if you want to add extra chars (comments) to bldlevel
 # ex RC3  GA  FIXPACK2 beta_47
 # Comment out to avoid a fixpack line in bldlevel
-FIXPACK = SVN r397+
+FIXPACK = SVN r400
 
 # ALSA BUILD VERSION
 # Use this to to include the ALSA revision
