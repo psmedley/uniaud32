@@ -312,7 +312,8 @@ snd_seq_oss_synth_cleanup(struct seq_oss_devinfo *dp)
 	struct seq_oss_synth *rec;
 	struct seq_oss_synthinfo *info;
 
-	snd_assert(dp->max_synthdev <= SNDRV_SEQ_OSS_MAX_SYNTH_DEVS, return);
+	if (snd_BUG_ON(dp->max_synthdev >= SNDRV_SEQ_OSS_MAX_SYNTH_DEVS))
+		return;
 	for (i = 0; i < dp->max_synthdev; i++) {
 		info = &dp->synths[i];
 		if (! info->opened)
@@ -406,7 +407,8 @@ snd_seq_oss_synth_reset(struct seq_oss_devinfo *dp, int dev)
 	struct seq_oss_synth *rec;
 	struct seq_oss_synthinfo *info;
 
-	snd_assert(dev >= 0 && dev < dp->max_synthdev, return);
+	if (snd_BUG_ON(dev < 0 || dev >= dp->max_synthdev))
+		return;
 	info = &dp->synths[dev];
 	if (! info->opened)
 		return;
@@ -607,6 +609,9 @@ int
 snd_seq_oss_synth_make_info(struct seq_oss_devinfo *dp, int dev, struct synth_info *inf)
 {
 	struct seq_oss_synth *rec;
+
+	if (dev < 0 || dev >= dp->max_synthdev)
+		return -ENXIO;
 
 	if (dp->synths[dev].is_midi) {
 		struct midi_info minf;

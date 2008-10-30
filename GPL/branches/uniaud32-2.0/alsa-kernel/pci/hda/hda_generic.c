@@ -174,7 +174,8 @@ static int build_afg_tree(struct hda_codec *codec)
 	int i, nodes, err;
 	hda_nid_t nid;
 
-	snd_assert(spec, return -EINVAL);
+	if (snd_BUG_ON(!spec))
+		return -EINVAL;
 
 	spec->def_amp_out_caps = snd_hda_param_read(codec, codec->afg, AC_PAR_AMP_OUT_CAP);
 	spec->def_amp_in_caps = snd_hda_param_read(codec, codec->afg, AC_PAR_AMP_IN_CAP);
@@ -729,7 +730,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		if (is_loopback)
 			add_input_loopback(codec, node->nid, HDA_INPUT, index);
 		snd_printdd("[%s] NID=0x%x, DIR=IN, IDX=0x%x\n", name, node->nid, index);
-		if ((err = snd_ctl_add(codec->bus->card, snd_ctl_new1(&knew, codec))) < 0)
+		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		if (err < 0)
 			return err;
 		created = 1;
 	} else if ((node->wid_caps & AC_WCAP_OUT_AMP) &&
@@ -745,7 +747,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		if (is_loopback)
 			add_input_loopback(codec, node->nid, HDA_OUTPUT, 0);
 		snd_printdd("[%s] NID=0x%x, DIR=OUT\n", name, node->nid);
-		if ((err = snd_ctl_add(codec->bus->card, snd_ctl_new1(&knew, codec))) < 0)
+		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		if (err < 0)
 			return err;
 		created = 1;
 	}
@@ -764,7 +767,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		knew.put = snd_hda_mixer_amp_volume_put;
 		knew.private_value = ( node->nid | ( 3 << 16) | (HDA_INPUT << 18) | (index << 19));
 		snd_printdd("[%s] NID=0x%x, DIR=IN, IDX=0x%x\n", name, node->nid, index);
-		if ((err = snd_ctl_add(codec->bus->card, snd_ctl_new1(&knew, codec))) < 0)
+		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		if (err < 0)
 			return err;
 		created = 1;
 	} else if ((node->wid_caps & AC_WCAP_OUT_AMP) &&
@@ -777,7 +781,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 	        knew.put = snd_hda_mixer_amp_volume_put;
 	        knew.private_value = (node->nid | (3 << 16) | (HDA_OUTPUT << 18) | (0 << 19));
 		snd_printdd("[%s] NID=0x%x, DIR=OUT\n", name, node->nid);
-		if ((err = snd_ctl_add(codec->bus->card, snd_ctl_new1(&knew, codec))) < 0)
+		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		if (err < 0)
 			return err;
 		created = 1;
 	}
@@ -874,8 +879,8 @@ static int build_input_controls(struct hda_codec *codec)
 	}
 
 	/* create input MUX if multiple sources are available */
-	if ((err = snd_ctl_add(codec->bus->card,
-			       snd_ctl_new1(&cap_sel, codec))) < 0)
+	err = snd_hda_ctl_add(codec, snd_ctl_new1(&cap_sel, codec));
+	if (err < 0)
 		return err;
 
 	/* no volume control? */
@@ -902,8 +907,8 @@ static int build_input_controls(struct hda_codec *codec)
                 knew.put = snd_hda_mixer_amp_volume_put;
                 knew.tlv.c = snd_hda_mixer_amp_tlv,
                 knew.private_value = (adc_node->nid | (3 << 16) | (HDA_INPUT << 18) | (spec->input_mux.items[i].index << 19));
-		if ((err = snd_ctl_add(codec->bus->card,
-				       snd_ctl_new1(&knew, codec))) < 0)
+		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		if (err < 0)
 			return err;
 	}
 

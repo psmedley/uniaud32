@@ -12,7 +12,7 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #   List of source files
 #
 #===================================================================
-FILE1    = hda_intel.obj hda_codec.obj hda_proc.obj hda_hwdep.obj hda_generic.obj
+FILE1    = hda_intel.obj hda_codec.obj hda_proc.obj hda_generic.obj
 FILE2    = patch_realtek.obj patch_cmedia.obj patch_analog.obj patch_sigmatel.obj
 FILE3    = patch_si3054.obj patch_atihdmi.obj patch_conexant.obj patch_via.obj
 FILE4    =

@@ -16,6 +16,7 @@
  */
 
 extern void * __ioremap(unsigned long offset, unsigned long size, unsigned long flags);
+
 #define ioremap(offset, size) __ioremap(offset, size, 0)
 
 /*

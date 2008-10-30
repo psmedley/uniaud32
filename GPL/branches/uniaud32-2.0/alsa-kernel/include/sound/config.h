@@ -39,6 +39,8 @@
 #define __iomem
 #endif
 
+typedef unsigned int fmode_t;
+
 #ifndef cond_resched
 #define cond_resched() \
         do { \
@@ -302,7 +304,7 @@ extern int this_module[64];
 #define CONFIG_SND_HDA_CODEC_CONEXANT
 #define CONFIG_SND_HDA_CODEC_VIA
 #define CONFIG_SND_HDA_GENERIC
-#define CONFIG_SND_HDA_HWDEP
+/*#define CONFIG_SND_HDA_HWDEP*/
 #define CONFIG_PM
 #define CONFIG_HAVE_PCI_DEV_PRESENT
 #define CONFIG_SND_DEBUG_DETECT
@@ -623,5 +625,26 @@ void pci_iounmap(struct pci_dev *dev, void __iomem * addr);
 #define __GFP_NORETRY	0
 
 #define page_to_pfn(page)       (page_to_phys(page) >> PAGE_SHIFT)
+typedef __u32 __le32;
+
+/*
+ * pci_ioremap_bar() wrapper
+ */
+#ifdef CONFIG_PCI
+#ifndef CONFIG_HAVE_PCI_IOREMAP_BAR
+extern void * __ioremap(unsigned long offset, unsigned long size, unsigned long flags);
+#include <linux/pci.h>
+static inline void *pci_ioremap_bar(struct pci_dev *pdev, int bar)
+{
+#if 0
+	return ioremap_nocache(pci_resource_start(pdev, bar),
+			       pci_resource_len(pdev, bar));
+#else
+	return __ioremap(pci_resource_start(pdev, bar),
+			       pci_resource_len(pdev, bar),0x010);
+#endif
+}
+#endif
+#endif
 
 #endif //__ALSA_CONFIG_H__
