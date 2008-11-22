@@ -21,14 +21,13 @@
 #include <sound/control.h>
 #include <sound/ac97_codec.h>
 
-#define SND_SOC_VERSION "0.13.2"
-
 /*
  * Convenience kcontrol builders
  */
 #define SOC_SINGLE_VALUE(xreg, xshift, xmax, xinvert) \
 	((unsigned long)&(struct soc_mixer_control) \
-	{.reg = xreg, .shift = xshift, .max = xmax, .invert = xinvert})
+	{.reg = xreg, .shift = xshift, .rshift = xshift, .max = xmax, \
+	.invert = xinvert})
 #define SOC_SINGLE_VALUE_EXT(xreg, xmax, xinvert) \
 	((unsigned long)&(struct soc_mixer_control) \
 	{.reg = xreg, .max = xmax, .invert = xinvert})
@@ -425,6 +424,7 @@ struct snd_soc_codec {
 	short reg_cache_step;
 
 	/* dapm */
+	u32 pop_time;
 	struct list_head dapm_widgets;
 	struct list_head dapm_paths;
 	enum snd_soc_bias_level bias_level;
@@ -516,6 +516,9 @@ struct snd_soc_device {
 	struct delayed_work delayed_work;
 	struct work_struct deferred_resume_work;
 	void *codec_data;
+#ifdef CONFIG_DEBUG_FS
+	struct dentry	*debugfs_root;
+#endif
 };
 
 /* runtime channel data */

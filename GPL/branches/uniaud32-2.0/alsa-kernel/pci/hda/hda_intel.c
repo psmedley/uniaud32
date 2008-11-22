@@ -45,6 +45,7 @@
 #include <linux/slab.h>
 #include <linux/pci.h>
 #include <linux/mutex.h>
+#include <linux/reboot.h>
 #include <sound/core.h>
 #include <sound/initval.h>
 #include "hda_codec.h"
@@ -410,12 +411,16 @@ struct azx {
 	unsigned int msi :1;
 	unsigned int irq_pending_warned :1;
 	unsigned int via_dmapos_patch :1; /* enable DMA-position fix for VIA */
+	unsigned int probing :1; /* codec probing phase */
 
 	/* for debugging */
 	unsigned int last_cmd;	/* last issued command (to sync) */
 
 	/* for pending irqs */
 	struct work_struct irq_pending_work;
+
+	/* reboot notifier (for mysterious hangup problem at power-down) */
+	struct notifier_block reboot_notifier;
 };
 
 /* driver types */
@@ -542,9 +547,9 @@ static void azx_free_cmd_io(struct azx *chip)
 }
 
 /* send a command */
-static int azx_corb_send_cmd(struct hda_codec *codec, u32 val)
+static int azx_corb_send_cmd(struct hda_bus *bus, u32 val)
 {
-	struct azx *chip = codec->bus->private_data;
+	struct azx *chip = bus->private_data;
 	unsigned int wp;
 
 	/* add command to corb */
@@ -592,9 +597,9 @@ static void azx_update_rirb(struct azx *chip)
 }
 
 /* receive a response */
-static unsigned int azx_rirb_get_response(struct hda_codec *codec)
+static unsigned int azx_rirb_get_response(struct hda_bus *bus)
 {
-	struct azx *chip = codec->bus->private_data;
+	struct azx *chip = bus->private_data;
 	unsigned long timeout;
 
  again:
@@ -611,7 +616,7 @@ static unsigned int azx_rirb_get_response(struct hda_codec *codec)
 		}
 		if (time_after(jiffies, timeout))
 			break;
-		if (codec->bus->needs_damn_long_delay)
+		if (bus->needs_damn_long_delay)
 			msleep(2); /* temporary workaround */
 		else {
 			udelay(10);
@@ -639,6 +644,14 @@ static unsigned int azx_rirb_get_response(struct hda_codec *codec)
 		goto again;
 	}
 
+	if (chip->probing) {
+		/* If this critical timeout happens during the codec probing
+		 * phase, this is likely an access to a non-existing codec
+		 * slot.  Better to return an error and reset the system.
+		 */
+		return -1;
+	}
+
 	snd_printk(KERN_ERR "hda_intel: azx_get_response timeout, "
 		   "switching to single_cmd mode: last cmd=0x%08x\n",
 		   chip->last_cmd);
@@ -661,9 +674,9 @@ static unsigned int azx_rirb_get_response(struct hda_codec *codec)
  */
 
 /* send a command */
-static int azx_single_send_cmd(struct hda_codec *codec, u32 val)
+static int azx_single_send_cmd(struct hda_bus *bus, u32 val)
 {
-	struct azx *chip = codec->bus->private_data;
+	struct azx *chip = bus->private_data;
 	int timeout = 50;
 
 	while (timeout--) {
@@ -686,9 +699,9 @@ static int azx_single_send_cmd(struct hda_codec *codec, u32 val)
 }
 
 /* receive a response */
-static unsigned int azx_single_get_response(struct hda_codec *codec)
+static unsigned int azx_single_get_response(struct hda_bus *bus)
 {
-	struct azx *chip = codec->bus->private_data;
+	struct azx *chip = bus->private_data;
 	int timeout = 50;
 
 	while (timeout--) {
@@ -711,38 +724,29 @@ static unsigned int azx_single_get_response(struct hda_codec *codec)
  */
 
 /* send a command */
-static int azx_send_cmd(struct hda_codec *codec, hda_nid_t nid,
-			int direct, unsigned int verb,
-			unsigned int para)
+static int azx_send_cmd(struct hda_bus *bus, unsigned int val)
 {
-	struct azx *chip = codec->bus->private_data;
-	u32 val;
+	struct azx *chip = bus->private_data;
 
-	val = (u32)(codec->addr & 0x0f) << 28;
-	val |= (u32)direct << 27;
-	val |= (u32)nid << 20;
-	val |= verb << 8;
-	val |= para;
 	chip->last_cmd = val;
-
 	if (chip->single_cmd)
-		return azx_single_send_cmd(codec, val);
+		return azx_single_send_cmd(bus, val);
 	else
-		return azx_corb_send_cmd(codec, val);
+		return azx_corb_send_cmd(bus, val);
 }
 
 /* get a response */
-static unsigned int azx_get_response(struct hda_codec *codec)
+static unsigned int azx_get_response(struct hda_bus *bus)
 {
-	struct azx *chip = codec->bus->private_data;
+	struct azx *chip = bus->private_data;
 	if (chip->single_cmd)
-		return azx_single_get_response(codec);
+		return azx_single_get_response(bus);
 	else
-		return azx_rirb_get_response(codec);
+		return azx_rirb_get_response(bus);
 }
 
 #ifdef CONFIG_SND_HDA_POWER_SAVE
-static void azx_power_notify(struct hda_codec *codec);
+static void azx_power_notify(struct hda_bus *bus);
 #endif
 
 /* reset codec link */
@@ -1217,7 +1221,28 @@ static int azx_setup_controller(struct azx *chip, struct azx_dev *azx_dev)
 	return 0;
 }
 
-static int azx_attach_pcm_stream(struct hda_codec *codec, struct hda_pcm *cpcm);
+/*
+ * Probe the given codec address
+ */
+static int probe_codec(struct azx *chip, int addr)
+{
+	unsigned int cmd = (addr << 28) | (AC_NODE_ROOT << 20) |
+		(AC_VERB_PARAMETERS << 8) | AC_PAR_VENDOR_ID;
+	unsigned int res;
+
+	chip->probing = 1;
+	azx_send_cmd(chip->bus, cmd);
+	res = azx_get_response(chip->bus);
+	chip->probing = 0;
+	if (res == -1)
+		return -EIO;
+	snd_printdd("hda_intel: codec #%d probed OK\n", addr);
+	return 0;
+}
+
+static int azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
+				 struct hda_pcm *cpcm);
+static void azx_stop_chip(struct azx *chip);
 
 /*
  * Codec initialization
@@ -1228,21 +1253,12 @@ static unsigned int azx_max_codecs[AZX_NUM_DRIVERS] __devinitdata = {
 	[AZX_DRIVER_TERA] = 1,
 };
 
-/* number of slots to probe as default
- * this can be different from azx_max_codecs[] -- e.g. some boards
- * report wrongly the non-existing 4th slot availability
- */
-static unsigned int azx_default_codecs[AZX_NUM_DRIVERS] __devinitdata = {
-	[AZX_DRIVER_ICH] = 3,
-	[AZX_DRIVER_ATI] = 3,
-};
-
 static int __devinit azx_codec_create(struct azx *chip, const char *model,
 				      unsigned int codec_probe_mask)
 {
 	struct hda_bus_template bus_temp;
-	int c, codecs, audio_codecs, err;
-	int def_slots, max_slots;
+	int c, codecs, err;
+	int max_slots;
 
 	memset(&bus_temp, 0, sizeof(bus_temp));
 	bus_temp.private_data = chip;
@@ -1262,33 +1278,43 @@ static int __devinit azx_codec_create(struct azx *chip, const char *model,
 	if (chip->driver_type == AZX_DRIVER_NVIDIA)
 		chip->bus->needs_damn_long_delay = 1;
 
-	codecs = audio_codecs = 0;
+	codecs = 0;
 	max_slots = azx_max_codecs[chip->driver_type];
 	if (!max_slots)
 		max_slots = AZX_MAX_CODECS;
-	def_slots = azx_default_codecs[chip->driver_type];
-	if (!def_slots)
-		def_slots = max_slots;
-	for (c = 0; c < def_slots; c++) {
+
+	/* First try to probe all given codec slots */
+	for (c = 0; c < max_slots; c++) {
+		if ((chip->codec_mask & (1 << c)) & codec_probe_mask) {
+			if (probe_codec(chip, c) < 0) {
+				/* Some BIOSen give you wrong codec addresses
+				 * that don't exist
+				 */
+				snd_printk(KERN_WARNING
+					   "hda_intel: Codec #%d probe error; "
+					   "disabling it...\n", c);
+				chip->codec_mask &= ~(1 << c);
+				/* More badly, accessing to a non-existing
+				 * codec often screws up the controller chip,
+				 * and distrubs the further communications.
+				 * Thus if an error occurs during probing,
+				 * better to reset the controller chip to
+				 * get back to the sanity state.
+				 */
+				azx_stop_chip(chip);
+				azx_init_chip(chip);
+			}
+		}
+	}
+
+	/* Then create codec instances */
+	for (c = 0; c < max_slots; c++) {
 		if ((chip->codec_mask & (1 << c)) & codec_probe_mask) {
 			struct hda_codec *codec;
 			err = snd_hda_codec_new(chip->bus, c, &codec);
 			if (err < 0)
 				continue;
 			codecs++;
-			if (codec->afg)
-				audio_codecs++;
-		}
-	}
-	if (!audio_codecs) {
-		/* probe additional slots if no codec is found */
-		for (; c < max_slots; c++) {
-			if ((chip->codec_mask & (1 << c)) & codec_probe_mask) {
-				err = snd_hda_codec_new(chip->bus, c, NULL);
-				if (err < 0)
-					continue;
-				codecs++;
-			}
 		}
 	}
 	if (!codecs) {
@@ -1765,9 +1791,10 @@ static void azx_pcm_free(struct snd_pcm *pcm)
 }
 
 static int
-azx_attach_pcm_stream(struct hda_codec *codec, struct hda_pcm *cpcm)
+azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
+		      struct hda_pcm *cpcm)
 {
-	struct azx *chip = codec->bus->private_data;
+	struct azx *chip = bus->private_data;
 	struct snd_pcm *pcm;
 	struct azx_pcm *apcm;
  	int pcm_dev = cpcm->device;
@@ -1887,13 +1914,13 @@ static void azx_stop_chip(struct azx *chip)
 
 #ifdef CONFIG_SND_HDA_POWER_SAVE
 /* power-up/down the controller */
-static void azx_power_notify(struct hda_codec *codec)
+static void azx_power_notify(struct hda_bus *bus)
 {
-	struct azx *chip = codec->bus->private_data;
+ 	struct azx *chip = bus->private_data;
 	struct hda_codec *c;
 	int power_on = 0;
 
-	list_for_each_entry(c, &codec->bus->codec_list, list, struct hda_codec) {
+ 	list_for_each_entry(c, &bus->codec_list, list, struct hda_codec) {
 		if (c->power_on) {
 			power_on = 1;
 			break;
@@ -1967,11 +1994,35 @@ static int azx_resume(struct pci_dev *pci)
 
 
 /*
+ * reboot notifier for hang-up problem at power-down
+ */
+static int azx_halt(struct notifier_block *nb, unsigned long event, void *buf)
+{
+	struct azx *chip = container_of(nb, struct azx, reboot_notifier);
+	azx_stop_chip(chip);
+	return NOTIFY_OK;
+}
+
+static void azx_notifier_register(struct azx *chip)
+{
+	chip->reboot_notifier.notifier_call = azx_halt;
+	register_reboot_notifier(&chip->reboot_notifier);
+}
+
+static void azx_notifier_unregister(struct azx *chip)
+{
+	if (chip->reboot_notifier.notifier_call)
+		unregister_reboot_notifier(&chip->reboot_notifier);
+}
+
+/*
  * destructor
  */
 static int azx_free(struct azx *chip)
 {
 	int i;
+
+	azx_notifier_unregister(chip);
 
 	if (chip->initialized) {
 		azx_clear_irq_pending(chip);
@@ -2058,6 +2109,8 @@ static struct snd_pci_quirk probe_mask_list[] __devinitdata = {
 	SND_PCI_QUIRK(0x1014, 0x05b7, "Thinkpad Z60", 0x01),
 	SND_PCI_QUIRK(0x17aa, 0x2010, "Thinkpad X/T/R60", 0x01),
 	SND_PCI_QUIRK(0x17aa, 0x20ac, "Thinkpad X/T/R61", 0x01),
+ 	/* broken BIOS */
+ 	SND_PCI_QUIRK(0x1028, 0x20ac, "Dell Studio Desktop", 0x01),
 	{0}
 };
 
@@ -2339,6 +2392,7 @@ static int __devinit azx_probe(struct pci_dev *pci,
 	pci_set_drvdata(pci, card);
 	chip->running = 1;
 	power_down_all_codecs(chip);
+	azx_notifier_register(chip);
 
 	dev++;
 	return err;
