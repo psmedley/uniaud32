@@ -656,7 +656,7 @@ int pci_request_regions(struct pci_dev *pdev, char *res_name);
 void pci_disable_device(struct pci_dev *dev);
 
 void pci_save_state(struct pci_dev *dev);
-void pci_restore_state(struct pci_dev *dev);
+int pci_restore_state(struct pci_dev *dev);
 
 unsigned long pci_get_dma_mask(struct pci_dev *);
 int pci_set_dma_mask(struct pci_dev *, unsigned long mask);

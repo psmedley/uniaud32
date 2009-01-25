@@ -1452,7 +1452,7 @@ static int snd_hdsp_create_midi (struct snd_card *card, struct hdsp *hdsp, int i
 	if (snd_rawmidi_new (card, buf, id, 1, 1, &hdsp->midi[id].rmidi) < 0)
 		return -1;
 
-	sprintf (hdsp->midi[id].rmidi->name, "%s MIDI %d", card->id, id+1);
+	sprintf(hdsp->midi[id].rmidi->name, "HDSP MIDI %d", id+1);
 	hdsp->midi[id].rmidi->private_data = &hdsp->midi[id];
 
 	snd_rawmidi_set_ops (hdsp->midi[id].rmidi, SNDRV_RAWMIDI_STREAM_OUTPUT, &snd_hdsp_midi_output);
@@ -3750,7 +3750,7 @@ static irqreturn_t snd_hdsp_interrupt(int irq, void *dev_id)
 		}
 	}
 	if (hdsp->use_midi_tasklet && schedule)
-		tasklet_hi_schedule(&hdsp->midi_tasklet);
+		tasklet_schedule(&hdsp->midi_tasklet);
 	return IRQ_HANDLED;
 }
 
@@ -5158,8 +5158,10 @@ static int __devinit snd_hdsp_probe(struct pci_dev *pci,
 		return -ENOENT;
 	}
 
-	if (!(card = snd_card_new(index[dev], id[dev], THIS_MODULE, sizeof(struct hdsp))))
-		return -ENOMEM;
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE,
+			      sizeof(struct hdsp), &card);
+	if (err < 0)
+		return err;
 
 	hdsp = (struct hdsp *) card->private_data;
 	card->private_free = snd_hdsp_card_free;

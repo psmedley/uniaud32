@@ -1962,7 +1962,7 @@ static irqreturn_t snd_es1968_interrupt(int irq, void *dev_id)
 	outw(inw(chip->io_port + 4) & 1, chip->io_port + 4);
 
 	if (event & ESM_HWVOL_IRQ)
-		tasklet_hi_schedule(&chip->hwvol_tq); /* we'll do this later */
+		tasklet_schedule(&chip->hwvol_tq); /* we'll do this later */
 
 	/* else ack 'em all, i imagine */
 	outb(0xFF, chip->io_port + 0x1A);
@@ -2654,9 +2654,9 @@ static int __devinit snd_es1968_probe(struct pci_dev *pci,
 		return -ENOENT;
 	}
 
-	card = snd_card_new(index[dev], id[dev], THIS_MODULE, 0);
-	if (!card)
-		return -ENOMEM;
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &card);
+	if (err < 0)
+		return err;
                 
 	if (total_bufsize[dev] < 128)
 		total_bufsize[dev] = 128;

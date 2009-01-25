@@ -754,7 +754,7 @@ void pci_save_state(struct pci_dev *pci)
     printk(KERN_DEBUG "snd: no pci config space found!\n");
 }
 
-void pci_restore_state(struct pci_dev *pci)
+int pci_restore_state(struct pci_dev *pci)
 {
     int i;
     /* FIXME: mutex needed for race? */
@@ -762,10 +762,11 @@ void pci_restore_state(struct pci_dev *pci)
         if (saved_tbl[i].pci == pci) {
             saved_tbl[i].pci = NULL;
             pci_orig_restore_state(pci, saved_tbl[i].config);
-            return;
+            return 0;
         }
     }
     printk(KERN_DEBUG "snd: no saved pci config!\n");
+    return 1;
 }
 
 void pci_disable_device(struct pci_dev *dev)

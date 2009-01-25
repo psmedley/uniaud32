@@ -55,17 +55,30 @@ static __inline__ void list_add_tail(struct list_head *new, struct list_head *he
 #define snd_kill_fasync(fp, sig, band) kill_fasync(*(fp), sig, band)
 #endif
 
-#define tasklet_hi_schedule(t)	queue_task((t), &tq_immediate); \
-				mark_bh(IMMEDIATE_BH)
+/* this is identical with tq_struct but the "routine" field is renamed to "func" */
+struct tasklet_struct {
+	struct tasklet_struct *next;	/* linked list of active bh's */
+	unsigned long sync;		/* must be initialized to zero */
+	void (*func)(void *);		/* function to call */
+	void *data;			/* argument to function */
+};
 
-#define tasklet_init(t,f,d)	(t)->next = NULL; \
-				(t)->sync = 0; \
-				(t)->routine = (void (*)(void *))(f); \
-				(t)->data = (void *)(d)
+#define tasklet_schedule(t)	do { \
+	queue_task((struct tq_struct *)(t), &tq_immediate);\
+	mark_bh(IMMEDIATE_BH); \
+} while (0)
 
-#define tasklet_struct		tq_struct 
+#define tasklet_hi_schedule(t)	tasklet_schedule(t)
+
+#define tasklet_init(t,f,d)	do { \
+	(t)->next = NULL; \
+	(t)->sync = 0; \
+	(t)->func = (void (*)(void *))(f); \
+	(t)->data = (void *)(d); \
+} while (0)
 
 #define tasklet_unlock_wait(t)	while (test_bit(0, &(t)->sync)) { }
+#define tasklet_kill(t)		tasklet_unlock_wait(t) /* FIXME: world is not perfect... */
 
 #define rwlock_init(x) do { *(x) = RW_LOCK_UNLOCKED; } while(0)
 

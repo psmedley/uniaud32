@@ -91,31 +91,21 @@ static void print_amp_vals(struct snd_info_buffer *buffer,
 
 static void print_pcm_rates(struct snd_info_buffer *buffer, unsigned int pcm)
 {
-	static unsigned int rates[] = {
-		8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200,
-		96000, 176400, 192000, 384000
-	};
-	int i;
+	char buf[SND_PRINT_RATES_ADVISED_BUFSIZE];
 
 	pcm &= AC_SUPPCM_RATES;
 	snd_iprintf(buffer, "    rates [0x%x]:", pcm);
-	for (i = 0; i < ARRAY_SIZE(rates); i++) 
-		if (pcm & (1 << i))
-			snd_iprintf(buffer, " %d", rates[i]);
-	snd_iprintf(buffer, "\n");
+	snd_print_pcm_rates(pcm, buf, sizeof(buf));
+	snd_iprintf(buffer, "%s\n", buf);
 }
 
 static void print_pcm_bits(struct snd_info_buffer *buffer, unsigned int pcm)
 {
-	static unsigned int bits[] = { 8, 16, 20, 24, 32 };
-	int i;
+	char buf[SND_PRINT_BITS_ADVISED_BUFSIZE];
 
-	pcm = (pcm >> 16) & 0xff;
-	snd_iprintf(buffer, "    bits [0x%x]:", pcm);
-	for (i = 0; i < ARRAY_SIZE(bits); i++)
-		if (pcm & (1 << i))
-			snd_iprintf(buffer, " %d", bits[i]);
-	snd_iprintf(buffer, "\n");
+	snd_iprintf(buffer, "    bits [0x%x]:", (pcm >> 16) & 0xff);
+	snd_print_pcm_bits(pcm, buf, sizeof(buf));
+	snd_iprintf(buffer, "%s\n", buf);
 }
 
 static void print_pcm_formats(struct snd_info_buffer *buffer,
@@ -424,17 +414,6 @@ static void print_conn_list(struct snd_info_buffer *buffer,
 	}
 }
 
-static void print_realtek_coef(struct snd_info_buffer *buffer,
-			       struct hda_codec *codec, hda_nid_t nid)
-{
-	int coeff = snd_hda_codec_read(codec, nid, 0,
-				       AC_VERB_GET_PROC_COEF, 0);
-	snd_iprintf(buffer, "  Processing Coefficient: 0x%02x\n", coeff);
-	coeff = snd_hda_codec_read(codec, nid, 0,
-				   AC_VERB_GET_COEF_INDEX, 0);
-	snd_iprintf(buffer, "  Coefficient Index: 0x%02x\n", coeff);
-}
-
 static void print_gpio(struct snd_info_buffer *buffer,
 		       struct hda_codec *codec, hda_nid_t nid)
 {
@@ -467,12 +446,13 @@ static void print_gpio(struct snd_info_buffer *buffer,
 	for (i = 0; i < max; ++i)
 		snd_iprintf(buffer,
 			    "  IO[%d]: enable=%d, dir=%d, wake=%d, "
-			    "sticky=%d, data=%d\n", i,
+			    "sticky=%d, data=%d, unsol=%d\n", i,
 			    (enable & (1<<i)) ? 1 : 0,
 			    (direction & (1<<i)) ? 1 : 0,
 			    (wake & (1<<i)) ? 1 : 0,
 			    (sticky & (1<<i)) ? 1 : 0,
-			    (data & (1<<i)) ? 1 : 0);
+			    (data & (1<<i)) ? 1 : 0,
+			    (unsol & (1<<i)) ? 1 : 0);
 	/* FIXME: add GPO and GPI pin information */
 }
 
@@ -513,6 +493,8 @@ static void print_codec_info(struct snd_info_entry *entry,
 	}
 
 	print_gpio(buffer, codec, codec->afg);
+	if (codec->proc_widget_hook)
+		codec->proc_widget_hook(buffer, codec, codec->afg);
 
 	for (i = 0; i < nodes; i++, nid++) {
 		unsigned int wid_caps =
@@ -615,9 +597,8 @@ static void print_codec_info(struct snd_info_entry *entry,
 		if (wid_caps & AC_WCAP_PROC_WID)
 			print_proc_caps(buffer, codec, nid);
 
-		/* NID 0x20 == Realtek Define Registers */
-		if (codec->vendor_id == 0x10ec && nid == 0x20)
-			print_realtek_coef(buffer, codec, nid);
+		if (codec->proc_widget_hook)
+			codec->proc_widget_hook(buffer, codec, nid);
 	}
 	snd_hda_power_down(codec);
 }

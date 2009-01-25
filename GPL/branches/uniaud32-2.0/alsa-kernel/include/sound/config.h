@@ -39,6 +39,10 @@
 #define __iomem
 #endif
 
+#ifndef __deprecated
+# define __deprecated           /* unimplemented */
+#endif
+
 typedef unsigned int fmode_t;
 
 #ifndef cond_resched
@@ -222,6 +226,8 @@ struct delayed_work {
         struct work_struct n = __WORK_INITIALIZER(n, f, d)
 int snd_compat_schedule_work(struct work_struct *work);
 #define schedule_work(w) snd_compat_schedule_work(w)
+void snd_compat_flush_workqueue(struct workqueue_struct *wq);
+#define flush_workqueue(wq) snd_compat_flush_workqueue((wq));
 
 /* Name change */
 typedef struct timeval snd_timestamp_t;
@@ -308,6 +314,7 @@ extern int this_module[64];
 #define CONFIG_PM
 #define CONFIG_HAVE_PCI_DEV_PRESENT
 #define CONFIG_SND_DEBUG_DETECT
+#define CONFIG_SND_DEBUG_VERBOSE
 #define CONFIG_SYSFS_DEPRECATED
 #undef interrupt
 

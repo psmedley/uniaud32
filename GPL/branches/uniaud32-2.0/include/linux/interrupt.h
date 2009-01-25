@@ -78,6 +78,8 @@ struct tasklet_struct {
 
 extern void tasklet_hi_schedule(struct tasklet_struct *t);
 
+#define tasklet_schedule tasklet_hi_schedule
+
 extern void tasklet_init(struct tasklet_struct *t,
 			 void (*func)(unsigned long), unsigned long data);
 

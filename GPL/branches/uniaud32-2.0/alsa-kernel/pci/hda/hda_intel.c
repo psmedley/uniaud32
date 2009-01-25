@@ -50,6 +50,7 @@
 #include <sound/initval.h>
 #include "hda_codec.h"
 
+
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;
 static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;
@@ -62,6 +63,7 @@ static int probe_mask[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS-1)] = -1};
 static int bdl_pos_adj[SNDRV_CARDS] = {-1};
 static int probe_mask[SNDRV_CARDS] = {-1};
 #endif
+static int probe_only[SNDRV_CARDS];
 static int single_cmd;
 static int enable_msi;
 
@@ -80,6 +82,8 @@ module_param_array(bdl_pos_adj, int, NULL, 0644);
 MODULE_PARM_DESC(bdl_pos_adj, "BDL position adjustment offset.");
 module_param_array(probe_mask, int, NULL, 0444);
 MODULE_PARM_DESC(probe_mask, "Bitmask to probe codecs (default = -1).");
+module_param_array(probe_only, bool, NULL, 0444);
+MODULE_PARM_DESC(probe_only, "Only probing and no codec initialization.");
 module_param(single_cmd, bool, 0444);
 MODULE_PARM_DESC(single_cmd, "Use single command to communicate with codecs "
 		 "(for debugging only).");
@@ -87,7 +91,10 @@ module_param(enable_msi, int, 0444);
 MODULE_PARM_DESC(enable_msi, "Enable Message Signaled Interrupt (MSI)");
 
 #ifdef CONFIG_SND_HDA_POWER_SAVE
-/* power_save option is defined in hda_codec.c */
+static int power_save = CONFIG_SND_HDA_POWER_SAVE_DEFAULT;
+module_param(power_save, int, 0644);
+MODULE_PARM_DESC(power_save, "Automatic power-saving timeout "
+		 "(in second, 0 = disable).");
 
 /* reset the HD-audio controller in power save mode.
  * this may give more power-saving, but will take longer time to
@@ -296,6 +303,8 @@ enum {
 /* Define VIA HD Audio Device ID*/
 #define VIA_HDAC_DEVICE_ID		0x3288
 
+/* HD Audio class code */
+#define PCI_CLASS_MULTIMEDIA_HD_AUDIO	0x0403
 
 /*
  */
@@ -434,6 +443,7 @@ enum {
 	AZX_DRIVER_ULI,
 	AZX_DRIVER_NVIDIA,
 	AZX_DRIVER_TERA,
+	AZX_DRIVER_GENERIC,
 	AZX_NUM_DRIVERS, /* keep this as last entry */
 };
 
@@ -447,6 +457,7 @@ static char *driver_short_names[] __devinitdata = {
 	[AZX_DRIVER_ULI] = "HDA ULI M5461",
 	[AZX_DRIVER_NVIDIA] = "HDA NVidia",
 	[AZX_DRIVER_TERA] = "HDA Teradici", 
+	[AZX_DRIVER_GENERIC] = "HD-Audio Generic",
 };
 
 /*
@@ -1011,12 +1022,11 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 				spin_unlock(&chip->reg_lock);
 				snd_pcm_period_elapsed(azx_dev->substream);
 				spin_lock(&chip->reg_lock);
-			} else {
+			} else if (chip->bus && chip->bus->workq) {
 				/* bogus IRQ, process it later */
 				azx_dev->irq_pending = 1;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
-				schedule_work(&chip->irq_pending_work);
-#endif
+				queue_work(chip->bus->workq,
+					   &chip->irq_pending_work);
 			}
 		}
 	}
@@ -1254,7 +1264,8 @@ static unsigned int azx_max_codecs[AZX_NUM_DRIVERS] __devinitdata = {
 };
 
 static int __devinit azx_codec_create(struct azx *chip, const char *model,
-				      unsigned int codec_probe_mask)
+				      unsigned int codec_probe_mask,
+				      int no_init)
 {
 	struct hda_bus_template bus_temp;
 	int c, codecs, err;
@@ -1268,6 +1279,7 @@ static int __devinit azx_codec_create(struct azx *chip, const char *model,
 	bus_temp.ops.get_response = azx_get_response;
 	bus_temp.ops.attach_pcm = azx_attach_pcm_stream;
 #ifdef CONFIG_SND_HDA_POWER_SAVE
+	bus_temp.power_save = &power_save;
 	bus_temp.ops.pm_notify = azx_power_notify;
 #endif
 
@@ -1311,7 +1323,7 @@ static int __devinit azx_codec_create(struct azx *chip, const char *model,
 	for (c = 0; c < max_slots; c++) {
 		if ((chip->codec_mask & (1 << c)) & codec_probe_mask) {
 			struct hda_codec *codec;
-			err = snd_hda_codec_new(chip->bus, c, &codec);
+			err = snd_hda_codec_new(chip->bus, c, !no_init, &codec);
 			if (err < 0)
 				continue;
 			codecs++;
@@ -1766,7 +1778,6 @@ static void azx_clear_irq_pending(struct azx *chip)
 	for (i = 0; i < chip->num_streams; i++)
 		chip->azx_dev[i].irq_pending = 0;
 	spin_unlock_irq(&chip->reg_lock);
-	flush_scheduled_work();
 }
 
 static struct snd_pcm_ops azx_pcm_ops = {
@@ -1937,6 +1948,18 @@ static void azx_power_notify(struct hda_bus *bus)
 /*
  * power management
  */
+
+static int snd_hda_codecs_inuse(struct hda_bus *bus)
+{
+	struct hda_codec *codec;
+
+	list_for_each_entry(codec, &bus->codec_list, list, struct hda_codec) {
+		if (snd_hda_codec_needs_resume(codec))
+			return 1;
+	}
+	return 0;
+}
+
 static int azx_suspend(struct pci_dev *pci, pm_message_t state)
 {
 	struct snd_card *card = pci_get_drvdata(pci);
@@ -1962,13 +1985,22 @@ static int azx_suspend(struct pci_dev *pci, pm_message_t state)
 	return 0;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
+static int azx_resume_early(struct pci_dev *pci)
+{
+	return pci_restore_state(pci);
+}
+#endif
+
 static int azx_resume(struct pci_dev *pci)
 {
 	struct snd_card *card = pci_get_drvdata(pci);
 	struct azx *chip = card->private_data;
 
-	pci_set_power_state(pci, PCI_D0);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 19)
 	pci_restore_state(pci);
+#endif
+
 	if (pci_enable_device(pci) < 0) {
 		printk(KERN_ERR "hda-intel: pci_enable_device failed, "
 		       "disabling device\n");
@@ -2109,8 +2141,10 @@ static struct snd_pci_quirk probe_mask_list[] __devinitdata = {
 	SND_PCI_QUIRK(0x1014, 0x05b7, "Thinkpad Z60", 0x01),
 	SND_PCI_QUIRK(0x17aa, 0x2010, "Thinkpad X/T/R60", 0x01),
 	SND_PCI_QUIRK(0x17aa, 0x20ac, "Thinkpad X/T/R61", 0x01),
- 	/* broken BIOS */
- 	SND_PCI_QUIRK(0x1028, 0x20ac, "Dell Studio Desktop", 0x01),
+	/* broken BIOS */
+	SND_PCI_QUIRK(0x1028, 0x20ac, "Dell Studio Desktop", 0x01),
+	/* including bogus ALC268 in slot#2 that conflicts with ALC888 */
+	SND_PCI_QUIRK(0x17c0, 0x4085, "Medion MD96630", 0x01),
 	{0}
 };
 
@@ -2245,6 +2279,7 @@ static int __devinit azx_create(struct snd_card *card, struct pci_dev *pci,
 			chip->playback_streams = ATIHDMI_NUM_PLAYBACK;
 			chip->capture_streams = ATIHDMI_NUM_CAPTURE;
 			break;
+		case AZX_DRIVER_GENERIC:
 		default:
 			chip->playback_streams = ICH6_NUM_PLAYBACK;
 			chip->capture_streams = ICH6_NUM_CAPTURE;
@@ -2347,47 +2382,38 @@ static int __devinit azx_probe(struct pci_dev *pci,
 		return -ENOENT;
 	}
 
-	card = snd_card_new(index[dev], id[dev], THIS_MODULE, 0);
-	if (!card) {
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &card);
+	if (err < 0) {
 		snd_printk(KERN_ERR SFX "Error creating card!\n");
-		return -ENOMEM;
+		return err;
 	}
 
 	err = azx_create(card, pci, dev, pci_id->driver_data, &chip);
-	if (err < 0) {
-		snd_card_free(card);
-		return err;
-	}
+	if (err < 0)
+		goto out_free;
 	card->private_data = chip;
 
 	/* create codec instances */
-	err = azx_codec_create(chip, model[dev], probe_mask[dev]);
-	if (err < 0) {
-		snd_card_free(card);
-		return err;
-	}
+	err = azx_codec_create(chip, model[dev], probe_mask[dev],
+			       probe_only[dev]);
+	if (err < 0)
+		goto out_free;
 
 	/* create PCM streams */
 	err = snd_hda_build_pcms(chip->bus);
-	if (err < 0) {
-		snd_card_free(card);
-		return err;
-	}
+	if (err < 0)
+		goto out_free;
 
 	/* create mixer controls */
 	err = azx_mixer_create(chip);
-	if (err < 0) {
-		snd_card_free(card);
-		return err;
-	}
+	if (err < 0)
+		goto out_free;
 
 	snd_card_set_dev(card, &pci->dev);
 
 	err = snd_card_register(card);
-	if (err < 0) {
-		snd_card_free(card);
-		return err;
-	}
+	if (err < 0)
+		goto out_free;
 
 	pci_set_drvdata(pci, card);
 	chip->running = 1;
@@ -2395,6 +2421,9 @@ static int __devinit azx_probe(struct pci_dev *pci,
 	azx_notifier_register(chip);
 
 	dev++;
+	return err;
+out_free:
+	snd_card_free(card);
 	return err;
 }
 
@@ -2469,6 +2498,11 @@ static struct pci_device_id azx_ids[] = {
 	{ PCI_DEVICE(0x10de, 0x0bd7), .driver_data = AZX_DRIVER_NVIDIA },
 	/* Teradici */
 	{ PCI_DEVICE(0x6549, 0x1200), .driver_data = AZX_DRIVER_TERA },
+	/* AMD Generic, PCI class code and Vendor ID for HD Audio */
+	{ PCI_DEVICE(PCI_VENDOR_ID_ATI, PCI_ANY_ID),
+	  .class = PCI_CLASS_MULTIMEDIA_HD_AUDIO << 8,
+	  .class_mask = 0xffffff,
+	  .driver_data = AZX_DRIVER_GENERIC },
 	{ 0, }
 };
 MODULE_DEVICE_TABLE(pci, azx_ids);
@@ -2481,6 +2515,9 @@ static struct pci_driver driver = {
 	.remove = __devexit_p(azx_remove),
 #ifdef CONFIG_PM
 	.suspend = azx_suspend,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
+	.resume_early = azx_resume_early,
+#endif
 	.resume = azx_resume,
 #endif
 };

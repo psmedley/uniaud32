@@ -2438,9 +2438,9 @@ static int __devinit snd_via82xx_probe(struct pci_dev *pci,
 	unsigned char revision = snd_pci_revision(pci);
 #endif
 
-	card = snd_card_new(index, id, THIS_MODULE, 0);
-	if (card == NULL)
-		return -ENOMEM;
+	err = snd_card_create(index, id, THIS_MODULE, 0, &card);
+	if (err < 0)
+		return err;
 
 	card_type = pci_id->driver_data;
 	switch (card_type) {
