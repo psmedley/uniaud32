@@ -1099,11 +1099,8 @@ static int azx_setup_periods(struct azx *chip,
 			     struct snd_pcm_substream *substream,
 			     struct azx_dev *azx_dev)
 {
-#ifdef TARGET_OS2
-	volatile u32 *bdl;
-#else
 	u32 *bdl;
-#endif
+
 	int i, ofs, periods, period_bytes;
 	int pos_adj;
 

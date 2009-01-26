@@ -2970,7 +2970,11 @@ static void snd_pcm_oss_proc_done(struct snd_pcm *pcm)
  *  ENTRY functions
  */
 
+#ifndef TARGET_OS2
 static const struct file_operations snd_pcm_oss_f_reg =
+#else
+static struct file_operations snd_pcm_oss_f_reg =
+#endif
 {
 #ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
