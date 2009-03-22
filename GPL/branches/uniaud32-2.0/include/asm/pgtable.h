@@ -68,12 +68,25 @@ do { unsigned long tmpreg; __asm__ __volatile__("movl %%cr3,%0\n\tmovl %0,%%cr3"
 
 #define __beep() asm("movb $0x3,%al; outb %al,$0x61")
 
+/* PMD_SHIFT determines the size of the area a second-level page table can map */
+#define PMD_SHIFT	22
 #define PMD_SIZE	(1UL << PMD_SHIFT)
 #define PMD_MASK	(~(PMD_SIZE-1))
+
+/* PGDIR_SHIFT determines what a third-level page table entry can map */
+#define PGDIR_SHIFT	22
 #define PGDIR_SIZE	(1UL << PGDIR_SHIFT)
 #define PGDIR_MASK	(~(PGDIR_SIZE-1))
 
+/*
+ * entries per page directory level: the i386 is two-level, so
+ * we don't really have any PMD directory physically.
+ */
+#define PTRS_PER_PTE	1024
+#define PTRS_PER_PMD	1
+#define PTRS_PER_PGD	1024
 #define USER_PTRS_PER_PGD	(TASK_SIZE/PGDIR_SIZE)
+
 
 #define USER_PGD_PTRS (PAGE_OFFSET >> PGDIR_SHIFT)
 #define KERNEL_PGD_PTRS (PTRS_PER_PGD-USER_PGD_PTRS)
@@ -188,6 +201,12 @@ extern void __handle_bad_pmd_kernel(pmd_t * pmd);
 #define page_address(page) page
 #define pages_to_mb(x) ((x) >> (20-PAGE_SHIFT))
 #define pte_page(x) (mem_map+pte_pagenr(x))
+
+/* Find an entry in the second-level page table.. */
+extern inline pmd_t * pmd_offset(pgd_t * dir, unsigned long address)
+{
+	return (pmd_t *) dir;
+}
 
 /*
  * The following only work if pte_present() is true.
