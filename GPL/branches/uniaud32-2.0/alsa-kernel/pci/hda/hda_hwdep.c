@@ -116,7 +116,7 @@ static void hwdep_free(struct snd_hwdep *hwdep)
 	clear_hwdep_elements(hwdep->private_data);
 }
 
-int /*__devinit*/ snd_hda_create_hwdep(struct hda_codec *codec)
+int __devinit snd_hda_create_hwdep(struct hda_codec *codec)
 {
 	char hwname[16];
 	struct snd_hwdep *hwdep;
@@ -145,8 +145,6 @@ int /*__devinit*/ snd_hda_create_hwdep(struct hda_codec *codec)
 	return 0;
 }
 
-#ifdef CONFIG_SND_HDA_RECONFIG
-
 /*
  * sysfs interface
  */
@@ -168,7 +166,7 @@ static int reconfig_codec(struct hda_codec *codec)
 	if (err < 0)
 		return err;
 	/* rebuild PCMs */
-	err = snd_hda_codec_build_pcms(codec);
+	err = snd_hda_build_pcms(codec->bus);
 	if (err < 0)
 		return err;
 	/* rebuild mixers */
@@ -315,6 +313,7 @@ static ssize_t hints_store(struct device *dev,
 	return count;
 }
 
+#ifndef TARGET_OS2
 #define CODEC_ATTR_RW(type) \
 	__ATTR(type, 0644, type##_show, type##_store)
 #define CODEC_ATTR_RO(type) \
@@ -349,5 +348,4 @@ int snd_hda_hwdep_add_sysfs(struct hda_codec *codec)
 					  hwdep->device, &codec_attrs[i]);
 	return 0;
 }
-
-#endif /* CONFIG_SND_HDA_RECONFIG */
+#endif /* TARGET_OS2 */

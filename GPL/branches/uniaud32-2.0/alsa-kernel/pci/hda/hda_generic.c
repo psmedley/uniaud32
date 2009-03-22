@@ -731,19 +731,14 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 			add_input_loopback(codec, node->nid, HDA_INPUT, index);
 		snd_printdd("[%s] NID=0x%x, DIR=IN, IDX=0x%x\n", name, node->nid, index);
 		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
-#ifndef TARGET_OS2
 		if (err < 0)
 			return err;
-#else
-		if (err < 0)
-			snd_printdd("Failed here\n");
-#endif
 		created = 1;
 	} else if ((node->wid_caps & AC_WCAP_OUT_AMP) &&
 		   (node->amp_out_caps & AC_AMPCAP_MUTE)) {
 		/*knew = (struct snd_kcontrol_new)HDA_CODEC_MUTE(name, node->nid, 0, HDA_OUTPUT);*/
 		knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-		knew.index = 0;
+		knew.index = index;
 		knew.name = name;
 		knew.info = snd_hda_mixer_amp_switch_info;
 		knew.get = snd_hda_mixer_amp_switch_get;
@@ -751,15 +746,10 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		knew.private_value = (node->nid | (3 << 16) | (HDA_OUTPUT << 18) | (0 << 19));
 		if (is_loopback)
 			add_input_loopback(codec, node->nid, HDA_OUTPUT, 0);
-		snd_printdd("[%s] NID=0x%x, DIR=OUT1\n", name, node->nid);
+		snd_printdd("[%s] NID=0x%x, DIR=OUT\n", name, node->nid);
 		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
-#ifndef TARGET_OS2
 		if (err < 0)
 			return err;
-#else
-		if (err < 0)
-			snd_printdd("Failed here1\n");
-#endif
 		created = 1;
 	}
 
@@ -778,13 +768,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		knew.private_value = ( node->nid | ( 3 << 16) | (HDA_INPUT << 18) | (index << 19));
 		snd_printdd("[%s] NID=0x%x, DIR=IN, IDX=0x%x\n", name, node->nid, index);
 		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
-#ifndef TARGET_OS2
 		if (err < 0)
 			return err;
-#else
-		if (err < 0)
-			snd_printdd("Failed here2\n");
-#endif
 		created = 1;
 	} else if ((node->wid_caps & AC_WCAP_OUT_AMP) &&
 		   (node->amp_out_caps & AC_AMPCAP_NUM_STEPS)) {
@@ -797,13 +782,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 	        knew.private_value = (node->nid | (3 << 16) | (HDA_OUTPUT << 18) | (0 << 19));
 		snd_printdd("[%s] NID=0x%x, DIR=OUT\n", name, node->nid);
 		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
-#ifndef TARGET_OS2
 		if (err < 0)
 			return err;
-#else
-		if (err < 0)
-			snd_printdd("Failed here3\n");
-#endif
 		created = 1;
 	}
 
@@ -1157,4 +1137,3 @@ int snd_hda_parse_generic_codec(struct hda_codec *codec)
 	snd_hda_generic_free(codec);
 	return err;
 }
-EXPORT_SYMBOL(snd_hda_parse_generic_codec);
