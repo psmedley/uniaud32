@@ -134,6 +134,18 @@ int pcidev_deactivate(struct pci_dev *dev)
 
 //******************************************************************************
 //******************************************************************************
+#ifdef ACPI 
+struct SaveIRQForSlot
+{
+    ULONG  ulSlotNo;
+    BYTE   LowIRQ;
+    BYTE   HighIRQ;
+    BYTE   Pin;   
+};
+extern struct SaveIRQForSlot sISRHigh[];
+extern int  SaveIRQCounter;
+#endif
+
 static int pci_query_device(unsigned int vendor, unsigned int device,
                             struct pci_dev near *pcidev, int idx)
 {
@@ -229,6 +241,7 @@ static int pci_query_device(unsigned int vendor, unsigned int device,
 
                         // IRQ and PIN
                         pci_read_config_dword(pcidev, PCI_INTERRUPT_LINE, &temp);
+                        sISRHigh[SaveIRQCounter].Pin  = (temp >> 8) & 0xf;
 #ifdef ACPI 
                         temp2 = temp3 = 0; 
                         rc = ACPIFindPCIDevice( (ULONG)busNr,                        // Bus 
@@ -241,12 +254,14 @@ static int pci_query_device(unsigned int vendor, unsigned int device,
                         if (!rc) 
                         { 
                         // Check APIC IRQ, if we have /SMP /APIC, must be set 
-                        if (temp3) 
-                           temp = (temp & (~0xff)) | (temp3 & 0xff); 
+                        if (temp1) 
+                           temp = (temp & (~0xff)) | (temp1 & 0xff); 
                         // Check PIC IRQ 
-                        else if (temp1) 
-                                 temp = (temp & (~0xff)) | (temp1 & 0xff); 
+                        else if (temp3) 
+                                 temp = (temp & (~0xff)) | (temp3 & 0xff); 
                         dprintf(("pci_query_device: IRQs ACPI PIC%d APIC%d", temp1, temp3)); 
+                        sISRHigh[SaveIRQCounter].LowIRQ  = temp1;
+                        sISRHigh[SaveIRQCounter].HighIRQ = temp3;
                         } 
 #endif /* ACPI */ 
                         if( (u8)temp && (u8)temp != 0xff )

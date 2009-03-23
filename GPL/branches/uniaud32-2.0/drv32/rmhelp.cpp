@@ -148,6 +148,24 @@ BOOL RMRequestMem(ULONG ulMemBase, ULONG ulMemLength)
 
 //******************************************************************************
 //******************************************************************************
+//PS+++ see to irq.cpp
+#ifdef ACPI 
+#ifdef __cplusplus
+extern "C" {
+#endif
+struct SaveIRQForSlot
+{
+    ULONG  ulSlotNo;
+    BYTE   LowIRQ;
+    BYTE   HighIRQ;
+    BYTE   Pin;   
+};
+extern struct SaveIRQForSlot sISRHigh[];
+extern int  SaveIRQCounter;
+#ifdef __cplusplus
+}
+#endif
+#endif
 BOOL RMRequestIRQ(ULONG ulIrq, BOOL fShared)
 {
   RESOURCESTRUCT	Resource;
@@ -155,9 +173,17 @@ BOOL RMRequestIRQ(ULONG ulIrq, BOOL fShared)
   APIRET		rc;
 
   Resource.ResourceType          = RS_TYPE_IRQ;
+#ifdef ACPI  //PS+++
+  Resource.IRQResource.PCIIrqPin = (USHORT)(sISRHigh[SaveIRQCounter].Pin & 0xf);
+  if (sISRHigh[SaveIRQCounter].HighIRQ)
+      Resource.IRQResource.IRQLevel  = (USHORT)sISRHigh[SaveIRQCounter].HighIRQ & 0xff;
+  else
+      Resource.IRQResource.IRQLevel  = (USHORT)ulIrq & 0xff;
+#else
   Resource.IRQResource.IRQLevel  = (USHORT)ulIrq & 0xff;
+  Resource.IRQResource.PCIIrqPin = 0;
+#endif
   Resource.IRQResource.IRQFlags  = ( fShared ) ? RS_IRQ_SHARED : RS_IRQ_EXCLUSIVE;
-  Resource.IRQResource.PCIIrqPin = (USHORT)( (ulIrq >> 8) & 0xf);
 
   rc = RMAllocResource(DriverHandle,			// Handle to driver.
 		       FlatToSel((ULONG)&hres),		// OUT:  "allocated" resource node handle

@@ -46,6 +46,36 @@ static FARPTR16 *pISR[MAX_IRQ_SLOTS] = {
 };
 
 //******************************************************************************
+#ifdef ACPI
+//PS+++ fix description
+// Problem is in open high IRQ (acpi.psd /SMP /APIC) at boot time.
+// In my case - this IRQ use SATA and we have flood IRQ. This flood do
+// MASK this IRQ from kernel. Next danis506.add has very slow read from
+// disk.
+// How to fix.
+// At boot time (from DevInit to DevInitComplete) we use low IRQ. In
+// DevInitComplete we close low IRQ and open high IRQ. All values for
+// IRQ we are getting from ACPI call.
+
+//PS+++ Array with saving IRQ number
+#ifdef __cplusplus
+extern "C" {
+#endif
+struct SaveIRQForSlot
+{
+    ULONG  ulSlotNo;
+    BYTE   LowIRQ;
+    BYTE   HighIRQ;
+    BYTE   Pin;   
+} sISRHigh[8];     //FIX me to MAX_DEVICES or same
+
+int  SaveIRQCounter = 0;       //PS+++ current position in array
+extern ULONG InitCompleteWas;  //PS+++ Indication of InitComplete call
+#ifdef __cplusplus
+}
+#endif
+
+#endif //ACPI
 //******************************************************************************
 BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
 {
@@ -64,7 +94,7 @@ BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
     }
 
     if (rc != 0) {                    // If error ...
-        dprintf(("ERROR: RMSetIrq %d %d %x - failed to set shared - trying exclusive!!", ulIrq, fShared, ulSlotNo));
+       dprintf(("ERROR: RMSetIrq %d %d %x - failed to set shared - trying exclusive!!", ulIrq, fShared, ulSlotNo));
 	rc = DevIRQSet((WORD16) *pISR[ulSlotNo],
                        (WORD16)ulIrq,
                        0);   // failed, so try exclusive instead
@@ -75,6 +105,17 @@ BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
         DebugInt3();
         return FALSE;
     }
+//PS+++ Begin
+#ifdef ACPI
+    if (InitCompleteWas == 0)
+    {
+        dprintf(("RMSetIrq saved %d %d %x was %d", (ULONG)ulIrq, ulSlotNo,(ULONG)sISRHigh[SaveIRQCounter].LowIRQ));
+        sISRHigh[SaveIRQCounter].ulSlotNo = ulSlotNo;
+        SaveIRQCounter++;
+        return TRUE;
+    }
+#endif
+//PS End
 
     return TRUE;
 }

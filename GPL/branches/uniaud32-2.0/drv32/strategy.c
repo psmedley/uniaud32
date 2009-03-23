@@ -76,11 +76,51 @@ ULONG StratInit(RP __far* _rp)
 }
 //******************************************************************************
 // External initialization complete entry-point
+#ifdef ACPI
+// See desription in irq.cpp
+#include "irqos2.h"                 //PS+++
+#ifdef __cplusplus
+extern "C" {
+#endif
+ULONG InitCompleteWas = 0;          //PS+++ Indication of InitComplete call
+struct SaveIRQForSlot
+{
+    ULONG  ulSlotNo;
+    BYTE   LowIRQ;
+    BYTE   HighIRQ;
+    BYTE   Pin;   
+};
+extern struct SaveIRQForSlot sISRHigh[];
+extern int  SaveIRQCounter;
+#ifdef __cplusplus
+}
+#endif
+#endif //ACPI
 //******************************************************************************
 #pragma off (unreferenced)
 ULONG StratInitComplete(RP __far* _rp)
 #pragma on (unreferenced)
 {
+#ifdef ACPI
+//PS+++ Begin
+    ULONG  i, rc = 0;
+
+    InitCompleteWas = 1;
+
+    for (i = 0; i < SaveIRQCounter; i++)
+    {
+         dprintf(("Close IRQ%d - Open IRQ%d",(ULONG)sISRHigh[i].LowIRQ,(ULONG)sISRHigh[i].HighIRQ));
+         if (sISRHigh[i].HighIRQ)
+         {
+             ALSA_FreeIrq(sISRHigh[i].LowIRQ);
+             if (!ALSA_SetIrq(sISRHigh[i].HighIRQ, sISRHigh[i].ulSlotNo, 1))
+             {
+                 return (RPERR_COMMAND | RPDONE);
+             }
+         }
+    }
+#endif
+//PS++ End
 #ifdef DEBUG
     dprintf(("StratInitComplete"));
 #endif
