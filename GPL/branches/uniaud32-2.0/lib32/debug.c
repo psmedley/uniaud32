@@ -40,6 +40,25 @@ extern int wrOffset;
 extern char *szprintBuf;
 extern int max_buf_size;
 
+#ifdef DEBUG
+short int MAGIC_COMM_PORT =  0x3f8;           // pulled from word ptr 40:0
+
+
+#define UART_DATA               0x00            // UART Data port
+#define UART_INT_ENAB           0x01            // UART Interrupt enable
+#define UART_INT_ID             0x02            // interrupt ID
+#define UART_LINE_CTRL          0x03            // line control registers
+#define UART_MODEM_CTRL         0x04            // modem control register
+#define UART_LINE_STAT          0x05            // line status register
+#define UART_MODEM_STAT         0x06            // modem status regiser
+#define UART_DIVISOR_LO         0x00            // divisor latch least sig
+#define UART_DIVISOR_HI         0x01h           // divisor latch most sig
+
+#define DELAY   nop
+#else
+short int MAGIC_COMM_PORT =  0x0;           // pulled from word ptr 40:0
+#endif
+
 char hextab[]="0123456789ABCDEF";
 
                                         //-------------------- DecLongToASCII -
@@ -565,8 +584,7 @@ void StringOut(char *DbgStr)
           CharOut( DbgStr[i] );
        if (fLineTerminate)
        {
-           CharOut(CR);                              // append
-           carriage return,
+           CharOut(CR);                              // append carriage return,
            CharOut(LF);                              // linefeed
        }
    }
@@ -609,25 +627,6 @@ void StringOut(char *DbgStr)
        }
    }
 }
-#endif
-
-#ifdef DEBUG
-short int MAGIC_COMM_PORT =  0x3f8;           // pulled from word ptr 40:0
-
-
-#define UART_DATA               0x00            // UART Data port
-#define UART_INT_ENAB           0x01            // UART Interrupt enable
-#define UART_INT_ID             0x02            // interrupt ID
-#define UART_LINE_CTRL          0x03            // line control registers
-#define UART_MODEM_CTRL         0x04            // modem control register
-#define UART_LINE_STAT          0x05            // line status register
-#define UART_MODEM_STAT         0x06            // modem status regiser
-#define UART_DIVISOR_LO         0x00            // divisor latch least sig
-#define UART_DIVISOR_HI         0x01h           // divisor latch most sig
-
-#define DELAY   nop
-#else
-short int MAGIC_COMM_PORT =  0x0;           // pulled from word ptr 40:0
 #endif
 
 #ifdef DEBUG                            //--------------------------- CharOut -
