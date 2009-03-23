@@ -558,14 +558,17 @@ void StringOut(char *DbgStr)
    while (*DbgStr)
       CharOut(*DbgStr++);
       */
-#ifdef DEBUG999
-   for( i= 0; i < len; i++ )
-      CharOut( DbgStr[i] );
-
-   if (fLineTerminate)
+#ifdef DEBUG
+   if (MAGIC_COMM_PORT)
    {
-      CharOut(CR);                              // append carriage return,
-      CharOut(LF);                              // linefeed
+       for( i= 0; i < len; i++ )
+          CharOut( DbgStr[i] );
+       if (fLineTerminate)
+       {
+           CharOut(CR);                              // append
+           carriage return,
+           CharOut(LF);                              // linefeed
+       }
    }
 #endif
    if( szprintBuf == 0 )
