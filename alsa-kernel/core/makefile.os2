@@ -1,0 +1,71 @@
+CINCLUDES = ..\..\include;..\include;$(%WATCOM)\H
+AINCLUDES = $(DDK_BASE)\H
+
+CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
+
+32BIT=1
+!include ..\..\makefile.inc
+
+NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG) 
+
+#===================================================================
+#
+#   List of source files
+#
+#===================================================================
+FILE1    = sound.obj init.obj memory.obj memalloc.obj sgbuf.obj
+FILE2    = control.obj device.obj misc.obj wrappers.obj 
+FILE3    = sound_oss.obj info_oss.obj 
+FILE4    = pcm.obj pcm_native.obj pcm_lib.obj pcm_misc.obj pcm_timer.obj pcm_memory.obj
+FILE5    = rawmidi.obj
+FILE6    = timer.obj
+FILE7    = rtctimer.obj
+FILE8    = hwdep.obj info.obj wrappers.obj misc_driver.obj vmaster.obj
+FILELAST =
+FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10) $(FILE11) $(FILE12)
+
+TARGET   = core
+
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
+
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: $(OBJDIR)\$(TARGET).lib subdirs
+
+
+$(LNKFILE): makefile.os2
+    @%create $(LNKFILE)
+    @for %f in ($(FILES)) do @%append $(LNKFILE) -+$(OBJDIR)\%f
+
+$(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
+    $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
+    copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
+
+
+subdirs: .SYMBOLIC
+    @echo BUILDING seq
+    @cd seq
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING oss
+    @cd oss
+    @wmake $(NMAKEOPTS)
+    @cd ..
+
+clean: .SYMBOLIC
+    @echo CLEARING seq
+    @cd seq
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEARING oss
+    @cd oss
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    -@rm *.err
+    @cd $(OBJDIR)
+    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+    @cd ..\..
