@@ -585,6 +585,7 @@ struct hda_bus_template {
 	void *private_data;
 	struct pci_dev *pci;
 	const char *modelname;
+	int *power_save;
 	struct hda_bus_ops ops;
 };
 
@@ -601,6 +602,7 @@ struct hda_bus {
 	void *private_data;
 	struct pci_dev *pci;
 	const char *modelname;
+	int *power_save;
 	struct hda_bus_ops ops;
 
 	/* codec linked list */
@@ -616,11 +618,15 @@ struct hda_bus {
 
 	/* unsolicited event queue */
 	struct hda_bus_unsolicited *unsol;
+	char workq_name[16];
+	struct workqueue_struct *workq;	/* common workqueue for codecs */
 
-	struct snd_info_entry *proc;
+	/* assigned PCMs */
+	DECLARE_BITMAP(pcm_dev_bits, SNDRV_PCM_DEVICES);
 
 	/* misc op flags */
 	unsigned int needs_damn_long_delay :1;
+	unsigned int shutdown :1;	/* being unloaded */
 };
 
 /*
@@ -640,6 +646,16 @@ struct hda_codec_preset {
 	int (*patch)(struct hda_codec *codec);
 };
 	
+struct hda_codec_preset_list {
+	const struct hda_codec_preset *preset;
+	struct module *owner;
+	struct list_head list;
+};
+
+/* initial hook */
+int snd_hda_add_codec_preset(struct hda_codec_preset_list *preset);
+int snd_hda_delete_codec_preset(struct hda_codec_preset_list *preset);
+
 /* ops set by the preset patch */
 struct hda_codec_ops {
 	int (*build_controls)(struct hda_codec *codec);
@@ -727,12 +743,14 @@ struct hda_codec {
 	hda_nid_t mfg;	/* MFG node id */
 
 	/* ids */
+	u32 function_id;
 	u32 vendor_id;
 	u32 subsystem_id;
 	u32 revision_id;
 
 	/* detected preset */
 	const struct hda_codec_preset *preset;
+	struct module *owner;
 	const char *name;	/* codec name */
 	const char *modelname;	/* model name for preset */
 
@@ -764,15 +782,19 @@ struct hda_codec {
 #else
 	struct semaphore spdif_mutex;
 #endif
+	struct mutex control_mutex;
 	unsigned int spdif_status;	/* IEC958 status bits */
 	unsigned short spdif_ctls;	/* SPDIF control bits */
 	unsigned int spdif_in_enable;	/* SPDIF input enable? */
 	hda_nid_t *slave_dig_outs; /* optional digital out slave widgets */
+	struct snd_array init_pins;	/* initial (BIOS) pin configurations */
+	struct snd_array driver_pins;	/* pin configs set by codec parser */
 
 #ifdef CONFIG_SND_HDA_HWDEP
 	struct snd_hwdep *hwdep;	/* assigned hwdep device */
 	struct snd_array init_verbs;	/* additional init verbs */
 	struct snd_array hints;		/* additional hints */
+	struct snd_array user_pins;	/* default pin configs to override */
 #endif
 
 	/* misc flags */
@@ -780,12 +802,19 @@ struct hda_codec {
 					     * status change
 					     * (e.g. Realtek codecs)
 					     */
+	unsigned int pin_amp_workaround:1; /* pin out-amp takes index
+					    * (e.g. Conexant codecs)
+					    */
 #ifdef CONFIG_SND_HDA_POWER_SAVE
 	unsigned int power_on :1;	/* current (global) power-state */
 	unsigned int power_transition :1; /* power-state in transition */
 	int power_count;	/* current (global) power refcount */
 	struct delayed_work power_work; /* delayed task for powerdown */
 #endif
+
+	/* codec-specific additional proc output */
+	void (*proc_widget_hook)(struct snd_info_buffer *buffer,
+				 struct hda_codec *codec, hda_nid_t nid);
 };
 
 /* direction */
@@ -800,7 +829,7 @@ enum {
 int snd_hda_bus_new(struct snd_card *card, const struct hda_bus_template *temp,
 		    struct hda_bus **busp);
 int snd_hda_codec_new(struct hda_bus *bus, unsigned int codec_addr,
-		      struct hda_codec **codecp);
+		      int do_init, struct hda_codec **codecp);
 
 /*
  * low level functions
@@ -841,6 +870,18 @@ void snd_hda_codec_resume_cache(struct hda_codec *codec);
 #define snd_hda_sequence_write_cache	snd_hda_sequence_write
 #endif
 
+/* the struct for codec->pin_configs */
+struct hda_pincfg {
+	hda_nid_t nid;
+	unsigned int cfg;
+};
+
+unsigned int snd_hda_codec_get_pincfg(struct hda_codec *codec, hda_nid_t nid);
+int snd_hda_codec_set_pincfg(struct hda_codec *codec, hda_nid_t nid,
+			     unsigned int cfg);
+int snd_hda_add_pincfg(struct hda_codec *codec, struct snd_array *list,
+		       hda_nid_t nid, unsigned int cfg); /* for hwdep */
+
 /*
  * Mixer
  */
@@ -851,6 +892,7 @@ int snd_hda_codec_build_controls(struct hda_codec *codec);
  * PCM
  */
 int snd_hda_build_pcms(struct hda_bus *bus);
+int snd_hda_codec_build_pcms(struct hda_codec *codec);
 void snd_hda_codec_setup_stream(struct hda_codec *codec, hda_nid_t nid,
 				u32 stream_tag,
 				int channel_id, int format);
@@ -859,8 +901,6 @@ unsigned int snd_hda_calc_stream_format(unsigned int rate,
 					unsigned int channels,
 					unsigned int format,
 					unsigned int maxbps);
-int snd_hda_query_supported_pcm(struct hda_codec *codec, hda_nid_t nid,
-				u32 *ratesp, u64 *formatsp, unsigned int *bpsp);
 int snd_hda_is_supported_format(struct hda_codec *codec, hda_nid_t nid,
 				unsigned int format);
 
@@ -891,12 +931,25 @@ const char *snd_hda_get_jack_location(u32 cfg);
 void snd_hda_power_up(struct hda_codec *codec);
 void snd_hda_power_down(struct hda_codec *codec);
 #define snd_hda_codec_needs_resume(codec) codec->power_count
-int snd_hda_codecs_inuse(struct hda_bus *bus);
 #else
 static inline void snd_hda_power_up(struct hda_codec *codec) {}
 static inline void snd_hda_power_down(struct hda_codec *codec) {}
 #define snd_hda_codec_needs_resume(codec) 1
-#define snd_hda_codecs_inuse(bus) 1
+#endif
+
+/*
+ * Codec modularization
+ */
+
+/* Export symbols only for communication with codec drivers;
+ * When built in kernel, all HD-audio drivers are supposed to be statically
+ * linked to the kernel.  Thus, the symbols don't have to (or shouldn't) be
+ * exported unless it's built as a module.
+ */
+#if defined(MODULE) && !defined(TARGET_OS2)
+#define EXPORT_SYMBOL_HDA(sym) EXPORT_SYMBOL_GPL(sym)
+#else
+#define EXPORT_SYMBOL_HDA(sym)
 #endif
 
 #endif /* __SOUND_HDA_CODEC_H */

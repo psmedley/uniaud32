@@ -144,9 +144,9 @@ static int add_new_node(struct hda_codec *codec, struct hda_gspec *spec, hda_nid
 	node->type = (node->wid_caps & AC_WCAP_TYPE) >> AC_WCAP_TYPE_SHIFT;
 
 	if (node->type == AC_WID_PIN) {
-		node->pin_caps = snd_hda_param_read(codec, node->nid, AC_PAR_PIN_CAP);
+		node->pin_caps = snd_hda_query_pin_caps(codec, node->nid);
 		node->pin_ctl = snd_hda_codec_read(codec, node->nid, 0, AC_VERB_GET_PIN_WIDGET_CONTROL, 0);
-		node->def_cfg = snd_hda_codec_read(codec, node->nid, 0, AC_VERB_GET_CONFIG_DEFAULT, 0);
+		node->def_cfg = snd_hda_codec_get_pincfg(codec, node->nid);
 	}
 
 	if (node->wid_caps & AC_WCAP_OUT_AMP) {
@@ -723,6 +723,9 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
 		knew.index = index;
 		knew.name = name;
+#ifdef TARGET_OS2
+		knew.count = 1;
+#endif
 		knew.info = snd_hda_mixer_amp_switch_info;
 		knew.get = snd_hda_mixer_amp_switch_get;
 		knew.put = snd_hda_mixer_amp_switch_put;
@@ -740,6 +743,9 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
 		knew.index = index;
 		knew.name = name;
+#ifdef TARGET_OS2
+		knew.count = 1;
+#endif
 		knew.info = snd_hda_mixer_amp_switch_info;
 		knew.get = snd_hda_mixer_amp_switch_get;
 		knew.put = snd_hda_mixer_amp_switch_put;
@@ -762,6 +768,9 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		/*knew = (struct snd_kcontrol_new)HDA_CODEC_VOLUME(name, node->nid, index, HDA_INPUT);*/
 		knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
 		knew.name = name;
+#ifdef TARGET_OS2
+		knew.count = 1;
+#endif
 		knew.info = snd_hda_mixer_amp_volume_info;
 		knew.get = snd_hda_mixer_amp_volume_get;
 		knew.put = snd_hda_mixer_amp_volume_put;
@@ -776,6 +785,9 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		/*knew = (struct snd_kcontrol_new)HDA_CODEC_VOLUME(name, node->nid, 0, HDA_OUTPUT);*/
 	        knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
         	knew.name = name;
+#ifdef TARGET_OS2
+		knew.count = 1;
+#endif
 	        knew.info = snd_hda_mixer_amp_volume_info;
         	knew.get = snd_hda_mixer_amp_volume_get;
 	        knew.put = snd_hda_mixer_amp_volume_put;
@@ -899,6 +911,9 @@ static int build_input_controls(struct hda_codec *codec)
 					 HDA_INPUT);*/
                 knew.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
                 knew.name = name;
+#ifdef TARGET_OS2
+		knew.count = 1;
+#endif
                 knew.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |
                     SNDRV_CTL_ELEM_ACCESS_TLV_READ |
                     SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK;
@@ -1137,3 +1152,4 @@ int snd_hda_parse_generic_codec(struct hda_codec *codec)
 	snd_hda_generic_free(codec);
 	return err;
 }
+EXPORT_SYMBOL(snd_hda_parse_generic_codec);
