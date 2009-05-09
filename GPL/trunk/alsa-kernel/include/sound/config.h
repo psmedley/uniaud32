@@ -421,9 +421,12 @@ typedef u32 pm_message_t;
 #define __nocast
 #endif
 
+typedef unsigned __nocast gfp_t;
+
 #ifndef CONFIG_HAVE_KZALLOC
-void *snd_compat_kzalloc(size_t n, unsigned int __nocast gfp_flags);
+void *snd_compat_kzalloc(size_t n, gfp_t gfp_flags);
 #define kzalloc(s,f) snd_compat_kzalloc(s,f)
+
 #endif
 
 static inline struct proc_dir_entry *PDE(const struct inode *inode)
@@ -651,6 +654,34 @@ static inline void *pci_ioremap_bar(struct pci_dev *pdev, int bar)
 			       pci_resource_len(pdev, bar),0x010);
 #endif
 }
+#endif
+#endif
+
+#ifndef DMA_BIT_MASK
+#define DMA_BIT_MASK(n)	(((n) == 64) ? ~0ULL : ((1ULL<<(n))-1))
+#endif
+
+/* memdup_user() wrapper */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 30)
+#include <linux/err.h>
+#include <asm/uaccess.h>
+static inline void *memdup_user(void __user *src, size_t len)
+{
+	void *p = kmalloc(len, GFP_KERNEL);
+	if (!p)
+		return ERR_PTR(-ENOMEM);
+	if (copy_from_user(p, src, len)) {
+		kfree(p);
+		return ERR_PTR(-EFAULT);
+	}
+	return p;
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 6)
+#include <linux/workqueue.h>
+#ifndef create_singlethread_workqueue
+#define create_singlethread_workqueue(name) create_workqueue(name)
 #endif
 #endif
 

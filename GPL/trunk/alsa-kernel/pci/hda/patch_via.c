@@ -47,7 +47,6 @@
 #include <sound/asoundef.h>
 #include "hda_codec.h"
 #include "hda_local.h"
-#include "hda_patch.h"
 
 /* amp values */
 #define AMP_VAL_IDX_SHIFT	19
@@ -141,8 +140,6 @@ enum {
 	AUTO_SEQ_CENLFE,
 	AUTO_SEQ_SIDE
 };
-
-#define get_amp_nid(kc)	((kc)->private_value & 0xffff)
 
 /* Some VT1708S based boards gets the micboost setting wrong, so we have
  * to apply some brute-force and re-write the TLV's by software. */
@@ -1311,16 +1308,13 @@ static void vt1708_set_pinconfig_connect(struct hda_codec *codec, hda_nid_t nid)
 	unsigned int def_conf;
 	unsigned char seqassoc;
 
-	def_conf = snd_hda_codec_read(codec, nid, 0,
-				      AC_VERB_GET_CONFIG_DEFAULT, 0);
+	def_conf = snd_hda_codec_get_pincfg(codec, nid);
 	seqassoc = (unsigned char) get_defcfg_association(def_conf);
 	seqassoc = (seqassoc << 4) | get_defcfg_sequence(def_conf);
 	if (get_defcfg_connect(def_conf) == AC_JACK_PORT_NONE) {
 		if (seqassoc == 0xff) {
 			def_conf = def_conf & (~(AC_JACK_PORT_BOTH << 30));
-			snd_hda_codec_write(codec, nid, 0,
-					    AC_VERB_SET_CONFIG_DEFAULT_BYTES_3,
-					    def_conf >> 24);
+			snd_hda_codec_set_pincfg(codec, nid, def_conf);
 		}
 	}
 
@@ -1357,7 +1351,7 @@ static int vt1708_parse_auto_config(struct hda_codec *codec)
 
 	spec->multiout.max_channels = spec->multiout.num_dacs * 2;
 
-	if (spec->autocfg.dig_out_pin)
+	if (spec->autocfg.dig_outs)
 		spec->multiout.dig_out_nid = VT1708_DIGOUT_NID;
 	if (spec->autocfg.dig_in_pin)
 		spec->dig_in_nid = VT1708_DIGIN_NID;
@@ -1830,7 +1824,7 @@ static int vt1709_parse_auto_config(struct hda_codec *codec)
 
 	spec->multiout.max_channels = spec->multiout.num_dacs * 2;
 
-	if (spec->autocfg.dig_out_pin)
+	if (spec->autocfg.dig_outs)
 		spec->multiout.dig_out_nid = VT1709_DIGOUT_NID;
 	if (spec->autocfg.dig_in_pin)
 		spec->dig_in_nid = VT1709_DIGIN_NID;
@@ -2378,7 +2372,7 @@ static int vt1708B_parse_auto_config(struct hda_codec *codec)
 
 	spec->multiout.max_channels = spec->multiout.num_dacs * 2;
 
-	if (spec->autocfg.dig_out_pin)
+	if (spec->autocfg.dig_outs)
 		spec->multiout.dig_out_nid = VT1708B_DIGOUT_NID;
 	if (spec->autocfg.dig_in_pin)
 		spec->dig_in_nid = VT1708B_DIGIN_NID;
@@ -2840,7 +2834,7 @@ static int vt1708S_parse_auto_config(struct hda_codec *codec)
 
 	spec->multiout.max_channels = spec->multiout.num_dacs * 2;
 
-	if (spec->autocfg.dig_out_pin)
+	if (spec->autocfg.dig_outs)
 		spec->multiout.dig_out_nid = VT1708S_DIGOUT_NID;
 
 	spec->extra_dig_out_nid = 0x15;
@@ -3159,7 +3153,7 @@ static int vt1702_parse_auto_config(struct hda_codec *codec)
 
 	spec->multiout.max_channels = spec->multiout.num_dacs * 2;
 
-	if (spec->autocfg.dig_out_pin)
+	if (spec->autocfg.dig_outs)
 		spec->multiout.dig_out_nid = VT1702_DIGOUT_NID;
 
 	spec->extra_dig_out_nid = 0x1B;
@@ -3252,74 +3246,97 @@ static int patch_vt1702(struct hda_codec *codec)
 /*
  * patch entries
  */
-struct hda_codec_preset snd_hda_preset_via[] = {
-	{ .id = 0x11061708, .name = "VIA VT1708", .patch = patch_vt1708},
-	{ .id = 0x11061709, .name = "VIA VT1708", .patch = patch_vt1708},
-	{ .id = 0x1106170A, .name = "VIA VT1708", .patch = patch_vt1708},
-	{ .id = 0x1106170B, .name = "VIA VT1708", .patch = patch_vt1708},
-	{ .id = 0x1106E710, .name = "VIA VT1709 10-Ch",
+static struct hda_codec_preset snd_hda_preset_via[] = {
+	{ .id = 0x11061708, .name = "VT1708", .patch = patch_vt1708},
+	{ .id = 0x11061709, .name = "VT1708", .patch = patch_vt1708},
+	{ .id = 0x1106170a, .name = "VT1708", .patch = patch_vt1708},
+	{ .id = 0x1106170b, .name = "VT1708", .patch = patch_vt1708},
+	{ .id = 0x1106e710, .name = "VT1709 10-Ch",
 	  .patch = patch_vt1709_10ch},
-	{ .id = 0x1106E711, .name = "VIA VT1709 10-Ch",
+	{ .id = 0x1106e711, .name = "VT1709 10-Ch",
 	  .patch = patch_vt1709_10ch},
-	{ .id = 0x1106E712, .name = "VIA VT1709 10-Ch",
+	{ .id = 0x1106e712, .name = "VT1709 10-Ch",
 	  .patch = patch_vt1709_10ch},
-	{ .id = 0x1106E713, .name = "VIA VT1709 10-Ch",
+	{ .id = 0x1106e713, .name = "VT1709 10-Ch",
 	  .patch = patch_vt1709_10ch},
-	{ .id = 0x1106E714, .name = "VIA VT1709 6-Ch",
+	{ .id = 0x1106e714, .name = "VT1709 6-Ch",
 	  .patch = patch_vt1709_6ch},
-	{ .id = 0x1106E715, .name = "VIA VT1709 6-Ch",
+	{ .id = 0x1106e715, .name = "VT1709 6-Ch",
 	  .patch = patch_vt1709_6ch},
-	{ .id = 0x1106E716, .name = "VIA VT1709 6-Ch",
+	{ .id = 0x1106e716, .name = "VT1709 6-Ch",
 	  .patch = patch_vt1709_6ch},
-	{ .id = 0x1106E717, .name = "VIA VT1709 6-Ch",
+	{ .id = 0x1106e717, .name = "VT1709 6-Ch",
 	  .patch = patch_vt1709_6ch},
-	{ .id = 0x1106E720, .name = "VIA VT1708B 8-Ch",
+	{ .id = 0x1106e720, .name = "VT1708B 8-Ch",
 	  .patch = patch_vt1708B_8ch},
-	{ .id = 0x1106E721, .name = "VIA VT1708B 8-Ch",
+	{ .id = 0x1106e721, .name = "VT1708B 8-Ch",
 	  .patch = patch_vt1708B_8ch},
-	{ .id = 0x1106E722, .name = "VIA VT1708B 8-Ch",
+	{ .id = 0x1106e722, .name = "VT1708B 8-Ch",
 	  .patch = patch_vt1708B_8ch},
-	{ .id = 0x1106E723, .name = "VIA VT1708B 8-Ch",
+	{ .id = 0x1106e723, .name = "VT1708B 8-Ch",
 	  .patch = patch_vt1708B_8ch},
-	{ .id = 0x1106E724, .name = "VIA VT1708B 4-Ch",
+	{ .id = 0x1106e724, .name = "VT1708B 4-Ch",
 	  .patch = patch_vt1708B_4ch},
-	{ .id = 0x1106E725, .name = "VIA VT1708B 4-Ch",
+	{ .id = 0x1106e725, .name = "VT1708B 4-Ch",
 	  .patch = patch_vt1708B_4ch},
-	{ .id = 0x1106E726, .name = "VIA VT1708B 4-Ch",
+	{ .id = 0x1106e726, .name = "VT1708B 4-Ch",
 	  .patch = patch_vt1708B_4ch},
-	{ .id = 0x1106E727, .name = "VIA VT1708B 4-Ch",
+	{ .id = 0x1106e727, .name = "VT1708B 4-Ch",
 	  .patch = patch_vt1708B_4ch},
-	{ .id = 0x11060397, .name = "VIA VT1708S",
+	{ .id = 0x11060397, .name = "VT1708S",
 	  .patch = patch_vt1708S},
-	{ .id = 0x11061397, .name = "VIA VT1708S",
+	{ .id = 0x11061397, .name = "VT1708S",
 	  .patch = patch_vt1708S},
-	{ .id = 0x11062397, .name = "VIA VT1708S",
+	{ .id = 0x11062397, .name = "VT1708S",
 	  .patch = patch_vt1708S},
-	{ .id = 0x11063397, .name = "VIA VT1708S",
+	{ .id = 0x11063397, .name = "VT1708S",
 	  .patch = patch_vt1708S},
-	{ .id = 0x11064397, .name = "VIA VT1708S",
+	{ .id = 0x11064397, .name = "VT1708S",
 	  .patch = patch_vt1708S},
-	{ .id = 0x11065397, .name = "VIA VT1708S",
+	{ .id = 0x11065397, .name = "VT1708S",
 	  .patch = patch_vt1708S},
-	{ .id = 0x11066397, .name = "VIA VT1708S",
+	{ .id = 0x11066397, .name = "VT1708S",
 	  .patch = patch_vt1708S},
-	{ .id = 0x11067397, .name = "VIA VT1708S",
+	{ .id = 0x11067397, .name = "VT1708S",
 	  .patch = patch_vt1708S},
-	{ .id = 0x11060398, .name = "VIA VT1702",
+	{ .id = 0x11060398, .name = "VT1702",
 	  .patch = patch_vt1702},
-	{ .id = 0x11061398, .name = "VIA VT1702",
+	{ .id = 0x11061398, .name = "VT1702",
 	  .patch = patch_vt1702},
-	{ .id = 0x11062398, .name = "VIA VT1702",
+	{ .id = 0x11062398, .name = "VT1702",
 	  .patch = patch_vt1702},
-	{ .id = 0x11063398, .name = "VIA VT1702",
+	{ .id = 0x11063398, .name = "VT1702",
 	  .patch = patch_vt1702},
-	{ .id = 0x11064398, .name = "VIA VT1702",
+	{ .id = 0x11064398, .name = "VT1702",
 	  .patch = patch_vt1702},
-	{ .id = 0x11065398, .name = "VIA VT1702",
+	{ .id = 0x11065398, .name = "VT1702",
 	  .patch = patch_vt1702},
-	{ .id = 0x11066398, .name = "VIA VT1702",
+	{ .id = 0x11066398, .name = "VT1702",
 	  .patch = patch_vt1702},
-	{ .id = 0x11067398, .name = "VIA VT1702",
+	{ .id = 0x11067398, .name = "VT1702",
 	  .patch = patch_vt1702},
 	{0} /* terminator */
 };
+
+MODULE_ALIAS("snd-hda-codec-id:1106*");
+
+static struct hda_codec_preset_list via_list = {
+	.preset = snd_hda_preset_via,
+	.owner = THIS_MODULE,
+};
+
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("VIA HD-audio codec");
+
+static int __init patch_via_init(void)
+{
+	return snd_hda_add_codec_preset(&via_list);
+}
+
+static void __exit patch_via_exit(void)
+{
+	snd_hda_delete_codec_preset(&via_list);
+}
+
+module_init(patch_via_init)
+module_exit(patch_via_exit)
