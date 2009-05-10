@@ -241,8 +241,8 @@ static int pci_query_device(unsigned int vendor, unsigned int device,
 
                         // IRQ and PIN
                         pci_read_config_dword(pcidev, PCI_INTERRUPT_LINE, &temp);
-                        sISRHigh[SaveIRQCounter].Pin  = (temp >> 8) & 0xf;
 #ifdef ACPI 
+                        sISRHigh[SaveIRQCounter].Pin  = (temp >> 8) & 0xf;
                         temp2 = temp3 = 0; 
                         rc = ACPIFindPCIDevice( (ULONG)busNr,                        // Bus 
                                                 (ULONG)devNr,                        // Dev 
