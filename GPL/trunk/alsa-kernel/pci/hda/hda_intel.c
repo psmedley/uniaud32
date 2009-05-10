@@ -1107,7 +1107,7 @@ static int azx_setup_periods(struct azx *chip,
 			     struct snd_pcm_substream *substream,
 			     struct azx_dev *azx_dev)
 {
-#ifdef TARGET_OS2
+#ifdef TARGET_OS2xx /* Anyone know why this is set to volatile - causes a warning when it is set */
 	volatile u32 *bdl;
 #else
 	u32 *bdl;
