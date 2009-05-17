@@ -125,6 +125,15 @@ OSSRET OSS32_Initialize(void)
     if(call_module_init(alsa_opl3_seq_init) != 0)    return OSSERR_INIT_FAILED;
 
     if(call_module_init(alsa_mpu401_uart_init) != 0) return OSSERR_INIT_FAILED;
+
+    /* Init functions for HDA audio */
+    call_module_init(patch_analog_init);
+    call_module_init(patch_atihdmi_init);
+    call_module_init(patch_cmedia_init);
+    call_module_init(patch_conexant_init);
+    call_module_init(patch_realtek_init);
+    call_module_init(patch_sigmatel_init);
+    call_module_init(patch_via_init);
 #if 0
     int i;
 
@@ -255,7 +264,7 @@ OSSRET OSS32_Initialize(void)
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_ca0106_exit);
     }
     if((ForceCard == CARD_NONE || ForceCard == CARD_AZX) &&
-       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_azx_init) == 0)
+       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_azx_init) == 0) 
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_azx_exit);
     }
