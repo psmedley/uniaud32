@@ -110,7 +110,9 @@ IMPLIB  = IMPLIB $(IFLAGS)
 .BEFORE
    @set WATCOM=$(WATCOM)
    @if not exist .\$(OBJDIR) $(CREATEPATH) .\$(OBJDIR)
+   @if not exist $(ALSA_LIB_) mkdir $(ALSA_LIB_) 
    @if not exist $(ALSA_LIB) mkdir $(ALSA_LIB)
+   @if not exist $(ALSA_BIN_) mkdir $(ALSA_BIN_) 
    @if not exist $(ALSA_BIN) mkdir $(ALSA_BIN)
 
 

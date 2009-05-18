@@ -57,7 +57,7 @@ subdirs: .SYMBOLIC
     @cd ..
 
 clean: .SYMBOLIC
-    @echo CLEARING seq
+    @echo CLEANING seq
     @cd seq
     @wmake $(NMAKEOPTS) clean
     @cd ..
@@ -67,5 +67,5 @@ clean: .SYMBOLIC
     @cd ..
     -@rm *.err
     @cd $(OBJDIR)
-    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 2>nul
+    -rm *.obj *.lnk *.sys *.sym *.lst *.map *.wmap *.lib 
     @cd ..\..
