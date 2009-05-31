@@ -616,6 +616,9 @@ static unsigned int azx_rirb_get_response(struct hda_bus *bus)
 {
 	struct azx *chip = bus->private_data;
 	unsigned long timeout;
+#ifdef TARGET_OS2
+	int count = 0;
+#endif
 
  again:
 	timeout = jiffies + msecs_to_jiffies(1000);
@@ -631,14 +634,25 @@ static unsigned int azx_rirb_get_response(struct hda_bus *bus)
 		}
 		if (time_after(jiffies, timeout))
 			break;
+#ifdef TARGET_OS2
+		if (count >= 5000) /* Hack on OS/2 to stop infinite loop as jiffies sometimes don't increment */
+			break;
+#endif
 		if (bus->needs_damn_long_delay)
 			msleep(2); /* temporary workaround */
 		else {
 			udelay(10);
 			cond_resched();
 		}
+#ifdef TARGET_OS2
+	count++;
+#endif
 	}
+#ifdef TARGET_OS2
+	if (count >= 5000)
+		snd_printk(KERN_WARNING "hda_intel: count >= 5000, aborting loop in azx_rirb_get_response\n");
 
+#endif
 	if (chip->msi) {
 		snd_printk(KERN_WARNING "hda_intel: No response from codec, "
 			   "disabling MSI: last cmd=0x%08x\n", chip->last_cmd);
@@ -998,9 +1012,6 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 	struct azx *chip = dev_id;
 	struct azx_dev *azx_dev;
 	u32 status;
-#ifdef TARGET_OS2
-	u32 ignore_irq = 0;
-#endif
 	int i, ok;
 
 	spin_lock(&chip->reg_lock);
@@ -1017,12 +1028,6 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 			azx_sd_writeb(azx_dev, SD_STS, SD_INT_MASK);
 			if (!azx_dev->substream || !azx_dev->running)
 				continue;
-#if 0 /* ??????? */
-#ifdef TARGET_OS2
-			ignore_irq |= azx_dev->sd_int_sta_mask; 
-#endif
-			continue;
-#endif
 			/* check whether this IRQ is really acceptable */
 			ok = azx_position_ok(chip, azx_dev);
 			if (ok == 1) {
@@ -1054,11 +1059,11 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 #endif
 	spin_unlock(&chip->reg_lock);
 
-   #ifdef TARGET_OS2
-   if ((status & RIRB_INT_MASK) || ignore_irq) {
+#ifdef TARGET_OS2
+   if (status & RIRB_INT_MASK) {
        return 2;
    }
-   #endif
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -1107,11 +1112,7 @@ static int azx_setup_periods(struct azx *chip,
 			     struct snd_pcm_substream *substream,
 			     struct azx_dev *azx_dev)
 {
-#ifdef TARGET_OS2xx /* Anyone know why this is set to volatile - causes a warning when it is set */
-	volatile u32 *bdl;
-#else
 	u32 *bdl;
-#endif
 	int i, ofs, periods, period_bytes;
 	int pos_adj;
 
