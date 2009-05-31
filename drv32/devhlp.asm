@@ -142,13 +142,6 @@ iodelay32_ proc near
 	ret
 iodelay32_ endp
 
-;iodelay32_ proc near
-;	mov ax,DOSIODELAYCNT
-;	top:
-;	dec ax
-;	jnz top
-;iodelay32_ ENDP
-
 CODE32 	ends
 
 	end
