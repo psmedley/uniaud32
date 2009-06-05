@@ -67,11 +67,6 @@ typedef unsigned int fmode_t;
 #include <linux/config.h>
 #include <linux/version.h>
 
-#define IRQ_NONE      (0)  /*void*/
-#define IRQ_HANDLED   (1)  /*void*/
-#define IRQ_RETVAL(x) ((x) != 0)  /*void*/
-typedef int irqreturn_t;
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 2, 3)
 #error "This driver requires Linux 2.2.3 and higher."
 #endif
