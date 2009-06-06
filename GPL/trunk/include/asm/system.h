@@ -31,6 +31,10 @@ void restore_flags(u32 flags);
 
 #define cli() 			_asm cli;
 #define sti()			_asm sti;
-
 #endif
+
+#define smp_mb()	barrier()
+#define smp_rmb()	barrier()
+#define smp_wmb()	barrier()
+
 #endif

@@ -1,5 +1,3 @@
-/* $Id: page.h,v 1.1.1.1 2003/07/02 13:56:58 eleph Exp $ */
-
 #ifndef _I386_PAGE_H
 #define _I386_PAGE_H
 
@@ -70,5 +68,6 @@ typedef struct { unsigned long pgprot; } pgprot_t;
 #define PHYSMAP_NR(addr)	((unsigned long)(addr) >> PAGE_SHIFT)
 
 #endif /* __KERNEL__ */
+#define page_to_pfn(page)       (page_to_phys(page) >> PAGE_SHIFT)
 
 #endif /* _I386_PAGE_H */

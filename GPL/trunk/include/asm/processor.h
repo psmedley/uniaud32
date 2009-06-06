@@ -343,4 +343,6 @@ unsigned long get_wchan(struct task_struct *p);
 #define init_task	(init_task_union.task)
 #define init_stack	(init_task_union.stack)
 
+#define cpu_relax()
+
 #endif /* __ASM_I386_PROCESSOR_H */

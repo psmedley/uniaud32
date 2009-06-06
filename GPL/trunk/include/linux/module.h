@@ -69,4 +69,10 @@ static inline void module_put(struct module *module)
 #define MODULE_FIRMWARE(x)
 #define MODULE_ALIAS(x)
 
+extern int this_module[64];
+#define THIS_MODULE (void *)&this_module[0]
+#define MODULE_GENERIC_TABLE(gtype,name)
+#define MODULE_DEVICE_TABLE(type,name)
+#define EXPORT_SYMBOL(a)
+
 #endif /* _LINUX_MODULE_H */

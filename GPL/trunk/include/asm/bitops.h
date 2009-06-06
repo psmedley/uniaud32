@@ -1,5 +1,5 @@
-#ifndef _I386_BITOPS_H
-#define _I386_BITOPS_H
+#ifndef _ASM_BITOPS_H
+#define _ASM_BITOPS_H
 
 /*
  * Copyright 1992, Linus Torvalds.
@@ -100,4 +100,4 @@ extern int find_next_zero_bit (void * addr, int size, int offset);
  */
 #define test_bit(nr, addr) (((1UL << (nr & 31)) & (((const unsigned int *) addr)[nr >> 5])) != 0)
 
-#endif /* _I386_BITOPS_H */
+#endif /* _ASM_BITOPS_H */

@@ -100,5 +100,6 @@ static void complete_and_exit(struct completion *, long);
 #define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
 #define dump_stack()
 #define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
+#define roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 
 #endif

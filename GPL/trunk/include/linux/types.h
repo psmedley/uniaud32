@@ -135,4 +135,6 @@ typedef unsigned __nocast gfp_t;
 
 #include <string.h>
 typedef __u32 __le32;
+typedef unsigned int fmode_t;
+
 #endif /* _LINUX_TYPES_H */

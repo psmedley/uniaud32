@@ -54,6 +54,17 @@ extern void iounmap(void *addr);
 #define memcpy_fromio(a,b,c)	memcpy((a),__io_virt(b),(c))
 #define memcpy_toio(a,b,c)	memcpy(__io_virt(a),(b),(c))
 
+unsigned int ioread8(void __iomem *addr);
+unsigned int ioread16(void __iomem *addr);
+unsigned int ioread32(void __iomem *addr);
+void iowrite8(u8 val, void __iomem *addr);
+void iowrite16(u16 val, void __iomem *addr);
+void iowrite32(u32 val, void __iomem *addr);
+void __iomem *ioport_map(unsigned long port, unsigned int nr);
+void ioport_unmap(void __iomem *addr);
+void __iomem *pci_iomap(struct pci_dev *dev, int bar, unsigned long maxlen);
+void pci_iounmap(struct pci_dev *dev, void __iomem * addr);
+
 /*
  * Thanks to James van Artsdalen for a better timing-fix than
  * the two short jumps: using outb's to a nonexistent port seems

@@ -4,6 +4,8 @@
  * (markhe@nextd.demon.co.uk)
  */
 
+#include <linux/types.h>
+
 #if	!defined(_LINUX_SLAB_H)
 #define	_LINUX_SLAB_H
 
@@ -64,5 +66,8 @@ extern void  __kfree(const void near *);
 #define kfree_s(a,b)            kfree(a)
 #define kfree_nocheck(a)	kfree(a)
 #endif
+
+void *kzalloc(size_t n, gfp_t gfp_flags);
+void *kcalloc(size_t n, size_t size, unsigned int __nocast gfp_flags);
 
 #endif	/* _LINUX_SLAB_H */
