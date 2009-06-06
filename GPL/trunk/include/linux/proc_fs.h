@@ -235,4 +235,9 @@ extern struct proc_dir_entry proc_root;
 
 #endif /* CONFIG_PROC_FS */
 
+static inline struct proc_dir_entry *PDE(const struct inode *inode)
+{
+	return (struct proc_dir_entry *) inode->u.generic_ip;
+}
+
 #endif /* _LINUX_PROC_FS_H */

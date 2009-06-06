@@ -294,7 +294,12 @@
 
 typedef struct pci_dev;
 
-
+#define PCI_D0     0
+#define PCI_D1     1
+#define PCI_D2     2
+#define PCI_D3hot  3
+#define PCI_D3cold 4
+#define pci_choose_state(pci,state)     ((state) ? PCI_D3hot : PCI_D0)
 
 typedef struct device {
     struct pci_dev *pci;	/* for PCI and PCI-SG types */
@@ -677,4 +682,29 @@ void pci_set_driver_data (struct pci_dev *dev, void *driver_data);
 #pragma pack() //!!! by vladest
 
 #endif /* __KERNEL__ */
+
+static inline unsigned char snd_pci_revision(struct pci_dev *pci)
+{
+	unsigned char rev;
+	pci_read_config_byte(pci, PCI_REVISION_ID, &rev);
+	return rev;
+}
+
+/* pci_intx() wrapper */
+#define pci_intx(pci,x)
+
+/* MSI */
+static inline int snd_pci_enable_msi(struct pci_dev *dev) { return -1; }
+#undef pci_enable_msi
+#define pci_enable_msi(dev) snd_pci_enable_msi(dev)
+#undef pci_disable_msi
+#define pci_disable_msi(dev)
+#define pci_dev_present(x) snd_pci_dev_present(x)
+extern void * __ioremap(unsigned long offset, unsigned long size, unsigned long flags);
+static inline void *pci_ioremap_bar(struct pci_dev *pdev, int bar)
+{
+	return __ioremap(pci_resource_start(pdev, bar),
+			       pci_resource_len(pdev, bar),0x010);
+}
+
 #endif /* LINUX_PCI_H */

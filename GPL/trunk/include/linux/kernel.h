@@ -1,5 +1,3 @@
-/* $Id: kernel.h,v 1.1.1.1 2003/07/02 13:57:00 eleph Exp $ */
-
 #ifndef _LINUX_KERNEL_H
 #define _LINUX_KERNEL_H
 
@@ -98,5 +96,9 @@ struct sysinfo {
 };
 
 static void complete_and_exit(struct completion *, long);
+#define printk_ratelimit()      1
+#define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
+#define dump_stack()
+#define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
 
 #endif

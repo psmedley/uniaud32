@@ -263,4 +263,8 @@ extern int unregister_chrdev(unsigned int, const char *);
 extern int fasync_helper(int, struct file *, int, struct fasync_struct **);
 extern void kill_fasync(struct fasync_struct *, int, int);
 
+#define fops_get(x) (x)
+#define fops_put(x) do { ; } while (0)
+#define imajor(x) major((x)->i_rdev)
+
 #endif /* _LINUX_FS_H */

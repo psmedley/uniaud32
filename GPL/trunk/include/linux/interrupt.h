@@ -26,6 +26,17 @@ typedef int irqreturn_t;
 #define IRQ_HANDLED	(1)
 #define IRQ_RETVAL(x)	((x) != 0)
 
+#include <linux/signal.h>
+#define IRQF_SHARED			SA_SHIRQ
+#define IRQF_DISABLED			SA_INTERRUPT
+#define IRQF_SAMPLE_RANDOM		SA_SAMPLE_RANDOM
+#define IRQF_PERCPU			SA_PERCPU
+#ifdef SA_PROBEIRQ
+#define IRQF_PROBE_SHARED		SA_PROBEIRQ
+#else
+#define IRQF_PROBE_SHARED		0 /* dummy */
+#endif
+
 struct irqaction {
 	void (*handler)(int, void *, struct pt_regs *);
 	unsigned long flags;
@@ -130,5 +141,13 @@ extern void tasklet_init(struct tasklet_struct *t,
  */
 extern unsigned long probe_irq_on(void);	/* returns 0 on failure */
 extern int probe_irq_off(unsigned long);	/* returns 0 or negative on failure */
+
+typedef irqreturn_t (*snd_irq_handler_t)(int, void *);
+#define irq_handler_t snd_irq_handler_t
+#undef irq_handler_t
+#define irq_handler_t snd_irq_handler_t
+
+int request_irq(unsigned int, irq_handler_t handler,
+		    unsigned long, const char *, void *);
 
 #endif

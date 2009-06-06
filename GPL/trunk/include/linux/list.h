@@ -111,4 +111,38 @@ static __inline__ void list_splice(struct list_head *list, struct list_head *hea
 
 #endif /* __KERNEL__ */
 
+#define container_of(ptr, type, member) \
+( (type *)( (char *)ptr - offsetof(type,member) ) )
+_WCRTLINK extern int     snprintf( char *__buf, size_t __bufsize,
+                                   const char *__fmt, ... );
+#define offsetof(__typ,__id) ((size_t)&(((__typ*)0)->__id))
+#define list_for_each_entry(itemptr, headptr, struct_listmember_name, container_type) \
+    for (itemptr=(container_type *) \
+         (((char *)((headptr)->next))-offsetof(container_type, struct_listmember_name)); \
+         &(itemptr->struct_listmember_name)!=(headptr); \
+         itemptr=(container_type *) \
+         (((char *)(itemptr->struct_listmember_name.next))-offsetof(container_type, struct_listmember_name)))
+
+#define list_for_each_entry_safe(itemptr, n, headptr, struct_listmember_name, container_type) \
+    for (itemptr=(container_type *) \
+         (((char *)((headptr)->next))-offsetof(container_type, struct_listmember_name)), \
+         n=(container_type *) \
+         (((char *)(itemptr->struct_listmember_name.next))-offsetof(container_type, struct_listmember_name)); \
+         &(itemptr->struct_listmember_name)!=(headptr); \
+         itemptr=n, \
+         n=(container_type *) \
+         (((char *)(n->struct_listmember_name.next))-offsetof(container_type, struct_listmember_name)))
+
+/**
+ * list_move_tail - delete from one list and add as another's tail
+ * @list: the entry to move
+ * @head: the head that will follow our entry
+ */
+static inline void list_move_tail(struct list_head *list,
+				  struct list_head *head)
+{
+	__list_del(list->prev, list->next);
+	list_add_tail(list, head);
+}
+
 #endif

@@ -1,5 +1,3 @@
-/* $Id: init.h,v 1.1.1.1 2003/07/02 13:57:00 eleph Exp $ */
-
 #ifndef _LINUX_INIT_H
 #define _LINUX_INIT_H
 
@@ -136,5 +134,7 @@ typedef void (*exitcall_t)(void);
 #else
 #define __initlocaldata
 #endif
+
+#define __devexit_p(x) x
 
 #endif /* _LINUX_INIT_H */

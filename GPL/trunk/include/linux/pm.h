@@ -248,4 +248,9 @@ extern void device_resume(void);
 
 #endif /* __KERNEL__ */
 
+typedef u32 __bitwise pm_message_t;
+#define PMSG_FREEZE	3
+#define PMSG_SUSPEND	3
+#define PMSG_ON		0
+
 #endif /* _LINUX_PM_H */

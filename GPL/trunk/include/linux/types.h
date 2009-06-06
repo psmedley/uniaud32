@@ -1,11 +1,10 @@
-/* $Id: types.h,v 1.1.1.1 2003/07/02 13:57:02 eleph Exp $ */
-
 #ifndef _LINUX_TYPES_H
 #define _LINUX_TYPES_H
 
 #pragma off (unreferenced)
 
 #include <linux/posix_types.h>
+#include <linux/compiler.h>
 #include <asm/types.h>
 
 #ifndef __KERNEL_STRICT_NAMES
@@ -71,6 +70,8 @@ typedef unsigned short		ushort;
 typedef unsigned int		uint;
 typedef unsigned long		ulong;
 
+#define BITS_PER_LONG	32
+
 typedef unsigned long           dma_addr_t;
 
 #ifndef __BIT_TYPES_DEFINED__
@@ -130,6 +131,8 @@ struct ustat {
 #define memset  _fmemset
 #endif
 
-#include <string.h>
+typedef unsigned __nocast gfp_t;
 
+#include <string.h>
+typedef __u32 __le32;
 #endif /* _LINUX_TYPES_H */
