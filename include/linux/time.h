@@ -113,4 +113,16 @@ static __inline__ unsigned long msecs_to_jiffies(const unsigned int m)
 }
 #endif
 
+/* wrapper for getnstimeofday()
+ * it's needed for recent 2.6 kernels, too, due to lack of EXPORT_SYMBOL
+ */
+#define getnstimeofday(x) do { \
+	struct timeval __x; \
+	do_gettimeofday(&__x); \
+	(x)->tv_sec = __x.tv_sec;	\
+	(x)->tv_nsec = __x.tv_usec * 1000; \
+} while (0)
+
+#define do_posix_clock_monotonic_gettime getnstimeofday
+
 #endif

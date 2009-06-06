@@ -28,7 +28,7 @@ enum dma_data_direction {
 #ifndef DMA_24BIT_MASK
 #define DMA_24BIT_MASK	0x0000000000ffffffULL
 #endif
-
+#define DMA_BIT_MASK(n)	(((n) == 64) ? ~0ULL : ((1ULL<<(n))-1))
 #endif
 
 

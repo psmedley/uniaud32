@@ -170,4 +170,7 @@ struct vm_operations_struct {
 	int (*swapout)(struct page *, struct file *);
 };
 
+#define SetPageReserved(a)		a
+#define ClearPageReserved(a)		a
+
 #endif

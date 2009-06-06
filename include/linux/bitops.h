@@ -1,5 +1,3 @@
-/* $Id: bitops.h,v 1.1.1.1 2003/07/02 13:57:00 eleph Exp $ */
-
 #ifndef _I386_BITOPS_H
 #define _I386_BITOPS_H
 
@@ -19,5 +17,5 @@
  * Function prototypes to keep gcc -Wall happy
  */
 #include <asm\bitops.h>
-
+#define smp_mb__after_clear_bit()	
 #endif /* _I386_BITOPS_H */

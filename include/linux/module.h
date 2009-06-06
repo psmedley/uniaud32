@@ -58,4 +58,15 @@ const char __module_parm_desc_##var[]=		\
 "parm_desc_" __MODULE_STRING(var) "=" desc
 #endif
 
+#define try_inc_mod_count(x) 	        ++(*(unsigned long *)x)
+#define try_module_get(x) try_inc_mod_count(x)
+static inline void module_put(struct module *module)
+{
+    if (module)
+        do {} while(0);
+}
+
+#define MODULE_FIRMWARE(x)
+#define MODULE_ALIAS(x)
+
 #endif /* _LINUX_MODULE_H */

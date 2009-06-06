@@ -2,7 +2,7 @@
 
 #ifndef _LINUX_DEVICE_H
 #define _LINUX_DEVICE_H
-#include <sound/config.h>
+#include <linux/pm.h>
 #if 0
 struct device {
 	void *private_data;
@@ -41,6 +41,7 @@ void snd_compat_driver_unregister(struct device_driver *driver);
 #define dev_set_drvdata(dev,ptr)	((dev)->private_data = (ptr))
 #define dev_get_drvdata(dev)	(dev)->private_data
 
+#define MODULE_ALIAS_CHARDEV_MAJOR(x)
 
 #endif /* _LINUX_DEVICE_H */
 

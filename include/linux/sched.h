@@ -14,6 +14,8 @@
 #define TASK_SWAPPING		16
 #define TASK_EXCLUSIVE		32
 
+#define set_current_state(a)
+
 struct task_struct {
 /* these are hardcoded - don't touch */
 	         long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
@@ -46,6 +48,14 @@ extern void wake_up_process(struct task_struct * tsk);
 
 void schedule(void);
 
+#define cond_resched() \
+        do { \
+                if (1) { \
+                        set_current_state(TASK_RUNNING); \
+                        schedule(); \
+                } \
+        } while (0)
+
 // 12 Jun 07 SHL Drop superfluous near
 #if 0
 extern int request_irq(unsigned int,
@@ -66,5 +76,15 @@ static inline int signal_pending(struct task_struct *p)
 #endif /* DEBUG */
 	return 0;
 }
+
+#define flush_scheduled_work()
+
+#define schedule_timeout_interruptible(x) \
+	set_current_state(TASK_INTERRUPTIBLE); \
+	schedule_timeout(x);
+
+#define schedule_timeout_uninterruptible(x) \
+	set_current_state(TASK_UNINTERRUPTIBLE); \
+	schedule_timeout(x);
 
 #endif /* _LINUX_SCHED_H */

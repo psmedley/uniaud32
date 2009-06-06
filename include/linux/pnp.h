@@ -18,6 +18,7 @@
 #include <sound/isapnp.h>
 #endif /* TARGET_OS2 */
 #include <linux/list.h>
+#include <linux/pm.h>
 
 #define PNP_MAX_PORT		8
 #define PNP_MAX_MEM		4

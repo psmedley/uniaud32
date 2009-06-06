@@ -9,5 +9,6 @@ int   strcmp (const char *string1, const char *string2);
 
 int   strncmp (const char *string1, const char *string2, size_t count);
 #endif
+
 #endif
 

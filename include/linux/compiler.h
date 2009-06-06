@@ -9,6 +9,9 @@
 # define __user
 # define __kernel
 # define __safe
+# define __nocast
+# define __iomem
+# define __deprecated           /* unimplemented */
 #endif
 
 #define __GNUC__  3
@@ -40,10 +43,6 @@
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
 
-/* Optimization barrier */
-#ifndef barrier
-# define barrier() __memory_barrier()
-#endif
 
 #ifndef RELOC_HIDE
 # define RELOC_HIDE(ptr, off)					\
