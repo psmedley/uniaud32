@@ -125,4 +125,6 @@ static __inline__ unsigned long msecs_to_jiffies(const unsigned int m)
 
 #define do_posix_clock_monotonic_gettime getnstimeofday
 
+void msleep(unsigned int msecs);
+
 #endif

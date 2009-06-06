@@ -1,5 +1,6 @@
 #ifndef __LINUX_LOCKDEP_H
 #define __LINUX_LOCKDEP_H
+#define SINGLE_DEPTH_NESTING                    1
 /*
  * lockdep macros
  */
@@ -10,5 +11,6 @@
 #define up_read_non_owner(sem)			up_read(sem)
 #define spin_lock_nested(lock, x)		spin_lock(lock)
 #define spin_lock_irqsave_nested(lock, f, x)	spin_lock_irqsave(lock, f)
+
 
 #endif /* __LINUX_LOCKDEP_H */
