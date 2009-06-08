@@ -126,4 +126,16 @@ void mod_timer(struct timer_list *timer, unsigned long expires)
 }
 //******************************************************************************
 //******************************************************************************
+#include <linux/delay.h>
+void msleep(unsigned int msecs)
+{
+	unsigned long timeout = ((msecs) * HZ + 999) / 1000;
 
+	while (timeout) {
+		set_current_state(TASK_UNINTERRUPTIBLE);
+		timeout = schedule_timeout(timeout);
+	}
+}
+
+//******************************************************************************
+//******************************************************************************

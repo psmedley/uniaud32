@@ -171,9 +171,7 @@ static loff_t snd_info_entry_llseek(struct file *file, loff_t offset, int orig)
 
 	data = file->private_data;
 	entry = data->entry;
-#ifndef TARGET_OS2
 	lock_kernel();
-#endif
 	switch (entry->content) {
 	case SNDRV_INFO_CONTENT_TEXT:
 		switch (orig) {
@@ -202,9 +200,7 @@ static loff_t snd_info_entry_llseek(struct file *file, loff_t offset, int orig)
 	}
 	ret = -ENXIO;
 out:
-#ifndef TARGET_OS2
 	unlock_kernel();
-#endif
 	return ret;
 }
 
@@ -527,9 +523,7 @@ static int snd_info_entry_mmap(struct file *file, struct vm_area_struct *vma)
 
 static const struct file_operations snd_info_entry_operations =
 {
-#ifndef TARGET_OS2
 	.owner =		THIS_MODULE,
-#endif
 	.llseek =		snd_info_entry_llseek,
 	.read =			snd_info_entry_read,
 	.write =		snd_info_entry_write,

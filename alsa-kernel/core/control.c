@@ -1409,9 +1409,7 @@ static const struct file_operations snd_ctl_f_ops =
 static struct file_operations snd_ctl_f_ops =
 #endif
 {
-#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
-#endif
 	.read =		snd_ctl_read,
 	.open =		snd_ctl_open,
 	.release =	snd_ctl_release,

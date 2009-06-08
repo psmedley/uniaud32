@@ -2,5 +2,6 @@
 
 #ifndef _LINUX_SMP_LOCK_H
 #define _LINUX_SMP_LOCK_H
-
+#define lock_kernel()                           do { } while(0)
+#define unlock_kernel()                         do { } while(0)
 #endif /* _LINUX_SMP_LOCK_H */

@@ -180,13 +180,9 @@ static int snd_open(struct inode *inode, struct file *file)
 {
 	int ret;
 
-#ifndef TARGET_OS2
 	lock_kernel();
-#endif
 	ret = __snd_open(inode, file);
-#ifndef TARGET_OS2
 	unlock_kernel();
-#endif
 	return ret;
 }
 
@@ -196,9 +192,7 @@ static const struct file_operations snd_fops =
 static struct file_operations snd_fops =
 #endif
 {
-#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
-#endif
 	.open =		snd_open
 };
 

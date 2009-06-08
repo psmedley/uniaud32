@@ -433,12 +433,7 @@ int snd_seq_pool_done(struct snd_seq_pool *pool)
 			snd_printk(KERN_WARNING "snd_seq_pool_done timeout: %d cells remain\n", atomic_read(&pool->counter));
 			break;
 		}
-#ifndef TARGET_OS2
 		schedule_timeout_uninterruptible(1);
-#else
-		set_current_state(TASK_UNINTERRUPTIBLE); 
-		schedule_timeout(1);
-#endif
 		max_count--;
 	}
 	
