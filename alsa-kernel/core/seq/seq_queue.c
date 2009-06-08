@@ -48,11 +48,8 @@
 
 /* list of allocated queues */
 static struct snd_seq_queue *queue_list[SNDRV_SEQ_MAX_QUEUES];
-#ifndef TARGET_OS2
 static DEFINE_SPINLOCK(queue_list_lock);
-#else
-static spinlock_t queue_list_lock = SPIN_LOCK_UNLOCKED;
-#endif
+
 /* number of queues allocated */
 static int num_queues;
 

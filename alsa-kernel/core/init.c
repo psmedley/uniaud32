@@ -35,11 +35,7 @@
 #include <sound/control.h>
 #include <sound/info.h>
 
-#ifndef TARGET_OS2
 static DEFINE_SPINLOCK(shutdown_lock);
-#else
-spinlock_t shutdown_lock = SPIN_LOCK_UNLOCKED;
-#endif
 static LIST_HEAD(shutdown_files);
 
 #ifndef TARGET_OS2

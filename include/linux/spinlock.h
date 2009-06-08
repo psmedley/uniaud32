@@ -79,5 +79,6 @@ void spin_unlock(spinlock_t *lock);
 
 #define rwlock_init(x) *(x) = RW_LOCK_UNLOCKED;
 
+#define DEFINE_SPINLOCK(x)      spinlock_t x = SPIN_LOCK_UNLOCKED
 #endif /* !SMP */
 #endif /* __LINUX_SPINLOCK_H */
