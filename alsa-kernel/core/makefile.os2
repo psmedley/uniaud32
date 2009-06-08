@@ -14,13 +14,13 @@ NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG)
 #
 #===================================================================
 FILE1    = sound.obj init.obj memory.obj memalloc.obj sgbuf.obj
-FILE2    = control.obj device.obj misc.obj wrappers.obj 
+FILE2    = control.obj device.obj misc.obj 
 FILE3    = sound_oss.obj info_oss.obj 
 FILE4    = pcm.obj pcm_native.obj pcm_lib.obj pcm_misc.obj pcm_timer.obj pcm_memory.obj
 FILE5    = rawmidi.obj
 FILE6    = timer.obj
 FILE7    = rtctimer.obj
-FILE8    = hwdep.obj info.obj wrappers.obj misc_driver.obj vmaster.obj
+FILE8    = hwdep.obj info.obj vmaster.obj
 FILELAST =
 FILES    = $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10) $(FILE11) $(FILE12)
 
