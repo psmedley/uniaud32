@@ -374,11 +374,7 @@ int snd_rawmidi_kernel_open(struct snd_card *card, int device, int subdevice,
 
 static int snd_rawmidi_open(struct inode *inode, struct file *file)
 {
-#ifndef TARGET_OS2
 	int maj = imajor(inode);
-#else
-	int maj = MAJOR(inode->i_rdev);
-#endif
 	struct snd_card *card;
 	int subdevice;
 	unsigned short fflags;
@@ -392,19 +388,11 @@ static int snd_rawmidi_open(struct inode *inode, struct file *file)
 		return -EINVAL;		/* invalid combination */
 
 	if (maj == snd_major) {
-#ifndef TARGET_OS2
 		rmidi = snd_lookup_minor_data(iminor(inode),
-#else
-		rmidi = snd_lookup_minor_data(MINOR(inode->i_rdev),
-#endif
 					      SNDRV_DEVICE_TYPE_RAWMIDI);
 #ifdef CONFIG_SND_OSSEMUL
 	} else if (maj == SOUND_MAJOR) {
-#ifndef TARGET_OS2
 		rmidi = snd_lookup_oss_minor_data(iminor(inode),
-#else
-		rmidi = snd_lookup_oss_minor_data(MINOR(inode->i_rdev),
-#endif
 						  SNDRV_OSS_DEVICE_TYPE_MIDI);
 #endif
 	} else

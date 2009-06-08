@@ -50,11 +50,7 @@ static int snd_ctl_open(struct inode *inode, struct file *file)
 	struct snd_ctl_file *ctl;
 	int err;
 
-#ifndef TARGET_OS2
 	card = snd_lookup_minor_data(iminor(inode), SNDRV_DEVICE_TYPE_CONTROL);
-#else
-	card = snd_lookup_minor_data(MINOR(inode->i_rdev), SNDRV_DEVICE_TYPE_CONTROL);
-#endif
 	if (!card) {
 		err = -ENODEV;
 		goto __error1;

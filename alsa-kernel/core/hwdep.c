@@ -84,29 +84,17 @@ static ssize_t snd_hwdep_write(struct file * file, const char __user *buf,
 
 static int snd_hwdep_open(struct inode *inode, struct file * file)
 {
-#ifndef TARGET_OS2
 	int major = imajor(inode);
-#else
-	int major = MAJOR(inode->i_rdev);
-#endif
 	struct snd_hwdep *hw;
 	int err;
 	wait_queue_t wait;
 
 	if (major == snd_major) {
-#ifndef TARGET_OS2
 		hw = snd_lookup_minor_data(iminor(inode),
-#else
-		hw = snd_lookup_minor_data(MINOR(inode->i_rdev),
-#endif
 					   SNDRV_DEVICE_TYPE_HWDEP);
 #ifdef CONFIG_SND_OSSEMUL
 	} else if (major == SOUND_MAJOR) {
-#ifndef TARGET_OS2
 		hw = snd_lookup_oss_minor_data(iminor(inode),
-#else
-		hw = snd_lookup_oss_minor_data(MINOR(inode->i_rdev),
-#endif
 					       SNDRV_OSS_DEVICE_TYPE_DMFM);
 #endif
 	} else

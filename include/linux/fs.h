@@ -266,6 +266,10 @@ extern void kill_fasync(struct fasync_struct *, int, int);
 
 #define fops_get(x) (x)
 #define fops_put(x) do { ; } while (0)
+
+#define minor(a) MINOR(a)
+#define major(a) MAJOR(a)
+#define iminor(x) minor((x)->i_rdev)
 #define imajor(x) major((x)->i_rdev)
 
 #endif /* _LINUX_FS_H */
