@@ -122,11 +122,7 @@ EXPORT_SYMBOL(snd_lookup_minor_data);
 
 static int __snd_open(struct inode *inode, struct file *file)
 {
-#ifndef TARGET_OS2
 	unsigned int minor = iminor(inode);
-#else
-	unsigned int minor = MINOR(inode->i_rdev);
-#endif
 	struct snd_minor *mptr = NULL;
 #ifndef TARGET_OS2
 	const struct file_operations *old_fops;

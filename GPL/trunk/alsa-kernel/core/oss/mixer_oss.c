@@ -43,11 +43,7 @@ static int snd_mixer_oss_open(struct inode *inode, struct file *file)
 	struct snd_mixer_oss_file *fmixer;
 	int err;
 
-#ifndef TARGET_OS2
 	card = snd_lookup_oss_minor_data(iminor(inode),
-#else
-	card = snd_lookup_oss_minor_data(MINOR(inode->i_rdev),
-#endif
 					 SNDRV_OSS_DEVICE_TYPE_MIXER);
 	if (card == NULL)
 		return -ENODEV;

@@ -2382,11 +2382,7 @@ static int snd_pcm_oss_open(struct inode *inode, struct file *file)
 	int nonblock;
 	wait_queue_t wait;
 
-#ifndef TARGET_OS2
 	pcm = snd_lookup_oss_minor_data(iminor(inode),
-#else
-	pcm = snd_lookup_oss_minor_data(MINOR(inode->i_rdev),
-#endif
 					SNDRV_OSS_DEVICE_TYPE_PCM);
 	if (pcm == NULL) {
 		err = -ENODEV;
@@ -2420,11 +2416,7 @@ static int snd_pcm_oss_open(struct inode *inode, struct file *file)
 	mutex_lock(&pcm->open_mutex);
 	while (1) {
 		err = snd_pcm_oss_open_file(file, pcm, &pcm_oss_file,
-#ifndef TARGET_OS2
 					    iminor(inode), setup);
-#else
-					    MINOR(inode->i_rdev), setup);
-#endif
 		if (err >= 0)
 			break;
 		if (err == -EAGAIN) {
