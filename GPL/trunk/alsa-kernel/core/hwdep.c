@@ -267,7 +267,6 @@ static long snd_hwdep_ioctl(struct file * file, unsigned int cmd,
 	return -ENOTTY;
 }
 
-#ifndef TARGET_OS2x
 static int snd_hwdep_mmap(struct file * file, struct vm_area_struct * vma)
 {
 	struct snd_hwdep *hw = file->private_data;
@@ -275,7 +274,7 @@ static int snd_hwdep_mmap(struct file * file, struct vm_area_struct * vma)
 		return hw->ops.mmap(hw, file, vma);
 	return -ENXIO;
 }
-#endif
+
 static int snd_hwdep_control_ioctl(struct snd_card *card,
 				   struct snd_ctl_file * control,
 				   unsigned int cmd, unsigned long arg)
@@ -349,9 +348,7 @@ static const struct file_operations snd_hwdep_f_ops =
 static struct file_operations snd_hwdep_f_ops =
 #endif
 {
-#ifndef TARGET_OS2
 	.owner = 	THIS_MODULE,
-#endif
 	.llseek =	snd_hwdep_llseek,
 	.read = 	snd_hwdep_read,
 	.write =	snd_hwdep_write,
@@ -364,9 +361,7 @@ static struct file_operations snd_hwdep_f_ops =
 #else
 	.ioctl =	snd_hwdep_ioctl_old,
 #endif
-#ifndef TARGET_OS2x
 	.mmap =		snd_hwdep_mmap,
-#endif
 };
 
 /**

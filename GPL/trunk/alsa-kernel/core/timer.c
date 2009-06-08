@@ -1948,9 +1948,7 @@ static const struct file_operations snd_timer_f_ops =
 static struct file_operations snd_timer_f_ops =
 #endif
 {
-#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
-#endif
 	.read =		snd_timer_user_read,
 	.open =		snd_timer_user_open,
 	.release =	snd_timer_user_release,

@@ -35,9 +35,7 @@
 MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Mixer OSS emulation for ALSA.");
 MODULE_LICENSE("GPL");
-#ifndef TARGET_OS2
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_MIXER);
-#endif
 
 static int snd_mixer_oss_open(struct inode *inode, struct file *file)
 {
@@ -411,9 +409,7 @@ static int snd_mixer_oss_ioctl_old(struct inode *inode, struct file * file,
 
 static const struct file_operations snd_mixer_oss_f_ops =
 {
-#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
-#endif
 	.open =		snd_mixer_oss_open,
 	.release =	snd_mixer_oss_release,
 #ifdef CONFIG_SND_HAVE_NEW_IOCTL

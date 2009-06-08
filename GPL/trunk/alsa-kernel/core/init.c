@@ -343,9 +343,7 @@ static const struct file_operations snd_shutdown_f_ops =
 static struct file_operations snd_shutdown_f_ops =
 #endif
 {
-#ifndef TARGET_OS2
 	.owner = 	THIS_MODULE,
-#endif
 	.llseek =	snd_disconnect_llseek,
 	.read = 	snd_disconnect_read,
 	.write =	snd_disconnect_write,

@@ -1406,9 +1406,7 @@ static const struct file_operations snd_rawmidi_f_ops =
 static struct file_operations snd_rawmidi_f_ops =
 #endif
 {
-#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
-#endif
 	.read =		snd_rawmidi_read,
 	.write =	snd_rawmidi_write,
 	.open =		snd_rawmidi_open,

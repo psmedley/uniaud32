@@ -1937,7 +1937,7 @@ static int azx_acquire_irq(struct azx *chip, int do_disconnect)
 			"HDA Intel", chip)) {
 		printk(KERN_ERR "hda-intel: unable to grab IRQ %d, "
 		       "disabling device\n", chip->pci->irq);
-#ifndef TARGEt_OS2
+#ifndef TARGET_OS2
 		if (do_disconnect)
 			snd_card_disconnect(chip->card);
 #endif

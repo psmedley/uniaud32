@@ -36,10 +36,8 @@ MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("OSS-compatible sequencer module");
 MODULE_LICENSE("GPL");
 /* Takashi says this is really only for sound-service-0-, but this is OK. */
-#ifndef TARGET_OS2
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_SEQUENCER);
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_MUSIC);
-#endif
 
 #ifdef SNDRV_SEQ_OSS_DEBUG
 module_param(seq_oss_debug, int, 0644);
@@ -225,9 +223,7 @@ odev_poll(struct file *file, poll_table * wait)
 
 static const struct file_operations seq_oss_f_ops =
 {
-#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
-#endif
 	.read =		odev_read,
 	.write =	odev_write,
 	.open =		odev_open,

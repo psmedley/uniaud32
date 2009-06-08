@@ -2222,13 +2222,9 @@ static int snd_seq_ioctl_old(struct inode *inode, struct file * file,
 			     unsigned int cmd, unsigned long arg)
 {
 	int err;
-#ifndef TARGET_OS2
 	unlock_kernel();
-#endif
 	err = snd_seq_ioctl(file, cmd, arg);
-#ifndef TARGET_OS2
 	lock_kernel();
-#endif
 	return err;
 }
 #endif
@@ -2570,9 +2566,7 @@ static const struct file_operations snd_seq_f_ops =
 static struct file_operations snd_seq_f_ops =
 #endif
 {
-#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
-#endif
 	.read =		snd_seq_read,
 	.write =	snd_seq_write,
 	.open =		snd_seq_open,

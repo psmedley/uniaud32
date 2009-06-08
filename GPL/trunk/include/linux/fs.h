@@ -232,6 +232,7 @@ struct inode {
 typedef int (*filldir_t)(void *, const char *, int, off_t, ino_t);
 
 struct file_operations {
+	struct module *owner;
 	loff_t (*llseek) (struct file *, loff_t, int);
 	int (*read) (struct file *, char *, size_t, loff_t *);
 	int (*write) (struct file *, const char *, size_t, loff_t *);

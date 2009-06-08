@@ -32,6 +32,7 @@ extern "C" {
 #include <string.h>
 #include <dbgos2.h>
 #include <stacktoflat.h>
+#include <limits.h>
 #ifdef KEE
 #include <kee.h>
 #endif
@@ -641,6 +642,24 @@ void __kfree(const void *ptr)
 #endif
     }
     else  vfree((PVOID)addr);
+}
+//******************************************************************************
+//******************************************************************************
+void *kzalloc(size_t size, unsigned int flags)
+{
+	void *ret;
+	ret = _kmalloc(size, flags);
+	if (ret)
+		memset(ret, 0, size);
+	return ret;
+}
+//******************************************************************************
+//******************************************************************************
+void *kcalloc(size_t n, size_t size, unsigned int flags)
+{
+	if (n != 0 && size > INT_MAX / n)
+		return NULL;
+	return kzalloc(n * size, flags);
 }
 //******************************************************************************
 //******************************************************************************

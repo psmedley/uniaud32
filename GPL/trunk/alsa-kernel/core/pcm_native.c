@@ -3275,9 +3275,7 @@ static int snd_pcm_fasync(int fd, struct file * file, int on)
 	struct snd_pcm_runtime *runtime;
 	int err = -ENXIO;
 
-#ifndef TARGET_OS2
 	lock_kernel();
-#endif
 	pcm_file = file->private_data;
 	substream = pcm_file->substream;
 	if (PCM_RUNTIME_CHECK(substream))
@@ -3285,9 +3283,7 @@ static int snd_pcm_fasync(int fd, struct file * file, int on)
 	runtime = substream->runtime;
 	err = fasync_helper(fd, file, on, &runtime->fasync);
 out:
-#ifndef TARGET_OS2
 	unlock_kernel();
-#endif
 	return err;
 }
 
@@ -3446,9 +3442,7 @@ const struct file_operations snd_pcm_f_ops[2] = {
 struct file_operations snd_pcm_f_ops[2] = {
 #endif
 	{
-#ifndef TARGET_OS2
 		.owner =		THIS_MODULE,
-#endif
 		.write =		snd_pcm_write,
 #ifdef SND_PCM_USE_AIO
 		.aio_write =		snd_pcm_aio_write,
@@ -3473,9 +3467,7 @@ struct file_operations snd_pcm_f_ops[2] = {
 #endif
 	},
 	{
-#ifndef TARGET_OS2
 		.owner =		THIS_MODULE,
-#endif
 		.read =			snd_pcm_read,
 #ifdef SND_PCM_USE_AIO
 		.aio_read =		snd_pcm_aio_read,

@@ -60,10 +60,8 @@ module_param_array(adsp_map, int, NULL, 0444);
 MODULE_PARM_DESC(adsp_map, "PCM device number assigned to 2nd OSS device.");
 module_param(nonblock_open, bool, 0644);
 MODULE_PARM_DESC(nonblock_open, "Don't block opening busy PCM devices.");
-#ifndef TARGET_OS2
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_PCM);
 MODULE_ALIAS_SNDRV_MINOR(SNDRV_MINOR_OSS_PCM1);
-#endif
 
 extern int snd_mixer_oss_ioctl_card(struct snd_card *card, unsigned int cmd, unsigned long arg);
 static int snd_pcm_oss_get_rate(struct snd_pcm_oss_file *pcm_oss_file);
@@ -2995,9 +2993,7 @@ static const struct file_operations snd_pcm_oss_f_reg =
 static struct file_operations snd_pcm_oss_f_reg =
 #endif
 {
-#ifndef TARGET_OS2
 	.owner =	THIS_MODULE,
-#endif
 	.read =		snd_pcm_oss_read,
 	.write =	snd_pcm_oss_write,
 	.open =		snd_pcm_oss_open,
