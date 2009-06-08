@@ -75,11 +75,7 @@ static struct seq_oss_synth midi_synth_dev = {
 	"MIDI", /* name */
 };
 
-#ifndef TARGET_OS2
 static DEFINE_SPINLOCK(register_lock);
-#else
-spinlock_t register_lock = SPIN_LOCK_UNLOCKED;
-#endif
 
 /*
  * prototypes

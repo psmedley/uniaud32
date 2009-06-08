@@ -79,11 +79,7 @@ static LIST_HEAD(snd_timer_list);
 static LIST_HEAD(snd_timer_slave_list);
 
 /* lock for slave active lists */
-#ifndef TARGET_OS2
 static DEFINE_SPINLOCK(slave_active_lock);
-#else
-static spinlock_t slave_active_lock = SPIN_LOCK_UNLOCKED;
-#endif
 
 static DEFINE_MUTEX(register_mutex);
 
