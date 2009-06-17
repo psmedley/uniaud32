@@ -72,6 +72,8 @@ static struct {
 	/* OSS_MIXER_3DDEPTH  */ { "3D Control - Depth", 0 , -1},
         /* OSS_MIXER_3DCENTER */ { "3D Control - Center", 0 , -1},
         /* OSS_MIXER_FRONT    */ { "Front", 0 , -1},
+        /* OSS_MIXER_SPEAKER2 */ { "Speaker", 0 , -1},
+        /* OSS_MIXER_HEADPHONE */ { "Headphone", 0 , -1},
 };
 char *szRecSources[OSS32_MIX_RECSRC_MAX] = {
     "Mic", "CD", "Line", "Video", "Aux", "Mix", "Mix Mono", "Phone", "Synth"
@@ -440,14 +442,20 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     case OSS32_MIX_VOLUME_SPEAKER:
         idx = pHandle->controls[OSS_MIXER_SPEAKER].idxVolume;
         idxMute = pHandle->controls[OSS_MIXER_SPEAKER].idxMute;
+        if (idx == -1)
+        {
+            /* if OSS_MIXER_SPEAKER isn't a valid control, try OSS_MIXER_SPEAKER2 */
+            idx = pHandle->controls[OSS_MIXER_SPEAKER2].idxVolume;
+            idxMute = pHandle->controls[OSS_MIXER_SPEAKER2].idxMute;
+        }
         break;
     case OSS32_MIX_VOLUME_PHONE:
         idx = pHandle->controls[OSS_MIXER_PHONEOUT].idxVolume;
         idxMute = pHandle->controls[OSS_MIXER_PHONEOUT].idxMute;
         break;
-    case OSS32_MIX_VOLUME_HEADPHONE: //TODO:
-        idx = pHandle->controls[OSS_MIXER_PHONEOUT].idxVolume;
-        idxMute = pHandle->controls[OSS_MIXER_PHONEOUT].idxMute;
+    case OSS32_MIX_VOLUME_HEADPHONE: 
+        idx = pHandle->controls[OSS_MIXER_HEADPHONE].idxVolume;
+        idxMute = pHandle->controls[OSS_MIXER_HEADPHONE].idxMute;
         break;
     case OSS32_MIX_VOLUME_AUX:
         idx = pHandle->controls[OSS_MIXER_LINE1].idxVolume;
@@ -759,10 +767,8 @@ ULONG OSSToALSAVolume(ULONG OSSVolIdx)
         return OSS32_MIX_LEVEL_TREBLE;
     case OSS_MIXER_BASS:
         return OSS32_MIX_LEVEL_BASS;
-#if 0
-    case OSS_MIXER_PHONEOUT: //TODO:
+    case OSS_MIXER_HEADPHONE: 
         return OSS32_MIX_VOLUME_HEADPHONE;
-#endif
     case OSS_MIXER_LINE1:
         return OSS32_MIX_VOLUME_AUX;
     }
