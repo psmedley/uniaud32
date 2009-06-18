@@ -49,7 +49,7 @@ static struct {
 	/* OSS_MIXER_TREBLE   */ { "Tone Control - Treble", 0, -1},
 	/* OSS_MIXER_SYNTH    */ { "Synth", 0 , OSS32_MIX_RECSRC_SYNTH},
 	/* OSS_MIXER_PCM      */ { "PCM", 0 , -1},
-	/* OSS_MIXER_SPEAKER  */ { "PC Speaker", 0 , -1},
+	/* OSS_MIXER_PCSPEAKER  */ { "PC Speaker", 0 , -1},
 	/* OSS_MIXER_LINE     */ { "Line", 0 , OSS32_MIX_RECSRC_LINE},
 	/* OSS_MIXER_MIC      */ { "Mic", 0, OSS32_MIX_RECSRC_MIC},
 	/* OSS_MIXER_CD       */ { "CD", 0 , OSS32_MIX_RECSRC_CD},
@@ -439,14 +439,14 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
         idx = pHandle->controls[OSS_MIXER_VIDEO].idxVolume;
         idxMute = pHandle->controls[OSS_MIXER_VIDEO].idxMute;
         break;
-    case OSS32_MIX_VOLUME_SPEAKER:
-        idx = pHandle->controls[OSS_MIXER_SPEAKER].idxVolume;
-        idxMute = pHandle->controls[OSS_MIXER_SPEAKER].idxMute;
+    case OSS32_MIX_VOLUME_PCSPEAKER:
+        idx = pHandle->controls[OSS_MIXER_PCSPEAKER].idxVolume;
+        idxMute = pHandle->controls[OSS_MIXER_PCSPEAKER].idxMute;
         if (idx == -1)
         {
-            /* if OSS_MIXER_SPEAKER isn't a valid control, try OSS_MIXER_SPEAKER2 */
-            idx = pHandle->controls[OSS_MIXER_SPEAKER2].idxVolume;
-            idxMute = pHandle->controls[OSS_MIXER_SPEAKER2].idxMute;
+            /* if OSS_MIXER_PCSPEAKER isn't a valid control, try OSS_MIXER_SPEAKER */
+            idx = pHandle->controls[OSS_MIXER_SPEAKER].idxVolume;
+            idxMute = pHandle->controls[OSS_MIXER_SPEAKER].idxMute;
         }
         break;
     case OSS32_MIX_VOLUME_PHONE:
@@ -757,8 +757,8 @@ ULONG OSSToALSAVolume(ULONG OSSVolIdx)
         return OSS32_MIX_VOLUME_SPDIF;
     case OSS_MIXER_VIDEO:
         return OSS32_MIX_VOLUME_VIDEO;
-    case OSS_MIXER_SPEAKER:
-        return OSS32_MIX_VOLUME_SPEAKER;
+    case OSS_MIXER_PCSPEAKER:
+        return OSS32_MIX_VOLUME_PCSPEAKER;
     case OSS_MIXER_PHONEOUT:
         return OSS32_MIX_VOLUME_PHONE;
     case OSS_MIXER_IGAIN:
