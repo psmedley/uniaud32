@@ -238,7 +238,7 @@ typedef struct
 #define OSS32_MIX_VOLUME_CD		6	//CD volume
 #define OSS32_MIX_VOLUME_SPDIF		7	//SPDIF volume
 #define OSS32_MIX_VOLUME_VIDEO		8	//Video volume
-#define OSS32_MIX_VOLUME_SPEAKER	9	//PC speaker volume
+#define OSS32_MIX_VOLUME_PCSPEAKER	9	//PC speaker volume
 #define OSS32_MIX_VOLUME_PHONE		10	//Phone volume
 #define OSS32_MIX_VOLUME_HEADPHONE	11	//Headphone volume
 #define OSS32_MIX_VOLUME_AUX           	12	//Auxiliary volume

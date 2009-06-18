@@ -63,7 +63,7 @@ typedef ULONG HFILE;
 #define OSS_MIXER_TREBLE	2
 #define OSS_MIXER_SYNTH		3
 #define OSS_MIXER_PCM		4
-#define OSS_MIXER_SPEAKER	5
+#define OSS_MIXER_PCSPEAKER	5
 #define OSS_MIXER_LINE		6
 #define OSS_MIXER_MIC		7
 #define OSS_MIXER_CD		8
@@ -86,7 +86,7 @@ typedef ULONG HFILE;
 #define OSS_MIXER_3DDEPTH       25    
 #define OSS_MIXER_3DCENTER      26
 #define OSS_MIXER_FRONT         27
-#define OSS_MIXER_SPEAKER2      28
+#define OSS_MIXER_SPEAKER       28
 #define OSS_MIXER_HEADPHONE 	29
 #define OSS_MIXER_NRDEVICES	30
 
