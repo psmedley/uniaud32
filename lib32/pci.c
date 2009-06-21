@@ -510,7 +510,6 @@ int pci_register_driver(struct pci_driver *driver)
                     // create adapter
                     RMDone((driver->id_table[i].device << 16) | driver->id_table[i].vendor);
                     nrCardsDetected++;
-                    return 1;
                 }
                 else pcidev->devfn = 0;
             }
@@ -521,6 +520,9 @@ int pci_register_driver(struct pci_driver *driver)
 
         }
     }
+if (nrCardsDetected >=1)
+	return 1;
+
     return 0;
 }
 //******************************************************************************
