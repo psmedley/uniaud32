@@ -86,6 +86,19 @@ BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
         return FALSE;
     }
 
+//PS+++ Begin
+#ifdef ACPI
+    if (InitCompleteWas == 0)
+    {
+        dprintf(("RMSetIrq saved %d %d %x was %d", (ULONG)ulIrq, ulSlotNo,(ULONG)sISRHigh[SaveIRQCounter].LowIRQ));
+        sISRHigh[SaveIRQCounter].ulSlotNo = ulSlotNo;
+        ulIrq = sISRHigh[SaveIRQCounter].LowIRQ;
+        SaveIRQCounter++;
+    }
+
+#endif
+//PS End
+
     if(fShared)
     {
 	rc = DevIRQSet((WORD16) *pISR[ulSlotNo],
@@ -105,17 +118,6 @@ BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
         DebugInt3();
         return FALSE;
     }
-//PS+++ Begin
-#ifdef ACPI
-    if (InitCompleteWas == 0)
-    {
-        dprintf(("RMSetIrq saved %d %d %x was %d", (ULONG)ulIrq, ulSlotNo,(ULONG)sISRHigh[SaveIRQCounter].LowIRQ));
-        sISRHigh[SaveIRQCounter].ulSlotNo = ulSlotNo;
-        SaveIRQCounter++;
-        return TRUE;
-    }
-#endif
-//PS End
 
     return TRUE;
 }
@@ -142,6 +144,13 @@ ULONG ALSA_Interrupt(ULONG ulSlotNo)
        // and clear the carry flag (tells OS/2 kernel that Int was handled).
        // Note carry flag is handled in setup.asm 
        cli();
+#ifdef ACPI
+       // Before init complete we must send PIC IRQ (APIC MODE)
+       if (!InitCompleteWas && SaveIRQCounter)
+       {
+           ulIrqNo = sISRHigh[SaveIRQCounter-1].LowIRQ;
+       }
+#endif
        DevEOI( (WORD16)ulIrqNo );
        return TRUE;
    }

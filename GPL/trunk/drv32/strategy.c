@@ -95,6 +95,8 @@ extern int  SaveIRQCounter;
 #ifdef __cplusplus
 }
 #endif
+#define cli()  _asm cli;
+#define sti()  _asm sti;
 #endif //ACPI
 //******************************************************************************
 #pragma off (unreferenced)
@@ -105,8 +107,9 @@ ULONG StratInitComplete(RP __far* _rp)
 //PS+++ Begin
     ULONG  i, rc = 0;
 
-    InitCompleteWas = 1;
 
+    cli();
+    InitCompleteWas = 1;
     for (i = 0; i < SaveIRQCounter; i++)
     {
          dprintf(("Close IRQ%d - Open IRQ%d",(ULONG)sISRHigh[i].LowIRQ,(ULONG)sISRHigh[i].HighIRQ));
@@ -119,6 +122,7 @@ ULONG StratInitComplete(RP __far* _rp)
              }
          }
     }
+    sti();
 #endif
 //PS++ End
 #ifdef DEBUG
