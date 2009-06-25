@@ -746,7 +746,7 @@ struct saved_config_tbl {
 };
 static struct saved_config_tbl saved_tbl[16];
 
-void pci_save_state(struct pci_dev *pci)
+int pci_save_state(struct pci_dev *pci)
 {
     int i;
     /* FIXME: mutex needed for race? */
@@ -754,10 +754,11 @@ void pci_save_state(struct pci_dev *pci)
         if (! saved_tbl[i].pci) {
             saved_tbl[i].pci = pci;
             pci_orig_save_state(pci, saved_tbl[i].config);
-            return;
+            return 1;
         }
     }
     printk(KERN_DEBUG "snd: no pci config space found!\n");
+    return 0;
 }
 
 int pci_restore_state(struct pci_dev *pci)
