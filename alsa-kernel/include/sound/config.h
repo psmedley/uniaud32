@@ -62,6 +62,7 @@
 #include <linux/init.h>
 #include <linux/lockdep.h>
 #include <linux/smp_lock.h>
+#include <linux/dma-mapping.h>
 #include "compat_22.h"
 
 #include <sound/asound.h>

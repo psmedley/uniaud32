@@ -201,6 +201,11 @@ OSSRET OSS32_Initialize(void)
     {
         fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_cs46xx_exit);
     }
+    if((ForceCard == CARD_NONE || ForceCard == CARD_CS5535) &&
+       nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_cs5535audio_init) == 0)
+    {
+        fnCardExitCall[nrCardsDetected] = name_module_exit(alsa_card_cs5535audio_exit);
+    }
     if((ForceCard == CARD_NONE || ForceCard == CARD_ESS1938) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_es1938_init) == 0)
     {
