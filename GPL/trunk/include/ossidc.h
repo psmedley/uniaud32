@@ -243,6 +243,7 @@ typedef struct
 #define OSS32_MIX_VOLUME_HEADPHONE	11	//Headphone volume
 #define OSS32_MIX_VOLUME_AUX           	12	//Auxiliary volume
 #define OSS32_MIX_VOLUME_CAPTURE	13	//Recording volume
+#define OSS32_MIX_VOLUME_SPEAKER	14	//Speaker volume
 #define OSS32_MIX_VOLUME_MAX            OSS32_MIX_VOLUME_CAPTURE
 
 #define OSS32_MIX_FIRST_PROPERTY        20
