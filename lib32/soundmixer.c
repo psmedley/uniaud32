@@ -72,7 +72,7 @@ static struct {
 	/* OSS_MIXER_3DDEPTH  */ { "3D Control - Depth", 0 , -1},
         /* OSS_MIXER_3DCENTER */ { "3D Control - Center", 0 , -1},
         /* OSS_MIXER_FRONT    */ { "Front", 0 , -1},
-        /* OSS_MIXER_SPEAKER2 */ { "Speaker", 0 , -1},
+        /* OSS_MIXER_SPEAKER  */ { "Speaker", 0 , -1},
         /* OSS_MIXER_HEADPHONE */ { "Headphone", 0 , -1},
 };
 char *szRecSources[OSS32_MIX_RECSRC_MAX] = {
@@ -224,6 +224,8 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
                        strncmp(nextword, MIXER_SWITCH, sizeof(MIXER_SWITCH)-1) == 0) 
                     {//mute control
                         pHandle->controls[j].idxMute = i;
+			if (pHandle->controls[j].idxVolume == -1)
+				pHandle->controls[j].idxVolume = i;
                     }
                     else
                     if(strncmp(nextword, MIXER_SOURCE, sizeof(MIXER_SOURCE)-1) == 0) 
@@ -442,12 +444,6 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     case OSS32_MIX_VOLUME_PCSPEAKER:
         idx = pHandle->controls[OSS_MIXER_PCSPEAKER].idxVolume;
         idxMute = pHandle->controls[OSS_MIXER_PCSPEAKER].idxMute;
-        if (idx == -1)
-        {
-            /* if OSS_MIXER_PCSPEAKER isn't a valid control, try OSS_MIXER_SPEAKER */
-            idx = pHandle->controls[OSS_MIXER_SPEAKER].idxVolume;
-            idxMute = pHandle->controls[OSS_MIXER_SPEAKER].idxMute;
-        }
         break;
     case OSS32_MIX_VOLUME_PHONE:
         idx = pHandle->controls[OSS_MIXER_PHONEOUT].idxVolume;
@@ -456,6 +452,10 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     case OSS32_MIX_VOLUME_HEADPHONE: 
         idx = pHandle->controls[OSS_MIXER_HEADPHONE].idxVolume;
         idxMute = pHandle->controls[OSS_MIXER_HEADPHONE].idxMute;
+        break;
+    case OSS32_MIX_VOLUME_SPEAKER:
+        idx = pHandle->controls[OSS_MIXER_SPEAKER].idxVolume;
+        idxMute = pHandle->controls[OSS_MIXER_SPEAKER].idxMute;
         break;
     case OSS32_MIX_VOLUME_AUX:
         idx = pHandle->controls[OSS_MIXER_LINE1].idxVolume;
@@ -547,7 +547,6 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     return OSSERR_SUCCESS;
 
 fail:
-    printk("OSS32_MixSetVolume failed: %i\n", ret);
     if(pElem) kfree(pElem);
     return ret;
 }
@@ -769,6 +768,8 @@ ULONG OSSToALSAVolume(ULONG OSSVolIdx)
         return OSS32_MIX_LEVEL_BASS;
     case OSS_MIXER_HEADPHONE: 
         return OSS32_MIX_VOLUME_HEADPHONE;
+    case OSS_MIXER_SPEAKER:
+        return OSS32_MIX_VOLUME_SPEAKER;
     case OSS_MIXER_LINE1:
         return OSS32_MIX_VOLUME_AUX;
     }
