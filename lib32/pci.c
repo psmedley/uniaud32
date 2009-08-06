@@ -254,11 +254,11 @@ static int pci_query_device(unsigned int vendor, unsigned int device,
                         if (!rc) 
                         { 
                         // Check APIC IRQ, if we have /SMP /APIC, must be set 
-                        if (temp3) 
-                           temp = (temp & (~0xff)) | (temp3 & 0xff); 
+                        if (temp1) 
+                           temp = (temp & (~0xff)) | (temp1 & 0xff); 
                         // Check PIC IRQ 
-                        else if (temp1) 
-                                 temp = (temp & (~0xff)) | (temp1 & 0xff); 
+                        else if (temp3) 
+                                 temp = (temp & (~0xff)) | (temp3 & 0xff); 
                         dprintf(("pci_query_device: IRQs ACPI PIC%d APIC%d", temp1, temp3)); 
                         sISRHigh[SaveIRQCounter].LowIRQ  = temp1;
                         sISRHigh[SaveIRQCounter].HighIRQ = temp3;
@@ -520,7 +520,7 @@ int pci_register_driver(struct pci_driver *driver)
 
         }
     }
-if (nrCardsDetected >=1)
+    if (nrCardsDetected >=1)
 	return 1;
 
     return 0;
