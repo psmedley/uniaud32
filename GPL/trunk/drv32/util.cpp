@@ -108,11 +108,23 @@ void *operator new(unsigned u, void near *p)
 }
 //*****************************************************************************
 //*****************************************************************************
+#if !defined(KEE)
 static  GINFO FAR48 *pGIS = 0;
+#endif
 //*****************************************************************************
 //*****************************************************************************
+//PS++ Begin
+extern "C"
+{
+#pragma pack(1)
+#include     "infoseg.h"
+#pragma pack()
+extern PVOID  KernSISData;
+#define	KernSISData	 	((struct InfoSegGDT *)&KernSISData)
+}
 ULONG os2gettimesec()
 {
+#if !defined(KEE)
     APIRET rc;
     FARPTR16 p;
 
@@ -126,11 +138,15 @@ ULONG os2gettimesec()
         pGIS = (GINFO FAR48 *)MAKE_FARPTR32((ULONG)(*pSel << 16));
     }
     return pGIS->Time;
+#else
+    return KernSISData->SIS_BigTime;
+#endif
 }
 //*****************************************************************************
 //*****************************************************************************
 ULONG os2gettimemsec()
 {
+#if !defined(KEE)
     APIRET rc;
     FARPTR16 p;
 
@@ -144,7 +160,11 @@ ULONG os2gettimemsec()
         pGIS = (GINFO FAR48 *)MAKE_FARPTR32((ULONG)(*pSel << 16));
     }
     return pGIS->MilliSeconds;
+#else
+    return KernSISData->SIS_MsCount;
+#endif
 }
+//PS++ End
 //*****************************************************************************
 //*****************************************************************************
 

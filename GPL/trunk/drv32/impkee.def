@@ -55,10 +55,16 @@ EXPORTS
    KernDynamicAPI @ 70
    KernRASSysTrace @ 80
    KernPerfSysTrace @ 81
-   SIS @ 90
-   InterruptLevel @ 92
-   _TKSSBase @ 93
-   KEEVersionId @ 94
+;PS+++ rename old, add new
+        _KernSISData                   @90
+        _KernLISData                   @91
+        _KernInterruptLevel            @92
+        _KernTKSSBase                  @93
+        _KernKEEVersion                @94
+;   SIS @ 90
+;   InterruptLevel @ 92
+;   _TKSSBase @ 93
+;   KEEVersionId @ 94
    KernLockFile @ 100
    KernUnLockFile @ 101
    KernGetFileSize @ 102
