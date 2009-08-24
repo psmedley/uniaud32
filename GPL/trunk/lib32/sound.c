@@ -252,23 +252,33 @@ ULONG ALSAToOSSRateFlags(ULONG fuRates)
 {
     ULONG fuOSSRates = 0;
 
-    if(fuRates & SNDRV_PCM_RATE_5512) {
-        fuOSSRates |= OSS32_CAPS_PCM_RATE_5512;
-    }
-    if(fuRates & SNDRV_PCM_RATE_8000) {
-        fuOSSRates |= OSS32_CAPS_PCM_RATE_8000;
-    }
-    if(fuRates & SNDRV_PCM_RATE_11025) {
-        fuOSSRates |= OSS32_CAPS_PCM_RATE_11025;
-    }
-    if(fuRates & SNDRV_PCM_RATE_16000) {
-        fuOSSRates |= OSS32_CAPS_PCM_RATE_16000;
-    }
-    if(fuRates & SNDRV_PCM_RATE_22050) {
-        fuOSSRates |= OSS32_CAPS_PCM_RATE_22050;
-    }
-    if(fuRates & SNDRV_PCM_RATE_32000) {
-        fuOSSRates |= OSS32_CAPS_PCM_RATE_32000;
+    char szMixerName[64];
+    char szDeviceName[128];
+    OSS32_QueryNames(OSS32_DEFAULT_DEVICE, szDeviceName,
+                                sizeof(szDeviceName),szMixerName,
+                                sizeof(szMixerName), TRUE);
+    if (strncmp(szDeviceName,"HDA",3) != 0){
+    /* non-HDA audio - support 5512 - 32000 Hz sample rates */
+       if(fuRates & SNDRV_PCM_RATE_5512) {
+           fuOSSRates |= OSS32_CAPS_PCM_RATE_5512;
+       }
+       if(fuRates & SNDRV_PCM_RATE_8000) {
+           fuOSSRates |= OSS32_CAPS_PCM_RATE_8000;
+       }
+       if(fuRates & SNDRV_PCM_RATE_11025) {
+           fuOSSRates |= OSS32_CAPS_PCM_RATE_11025;
+       }
+       if(fuRates & SNDRV_PCM_RATE_16000) {
+           fuOSSRates |= OSS32_CAPS_PCM_RATE_16000;
+       }
+       if(fuRates & SNDRV_PCM_RATE_22050) {
+           fuOSSRates |= OSS32_CAPS_PCM_RATE_22050;
+       }
+       if(fuRates & SNDRV_PCM_RATE_32000) {
+           fuOSSRates |= OSS32_CAPS_PCM_RATE_32000;
+       }
+    } else {
+       printk("HDA audio detected - don't support 5512 - 32000 Hz audio sample rates\n");
     }
     if(fuRates & SNDRV_PCM_RATE_44100) {
         fuOSSRates |= OSS32_CAPS_PCM_RATE_44100;
