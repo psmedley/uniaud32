@@ -344,8 +344,8 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 
     printk("Number of cards: %i",nrCardsDetected);
     printk("dev id: %i",deviceid);
-//    pDevCaps->nrDevices  = 1;//nrCardsDetected;
-    pDevCaps->nrDevices  = nrCardsDetected;
+    pDevCaps->nrDevices  = 1;//nrCardsDetected;
+//    pDevCaps->nrDevices  = nrCardsDetected;
     pDevCaps->ulCaps     = OSS32_CAPS_WAVE_PLAYBACK | OSS32_CAPS_WAVE_CAPTURE;
 
     //query wave in & out caps
