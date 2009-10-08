@@ -568,12 +568,14 @@ struct hda_bus_ops {
 	/* send a single command */
 	int (*command)(struct hda_bus *bus, unsigned int cmd);
 	/* get a response from the last command */
-	unsigned int (*get_response)(struct hda_bus *bus);
+	unsigned int (*get_response)(struct hda_bus *bus, unsigned int addr);
 	/* free the private data */
 	void (*private_free)(struct hda_bus *);
 	/* attach a PCM stream */
 	int (*attach_pcm)(struct hda_bus *bus, struct hda_codec *codec,
 			  struct hda_pcm *pcm);
+	/* reset bus for retry verb */
+	void (*bus_reset)(struct hda_bus *bus);
 #ifdef CONFIG_SND_HDA_POWER_SAVE
 	/* notify power-up/down from codec to controller */
 	void (*pm_notify)(struct hda_bus *bus);
@@ -626,7 +628,13 @@ struct hda_bus {
 
 	/* misc op flags */
 	unsigned int needs_damn_long_delay :1;
+	unsigned int allow_bus_reset:1;	/* allow bus reset at fatal error */
+	unsigned int sync_write:1;	/* sync after verb write */
+	/* status for codec/controller */
 	unsigned int shutdown :1;	/* being unloaded */
+	unsigned int rirb_error:1;	/* error in codec communication */
+	unsigned int response_reset:1;	/* controller was reset */
+	unsigned int in_reset:1;	/* during reset operation */
 };
 
 /*
@@ -751,7 +759,8 @@ struct hda_codec {
 	/* detected preset */
 	const struct hda_codec_preset *preset;
 	struct module *owner;
-	const char *name;	/* codec name */
+	const char *vendor_name;	/* codec vendor name */
+	const char *chip_name;		/* codec chip name */
 	const char *modelname;	/* model name for preset */
 
 	/* set by patch */
@@ -829,7 +838,8 @@ enum {
 int snd_hda_bus_new(struct snd_card *card, const struct hda_bus_template *temp,
 		    struct hda_bus **busp);
 int snd_hda_codec_new(struct hda_bus *bus, unsigned int codec_addr,
-		      int do_init, struct hda_codec **codecp);
+		      struct hda_codec **codecp);
+int snd_hda_codec_configure(struct hda_codec *codec);
 
 /*
  * low level functions
@@ -913,7 +923,7 @@ void snd_hda_get_codec_name(struct hda_codec *codec, char *name, int namelen);
  * power management
  */
 #ifdef CONFIG_PM
-int snd_hda_suspend(struct hda_bus *bus, pm_message_t state);
+int snd_hda_suspend(struct hda_bus *bus);
 int snd_hda_resume(struct hda_bus *bus);
 #endif
 
@@ -935,6 +945,13 @@ void snd_hda_power_down(struct hda_codec *codec);
 static inline void snd_hda_power_up(struct hda_codec *codec) {}
 static inline void snd_hda_power_down(struct hda_codec *codec) {}
 #define snd_hda_codec_needs_resume(codec) 1
+#endif
+
+#ifdef CONFIG_SND_HDA_PATCH_LOADER
+/*
+ * patch firmware
+ */
+int snd_hda_load_patch(struct hda_bus *bus, const char *patch);
 #endif
 
 /*
