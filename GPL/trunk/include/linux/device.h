@@ -6,6 +6,8 @@
 #if 0
 struct device {
 	void *private_data;
+	void *platform_data;
+
 	struct device_driver *driver;
 	struct pm_dev *pm_dev;
 	char	bus_id[20];
