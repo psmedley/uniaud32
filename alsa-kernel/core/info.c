@@ -88,12 +88,19 @@ static int resize_info_buffer(struct snd_info_buffer *buffer,
 	char *nbuf;
 
 	nsize = PAGE_ALIGN(nsize);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 22) || \
+	defined(CONFIG_SND_DEBUG_MEMORY)
 	nbuf = kmalloc(nsize, GFP_KERNEL);
-	if (! nbuf)
+	if (!nbuf)
 		return -ENOMEM;
-
 	memcpy(nbuf, buffer->buffer, buffer->len);
 	kfree(buffer->buffer);
+#else	
+	nbuf = krealloc(buffer->buffer, nsize, GFP_KERNEL);
+	if (! nbuf)
+		return -ENOMEM;
+#endif
+
 	buffer->buffer = nbuf;
 	buffer->len = nsize;
 	return 0;

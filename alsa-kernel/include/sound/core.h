@@ -323,19 +323,10 @@ int snd_card_create(int idx, const char *id,
 		    struct module *module, int extra_size,
 		    struct snd_card **card_ret);
 
-static inline __deprecated
-struct snd_card *snd_card_new(int idx, const char *id,
-			      struct module *module, int extra_size)
-{
-	struct snd_card *card;
-	if (snd_card_create(idx, id, module, extra_size, &card) < 0)
-		return NULL;
-	return card;
-}
-
 int snd_card_disconnect(struct snd_card *card);
 int snd_card_free(struct snd_card *card);
 int snd_card_free_when_closed(struct snd_card *card);
+void snd_card_set_id(struct snd_card *card, const char *id);
 int snd_card_register(struct snd_card *card);
 int snd_card_info_init(void);
 int snd_card_info_done(void);
@@ -372,18 +363,21 @@ unsigned int snd_dma_pointer(unsigned long dma, unsigned int size);
 struct resource;
 void release_and_free_resource(struct resource *res);
 
-#ifdef CONFIG_SND_VERBOSE_PRINTK
-void snd_verbose_printk(const char *file, int line, const char *format, ...)
-     __attribute__ ((format (printf, 3, 4)));
-#endif
-#if defined(CONFIG_SND_DEBUG) && defined(CONFIG_SND_VERBOSE_PRINTK)
-void snd_verbose_printd(const char *file, int line, const char *format, ...)
-     __attribute__ ((format (printf, 3, 4)));
-#endif
-
 /* --- */
 
-#ifdef CONFIG_SND_VERBOSE_PRINTK
+#if defined(CONFIG_SND_DEBUG) || defined(CONFIG_SND_VERBOSE_PRINTK)
+void __snd_printk(unsigned int level, const char *file, int line,
+		  const char *format, ...)
+     __attribute__ ((format (printf, 4, 5)));
+#else
+#ifndef TARGET_OS2
+#define __snd_printk(level, file, line, format, args...) \
+	printk(format, ##args)
+#else
+#define __snd_printk printk
+#endif /* nothing */
+#endif
+
 /**
  * snd_printk - printk wrapper
  * @fmt: format string
@@ -391,20 +385,14 @@ void snd_verbose_printd(const char *file, int line, const char *format, ...)
  * Works like printk() but prints the file and the line of the caller
  * when configured with CONFIG_SND_VERBOSE_PRINTK.
  */
-#define snd_printk(fmt, args...) \
-	snd_verbose_printk(__FILE__, __LINE__, fmt ,##args)
-#else
 #ifndef TARGET_OS2
 #define snd_printk(fmt, args...) \
-	printk(fmt ,##args)
+	__snd_printk(0, __FILE__, __LINE__, fmt, ##args)
 #else
 #define snd_printk printk
 #endif
-#endif
 
 #ifdef CONFIG_SND_DEBUG
-
-#ifdef CONFIG_SND_VERBOSE_PRINTK
 /**
  * snd_printd - debug printk
  * @fmt: format string
@@ -413,11 +401,7 @@ void snd_verbose_printd(const char *file, int line, const char *format, ...)
  * Ignored when CONFIG_SND_DEBUG is not set.
  */
 #define snd_printd(fmt, args...) \
-	snd_verbose_printd(__FILE__, __LINE__, fmt ,##args)
-#else
-#define snd_printd(fmt, args...) \
-	printk(fmt ,##args)
-#endif
+	__snd_printk(1, __FILE__, __LINE__, fmt, ##args)
 
 /**
  * snd_BUG - give a BUG warning message and stack trace
@@ -477,13 +461,14 @@ static inline int __snd_bug_on(int cond)
  * Ignored when CONFIG_SND_DEBUG_VERBOSE is not set.
  */
 #ifndef TARGET_OS2
-#define snd_printdd(format, args...) snd_printk(format, ##args)
+#define snd_printdd(format, args...) \
+	__snd_printk(2, __FILE__, __LINE__, format, ##args)
 #else
 #define snd_printdd snd_printk
 #endif
 #else
 #ifndef TARGET_OS2
-#define snd_printdd(format, args...) /* nothing */
+#define snd_printdd(format, args...)	do { } while (0)
 #else
 #define snd_printdd 1 ? (void)0 : (void)((int (*)(char *, ...)) NULL)
 #endif
