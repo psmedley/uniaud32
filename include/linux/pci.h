@@ -312,6 +312,8 @@ typedef struct device {
     struct sbus_dev *sbus;	/* for SBUS type */
 #endif
 	void *private_data;
+	void *platform_data;
+
 	struct device_driver *driver;
 	struct pm_dev *pm_dev;
 	char	bus_id[20];
@@ -706,5 +708,9 @@ static inline void *pci_ioremap_bar(struct pci_dev *pdev, int bar)
 	return __ioremap(pci_resource_start(pdev, bar),
 			       pci_resource_len(pdev, bar),0x010);
 }
+
+#define PCI_VDEVICE(vendor, device)		\
+	PCI_VENDOR_ID_##vendor, (device),	\
+	PCI_ANY_ID, PCI_ANY_ID, 0, 0
 
 #endif /* LINUX_PCI_H */
