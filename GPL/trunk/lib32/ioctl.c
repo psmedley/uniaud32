@@ -29,12 +29,33 @@ extern OpenedHandles opened_handles[8*256];
  * set by snd_ctl_notify()
  */
 struct snd_pcm_substream *substream_int[8*256] = {0}; // interrupted substream
+
 int control_id_changed = 0;
 int card_id_changed = 0;
 int unlock_all = 0;
 int GetUniaudPcmCaps(ULONG deviceid, void *caps);
 void FillCaps(ULONG deviceid);
 int pcm_instances(int card_id);
+
+int uniaud_set_interrupted_substream(struct snd_pcm_substream *substream)
+{
+    int i;
+
+    for (i=0; i < 8*256; i++)
+    {
+        if (substream_int[i] == 0)
+        {
+            substream_int[i] = substream; // interrupted substream
+            //                printk("added %x to %i\n", substream, i);
+            break;
+        }
+        if (substream_int[i] == substream)
+        {
+            //                printk("already exist %x at %i\n", substream, i);
+            break;
+        }
+    }
+}
 
 int WaitForControlChange(int card_id, int timeout)
 {

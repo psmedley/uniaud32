@@ -155,7 +155,7 @@ static int snd_pcm_control_ioctl(struct snd_card *card,
 	case SNDRV_CTL_IOCTL_PCM_PREFER_SUBDEVICE:
 		{
 			int val;
-			
+
 			if (get_user(val, (int __user *)arg))
 				return -EFAULT;
 			control->prefer_pcm_subdevice = val;
@@ -176,7 +176,7 @@ static int snd_pcm_control_ioctl(struct snd_card *card,
 #define ACCESS(v) [SNDRV_PCM_ACCESS_##v] = #v
 #define START(v) [SNDRV_PCM_START_##v] = #v
 #define FORMAT(v) [SNDRV_PCM_FORMAT_##v] = #v
-#define SUBFORMAT(v) [SNDRV_PCM_SUBFORMAT_##v] = #v 
+#define SUBFORMAT(v) [SNDRV_PCM_SUBFORMAT_##v] = #v
 
 static char *snd_pcm_format_names[] = {
 	FORMAT(S8),
@@ -241,7 +241,7 @@ static char *snd_pcm_state_names[] = {
 };
 
 static char *snd_pcm_access_names[] = {
-	ACCESS(MMAP_INTERLEAVED), 
+	ACCESS(MMAP_INTERLEAVED),
 	ACCESS(MMAP_NONINTERLEAVED),
 	ACCESS(MMAP_COMPLEX),
 	ACCESS(RW_INTERLEAVED),
@@ -249,7 +249,7 @@ static char *snd_pcm_access_names[] = {
 };
 
 static char *snd_pcm_subformat_names[] = {
-	SUBFORMAT(STD), 
+	SUBFORMAT(STD),
 };
 
 static char *snd_pcm_tstamp_mode_names[] = {
@@ -379,14 +379,14 @@ static void snd_pcm_substream_proc_hw_params_read(struct snd_info_entry *entry,
 	snd_iprintf(buffer, "access: %s\n", snd_pcm_access_name(runtime->access));
 	snd_iprintf(buffer, "format: %s\n", snd_pcm_format_name(runtime->format));
 	snd_iprintf(buffer, "subformat: %s\n", snd_pcm_subformat_name(runtime->subformat));
-	snd_iprintf(buffer, "channels: %u\n", runtime->channels);	
-	snd_iprintf(buffer, "rate: %u (%u/%u)\n", runtime->rate, runtime->rate_num, runtime->rate_den);	
-	snd_iprintf(buffer, "period_size: %lu\n", runtime->period_size);	
-	snd_iprintf(buffer, "buffer_size: %lu\n", runtime->buffer_size);	
+	snd_iprintf(buffer, "channels: %u\n", runtime->channels);
+	snd_iprintf(buffer, "rate: %u (%u/%u)\n", runtime->rate, runtime->rate_num, runtime->rate_den);
+	snd_iprintf(buffer, "period_size: %lu\n", runtime->period_size);
+	snd_iprintf(buffer, "buffer_size: %lu\n", runtime->buffer_size);
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
 	if (substream->oss.oss) {
 		snd_iprintf(buffer, "OSS format: %s\n", snd_pcm_oss_format_name(runtime->oss.format));
-		snd_iprintf(buffer, "OSS channels: %u\n", runtime->oss.channels);	
+		snd_iprintf(buffer, "OSS channels: %u\n", runtime->oss.channels);
 		snd_iprintf(buffer, "OSS rate: %u\n", runtime->oss.rate);
 		snd_iprintf(buffer, "OSS period bytes: %lu\n", (unsigned long)runtime->oss.period_bytes);
 		snd_iprintf(buffer, "OSS periods: %u\n", runtime->oss.periods);
@@ -472,7 +472,7 @@ static int snd_pcm_stream_proc_init(struct snd_pcm_str *pstr)
 	struct snd_info_entry *entry;
 	char name[16];
 
-	sprintf(name, "pcm%i%c", pcm->device, 
+	sprintf(name, "pcm%i%c", pcm->device,
 		pstr->stream == SNDRV_PCM_STREAM_PLAYBACK ? 'p' : 'c');
 	if ((entry = snd_info_create_card_entry(pcm->card, name, pcm->card->proc_root)) == NULL)
 		return -ENOMEM;
@@ -674,7 +674,7 @@ int snd_pcm_new_stream(struct snd_pcm *pcm, int stream, int substream_count)
 		prev = substream;
 	}
 	return 0;
-}				
+}
 
 EXPORT_SYMBOL(snd_pcm_new_stream);
 
@@ -1131,40 +1131,38 @@ static void snd_pcm_proc_done(void)
 
 void pcm_info(void)
 {
-	int idx;
-	struct snd_pcm *pcm;
+    int idx = 0;
+    struct snd_pcm *pcm;
 
-	down(&register_mutex);
-	for (idx = 0; idx < SNDRV_CARDS * SNDRV_PCM_DEVICES; idx++) {
-		pcm = snd_pcm_devices_os2[idx];
-		if (pcm == NULL)
-			continue;
-		printk("%02i-%02i: %s : %s", idx / SNDRV_PCM_DEVICES,
-			   idx % SNDRV_PCM_DEVICES, pcm->id, pcm->name);
-		if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream)
-			printk(" : playback %i", pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream_count);
-		if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream)
-			printk(" : capture %i", pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream_count);
-		printk("\n");
-	}
-	up(&register_mutex);
+    down(&register_mutex);
+    list_for_each_entry(pcm, &snd_pcm_devices, list, struct snd_pcm)
+    {
+        printk("%02i-%02i: %s : %s", pcm->card->number, pcm->device,
+               pcm->id, pcm->name);
+        if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream)
+            printk(" : playback %i", pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream_count);
+        if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream)
+            printk(" : capture %i", pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream_count);
+        printk("\n");
+        idx++;
+    }
+    up(&register_mutex);
 }
+
 /* get number of pcm instance s for given card */
 int pcm_instances(int card_id)
 {
-	int idx;
-	int pcms = 0;
-	struct snd_pcm *pcm;
+    int idx;
+    int pcms = 0;
+    struct snd_pcm *pcm;
 
-	down(&register_mutex);
-	for (idx = 0; idx < SNDRV_PCM_DEVICES; idx++) {
-		pcm = snd_pcm_devices_os2[(card_id*SNDRV_PCM_DEVICES)+idx];
-		if (pcm == NULL)
-			continue;
-		pcms++;
-	}
-	up(&register_mutex);
-	return pcms;
+    down(&register_mutex);
+    list_for_each_entry(pcm, &snd_pcm_devices, list, struct snd_pcm) {
+        if (pcm->card->number == card_id)
+            pcms++;
+    }
+    up(&register_mutex);
+    return pcms;
 }
 
 /*
