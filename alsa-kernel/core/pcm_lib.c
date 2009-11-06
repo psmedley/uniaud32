@@ -31,6 +31,11 @@
 #include <sound/timer.h>
 
 /*
+ * Uniaud API support
+ */
+int uniaud_set_interrupted_substream(struct snd_pcm_substream *substream);
+
+/*
  * fill ring buffer with silence
  * runtime->silence_start: starting pointer to silence area
  * runtime->silence_filled: size filled with silence
@@ -1648,6 +1653,8 @@ void snd_pcm_period_elapsed(struct snd_pcm_substream *substream)
 	if (!snd_pcm_running(substream) ||
 	    snd_pcm_update_hw_ptr_interrupt(substream) < 0)
 		goto _end;
+
+        uniaud_set_interrupted_substream(substream);
 
 	if (substream->timer_running)
 		snd_timer_interrupt(substream->timer, 1);
