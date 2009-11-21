@@ -1257,7 +1257,7 @@ OSSRET OSS32_WaveGetSpace(ULONG streamid, ULONG *pBytesAvail)
     }
     ret = samples_to_bytes(status.avail);
 
-    *pBytesAvail = ret > 752? ret - 752 : 0;
+    *pBytesAvail = ret;
     return OSSERR_SUCCESS;
 }
 //******************************************************************************
