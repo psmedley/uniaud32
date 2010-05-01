@@ -83,7 +83,7 @@ OSSRET OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket)
   {
        OSSSTREAMID streamId = 0;
 
-       rc = OSS32_WaveOpen(pPacket->open.devicenr, pPacket->open.streamtype, &streamId, pcm_device, pPacket->fileid);
+       rc = OSS32_WaveOpen(pPacket->open.devicenr, pPacket->open.streamtype, &streamId, pcm_device, (USHORT)pPacket->fileid); /* DAZ cast added to stop compiler warning */
        pPacket->streamid = streamId;
        return rc;
   }
@@ -136,7 +136,7 @@ OSSRET OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket)
        return rc;
   }
 
-      case IDC32_WAVE_GETHWPTR:
+  case IDC32_WAVE_GETHWPTR:
   {
        ULONG position = 0;
        rc = OSS32_WaveGetHwPtr(pPacket->streamid, &position);
@@ -144,7 +144,7 @@ OSSRET OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket)
        return rc;
   }
 
-    case IDC32_WAVE_SETVOLUME:
+  case IDC32_WAVE_SETVOLUME:
        return OSS32_WaveSetVolume(pPacket->streamid, pPacket->setwavevol.volume);
 
   case IDC32_MIXER_OPEN:

@@ -205,12 +205,12 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
                                                    pSlot->irqHandlers[u].x2);
 #endif
 
-                // HDA Hardware generates controller interrupts and stream interrupts 
+                // HDA Hardware generates controller interrupts and stream interrupts
                 // the uniaud16 driver only cares about stream interrupts.
-                // azx_interrupt in alsa-kernel/pci/hda/hda_intel.c will return rc 2 if 
-                // the interrupt is from the  controller. There is no need to call uniaud16 
-		// for these interrupts
-                if ( rc == 2 ) { 
+                // azx_interrupt in alsa-kernel/pci/hda/hda_intel.c will return rc 2 if
+                // the interrupt is from the  controller. There is no need to call uniaud16
+				// for these interrupts
+                if ( rc == 2 ) {
                     fInInterrupt = FALSE;
                     *pulIrq = pSlot->irqNo;
                     eoiIrq[pSlot->irqNo] = 0;

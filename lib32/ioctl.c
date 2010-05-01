@@ -37,7 +37,7 @@ int GetUniaudPcmCaps(ULONG deviceid, void *caps);
 void FillCaps(ULONG deviceid);
 int pcm_instances(int card_id);
 
-int uniaud_set_interrupted_substream(struct snd_pcm_substream *substream)
+void uniaud_set_interrupted_substream(struct snd_pcm_substream *substream)
 {
     int i;
 
@@ -258,43 +258,6 @@ int GetMaxChannels(ULONG deviceid, int type)
     return max_ch;
 }
 
-void FillCaps(ULONG deviceid)
-{
-    int pcms = 0;
-
-    pcms = pcm_instances(deviceid);
-
-    printk("pcms = %i\n", pcms); //uncommented
-    if (!pcmcaps[deviceid])
-    {
-        pcmcaps[deviceid] = (POSS32_DEVCAPS)kmalloc(sizeof(OSS32_DEVCAPS)*pcms, GFP_KERNEL);
-        if (pcmcaps[deviceid])
-        {
-            memset(pcmcaps[deviceid], 0, sizeof(OSS32_DEVCAPS)*pcms);
-            GetUniaudPcmCaps1(deviceid, (void *)pcmcaps[deviceid]);
-        }
-    }
-    return;
-}
-
-int GetUniaudPcmCaps(ULONG deviceid, void *caps)
-{
-    int pcms = 0;
-
-    pcms = pcm_instances(deviceid);
-
-//    printk("pcms = %i\n", pcms);
-    if (pcmcaps[deviceid])
-    {
-        memcpy((unsigned char*)caps,(unsigned char*)pcmcaps[deviceid],sizeof(OSS32_DEVCAPS)*pcms);
-        return 0;
-    }
-    else
-    {
-        return -1;
-    }
-}
-
 /*
  returns pcm caps
  */
@@ -315,7 +278,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 
     if (!pcaps || !pcms) return -1;
 
-    
+
     //these structures are too big to put on the stack
     pcminfo = (struct snd_pcm_info *)kmalloc(sizeof(struct snd_pcm_info)+sizeof(struct snd_pcm_hw_params), GFP_KERNEL);
     if(pcminfo == NULL) {
@@ -433,6 +396,43 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
     return OSSERR_SUCCESS;
 }
 
+void FillCaps(ULONG deviceid)
+{
+    int pcms = 0;
+
+    pcms = pcm_instances(deviceid);
+
+    printk("pcms = %i\n", pcms); //uncommented
+    if (!pcmcaps[deviceid])
+    {
+        pcmcaps[deviceid] = (POSS32_DEVCAPS)kmalloc(sizeof(OSS32_DEVCAPS)*pcms, GFP_KERNEL);
+        if (pcmcaps[deviceid])
+        {
+            memset(pcmcaps[deviceid], 0, sizeof(OSS32_DEVCAPS)*pcms);
+            GetUniaudPcmCaps1(deviceid, (void *)pcmcaps[deviceid]);
+        }
+    }
+    return;
+}
+
+int GetUniaudPcmCaps(ULONG deviceid, void *caps)
+{
+    int pcms = 0;
+
+    pcms = pcm_instances(deviceid);
+
+//    printk("pcms = %i\n", pcms);
+    if (pcmcaps[deviceid])
+    {
+        memcpy((unsigned char*)caps,(unsigned char*)pcmcaps[deviceid],sizeof(OSS32_DEVCAPS)*pcms);
+        return 0;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
 /*
  returns power state of given card
  */
@@ -468,8 +468,8 @@ int UniaudCtlGetPowerState(ULONG deviceid, void *state)
         goto failure;
     }
     //retrieve mixer information
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_POWER_STATE, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_POWER_STATE,
                                     (ULONG)state);
 
     pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
@@ -521,8 +521,8 @@ int UniaudCtlSetPowerState(ULONG deviceid, void *state)
         goto failure;
     }
     //retrieve mixer information
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_POWER, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_POWER,
                                     (ULONG)state);
 
     pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
@@ -575,8 +575,8 @@ int GetUniaudCardInfo(ULONG deviceid, void *info)
         goto failure;
     }
     //retrieve mixer information
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_CARD_INFO, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_CARD_INFO,
                                     (ULONG)(struct snd_ctl_card_info *)info);
     if(ret) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
@@ -629,8 +629,8 @@ int GetUniaudControlNum(ULONG deviceid)
         goto failure;
     }
     //retrieve mixer information
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_CARD_INFO, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_CARD_INFO,
                                     (ULONG)&pHandle->info);
     if(ret) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
@@ -639,8 +639,8 @@ int GetUniaudControlNum(ULONG deviceid)
     //get the number of mixer elements
     pHandle->list.offset = 0;
     pHandle->list.space  = 0;
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_ELEM_LIST, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_ELEM_LIST,
                                     (ULONG)&pHandle->list);
     if(ret) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
@@ -694,8 +694,8 @@ int GetUniaudControls(ULONG deviceid, void *pids)
         goto failure;
     }
     //retrieve mixer information
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_CARD_INFO, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_CARD_INFO,
                                     (ULONG)&pHandle->info);
     if(ret) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
@@ -704,8 +704,8 @@ int GetUniaudControls(ULONG deviceid, void *pids)
     //get the number of mixer elements
     pHandle->list.offset = 0;
     pHandle->list.space  = 0;
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_ELEM_LIST, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_ELEM_LIST,
                                     (ULONG)&pHandle->list);
     if(ret) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
@@ -723,8 +723,8 @@ int GetUniaudControls(ULONG deviceid, void *pids)
     pHandle->list.offset = 0;
     pHandle->list.space  = pHandle->list.count;
     pHandle->list.pids   = pHandle->pids;
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_ELEM_LIST, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_ELEM_LIST,
                                     (ULONG)&pHandle->list);
     if(ret) {
         ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);

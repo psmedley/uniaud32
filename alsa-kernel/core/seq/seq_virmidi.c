@@ -46,6 +46,7 @@
 #include <sound/seq_kernel.h>
 #include <sound/seq_midi_event.h>
 #include <sound/seq_virmidi.h>
+#include <proto.h>
 
 MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("Virtual Raw MIDI client on Sequencer");

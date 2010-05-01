@@ -925,6 +925,7 @@ void snd_pcm_detach_substream(struct snd_pcm_substream *substream)
 	substream->pstr->substream_opened--;
 }
 
+#ifndef TARGET_OS2
 static ssize_t show_pcm_class(struct device *dev,
 			      struct device_attribute *attr, char *buf)
 {
@@ -948,6 +949,7 @@ static ssize_t show_pcm_class(struct device *dev,
 #endif
         return snprintf(buf, PAGE_SIZE, "%s\n", str);
 }
+#endif
 
 #ifndef TARGET_OS2
 static struct device_attribute pcm_attrs =

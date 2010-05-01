@@ -45,7 +45,7 @@ int ForceCard = CARD_NONE;
 
 extern "C" short int midi_port;
 
-#ifdef DEBUG
+#ifdef COMM_DEBUG
 extern "C" short int MAGIC_COMM_PORT;
 #endif
 
@@ -222,7 +222,7 @@ int DoParm(char cParm, char FAR48 *pszOption)
             //sz2us(pszOption, 16);
         break;
 #endif
-#ifdef DEBUG
+#ifdef COMM_DEBUG
     case 'P':
         if(*pszOption == '0') {
             MAGIC_COMM_PORT = 0x000;

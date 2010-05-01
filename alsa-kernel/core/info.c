@@ -639,7 +639,9 @@ int snd_info_card_create(struct snd_card *card)
  */
 int snd_info_card_register(struct snd_card *card)
 {
+#ifndef TARGET_OS2
 	struct proc_dir_entry *p;
+#endif
 
 	if (snd_BUG_ON(!card))
 		return -ENXIO;
@@ -650,8 +652,8 @@ int snd_info_card_register(struct snd_card *card)
 	p = proc_symlink(card->id, snd_proc_root, card->proc_root->name);
 	if (p == NULL)
 		return -ENOMEM;
-#endif
 	card->proc_root_link = p;
+#endif
 	return 0;
 }
 

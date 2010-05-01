@@ -101,13 +101,13 @@ void snd_emu10k1_ptr_write(struct snd_emu10k1 *emu, unsigned int reg, unsigned i
 
 EXPORT_SYMBOL(snd_emu10k1_ptr_write);
 
-unsigned int snd_emu10k1_ptr20_read(struct snd_emu10k1 * emu, 
-					  unsigned int reg, 
+unsigned int snd_emu10k1_ptr20_read(struct snd_emu10k1 * emu,
+					  unsigned int reg,
 					  unsigned int chn)
 {
 	unsigned long flags;
 	unsigned int regptr, val;
-  
+
 	regptr = (reg << 16) | chn;
 
 	spin_lock_irqsave(&emu->emu_lock, flags);
@@ -117,9 +117,9 @@ unsigned int snd_emu10k1_ptr20_read(struct snd_emu10k1 * emu,
 	return val;
 }
 
-void snd_emu10k1_ptr20_write(struct snd_emu10k1 *emu, 
-				   unsigned int reg, 
-				   unsigned int chn, 
+void snd_emu10k1_ptr20_write(struct snd_emu10k1 *emu,
+				   unsigned int reg,
+				   unsigned int chn,
 				   unsigned int data)
 {
 	unsigned int regptr;
@@ -244,7 +244,7 @@ int snd_emu10k1_i2c_write(struct snd_emu10k1 *emu,
 		/* dump_stack(); */
 		err = -EINVAL;
 	}
-    
+
 	spin_unlock(&emu->i2c_lock);
 	return err;
 }
@@ -256,7 +256,7 @@ int snd_emu1010_fpga_write(struct snd_emu10k1 * emu, u32 reg, u32 value)
 	if (reg > 0x3f)
 		return 1;
 	reg += 0x40; /* 0x40 upwards are registers. */
-	if (value < 0 || value > 0x3f) /* 0 to 0x3f are values */
+	if (value > 0x3f) /* 0 to 0x3f are values */
 		return 1;
 	spin_lock_irqsave(&emu->emu_lock, flags);
 	outl(reg, emu->port + A_IOCFG);

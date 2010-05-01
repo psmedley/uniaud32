@@ -39,6 +39,7 @@
 #include <sound/core.h>
 #include <sound/tlv.h>
 #include <sound/emu10k1.h>
+#include <proto.h>
 
 #if 0		/* for testing purposes - digital out -> capture */
 #define EMU10K1_CAPTURE_DIGITAL_OUT
@@ -52,7 +53,7 @@
 
 /*
  *  Tables
- */ 
+ */
 
 static char *fxbuses[16] = {
 	/* 0x00 */ "PCM Left",
@@ -303,7 +304,7 @@ static const u32 onoff_table[2] = {
 
 /*
  */
- 
+
 static inline mm_segment_t snd_enter_user(void)
 {
 	mm_segment_t fs = get_fs();
@@ -1255,7 +1256,7 @@ static int __devinit _snd_emu10k1_audigy_init_efx(struct snd_emu10k1 *emu)
 	A_OP(icode, &ptr, iMAC0, A_GPR(capture+1), A_GPR(capture+1), A_GPR(gpr+1), A_FXBUS(FXBUS_MIDI_RIGHT));
 	snd_emu10k1_init_stereo_control(&controls[nctl++], "Synth Capture Volume", gpr, 0);
 	gpr += 2;
-      
+
 	/*
 	 * inputs
 	 */
@@ -1331,7 +1332,7 @@ A_OP(icode, &ptr, iMAC0, A_GPR(var), A_GPR(var), A_GPR(vol), A_EXTIN(input))
 					emu->card_capabilities->ac97_chip ? "Line2 Capture Volume" : "Line Capture Volume",
 					gpr, 0);
 	gpr += 2;
-        
+
 	/* Philips ADC Playback Volume */
 	A_ADD_VOLUME_IN(stereo_mix, gpr, A_EXTIN_ADC_L);
 	A_ADD_VOLUME_IN(stereo_mix+1, gpr+1, A_EXTIN_ADC_R);
@@ -1529,7 +1530,7 @@ A_OP(icode, &ptr, iMAC0, A_GPR(var), A_GPR(var), A_GPR(vol), A_EXTIN(input))
 		}
 	}
 
-	/* IEC958 Optical Raw Playback Switch */ 
+	/* IEC958 Optical Raw Playback Switch */
 	gpr_map[gpr++] = 0;
 	gpr_map[gpr++] = 0x1008;
 	gpr_map[gpr++] = 0xffff0000;
@@ -1569,7 +1570,7 @@ A_OP(icode, &ptr, iMAC0, A_GPR(var), A_GPR(var), A_GPR(vol), A_EXTIN(input))
 		if (emu->card_capabilities->ca0108_chip) {
 			snd_printk(KERN_INFO "EMU2 inputs on\n");
 			for (z = 0; z < 0x10; z++) {
-				snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp, 
+				snd_emu10k1_audigy_dsp_convert_32_to_2x16( icode, &ptr, tmp,
 									bit_shifter16,
 									A3_EMU32IN(z),
 									A_FXBUS2(z*2) );
@@ -2294,10 +2295,10 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
 		/* On the Live! 5.1, FXBUS2(1) and FXBUS(2) are shared with EXTOUT_ACENTER
 		 * and EXTOUT_ALFE, so we can't connect inputs to them for multitrack recording.
 		 *
-		 * Since only 14 of the 16 EXTINs are used, this is not a big problem.  
-		 * We route AC97L and R to FX capture 14 and 15, SPDIF CD in to FX capture 
-		 * 0 and 3, then the rest of the EXTINs to the corresponding FX capture 
-		 * channel.  Multitrack recorders will still see the center/lfe output signal 
+		 * Since only 14 of the 16 EXTINs are used, this is not a big problem.
+		 * We route AC97L and R to FX capture 14 and 15, SPDIF CD in to FX capture
+		 * 0 and 3, then the rest of the EXTINs to the corresponding FX capture
+		 * channel.  Multitrack recorders will still see the center/lfe output signal
 		 * on the second and third channels.
 		 */
 		OP(icode, &ptr, iACC3, FXBUS2(14), C_00000000, C_00000000, EXTIN(0));
@@ -2310,7 +2311,7 @@ static int __devinit _snd_emu10k1_init_efx(struct snd_emu10k1 *emu)
 		for (z = 0; z < 16; z++)
 			OP(icode, &ptr, iACC3, FXBUS2(z), C_00000000, C_00000000, EXTIN(z));
 	}
-	    
+	
 
 	if (gpr > tmp) {
 		snd_BUG();

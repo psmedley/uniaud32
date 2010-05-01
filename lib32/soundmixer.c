@@ -79,16 +79,16 @@ char *szRecSources[OSS32_MIX_RECSRC_MAX] = {
     "Mic", "CD", "Line", "Video", "Aux", "Mix", "Mix Mono", "Phone", "Synth"
 };
 
-static unsigned char LinToLog[OSS32_MAX_VOLUME+1] = {  
+static unsigned char LinToLog[OSS32_MAX_VOLUME+1] = {
   0,   0,   0,   0,   1,   2,   2,   5,   5,  10,
- 10,  10,  16,  19,  20,  22,  24,  25,  27,  27, 
- 28,  28,  29,  30,  30,  35,  35,  35,  39,  39,  
- 43,  44,  45,  47,  48,  49,  50,  51,  52,  53,  
- 55,  56,  57,  59,  60,  62,  63,  64,  65,  66,  
+ 10,  10,  16,  19,  20,  22,  24,  25,  27,  27,
+ 28,  28,  29,  30,  30,  35,  35,  35,  39,  39,
+ 43,  44,  45,  47,  48,  49,  50,  51,  52,  53,
+ 55,  56,  57,  59,  60,  62,  63,  64,  65,  66,
  67,  68,  69,  70,  71,  72,  73,  74,  74,  75,
- 76,  77,  78,  79,  79,  80,  81,  82,  83,  84,  
- 85,  86,  87,  88,  89,  90,  91,  92,  92,  93,  
- 93,  94,  94,  95,  95,  96,  96,  97,  97,  98, 
+ 76,  77,  78,  79,  79,  80,  81,  82,  83,  84,
+ 85,  86,  87,  88,  89,  90,  91,  92,  92,  93,
+ 93,  94,  94,  95,  95,  96,  96,  97,  97,  98,
  98,  99,  99,  99,  99, 100, 100, 100, 100, 100,
  100
 };
@@ -147,8 +147,8 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
         goto failure;
     }
     //retrieve mixer information
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_CARD_INFO, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_CARD_INFO,
                                     (ULONG)&pHandle->info);
     if(ret) {
         goto failure;
@@ -156,8 +156,8 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
     //get the number of mixer elements
     pHandle->list.offset = 0;
     pHandle->list.space  = 0;
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_ELEM_LIST, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_ELEM_LIST,
                                     (ULONG)&pHandle->list);
     if(ret) {
         goto failure;
@@ -171,8 +171,8 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
     pHandle->list.offset = 0;
     pHandle->list.space  = pHandle->list.count;
     pHandle->list.pids   = pHandle->pids;
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_ELEM_LIST, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_ELEM_LIST,
                                     (ULONG)&pHandle->list);
     if(ret) {
         goto failure;
@@ -187,7 +187,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
 #endif
 
     //Extract standard mixer controls from array with control names
-    for(j=0;j<OSS_MIXER_NRDEVICES;j++) 
+    for(j=0;j<OSS_MIXER_NRDEVICES;j++)
     {
         int namelen = strlen(ossid[j].name);
 
@@ -196,7 +196,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
         pHandle->controls[j].idxCustom        = -1;
         pHandle->controls[j].idxCaptureSwitch = -1;
 
-        for(i=0;i<pHandle->list.count;i++) 
+        for(i=0;i<pHandle->list.count;i++)
         {
             if (pHandle->pids[i].index == ossid[j].index &&
                 strncmp(pHandle->pids[i].name, ossid[j].name, namelen) == 0)
@@ -208,39 +208,39 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
                     pHandle->controls[j].idxVolume = i;
                     break;
                 }
-                else 
-                {//first part of the control name is correct; now find out what 
+                else
+                {//first part of the control name is correct; now find out what
                  //is it exactly
                     char *nextword = &pHandle->pids[i].name[namelen];
                     while(*nextword && *nextword == ' ') nextword++;
 
                     if(strncmp(nextword, MIXER_PLAYBACKVOLUME, sizeof(MIXER_PLAYBACKVOLUME)-1) == 0 ||
-                       strncmp(nextword, MIXER_VOLUME, sizeof(MIXER_VOLUME)-1) == 0) 
+                       strncmp(nextword, MIXER_VOLUME, sizeof(MIXER_VOLUME)-1) == 0)
                     {//volume control
                         pHandle->controls[j].idxVolume = i;
                     }
                     else
                     if(strncmp(nextword, MIXER_PLAYBACKSWITCH, sizeof(MIXER_PLAYBACKSWITCH)-1) == 0 ||
-                       strncmp(nextword, MIXER_SWITCH, sizeof(MIXER_SWITCH)-1) == 0) 
+                       strncmp(nextword, MIXER_SWITCH, sizeof(MIXER_SWITCH)-1) == 0)
                     {//mute control
                         pHandle->controls[j].idxMute = i;
 			if (pHandle->controls[j].idxVolume == -1)
 				pHandle->controls[j].idxVolume = i;
                     }
                     else
-                    if(strncmp(nextword, MIXER_SOURCE, sizeof(MIXER_SOURCE)-1) == 0) 
+                    if(strncmp(nextword, MIXER_SOURCE, sizeof(MIXER_SOURCE)-1) == 0)
                     {//source control (e.g. recording source)
                         pHandle->controls[j].idxCustom = i;
                     }
                     else
                     if(strncmp(nextword, MIXER_CAPTUREROUTE, sizeof(MIXER_CAPTUREROUTE)-1) == 0 ||
-                       strncmp(nextword, MIXER_CAPTURESWITCH, sizeof(MIXER_CAPTURESWITCH)-1) == 0) 
+                       strncmp(nextword, MIXER_CAPTURESWITCH, sizeof(MIXER_CAPTURESWITCH)-1) == 0)
                     {//source control for recording (per input)
                         pHandle->controls[j].idxCaptureSwitch = i;
                     }
                     else
                     if(i == OSS_MIXER_MIC) {
-                        if(strncmp(nextword, MIXER_BOOST, sizeof(MIXER_BOOST)-1) == 0) 
+                        if(strncmp(nextword, MIXER_BOOST, sizeof(MIXER_BOOST)-1) == 0)
                         {//mic boost switch
                             pHandle->controls[j].idxCustom = i;
                         }
@@ -256,16 +256,16 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
     }
 
     //request information about available capture sources
-    if(pHandle->controls[OSS_MIXER_IGAIN].idxCustom != -1) 
+    if(pHandle->controls[OSS_MIXER_IGAIN].idxCustom != -1)
     {
-        struct snd_ctl_elem_info  *pElemInfo = NULL;  
+        struct snd_ctl_elem_info  *pElemInfo = NULL;
         int                   idx, j;
 
         idx = pHandle->controls[OSS_MIXER_IGAIN].idxCustom;
 
         //set operation to non-blocking
         pHandle->file.f_flags = O_NONBLOCK;
-        
+
         pHandle->rectype = RECTYPE_SELECTOR;
 
         //too big to put on the stack
@@ -276,7 +276,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
         }
 
         pElemInfo->value.enumerated.items = 1;
-        for(i=0;i<pElemInfo->value.enumerated.items;i++) 
+        for(i=0;i<pElemInfo->value.enumerated.items;i++)
         {
             pElemInfo->value.enumerated.item = i;
             pElemInfo->id.numid = pHandle->pids[idx].numid;
@@ -306,7 +306,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
         for(j=0;j<OSS32_MIX_RECSRC_MAX;j++) {
             pHandle->idxRecCaps[j] = -1;
         }
-        for(j=0;j<OSS_MIXER_NRDEVICES;j++) 
+        for(j=0;j<OSS_MIXER_NRDEVICES;j++)
         {
             if(pHandle->controls[j].idxCaptureSwitch != -1) {
                 pHandle->reccaps                    |= OSS32_MIX_FLAG(ossid[j].recsrc);
@@ -363,7 +363,7 @@ OSSRET OSS32_MixGetVolume(OSSSTREAMID streamid, ULONG line, ULONG *pVolume)
     }
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
- 
+
     return OSSERR_NOT_SUPPORTED;
 }
 //******************************************************************************
@@ -372,9 +372,10 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
 {
     mixerhandle          *pHandle = (mixerhandle *)streamid;
     struct snd_ctl_elem_value *pElem = NULL;
-    struct snd_ctl_elem_info  *pElemInfo;  
+    struct snd_ctl_elem_info  *pElemInfo;
     int                   ret, idx, lVol, rVol = 0, idxMute, cnt;
 
+    dprintf(("OSS32_MixSetVolume line=%d\n", line));
     if(pHandle == NULL || pHandle->magic != MAGIC_MIXER_ALSA32) {
         printk("Invalid handle in OSS32_MixSetVolume\n");
         DebugInt3();
@@ -449,7 +450,7 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
         idx = pHandle->controls[OSS_MIXER_PHONEOUT].idxVolume;
         idxMute = pHandle->controls[OSS_MIXER_PHONEOUT].idxMute;
         break;
-    case OSS32_MIX_VOLUME_HEADPHONE: 
+    case OSS32_MIX_VOLUME_HEADPHONE:
         idx = pHandle->controls[OSS_MIXER_HEADPHONE].idxVolume;
         idxMute = pHandle->controls[OSS_MIXER_HEADPHONE].idxMute;
         break;
@@ -556,7 +557,7 @@ OSSRET OSS32_MixSetProperty(OSSSTREAMID streamid, ULONG ulLine, ULONG ulValue)
 {
     mixerhandle          *pHandle = (mixerhandle *)streamid;
     struct snd_ctl_elem_value *pElem = NULL;
-    struct snd_ctl_elem_info  *pElemInfo;  
+    struct snd_ctl_elem_info  *pElemInfo;
     int                   ret, idx = -1, lVol, rVol = 0, j, i;
 
     if(pHandle == NULL || pHandle->magic != MAGIC_MIXER_ALSA32) {
@@ -565,7 +566,7 @@ OSSRET OSS32_MixSetProperty(OSSSTREAMID streamid, ULONG ulLine, ULONG ulValue)
     }
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
- 
+
     //too big to put on the stack
     pElem = (struct snd_ctl_elem_value *)kmalloc(sizeof(struct snd_ctl_elem_value) + sizeof(struct snd_ctl_elem_info), GFP_KERNEL);
     if(pElem == NULL) {
@@ -590,7 +591,7 @@ OSSRET OSS32_MixSetProperty(OSSSTREAMID streamid, ULONG ulLine, ULONG ulValue)
         }
         else {//capture switch for each input source
             //first turn off all capture switches...
-            for(j=0;j<OSS32_MIX_RECSRC_MAX;j++) 
+            for(j=0;j<OSS32_MIX_RECSRC_MAX;j++)
             {
                 if(pHandle->idxRecCaps[j] != -1) {
                     idx                           = pHandle->idxRecCaps[j];
@@ -640,7 +641,7 @@ OSSRET OSS32_MixSetProperty(OSSSTREAMID streamid, ULONG ulLine, ULONG ulValue)
         }
 
         break;
-    
+
     case OSS32_MIX_SWITCH_MICBOOST:
         idx = pHandle->controls[OSS_MIXER_MIC].idxCustom;
         if(idx == -1) {
@@ -728,7 +729,7 @@ OSSRET OSS32_MixGetProperty(OSSSTREAMID streamid, ULONG line, ULONG *pValue)
     }
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
- 
+
     return OSSERR_NOT_SUPPORTED;
 }
 //******************************************************************************
@@ -766,7 +767,7 @@ ULONG OSSToALSAVolume(ULONG OSSVolIdx)
         return OSS32_MIX_LEVEL_TREBLE;
     case OSS_MIXER_BASS:
         return OSS32_MIX_LEVEL_BASS;
-    case OSS_MIXER_HEADPHONE: 
+    case OSS_MIXER_HEADPHONE:
         return OSS32_MIX_VOLUME_HEADPHONE;
     case OSS_MIXER_SPEAKER:
         return OSS32_MIX_VOLUME_SPEAKER;
@@ -791,11 +792,11 @@ OSSRET OSS32_MixQueryCaps(OSSSTREAMID streamid, POSS32_MIXCAPS pCaps)
     pCaps->fuCtrlCaps = 0;
     pCaps->fuRecCaps  = 0;
 
-    for(i=0;i<OSS_MIXER_NRDEVICES;i++) 
+    for(i=0;i<OSS_MIXER_NRDEVICES;i++)
     {
         if(pHandle->controls[i].idxVolume != -1) {
             ULONG volidx = OSSToALSAVolume(i);
-            if(volidx != -1) 
+            if(volidx != -1)
                 pCaps->fuCtrlCaps |= OSS32_MIX_FLAG(volidx);
         }
     }
@@ -803,8 +804,8 @@ OSSRET OSS32_MixQueryCaps(OSSSTREAMID streamid, POSS32_MIXCAPS pCaps)
     //if it has a capture source control or the card has capture route switches,
     //then we support intput source selection
     if(pHandle->controls[OSS_MIXER_IGAIN].idxCustom != -1 ||
-       pHandle->rectype == RECTYPE_SWITCH) 
-    {        
+       pHandle->rectype == RECTYPE_SWITCH)
+    {
         pCaps->fuCtrlCaps |= OSS32_MIX_FLAG(OSS32_MIX_INPUTSRC);
         pCaps->fuRecCaps   = pHandle->reccaps;
     }
@@ -842,8 +843,8 @@ OSSRET OSS32_MixQueryName(ULONG deviceid, char *pszMixerName, ULONG cbMixerName)
         goto failure;
     }
     //retrieve mixer information
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_CARD_INFO, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_CARD_INFO,
                                     (ULONG)&pHandle->info);
     if(ret) {
         goto failure;
@@ -903,8 +904,8 @@ OSSRET OSS32_QueryNames(ULONG deviceid, char *pszDeviceName, ULONG cbDeviceName,
         goto failure;
     }
     //retrieve mixer information
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, 
-                                    SNDRV_CTL_IOCTL_CARD_INFO, 
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+                                    SNDRV_CTL_IOCTL_CARD_INFO,
                                     (ULONG)&pHandle->info);
     if(ret) {
         printk("ioctl ret = %i\n", ret);

@@ -384,7 +384,7 @@ static int snd_rawmidi_open(struct inode *inode, struct file *file)
 	wait_queue_t wait;
 	struct snd_ctl_file *kctl;
 
-	if ((file->f_flags & O_APPEND) && !(file->f_flags & O_NONBLOCK)) 
+	if ((file->f_flags & O_APPEND) && !(file->f_flags & O_NONBLOCK))
 		return -EINVAL;		/* invalid combination */
 
 	if (maj == snd_major) {
@@ -573,6 +573,7 @@ static int snd_rawmidi_info(struct snd_rawmidi_substream *substream,
 	return 0;
 }
 
+#ifndef TARGET_OS2
 static int snd_rawmidi_info_user(struct snd_rawmidi_substream *substream,
 				 struct snd_rawmidi_info __user * _info)
 {
@@ -584,6 +585,7 @@ static int snd_rawmidi_info_user(struct snd_rawmidi_substream *substream,
 		return -EFAULT;
 	return 0;
 }
+#endif
 
 int snd_rawmidi_info_select(struct snd_card *card, struct snd_rawmidi_info *info)
 {
@@ -682,6 +684,7 @@ int snd_rawmidi_input_params(struct snd_rawmidi_substream *substream,
 	return 0;
 }
 
+#ifndef TARGET_OS2
 static int snd_rawmidi_output_status(struct snd_rawmidi_substream *substream,
 				     struct snd_rawmidi_status * status)
 {
@@ -819,6 +822,7 @@ static long snd_rawmidi_ioctl(struct file *file, unsigned int cmd, unsigned long
 	}
 	return -ENOTTY;
 }
+#endif
 
 static int snd_rawmidi_control_ioctl(struct snd_card *card,
 				     struct snd_ctl_file *control,
@@ -1030,7 +1034,7 @@ static ssize_t snd_rawmidi_read(struct file *file, char __user *buf, size_t coun
 /**
  * snd_rawmidi_transmit_empty - check whether the output buffer is empty
  * @substream: the rawmidi substream
- * 
+ *
  * Returns 1 if the internal output buffer is empty, 0 if not.
  */
 int snd_rawmidi_transmit_empty(struct snd_rawmidi_substream *substream)
@@ -1143,7 +1147,7 @@ int snd_rawmidi_transmit_ack(struct snd_rawmidi_substream *substream, int count)
  * @substream: the rawmidi substream
  * @buffer: the buffer pointer
  * @count: the data size to transfer
- * 
+ *
  * Copies data from the buffer to the device and advances the pointer.
  *
  * Returns the copied size if successful, or a negative error code on failure.

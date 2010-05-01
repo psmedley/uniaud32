@@ -45,7 +45,7 @@ jiffies_to_timespec(unsigned long jiffies, struct timespec *value)
 	value->tv_nsec = (jiffies % HZ) * (1000000000L / HZ);
 	value->tv_sec = jiffies / HZ;
 }
- 
+
 struct timeval {
 	time_t		tv_sec;		/* seconds */
 	suseconds_t	tv_usec;	/* microseconds */
@@ -93,23 +93,25 @@ struct	itimerval {
 #ifndef CONFIG_HAVE_MSECS_TO_JIFFIES
 static __inline__ unsigned int jiffies_to_msecs(const unsigned long j)
 {
-	if (HZ <= 1000 && !(1000 % HZ))
+#if (HZ <= 1000 && !(1000 % HZ))
 		return (1000 / HZ) * j;
-	else if (HZ > 1000 && !(HZ % 1000))
+#elif (HZ > 1000 && !(HZ % 1000))
 		return (j + (HZ / 1000) - 1)/(HZ / 1000);
-	else
+#else
 		return (j * 1000) / HZ;
+#endif
 }
 static __inline__ unsigned long msecs_to_jiffies(const unsigned int m)
 {
 	if (m > jiffies_to_msecs(MAX_JIFFY_OFFSET))
 		return MAX_JIFFY_OFFSET;
-	if (HZ <= 1000 && !(1000 % HZ))
+#if (HZ <= 1000 && !(1000 % HZ))
 		return (m + (1000 / HZ) - 1) / (1000 / HZ);
-	else if (HZ > 1000 && !(HZ % 1000))
+#elif (HZ > 1000 && !(HZ % 1000))
 		return m * (HZ / 1000);
-	else
+#else
 		return (m * HZ + 999) / 1000;
+#endif
 }
 #endif
 

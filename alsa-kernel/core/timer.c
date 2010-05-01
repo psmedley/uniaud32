@@ -33,6 +33,7 @@
 #include <sound/minors.h>
 #include <sound/initval.h>
 #include <linux/kmod.h>
+#include <proto.h>
 
 #if defined(CONFIG_SND_HPET) || defined(CONFIG_SND_HPET_MODULE)
 #define DEFAULT_TIMER_LIMIT 3
