@@ -157,6 +157,7 @@ int snd_register_oss_device(int type, struct snd_card *card, int dev,
 	mutex_unlock(&sound_oss_mutex);
 	return 0;
 
+#ifndef TARGET_OS2
       __end:
       	if (register2 >= 0)
       		unregister_sound_special(register2);
@@ -166,6 +167,7 @@ int snd_register_oss_device(int type, struct snd_card *card, int dev,
 	mutex_unlock(&sound_oss_mutex);
 	kfree(preg);
       	return -EBUSY;
+#endif
 }
 
 EXPORT_SYMBOL(snd_register_oss_device);

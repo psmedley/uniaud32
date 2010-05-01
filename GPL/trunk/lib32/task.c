@@ -45,8 +45,8 @@ void tasklet_init(struct tasklet_struct *t,
 {
 	t->next = NULL;
 	t->sync = 0;
-	t->func = func;
-	t->data = data;
+	t->func = (void *)func; /* DAZ cast added to stop compiler warning */
+	t->data = (void *)data; /* DAZ cast added to stop compiiler warning */
 }
 
 //Not pretty, but sblive driver compares pointers

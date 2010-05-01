@@ -62,7 +62,7 @@ static inline void divl(u32 high, u32 low, u32 div, u32 *q, u32 *r)
 	u64 d = (u64)div << 31;
 	u32 q1 = 0;
 	int c = 32;
-	while (n > 0xffffffffU) {
+	while (n > 0xffffffffUi64) {
 		q1 <<= 1;
 		if (n >= d) {
 			n -= d;
@@ -109,7 +109,7 @@ static inline u64 div_u64(u64 n, u32 div)
 		u32 high1 = high % div;
 		u32 low1 = low;
 		high /= div;
-		divl(high1, low1, div, &low, rem);
+		divl(high1, low1, div, &low, &rem);
 		return (u64)high << 32 | low;
 	} else {
 		return low / div;

@@ -95,7 +95,7 @@ ULONG StratIOCtl(RP __far* _rp)
     ULONG ctl_id;
 
 #ifdef DEBUG
-    printk("StratIOCtl\n");
+    printk("StratIOCtl %d\n", rp->Function);
 #endif
     if (rp->Category != CAT_IOCTL_OSS32)
     {

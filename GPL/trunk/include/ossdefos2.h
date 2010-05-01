@@ -83,7 +83,7 @@ typedef ULONG HFILE;
 #define OSS_MIXER_VIDEO		22	/* Video/TV (audio) in */
 #define OSS_MIXER_RADIO		23	/* Radio in */
 #define OSS_MIXER_MONITOR	24	/* Monitor (usually mic) volume */
-#define OSS_MIXER_3DDEPTH       25    
+#define OSS_MIXER_3DDEPTH       25
 #define OSS_MIXER_3DCENTER      26
 #define OSS_MIXER_FRONT         27
 #define OSS_MIXER_SPEAKER       28

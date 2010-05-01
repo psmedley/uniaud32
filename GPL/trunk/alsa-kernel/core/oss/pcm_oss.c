@@ -262,7 +262,7 @@ static int _snd_pcm_hw_param_min(struct snd_pcm_hw_params *params,
  * @val: minimal value
  * @dir: pointer to the direction (-1,0,1) or NULL
  *
- * Inside configuration space defined by PARAMS remove from PAR all 
+ * Inside configuration space defined by PARAMS remove from PAR all
  * values < VAL. Reduce configuration space accordingly.
  * Return new minimum or -EINVAL if the configuration space is empty
  */
@@ -323,7 +323,7 @@ static int _snd_pcm_hw_param_max(struct snd_pcm_hw_params *params,
  * @val: maximal value
  * @dir: pointer to the direction (-1,0,1) or NULL
  *
- * Inside configuration space defined by PARAMS remove from PAR all 
+ * Inside configuration space defined by PARAMS remove from PAR all
  *  values >= VAL + 1. Reduce configuration space accordingly.
  *  Return new maximum or -EINVAL if the configuration space is empty
  */
@@ -531,7 +531,7 @@ int _snd_pcm_hw_param_set(struct snd_pcm_hw_params *params,
  * @val: value to set
  * @dir: pointer to the direction (-1,0,1) or NULL
  *
- * Inside configuration space defined by PARAMS remove from PAR all 
+ * Inside configuration space defined by PARAMS remove from PAR all
  * values != VAL. Reduce configuration space accordingly.
  *  Return VAL or -EINVAL if the configuration space is empty
  */
@@ -704,7 +704,7 @@ static int snd_pcm_oss_format_to(int format)
 	}
 }
 
-static int snd_pcm_oss_period_size(struct snd_pcm_substream *substream, 
+static int snd_pcm_oss_period_size(struct snd_pcm_substream *substream,
 				   struct snd_pcm_hw_params *oss_params,
 				   struct snd_pcm_hw_params *slave_params)
 {
@@ -936,7 +936,7 @@ static int snd_pcm_oss_change_params(struct snd_pcm_substream *substream)
 		/* add necessary plugins */
 		snd_pcm_oss_plugin_clear(substream);
 		if ((err = snd_pcm_plug_format_plugins(substream,
-						       params, 
+						       params,
 						       sparams)) < 0) {
 			snd_printd("snd_pcm_plug_format_plugins failed: %i\n", err);
 			snd_pcm_oss_plugin_clear(substream);
@@ -1381,7 +1381,7 @@ static ssize_t snd_pcm_oss_write1(struct snd_pcm_substream *substream, const cha
 			xfer += tmp;
 			if (substream->oss.setup.partialfrag ||
 			    runtime->oss.buffer_used == runtime->oss.period_bytes) {
-				tmp = snd_pcm_oss_write2(substream, runtime->oss.buffer + runtime->oss.period_ptr, 
+				tmp = snd_pcm_oss_write2(substream, runtime->oss.buffer + runtime->oss.period_ptr,
 							 runtime->oss.buffer_used - runtime->oss.period_ptr, 1);
 				if (tmp <= 0)
 					goto err;
@@ -1793,7 +1793,7 @@ static int snd_pcm_oss_get_formats(struct snd_pcm_oss_file *pcm_oss_file)
 		return -ENOMEM;
 	_snd_pcm_hw_params_any(params);
 	err = snd_pcm_hw_refine(substream, params);
-	format_mask = *hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT); 
+	format_mask = *hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
 	kfree(params);
 	if (err < 0)
 		return err;
@@ -2752,6 +2752,7 @@ static unsigned int snd_pcm_oss_poll(struct file *file, poll_table * wait)
 	return mask;
 }
 
+#ifndef TARGET_OS2
 static int snd_pcm_oss_mmap(struct file *file, struct vm_area_struct *area)
 {
 	struct snd_pcm_oss_file *pcm_oss_file;
@@ -2818,6 +2819,7 @@ static int snd_pcm_oss_mmap(struct file *file, struct vm_area_struct *area)
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_SND_VERBOSE_PROCFS
 /*
@@ -3020,8 +3022,8 @@ static int snd_pcm_oss_register_minor(struct snd_pcm *pcm)
 		char name[128];
 		int duplex;
 		register_oss_dsp(pcm, 0);
-		duplex = (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream_count > 0 && 
-			      pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream_count && 
+		duplex = (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream_count > 0 &&
+			      pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream_count &&
 			      !(pcm->info_flags & SNDRV_PCM_INFO_HALF_DUPLEX));
 		sprintf(name, "%s%s", pcm->name, duplex ? " (DUPLEX)" : "");
 #ifdef SNDRV_OSS_INFO_DEV_AUDIO

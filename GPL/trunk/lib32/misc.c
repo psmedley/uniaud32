@@ -45,7 +45,7 @@ struct resource ioport_resource = {NULL, 0, 0, IORESOURCE_IO, NULL, NULL, NULL};
 struct resource iomem_resource  = {NULL, 0, 0, IORESOURCE_MEM, NULL, NULL, NULL};
 mem_map_t *mem_map = 0;
 int this_module[64] = {0};
-                
+
 #include <stdarg.h>
 
 char szLastALSAError1[128] = {0};
@@ -63,7 +63,7 @@ int printk(const char * fmt, ...)
     va_list argptr;                /* -> variable argument list */
 
     char *pszLastALSAError;
-    
+
     pszLastALSAError= iLastError ? szLastALSAError2 : szLastALSAError1;
 
     va_start(argptr, fmt);           /* get pointer to argument list */
@@ -74,7 +74,7 @@ int printk(const char * fmt, ...)
     if(szOverrunTest1 != 0xCC || szOverrunTest2 != 0xCC) {
         DebugInt3();
     }
-    
+
     dprintf( (pszLastALSAError) );
     if(++iLastError > 1) {
         iLastError = 0;
@@ -242,6 +242,28 @@ int queue_work(struct workqueue_struct *wq, struct work_struct *work)
 }
 //******************************************************************************
 //******************************************************************************
+static void run_workqueue(struct workqueue_struct *wq)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&wq->lock, flags);
+	while (!list_empty(&wq->worklist)) {
+		struct work_struct *work = list_entry(wq->worklist.next,
+						      struct work_struct, entry);
+		void (*f) (void *) = work->func;
+		void *data = work->data;
+
+		list_del_init(wq->worklist.next);
+		spin_unlock_irqrestore(&wq->lock, flags);
+		clear_bit(0, &work->pending);
+		f(data);
+		spin_lock_irqsave(&wq->lock, flags);
+		wake_up(&wq->work_done);
+	}
+	spin_unlock_irqrestore(&wq->lock, flags);
+}
+//******************************************************************************
+//******************************************************************************
 void flush_workqueue(struct workqueue_struct *wq)
 {
 	if (wq->task == current) {
@@ -262,28 +284,6 @@ void flush_workqueue(struct workqueue_struct *wq)
 		remove_wait_queue(&wq->work_done, &wait);
 		spin_unlock_irq(&wq->lock);
 	}
-}
-//******************************************************************************
-//******************************************************************************
-static void run_workqueue(struct workqueue_struct *wq)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&wq->lock, flags);
-	while (!list_empty(&wq->worklist)) {
-		struct work_struct *work = list_entry(wq->worklist.next,
-						      struct work_struct, entry);
-		void (*f) (void *) = work->func;
-		void *data = work->data;
-
-		list_del_init(wq->worklist.next);
-		spin_unlock_irqrestore(&wq->lock, flags);
-		clear_bit(0, &work->pending);
-		f(data);
-		spin_lock_irqsave(&wq->lock, flags);
-		wake_up(&wq->work_done);
-	}
-	spin_unlock_irqrestore(&wq->lock, flags);
 }
 //******************************************************************************
 //******************************************************************************

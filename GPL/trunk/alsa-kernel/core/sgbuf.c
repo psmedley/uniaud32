@@ -26,7 +26,7 @@
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
 #include <sound/memalloc.h>
-
+#include <proto.h>
 
 /* table entries are align to 32 */
 #define SGBUF_TBL_ALIGN		32
@@ -65,6 +65,22 @@ int snd_free_sgbuf_pages(struct snd_dma_buffer *dmab)
 	return 0;
 }
 #else
+/*
+ * shrink to the given pages.
+ * free the unused pages
+ */
+static void sgbuf_shrink(struct snd_sg_buf *sgbuf, int pages)
+{
+        if (! sgbuf->table)
+                return;
+        while (sgbuf->pages > pages) {
+                sgbuf->pages--;
+                snd_free_dev_pages(sgbuf->dev, PAGE_SIZE,
+                                   sgbuf->table[sgbuf->pages].buf,
+                                   sgbuf->table[sgbuf->pages].addr);
+        }
+}
+
 /* base this fn on the one in Uniaud 1.1.4 */
 int snd_free_sgbuf_pages(struct snd_dma_buffer *dmab)
 {
@@ -80,22 +96,6 @@ int snd_free_sgbuf_pages(struct snd_dma_buffer *dmab)
 	dmab->private_data = NULL;
 	
 	return 0;
-}
-
-/*
- * shrink to the given pages.
- * free the unused pages
- */
-static void sgbuf_shrink(struct snd_sg_buf *sgbuf, int pages)
-{
-        if (! sgbuf->table)
-                return;
-        while (sgbuf->pages > pages) {
-                sgbuf->pages--;
-                snd_free_dev_pages(sgbuf->dev, PAGE_SIZE,
-                                   sgbuf->table[sgbuf->pages].buf,
-                                   sgbuf->table[sgbuf->pages].addr);
-        }
 }
 #endif
 
@@ -122,7 +122,7 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 	dmab->area = NULL;
 	dmab->addr = 0;
 	dmab->private_data = sgbuf = kzalloc(sizeof(*sgbuf), GFP_KERNEL);
-	if (! sgbuf) 
+	if (! sgbuf)
 		return NULL;
 	sgbuf->dev = device;
 	pages = snd_sgbuf_aligned_pages(size);

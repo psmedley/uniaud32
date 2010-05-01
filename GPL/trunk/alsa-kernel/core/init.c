@@ -295,6 +295,7 @@ static int snd_disconnect_release(struct inode *inode, struct file *file)
 #ifndef TARGET_OS2
 	panic("%s(%p, %p) failed!", __func__, inode, file);
 #endif
+	return -ENODEV;
 }
 
 static unsigned int snd_disconnect_poll(struct file * file, poll_table * wait)
@@ -399,7 +400,7 @@ int snd_card_disconnect(struct snd_card *card)
 		spin_unlock(&shutdown_lock);
 
 		mfile->file->f_op = &snd_shutdown_f_ops;
-		fops_get(mfile->file->f_op);
+		//fops_get(mfile->file->f_op); //DAZ meaningless use of expression
 	}
 	spin_unlock(&card->files_lock);	
 
@@ -831,7 +832,7 @@ int __exit snd_card_info_done(void)
  *
  *  Returns zero otherwise a negative error code.
  */
-  
+
 int snd_component_add(struct snd_card *card, const char *component)
 {
 	char *ptr;

@@ -35,6 +35,7 @@
 #include <osspci.h>
 #include <stacktoflat.h>
 #include <stdlib.h>
+#include <proto.h>
 #include "soundoss.h"
 
 #undef samples_to_bytes
@@ -1111,7 +1112,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
     CountWv++;
 
 #ifdef DEBUG
-    printk("OSS32_WaveAddBuffer N:%d hw %d app %d avail %d, orig size: %d, size %d\n",CountWv, samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr), samples_to_bytes(status.avail), size1, size);
+    printk("OSS32_WaveAddBuffer N:%d hw %x app %x avail %x, orig size: %x, size %x\n",CountWv, samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr), samples_to_bytes(status.avail), size1, size);
 #endif
 
     if (size == 0)
@@ -1323,6 +1324,5 @@ OSSRET OSS32_WaveSetVolume(OSSSTREAMID streamid, ULONG volume)
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_SETVOLUME, (ULONG)__Stack32ToFlat(&pcm_volume));
     return UNIXToOSSError(ret);
 }
-//******************************************************************************
 //******************************************************************************
 

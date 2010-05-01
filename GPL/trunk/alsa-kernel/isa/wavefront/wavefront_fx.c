@@ -24,6 +24,7 @@
 #include <sound/core.h>
 #include <sound/snd_wavefront.h>
 #include <sound/initval.h>
+#include <proto.h>
 
 /* Control bits for the Load Control Register
  */
@@ -151,7 +152,7 @@ snd_wavefront_fx_open (struct snd_hwdep *hw, struct file *file)
 	return 0;
 }
 
-int 
+int
 snd_wavefront_fx_release (struct snd_hwdep *hw, struct file *file)
 
 {

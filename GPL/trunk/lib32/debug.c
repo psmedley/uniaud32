@@ -33,6 +33,8 @@
 #define LEADING_ZEROES          0x8000
 #define SIGNIFICANT_FIELD       0x0007
 
+//#define COMM_DEBUG
+
 BOOL  fLineTerminate=TRUE;
 int   DebugLevel = 1;
 
@@ -122,7 +124,7 @@ char  * HexLongToASCII(char  *StrPtr, ULONG wHexVal, USHORT Option)
           *StrPtr++=hextab[Digit];
 
       if (Power==0xF0000000)                  // 1 billion
-         Power=0xF000000;     
+         Power=0xF000000;
       else if (Power==0xF000000)
          Power=0xF00000;
       else if (Power==0xF00000)
@@ -143,16 +145,152 @@ char  * HexLongToASCII(char  *StrPtr, ULONG wHexVal, USHORT Option)
    return (StrPtr);
 }
 
-#define DEBUG1
+#ifdef DEBUG
+//------------------------- StringOut --------------------------//
 
-#ifdef  DEBUG1
+#define VMDHA_FIXED             0x0002
+
+extern APIRET VMAlloc(ULONG size, ULONG flags, char NEAR* *pAddr);
+
+/**
+ * Finds the length of a string up to cchMax.
+ * @returns   Length.
+ * @param     psz     Pointer to string.
+ * @param     cchMax  Max length.
+ */
+static unsigned _strnlen(const char *psz, unsigned cchMax)
+{
+    const char *pszC = psz;
+
+    while (cchMax-- > 0 &&  *psz != '\0')
+        psz++;
+
+    return psz - pszC;
+}
+
+#ifdef COMM_DEBUG
+short int MAGIC_COMM_PORT =  0; // pulled from word ptr 40:0
+
+
+#define UART_DATA               0x00            // UART Data port
+#define UART_INT_ENAB           0x01            // UART Interrupt enable
+#define UART_INT_ID             0x02            // interrupt ID
+#define UART_LINE_CTRL          0x03            // line control registers
+#define UART_MODEM_CTRL         0x04            // modem control register
+#define UART_LINE_STAT          0x05            // line status register
+#define UART_MODEM_STAT         0x06            // modem status regiser
+#define UART_DIVISOR_LO         0x00            // divisor latch least sig
+#define UART_DIVISOR_HI         0x01h           // divisor latch most sig
+
+#define DELAY   nop
+
+void CharOut(char c)
+{
+    if( MAGIC_COMM_PORT )
+    {
+
+        _asm    {
+
+        mov     dx, MAGIC_COMM_PORT     // address of PS/2's first COM port
+        add     dx, UART_LINE_STAT
+
+ReadyCheck:
+        in      al, dx                                                          // wait for comm port ready signal
+
+        DELAY
+        DELAY
+        DELAY
+
+        test    al, 020h
+        jz      ReadyCheck
+
+        // Send the character
+
+        add     dx, UART_DATA - UART_LINE_STAT
+        mov     al,c
+        out     dx, al
+
+        DELAY
+        DELAY
+        DELAY
+        }
+    }
+}
+#endif
+
+void StringOut(char *DbgStr)
+{
+   int len;
+#ifdef COMM_DEBUG
+   int i;
+#endif /* DEBUG */
+
+   len= _strnlen( DbgStr, 1024 );
+/*
+   while (*DbgStr)
+      CharOut(*DbgStr++);
+      */
+#ifdef COMM_DEBUG
+   if (MAGIC_COMM_PORT)   //PS+++ If have comport - out to it
+   {
+       for( i= 0; i < len; i++ )
+           CharOut( DbgStr[i] );
+
+       if (fLineTerminate)
+       {
+           CharOut(CR);                              // append carriage return,
+           CharOut(LF);                              // linefeed
+       }
+   }
+#endif
+   if( szprintBuf == 0 )
+   {
+      VMAlloc( max_buf_size, VMDHA_FIXED, &szprintBuf );
+      if( szprintBuf )
+         memset( szprintBuf, 0, max_buf_size );
+      wrOffset= 0;
+   }
+   if( szprintBuf )
+   {
+       if( (len + wrOffset) > max_buf_size )
+       {
+          int cntr;
+          cntr= max_buf_size - wrOffset;
+          memcpy( szprintBuf +  wrOffset, DbgStr, cntr );
+          DbgStr+= cntr;
+          len= len - cntr;
+          wrOffset= 0;
+       }
+       if( len )
+       {
+          memcpy( szprintBuf + wrOffset, DbgStr, len );
+          wrOffset= wrOffset + len;
+          if( wrOffset >= max_buf_size )
+              wrOffset= 0;
+       }
+       if (fLineTerminate)
+       {
+//           if( (wrOffset+1) >= max_buf_size )
+//               wrOffset= 0;
+           szprintBuf[wrOffset]= CR;
+           if( ++wrOffset >= max_buf_size )
+               wrOffset= 0;
+           szprintBuf[wrOffset]= LF;
+           if( ++wrOffset >= max_buf_size )
+               wrOffset= 0;
+       }
+   }
+}
+#endif
+
+#ifdef  DEBUG
 char BuildString[1024];
 #endif          // DEBUG
 
 //------------------------- PrintfOut -
-void _cdecl DPD(int level, char *DbgStr, ...) 
+void _cdecl DPD(int level, char *DbgStr, ...)
 {
-#ifdef DEBUG1
+#ifdef DEBUG
    char *BuildPtr=BuildString;
    char *pStr=(char *) DbgStr;
    char *SubStr;
@@ -259,14 +397,14 @@ void _cdecl DPD(int level, char *DbgStr, ...)
       } // end while
 
    *BuildPtr=0;                                 // cauterize the string
-   StringOut((char *) BuildString);         // print to comm port
+   StringOut((char *) BuildString);
 #endif                            //DEBUG
 }
 
 
-void _cdecl DPE(char *DbgStr, ...) 
+void _cdecl DPE(char *DbgStr, ...)
 {
-#ifdef DEBUG1
+#ifdef DEBUG
    char *BuildPtr=BuildString;
    char *pStr = (char *) DbgStr;
    char *SubStr;
@@ -378,7 +516,7 @@ void _cdecl DPE(char *DbgStr, ...)
       } // end while
 
    *BuildPtr=0;                                 // cauterize the string
-   StringOut((char *) BuildString);         // print to comm port
+   StringOut((char *) BuildString);
 #endif                            //DEBUG
 }
 
@@ -523,145 +661,3 @@ int snd_iprintf(snd_info_buffer_t * buffer, char *fmt,...)
    return res;
 }
 
-#ifdef DEBUG1
-//------------------------- StringOut --------------------------//
-
-#define VMDHA_FIXED             0x0002
-
-extern APIRET VMAlloc(ULONG size, ULONG flags, char NEAR* *pAddr);
-
-/**
- * Finds the length of a string up to cchMax.
- * @returns   Length.
- * @param     psz     Pointer to string.
- * @param     cchMax  Max length.
- */
-static unsigned _strnlen(const char *psz, unsigned cchMax)
-{
-    const char *pszC = psz;
-
-    while (cchMax-- > 0 &&  *psz != '\0')
-        psz++;
-
-    return psz - pszC;
-}
-//PS+++ Changes for right debug output
-#ifdef DEBUG
-short int MAGIC_COMM_PORT =  0;           // pulled from word ptr 40:0
-
-
-#define UART_DATA               0x00            // UART Data port
-#define UART_INT_ENAB           0x01            // UART Interrupt enable
-#define UART_INT_ID             0x02            // interrupt ID
-#define UART_LINE_CTRL          0x03            // line control registers
-#define UART_MODEM_CTRL         0x04            // modem control register
-#define UART_LINE_STAT          0x05            // line status register
-#define UART_MODEM_STAT         0x06            // modem status regiser
-#define UART_DIVISOR_LO         0x00            // divisor latch least sig
-#define UART_DIVISOR_HI         0x01h           // divisor latch most sig
-
-#define DELAY   nop
-#else
-short int MAGIC_COMM_PORT =  0x0;           // pulled from word ptr 40:0
-#endif
-
-void StringOut(char *DbgStr)
-{
-   int len;
-#ifdef DEBUG
-   int i;
-#endif /* DEBUG */
-   
-   len= _strnlen( DbgStr, 1024 );
-/*   
-   while (*DbgStr)
-      CharOut(*DbgStr++);
-      */
-#ifdef DEBUG
-   if (MAGIC_COMM_PORT)   //PS+++ If have comport - out to it
-   {
-       for( i= 0; i < len; i++ )
-           CharOut( DbgStr[i] );
-
-       if (fLineTerminate)
-       {
-           CharOut(CR);                              // append carriage return,
-           CharOut(LF);                              // linefeed
-       }
-   }
-#endif
-   if( szprintBuf == 0 )
-   {
-      VMAlloc( max_buf_size, VMDHA_FIXED, &szprintBuf );
-      if( szprintBuf )
-         memset( szprintBuf, 0, max_buf_size );
-      wrOffset= 0;
-   }
-   if( szprintBuf )
-   {
-       if( (len + wrOffset) > max_buf_size )
-       {
-          int cntr;
-          cntr= max_buf_size - wrOffset;
-          memcpy( szprintBuf +  wrOffset, DbgStr, cntr );
-          DbgStr+= cntr;
-          len= len - cntr;
-          wrOffset= 0;
-       }
-       if( len )
-       {
-          memcpy( szprintBuf + wrOffset, DbgStr, len );
-          wrOffset= wrOffset + len;
-          if( wrOffset >= max_buf_size )
-              wrOffset= 0;
-       }
-       if (fLineTerminate)
-       {
-//           if( (wrOffset+1) >= max_buf_size )
-//               wrOffset= 0;
-           szprintBuf[wrOffset]= CR;
-           if( ++wrOffset >= max_buf_size )
-               wrOffset= 0;
-           szprintBuf[wrOffset]= LF;
-           if( ++wrOffset >= max_buf_size )
-               wrOffset= 0;
-       }
-   }
-}
-#endif
-
-
-#ifdef DEBUG                            //--------------------------- CharOut -
-void CharOut(char c)
-{
-    if( MAGIC_COMM_PORT )
-    {
-
-        _asm    {
-
-        mov     dx, MAGIC_COMM_PORT     // address of PS/2's first COM port
-        add     dx, UART_LINE_STAT
-
-ReadyCheck:
-        in      al, dx                                                          // wait for comm port ready signal
-
-        DELAY
-        DELAY
-        DELAY
-
-        test    al, 020h
-        jz      ReadyCheck
-
-        // Send the character
-
-        add     dx, UART_DATA - UART_LINE_STAT
-        mov     al,c
-        out     dx, al
-
-        DELAY
-        DELAY
-        DELAY
-        }
-    }
-}
-#endif

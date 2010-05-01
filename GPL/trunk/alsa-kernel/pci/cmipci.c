@@ -16,7 +16,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
- 
+
 /* Does not work. Warning may block system in capture mode */
 /* #define USE_VAR48KRATE */
 
@@ -1299,7 +1299,7 @@ static int snd_cmipci_playback_prepare(struct snd_pcm_substream *substream)
 	do_spdif = (rate >= 44100 && rate <= 96000 &&
 		    substream->runtime->format == SNDRV_PCM_FORMAT_S16_LE &&
 		    substream->runtime->channels == 2);
-	if (do_spdif && cm->can_ac3_hw) 
+	if (do_spdif && cm->can_ac3_hw)
 		do_ac3 = cm->dig_pcm_status & IEC958_AES0_NONAUDIO;
 	if ((err = setup_spdif_playback(cm, substream, do_spdif, do_ac3)) < 0)
 		return err;
@@ -1312,7 +1312,7 @@ static int snd_cmipci_playback_spdif_prepare(struct snd_pcm_substream *substream
 	struct cmipci *cm = snd_pcm_substream_chip(substream);
 	int err, do_ac3;
 
-	if (cm->can_ac3_hw) 
+	if (cm->can_ac3_hw)
 		do_ac3 = cm->dig_pcm_status & IEC958_AES0_NONAUDIO;
 	else
 		do_ac3 = 1; /* doesn't matter */
@@ -2035,7 +2035,7 @@ static int snd_cmipci_info_volume(struct snd_kcontrol *kcontrol,
 	uinfo->value.integer.max = reg.mask;
 	return 0;
 }
- 
+
 static int snd_cmipci_get_volume(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
@@ -2117,7 +2117,7 @@ static int snd_cmipci_info_input_sw(struct snd_kcontrol *kcontrol,
 	uinfo->value.integer.max = 1;
 	return 0;
 }
- 
+
 static int snd_cmipci_get_input_sw(struct snd_kcontrol *kcontrol,
 				   struct snd_ctl_elem_value *ucontrol)
 {
@@ -2385,7 +2385,7 @@ static int _snd_cmipci_uswitch_put(struct snd_kcontrol *kcontrol,
 		val = inb(cm->iobase + args->reg);
 	else
 		val = snd_cmipci_read(cm, args->reg);
-	change = (val & args->mask) != (ucontrol->value.integer.value[0] ? 
+	change = (val & args->mask) != (ucontrol->value.integer.value[0] ?
 			args->mask_on : (args->mask & ~args->mask_on));
 	if (change) {
 		val &= ~args->mask;
@@ -2588,7 +2588,7 @@ static int snd_cmipci_mic_in_mode_get(struct snd_kcontrol *kcontrol,
 	struct cmipci *cm = snd_kcontrol_chip(kcontrol);
 	/* same bit as spdi_phase */
 	spin_lock_irq(&cm->reg_lock);
-	ucontrol->value.enumerated.item[0] = 
+	ucontrol->value.enumerated.item[0] =
 		(snd_cmipci_read_b(cm, CM_REG_MISC) & CM_SPDIF_INVERSE) ? 1 : 0;
 	spin_unlock_irq(&cm->reg_lock);
 	return 0;
@@ -2782,7 +2782,7 @@ static int __devinit snd_cmipci_mixer_new(struct cmipci *cm, int pcm_spdif_devic
  */
 
 #ifdef CONFIG_PROC_FS
-static void snd_cmipci_proc_read(struct snd_info_entry *entry, 
+static void snd_cmipci_proc_read(struct snd_info_entry *entry,
 				 struct snd_info_buffer *buffer)
 {
 	struct cmipci *cm = entry->private_data;
@@ -3131,7 +3131,7 @@ static int __devinit snd_cmipci_create(struct snd_card *card, struct pci_dev *pc
 	switch (pci->device) {
 	case PCI_DEVICE_ID_CMEDIA_CM8738:
 	case PCI_DEVICE_ID_CMEDIA_CM8738B:
-		if (!pci_dev_present(intel_82437vx)) 
+		if (!pci_dev_present(intel_82437vx))
 			snd_cmipci_set_bit(cm, CM_REG_MISC_CTRL, CM_TXVX);
 		break;
 	default:

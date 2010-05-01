@@ -431,6 +431,7 @@ EXPORT_SYMBOL_HDA(snd_hda_queue_unsol_event);
 /*
  * process queued unsolicited events
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
 static void process_unsol_events(struct work_struct *work)
 {
 	struct hda_bus_unsolicited *unsol =
@@ -452,6 +453,7 @@ static void process_unsol_events(struct work_struct *work)
 			codec->patch_ops.unsol_event(codec, res);
 	}
 }
+#endif
 
 /*
  * initialize unsolicited queue
@@ -614,7 +616,9 @@ find_codec_preset(struct hda_codec *codec)
 	if (is_generic_config(codec))
 		return NULL; /* use the generic parser */
 
+#ifndef TARGET_OS2
  again:
+#endif
 	mutex_lock(&preset_mutex);
 	list_for_each_entry(tbl, &hda_preset_tables, list, struct hda_codec_preset_list) {
 		if (!try_module_get(tbl->owner)) {
@@ -2500,7 +2504,7 @@ int /*__devinit*/ snd_hda_build_controls(struct hda_bus *bus)
 		int err = snd_hda_codec_build_controls(codec);
 		if (err < 0) {
 			printk(KERN_ERR "hda_codec: cannot build controls"
-			       "for #%d (error %d)\n", codec->addr, err); 
+			       "for #%d (error %d)\n", codec->addr, err);
 			err = snd_hda_codec_reset(codec);
 			if (err < 0) {
 				printk(KERN_ERR
@@ -2962,7 +2966,7 @@ int snd_hda_codec_build_pcms(struct hda_codec *codec)
 		err = codec->patch_ops.build_pcms(codec);
 		if (err < 0) {
 			printk(KERN_ERR "hda_codec: cannot build PCMs"
-			       "for #%d (error %d)\n", codec->addr, err); 
+			       "for #%d (error %d)\n", codec->addr, err);
 			err = snd_hda_codec_reset(codec);
 			if (err < 0) {
 				printk(KERN_ERR
@@ -3399,7 +3403,7 @@ static void setup_dig_out_stream(struct hda_codec *codec, hda_nid_t nid,
 {
 	/* turn off SPDIF once; otherwise the IEC958 bits won't be updated */
 	if (codec->spdif_status_reset && (codec->spdif_ctls & AC_DIG1_ENABLE))
-		set_dig_out_convert(codec, nid, 
+		set_dig_out_convert(codec, nid,
 				    codec->spdif_ctls & ~AC_DIG1_ENABLE & 0xff,
 				    -1);
 	snd_hda_codec_setup_stream(codec, nid, stream_tag, 0, format);
@@ -3659,7 +3663,7 @@ static void sort_pins_by_sequence(hda_nid_t * pins, short * sequences,
  * is detected, one of speaker of HP pins is assigned as the primary
  * output, i.e. to line_out_pins[0].  So, line_outs is always positive
  * if any analog output exists.
- * 
+ *
  * The analog input pins are assigned to input_pins array.
  * The digital input/output pins are assigned to dig_in_pin and dig_out_pin,
  * respectively.
