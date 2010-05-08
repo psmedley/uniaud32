@@ -33,8 +33,6 @@
 #define LEADING_ZEROES          0x8000
 #define SIGNIFICANT_FIELD       0x0007
 
-//#define COMM_DEBUG
-
 BOOL  fLineTerminate=TRUE;
 int   DebugLevel = 1;
 
@@ -146,6 +144,7 @@ char  * HexLongToASCII(char  *StrPtr, ULONG wHexVal, USHORT Option)
 }
 
 #ifdef DEBUG
+#define COMM_DEBUG
 //------------------------- StringOut --------------------------//
 
 #define VMDHA_FIXED             0x0002

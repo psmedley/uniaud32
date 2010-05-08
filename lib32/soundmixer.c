@@ -375,7 +375,7 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     struct snd_ctl_elem_info  *pElemInfo;
     int                   ret, idx, lVol, rVol = 0, idxMute, cnt;
 
-    dprintf(("OSS32_MixSetVolume line=%d\n", line));
+    //dprintf(("OSS32_MixSetVolume line=%d\n", line));
     if(pHandle == NULL || pHandle->magic != MAGIC_MIXER_ALSA32) {
         printk("Invalid handle in OSS32_MixSetVolume\n");
         DebugInt3();
@@ -511,10 +511,9 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
         pElem->value.integer.value[1] = rVol;
     }
 
-    printk("OSS32_MixSetVolume of %s streamid %X to (%d,%d)(%d,%d) caps %d\n",
-           pHandle->pids[idx].name,
-           (ULONG)pHandle, GET_VOLUME_L(volume),
-           GET_VOLUME_R(volume), lVol, rVol, pElemInfo->value.integer.max);
+	printk("OSS32_MixSetVolume of %s streamid %X to (%d,%d)(%d,%d) caps %d\n",
+		pHandle->pids[idx].name, (ULONG)pHandle,
+		GET_VOLUME_L(volume), GET_VOLUME_R(volume), lVol, rVol, pElemInfo->value.integer.max);
 
     // looking for more, then one opened streams to prevent of muting active stream
     cnt = 0;

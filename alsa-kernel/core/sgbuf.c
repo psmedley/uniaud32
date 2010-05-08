@@ -18,15 +18,17 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
-
 #ifdef TARGET_OS2
 #include <sound/core.h>
 #endif
+#include <sound/config.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
 #include <sound/memalloc.h>
 #include <proto.h>
+
+#ifdef CONFIG_SND_DMA_SGBUF
 
 /* table entries are align to 32 */
 #define SGBUF_TBL_ALIGN		32
@@ -205,3 +207,4 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 	snd_free_sgbuf_pages(dmab); /* free the table */
 	return NULL;
 }
+#endif

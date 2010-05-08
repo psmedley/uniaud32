@@ -94,9 +94,6 @@ ULONG StratIOCtl(RP __far* _rp)
     ULONG card_id;
     ULONG ctl_id;
 
-#ifdef DEBUG
-    printk("StratIOCtl %d\n", rp->Function);
-#endif
     if (rp->Category != CAT_IOCTL_OSS32)
     {
 //        printk("not our cat %x. func %x\n", rp->Category, rp->Function);
@@ -104,6 +101,9 @@ ULONG StratIOCtl(RP __far* _rp)
         return (RPERR_COMMAND | RPDONE);
     }
 
+#ifdef DEBUG
+    printk("StratIOCtl 0x%x\n", rp->Function);
+#endif
 //    printk("cmd: %x, len: %i, pack: %x\n",rp->Function, rp->ParmLength, rp->ParmPacket);
     // work with Parm Packet
     if ((rp->ParmLength != 0 ||
@@ -393,7 +393,6 @@ ULONG StratIOCtl(RP __far* _rp)
             card_id = (id >> 16) & 0x0000FFFF;
             ctl_id = id & 0x0000FFFF;
 
-            //                printk("put ID %i\n",id);
             GetUniaudControlValuePut(card_id, ctl_id,(void*)*pData);
         } break;
 

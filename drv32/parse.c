@@ -38,6 +38,10 @@ extern "C" {
 #include "parse.h"         // NUM_DEVICES
 #include <string.h>
 
+#ifdef DEBUG
+#define COMM_DEBUG
+#endif
+
 // True if the /V parameter was specified
 int fVerbose  = FALSE;
 int fDebug    = FALSE;

@@ -1013,6 +1013,7 @@ tryagain:
         if(fTryAgain == FALSE) {
             minperiodsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_SIZE)->min;
             maxperiodsize = hw_param_interval((&params), SNDRV_PCM_HW_PARAM_PERIOD_SIZE)->max;
+        	dprintf(("Period size min=%lx max=%lx", minperiodsize, maxperiodsize));
             if(minperiodsize > maxperiodsize) {
                 //ALSA doesn't like the period size; try suggested one
                 periodsize  = maxperiodsize;
@@ -1022,7 +1023,7 @@ tryagain:
                 goto tryagain;
             }
         }
-        dprintf(("Error second time.. Bailing"));
+        dprintf(("Error %ld second time.. Bailing", ret));
         return UNIXToOSSError(ret);
     }
 
@@ -1090,95 +1091,98 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
 
-    //first check how much room is left in the circular dma buffer
-    //this is done to make sure we don't block inside ALSA while trying to write
-    //more data than fits in the internal dma buffer.
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+	/* get the status of the circular dma buffer */
+	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
 
-    if(ret) {
-        DebugInt3();
-        return UNIXToOSSError(ret);
-    }
+	if(ret) {
+		DebugInt3();
+		return UNIXToOSSError(ret);
+	}
 
-    size1 = size;
-
-    size = min(size, samples_to_bytes(status.avail));
-
-#ifdef DEBUG_PK
-    if (size1 != size)
-        printk("requested size [%d] less then available [%d]\n", size1, size);
-#endif
-
-    CountWv++;
-
-#ifdef DEBUG
-    printk("OSS32_WaveAddBuffer N:%d hw %x app %x avail %x, orig size: %x, size %x\n",CountWv, samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr), samples_to_bytes(status.avail), size1, size);
-#endif
-
-    if (size == 0)
-    {
-#ifdef DEBUG_PK
-        printk("OSS32_WaveAddBuffer: no room left in hardware buffer!!\n");
-        printk("state = %i\n",status.state);
-        printk("avail = %i\n",status.avail);
-        printk("size req = %i\n",size1);
-#endif
-        *pTransferred = 0;
-        return OSSERR_BUFFER_FULL;
-    }
-
+	CountWv++;
     transferred = 0;
     *pTransferred = 0;
     ret = -11;
     switch(SNDRV_MINOR_DEVICE(MINOR(pHandle->inode.i_rdev-pcm)))
     {
     case SNDRV_MINOR_PCM_PLAYBACK:
-        // size should be aligned to channels number * samplesize  //PS+++ what is it and why?!?!?!
-        j = 10;            // 10 try if error
-        while (size && j && ret)
-        {
-               for (i=0; i < 1000; i++)
-               {
-                     ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
-                     // If here any state and have free buffer to any byte
-                     if ((status.state != SNDRV_PCM_STATE_XRUN ) && samples_to_bytes(status.avail) )
-                         break;
-                     if (i > 998)
-                     {
-//                         printk("timeout stat %x avail:%d hw:%d app:%d\n",status.state,samples_to_bytes(status.avail),samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr));
-                         ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
-                     }
-               }
 
-               if (ret1 < 0)
-               {
-//                   printk("Status Error ret1:%i trans: %i need %d tot:%d\n",ret1,transferred, size,size1);
-                   break;     // We have any global error, don't try more
-               }
+		//first check how much room is left in the circular dma buffer
+		//this is done to make sure we don't block inside ALSA while trying to write
+		//more data than fits in the internal dma buffer.
+	    size1 = size;
+	    size = min(size, samples_to_bytes(status.avail));
 
-               ret = pHandle->file.f_op->write(&pHandle->file, (char *)buffer, size, &pHandle->file.f_pos);
+#ifdef DEBUG
+		//printk("OSS32_WaveAddBuffer N:%d hw=%x app=%x avail=%x req size=%x size=%x\n",
+		//	CountWv, samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr), samples_to_bytes(status.avail), size1, size);
+#endif
 
-               if (ret < 0 )
-               {  // We have any error, don't try more
-                  j--;
-                  if ( ret != -11 )
-                      ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
-//                  printk("Error ret:%i ret1:%i trans: %d need %d tot:%d\n",ret,ret1,transferred, size,size1);
-                  continue;
-               }
-               if (ret == 0)  continue;
-               transferred += ret;
-//               printk("written: now: %d, trans: %d need %d tot:%d\n", ret, transferred, size,size1);
-               buffer += ret;
-               if (size > ret)
-                  size   -= ret;
-               else
-                  size = 0;
-        }
+	    if (size == 0) {
+#ifdef DEBUG_PK
+	        printk("OSS32_WaveAddBuffer: no room left in hardware buffer!!\n");
+    	    printk("state = %i\n",status.state);
+        	printk("avail = %i\n",status.avail);
+	        printk("size req = %i\n",size1);
+#endif
+	        *pTransferred = 0;
+    	    return OSSERR_BUFFER_FULL;
+	    }
+
+		// size should be aligned to channels number * samplesize  //PS+++ what is it and why?!?!?!
+		j = 10;            // 10 try if error
+		while (size && j && ret)
+		{
+			for (i=0; i < 1000; i++)
+			{
+				ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+				// If here any state and have free buffer to any byte
+				if ((status.state != SNDRV_PCM_STATE_XRUN ) && samples_to_bytes(status.avail) ) break;
+				if (i > 998) {
+					// printk("timeout stat %x avail:%d hw:%d app:%d\n",status.state,samples_to_bytes(status.avail),samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr));
+					ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
+				}
+			}
+
+			if (ret1 < 0) {
+				// printk("Status Error ret1:%i trans: %i need %d tot:%d\n",ret1,transferred, size,size1);
+				break;     // We have any global error, don't try more
+			}
+
+			ret = pHandle->file.f_op->write(&pHandle->file, (char *)buffer, size, &pHandle->file.f_pos);
+
+			if (ret < 0 ) {  // We have any error, don't try more
+				j--;
+				if ( ret != -11 )
+				ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
+				// printk("Error ret:%i ret1:%i trans: %d need %d tot:%d\n",ret,ret1,transferred, size,size1);
+				continue;
+			}
+			if (ret == 0)  continue;
+			transferred += ret;
+			// printk("written: now: %d, trans: %d need %d tot:%d\n", ret, transferred, size,size1);
+			buffer += ret;
+			if (size > ret)
+				size   -= ret;
+			else
+				size = 0;
+		}
         break;
     case SNDRV_MINOR_PCM_CAPTURE:
+#ifdef DEBUG
+		//printk("OSS32_WaveAddBuffer N:%d state=%x hw=%x app=%x avail=%x size=%x\n",
+		//	CountWv, status.state, samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr), samples_to_bytes(status.avail), size);
+#endif
+//		Need to handle overrun condition when reading
+//		if (status.state == SNDRV_PCM_STATE_XRUN) {
+//		    *pTransferred = 0;
+//			return OSSERR_BUFFER_FULL;
+//		}
         transferred = pHandle->file.f_op->read(&pHandle->file, (char *)buffer, size, &pHandle->file.f_pos);
-//        printk("readed %i bytes\n", transferred);
+		if (transferred < 0) {
+		    *pTransferred = 0;
+			return OSSERR_BUFFER_FULL;
+		}
         break;
     default:
         DebugInt3();
@@ -1188,11 +1192,11 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
     total += transferred;
     *pTransferred = transferred;
     prev_size = transferred;
-    if (*pTransferred < size1)
-    {
-        printk("warning: transferred [%d] less than requested [%d]\n", *pTransferred, size1);
+//    if (*pTransferred < size1)
+//    {
+//        printk("warning: transferred [%d] less than requested [%d]\n", *pTransferred, size1);
 //        ret1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
-    }
+//    }
 
     return OSSERR_SUCCESS;
 }
@@ -1290,7 +1294,6 @@ OSSRET OSS32_WaveGetHwPtr(ULONG streamid, ULONG *pPosition)
         return UNIXToOSSError(ret);
     }
 
-    dprintf(("OSS32_WaveGetHwPtr: %lx", samples_to_bytes(status.appl_ptr)));
     *pPosition = samples_to_bytes(status.appl_ptr);  //return new hardware position
     return OSSERR_SUCCESS;
 }
