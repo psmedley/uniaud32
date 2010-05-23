@@ -105,7 +105,7 @@ ULONG GetBaseAddress(ULONG addr, ULONG *pSize)
     DevCli();
     pCur = pBaseAddrHead;
 
-    if(pCur->retaddr == addr) 
+    if(pCur->retaddr == addr)
     {
         addr = pCur->base;
         if(pSize) *pSize = pCur->size;
@@ -159,7 +159,7 @@ void * phys_to_virt(unsigned long address)
 {
     APIRET rc = 0;
     ULONG addr = 0;
-    
+
 #ifdef KEE
     SHORT sel;
     rc = KernVMAlloc(PAGE_SIZE, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&address, &sel);
@@ -175,7 +175,7 @@ void * phys_to_virt(unsigned long address)
 //******************************************************************************
 extern "C" int fStrategyInit;
 //******************************************************************************
-APIRET VMAlloc(ULONG size, ULONG flags, LINEAR *pAddr) 
+APIRET VMAlloc(ULONG size, ULONG flags, LINEAR *pAddr)
 {
     APIRET rc;
     ULONG addr;
@@ -210,7 +210,7 @@ __again:
 }
 //******************************************************************************
 //******************************************************************************
-APIRET VMFree(LINEAR addr) 
+APIRET VMFree(LINEAR addr)
 {
     APIRET rc;
 
@@ -301,7 +301,7 @@ void *__get_free_pages(int gfp_mask, unsigned long order)
     order = (1 << order); //TODO: Is this correct???
     size = order * PAGE_SIZE;
 
-    if(gfp_mask & (GFP_DMA|GFP_DMAHIGHMEM)) 
+    if(gfp_mask & (GFP_DMA|GFP_DMAHIGHMEM))
     {//below 16 mb for legacy DMA?
         if(gfp_mask & GFP_DMA)
             flags |= VMDHA_16M;
@@ -325,13 +325,13 @@ void *__get_free_pages(int gfp_mask, unsigned long order)
         }
     }
     else allocsize = size;
-    
+
     if(VMAlloc(allocsize, flags, (LINEAR *)&addr)) {
 		DebugInt3();
 		return 0;
 	}
-////	dprintf(("__get_free_pages %d returned %x", order*PAGE_SIZE, addr));    
-    if(gfp_mask & (GFP_DMA|GFP_DMAHIGHMEM)) 
+////	dprintf(("__get_free_pages %d returned %x", order*PAGE_SIZE, addr));
+    if(gfp_mask & (GFP_DMA|GFP_DMAHIGHMEM))
     {//must be aligned at 64kb boundary
         ULONG physaddr = virt_to_phys((void *)addr);
         ULONG physaddr2;
@@ -376,7 +376,7 @@ int free_pages(unsigned long addr, unsigned long order)
 
     //check if it really is the base of the allocation (see above)
     addr = GetBaseAddress(addr, (ULONG NEAR *)__Stack32ToFlat(&size));
-    
+
     if(VMFree((LINEAR)addr)) {
         DebugInt3();
     }
@@ -409,13 +409,13 @@ void *vmalloc(unsigned long size)
 	}
     if(addr) {
 #ifdef DEBUG
-        dprintf(("vmalloc %d -> %x (phys %x)", size, addr, virt_to_phys((void *)addr)));
+        //dprintf(("vmalloc %d -> %x (phys %x)", size, addr, virt_to_phys((void *)addr)));
 #endif
         //only done to save size of memory block
         AddBaseAddress(addr, addr, size);
         ulget_free_pagesMemUsed += size;
 #ifdef DEBUG
-        dprintf(("vmalloc: total alloc size %d", ulget_free_pagesMemUsed));
+        //dprintf(("vmalloc: total alloc size %d", ulget_free_pagesMemUsed));
 #endif
     }
     return (void *)addr;
@@ -428,17 +428,17 @@ void vfree(void *ptr)
     ULONG  size = 0;
 
     GetBaseAddress((ULONG)ptr, (ULONG NEAR *)__Stack32ToFlat(&size));
-    
+
     if(VMFree((LINEAR)ptr)) {
         DebugInt3();
     }
     else {
 #ifdef DEBUG
-        dprintf(("vfree %x size %d", (ULONG)ptr, size));
+        //dprintf(("vfree %x size %d", (ULONG)ptr, size));
 #endif
         ulget_free_pagesMemUsed -= size;
 #ifdef DEBUG
-        dprintf(("vfree: total alloc size %d", ulget_free_pagesMemUsed));
+        //dprintf(("vfree: total alloc size %d", ulget_free_pagesMemUsed));
 #endif
     }
 }
@@ -634,11 +634,11 @@ void __kfree(const void *ptr)
     	return;
     }
 ////  dprintf(("kfree %x", addr));
-    if(IsHeapAddr(addr)) {  
+    if(IsHeapAddr(addr)) {
 #ifdef DEBUGHEAP
-        free((void *)addr, filename, lineno);  
+        free((void *)addr, filename, lineno);
 #else
-  	    free((void *)addr);  
+  	    free((void *)addr);
 #endif
     }
     else  vfree((PVOID)addr);

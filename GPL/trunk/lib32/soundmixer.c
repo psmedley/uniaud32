@@ -70,10 +70,10 @@ static struct {
 	/* OSS_MIXER_RADIO    */ { "Radio", 0 , -1},
 	/* OSS_MIXER_MONITOR  */ { "Monitor", 0 , -1},
 	/* OSS_MIXER_3DDEPTH  */ { "3D Control - Depth", 0 , -1},
-        /* OSS_MIXER_3DCENTER */ { "3D Control - Center", 0 , -1},
-        /* OSS_MIXER_FRONT    */ { "Front", 0 , -1},
-        /* OSS_MIXER_SPEAKER  */ { "Speaker", 0 , -1},
-        /* OSS_MIXER_HEADPHONE */ { "Headphone", 0 , -1},
+    /* OSS_MIXER_3DCENTER */ { "3D Control - Center", 0 , -1},
+	/* OSS_MIXER_FRONT    */ { "Front", 0 , -1},
+	/* OSS_MIXER_SPEAKER  */ { "Speaker", 0 , -1},
+	/* OSS_MIXER_HEADPHONE */ { "Headphone", 0 , -1},
 };
 char *szRecSources[OSS32_MIX_RECSRC_MAX] = {
     "Mic", "CD", "Line", "Video", "Aux", "Mix", "Mix Mono", "Phone", "Synth"

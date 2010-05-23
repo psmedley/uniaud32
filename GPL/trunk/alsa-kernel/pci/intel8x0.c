@@ -24,7 +24,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 
  *
- */      
+ */
 
 #include <asm/io.h>
 #include <linux/delay.h>
@@ -268,7 +268,7 @@ enum {
 #define ALI_CSPSR_WRITE_OK	0x01
 
 /* interrupts for the whole chip by interrupt status register finish */
- 
+
 #define ALI_INT_MICIN2		(1<<26)
 #define ALI_INT_PCMIN2		(1<<25)
 #define ALI_INT_I2SIN		(1<<24)
@@ -312,7 +312,7 @@ enum {
 #define ICH_ALI_IF_PO		(1<<1)
 
 /*
- *  
+ *
  */
 
 enum {
@@ -543,7 +543,7 @@ static int snd_intel8x0_codec_semaphore(struct intel8x0 *chip, unsigned int code
 	/* I don't care about the semaphore */
 	return -EBUSY;
 }
- 
+
 static void snd_intel8x0_codec_write(struct snd_ac97 *ac97,
 				     unsigned short reg,
 				     unsigned short val)
@@ -661,7 +661,7 @@ static void snd_intel8x0_ali_codec_write(struct snd_ac97 *ac97, unsigned short r
 /*
  * DMA I/O
  */
-static void snd_intel8x0_setup_periods(struct intel8x0 *chip, struct ichdev *ichdev) 
+static void snd_intel8x0_setup_periods(struct intel8x0 *chip, struct ichdev *ichdev)
 {
 	int idx;
 	u32 *bdbar = ichdev->bdbar;
@@ -885,8 +885,8 @@ static int snd_intel8x0_ali_trigger(struct snd_pcm_substream *substream, int cmd
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			/* clear FIFO for synchronization of channels */
 			fifo = igetdword(chip, fiforeg[ichdev->ali_slot / 4]);
-			fifo &= ~(0xff << (ichdev->ali_slot % 4));  
-			fifo |= 0x83 << (ichdev->ali_slot % 4); 
+			fifo &= ~(0xff << (ichdev->ali_slot % 4));
+			fifo |= 0x83 << (ichdev->ali_slot % 4);
 			iputdword(chip, fiforeg[ichdev->ali_slot / 4], fifo);
 		}
 		iputbyte(chip, port + ICH_REG_OFF_CR, ICH_IOCE);
@@ -1752,12 +1752,12 @@ static struct ac97_pcm ac97_pcm_defs[] __devinitdata = {
 };
 
 static struct ac97_quirk ac97_quirks[] __devinitdata = {
-        {
+    {
 		.subvendor = 0x0e11,
 		.subdevice = 0x000e,
 		.name = "Compaq Deskpro EN",	/* AD1885 */
 		.type = AC97_TUNE_HP_ONLY
-        },
+    },
 	{
 		.subvendor = 0x0e11,
 		.subdevice = 0x008a,
@@ -1770,12 +1770,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.name = "Compaq Evo D510C",
 		.type = AC97_TUNE_HP_ONLY
 	},
-        {
+    {
 		.subvendor = 0x0e11,
 		.subdevice = 0x0860,
 		.name = "HP/Compaq nx7010",
 		.type = AC97_TUNE_MUTE_LED
-        },
+    },
 	{
 		.subvendor = 0x1014,
 		.subdevice = 0x1f00,
@@ -2050,6 +2050,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subvendor = 0x1734,
 		.subdevice = 0x0088,
 		.name = "Fujitsu-Siemens D1522",	/* AD1981 */
+		.type = AC97_TUNE_HP_ONLY
+	},
+	{
+		.subvendor = 0x107B,
+		.subdevice = 0x0111,
+		.name = "Gateway 2000 ICH2/AD1885",
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
