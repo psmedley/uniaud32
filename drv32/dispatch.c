@@ -102,7 +102,7 @@ ULONG StratIOCtl(RP __far* _rp)
     }
 
 #ifdef DEBUG
-    printk("StratIOCtl 0x%x\n", rp->Function);
+    //printk("StratIOCtl 0x%x\n", rp->Function);
 #endif
 //    printk("cmd: %x, len: %i, pack: %x\n",rp->Function, rp->ParmLength, rp->ParmPacket);
     // work with Parm Packet
