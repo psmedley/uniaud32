@@ -1838,14 +1838,14 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x1028,
-		.subdevice = 0x0151,
-		.name = "Dell Optiplex GX270",  /* AD1981B */
+		.subdevice = 0x014e,
+		.name = "Dell D800", /* STAC9750/51 */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
 		.subvendor = 0x1028,
-		.subdevice = 0x014e,
-		.name = "Dell D800", /* STAC9750/51 */
+		.subdevice = 0x0151,
+		.name = "Dell Optiplex GX270",  /* AD1981B */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
@@ -1904,20 +1904,14 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x103c,
-		.subdevice = 0x129d,
-		.name = "HP xw8000",
-		.type = AC97_TUNE_HP_ONLY
+		.subdevice = 0x0934,
+		.name = "HP nc8220",
+		.type = AC97_TUNE_HP_MUTE_LED
 	},
 	{
 		.subvendor = 0x103c,
 		.subdevice = 0x0938,
 		.name = "HP nc4200",
-		.type = AC97_TUNE_HP_MUTE_LED
-	},
-	{
-		.subvendor = 0x103c,
-		.subdevice = 0x099c,
-		.name = "HP nx6110/nc6120",
 		.type = AC97_TUNE_HP_MUTE_LED
 	},
 	{
@@ -1928,9 +1922,15 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x103c,
-		.subdevice = 0x0934,
-		.name = "HP nc8220",
+		.subdevice = 0x099c,
+		.name = "HP nx6110/nc6120",
 		.type = AC97_TUNE_HP_MUTE_LED
+	},
+	{
+		.subvendor = 0x103c,
+		.subdevice = 0x129d,
+		.name = "HP xw8000",
+		.type = AC97_TUNE_HP_ONLY
 	},
 	{
 		.subvendor = 0x103c,
@@ -2056,6 +2056,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subvendor = 0x107B,
 		.subdevice = 0x0111,
 		.name = "Gateway 2000 ICH2/AD1885",
+		.type = AC97_TUNE_HP_ONLY
+	},
+	{
+		.subvendor = 0x8086,
+		.subdevice = 0x0104,
+		.name = "Intel D845GEBV2",              /* AD1981B */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
