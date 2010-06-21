@@ -350,7 +350,7 @@ static int snd_atiixp_update_bits(struct atiixp *chip, unsigned int reg,
  * list.  although we can change the list dynamically, in this version,
  * a static RING of buffer descriptors is used.
  *
- * the ring is built in this function, and is set up to the hardware. 
+ * the ring is built in this function, and is set up to the hardware.
  */
 static int atiixp_build_dma_packets(struct atiixp *chip, struct atiixp_dma *dma,
 				    struct snd_pcm_substream *substream,
@@ -373,8 +373,11 @@ static int atiixp_build_dma_packets(struct atiixp *chip, struct atiixp_dma *dma,
 		dma->period_bytes = dma->periods = 0; /* clear */
 	}
 
-	if (dma->periods == periods && dma->period_bytes == period_bytes)
+	if (dma->periods == periods && dma->period_bytes == period_bytes) {
+		writel((u32)dma->desc_buf.addr | ATI_REG_LINKPTR_EN,
+			(char*)chip->remap_addr + dma->ops->llp_offset);
 		return 0;
+	}
 
 	/* reset DMA before changing the descriptor table */
 	spin_lock_irqsave(&chip->reg_lock, flags);
@@ -471,7 +474,7 @@ static void snd_atiixp_codec_write(struct atiixp *chip, unsigned short codec,
 				   unsigned short reg, unsigned short val)
 {
 	unsigned int data;
-    
+
 	if (snd_atiixp_acquire_codec(chip) < 0)
 		return;
 	data = ((unsigned int)val << ATI_REG_PHYS_OUT_DATA_SHIFT) |
@@ -486,7 +489,7 @@ static unsigned short snd_atiixp_ac97_read(struct snd_ac97 *ac97,
 {
 	struct atiixp *chip = ac97->private_data;
 	return snd_atiixp_codec_read(chip, ac97->num, reg);
-    
+
 }
 
 static void snd_atiixp_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
@@ -512,7 +515,7 @@ static int snd_atiixp_aclink_reset(struct atiixp *chip)
 	atiixp_read(chip, CMD);
 	udelay(10);
 	atiixp_update(chip, CMD, ATI_REG_CMD_AC_SOFT_RESET, 0);
-    
+
 	timeout = 10;
 	while (! (atiixp_read(chip, CMD) & ATI_REG_CMD_ACLINK_ACTIVE)) {
 		/* do a hard reset */
@@ -584,7 +587,7 @@ static int __devinit snd_atiixp_codec_detect(struct atiixp *chip)
 	if (ac97_codec == -1)
 		ac97_codec = ac97_probing_bugs(chip->pci);
 	if (ac97_codec >= 0) {
-		chip->codec_not_ready_bits |= 
+		chip->codec_not_ready_bits |=
 			CODEC_CHECK_BITS ^ (1 << (ac97_codec + 10));
 		return 0;
 	}
@@ -932,7 +935,7 @@ static int snd_atiixp_playback_prepare(struct snd_pcm_substream *substream)
 	 */
 	atiixp_update(chip, 6CH_REORDER, ATI_REG_6CH_REORDER_EN,
 		      substream->runtime->channels >= 6 ? ATI_REG_6CH_REORDER_EN: 0);
-    
+
 	spin_unlock_irq(&chip->reg_lock);
 	return 0;
 }
