@@ -1,6 +1,6 @@
-/* $Id: wat2map.cmd,v 1.1.1.1 2003/07/02 13:57:04 eleph Exp $ */
+/* $Id: wat2map.cmd,v 1.2 2002/04/26 23:09:44 smilcke Exp $ */
 
-/* SCCSID = %W% %E% */
+/* SCCSID = src/dev/mme/pciaudio/wat2map.cmd, pciaudio, c.basedd 99/08/20 */
 /****************************************************************************
  *                                                                          *
  * Copyright (c) IBM Corporation 1994 - 1997.                               *
@@ -11,9 +11,14 @@
  * provided in the IBM Device Driver Source Kit for OS/2.                   *
  *                                                                          *
  ****************************************************************************/
-/**@internal %W%
+
+/* 05 Jul 05 SHL - Correct do/end errors, close files
+   05 Jul 05 SHL - Partial 16/32 bit support (see f32bit)
+*/
+
+/**@internal src/dev/mme/pciaudio/wat2map.cmd, pciaudio, c.basedd
  * WAT2MAP - translate symbol map from Watcom format to MS format.
- * @version %I%
+ * @version 1.1
  * @context
  *  Unless otherwise noted, all interfaces are Ring-0, 16-bit, kernel stack.
  * @notes
@@ -46,8 +51,11 @@
 */
 /* <End of helpText> - don't modify this string - used to flag end of help. */
 /****************************************************************************/
+
 CALL RXFUNCADD 'sysloadfuncs','rexxutil','sysloadfuncs'
 call sysloadfuncs
+
+f32bit = 0	/* fixme to autodetect */
 
 Parse Arg arg1 arg2 rest
 If (Length( arg1 ) = 0) | (Verify( arg1, '/-?' ) = 0) Then Do;
@@ -73,7 +81,6 @@ rc=SysFileDelete(outfile)
 Do While Lines( mapFile ) <> 0
    watcomText = LineIn( mapFile )
    Parse Value watcomText With "Executable Image: " fileName "." fileExt
-
    If fileName <> "" Then Do;   /* Found match */
       call lineout outfile ,' '
       call lineout outfile ,' ' || fileName
@@ -102,12 +109,19 @@ junk = LineIn( mapFile )       /* Discard a couple lines of formatting. */
 junk = LineIn( mapFile )
 
 /*--- 4.  Translate segment table.  ---*/
-call lineout outfile , " Start     Length     Name                   Class"
+if f32bit then
+  call lineout outfile , " Start         Length     Name                   Class"
+else
+  call lineout outfile , " Start     Length     Name                   Class"
+
 Do While Lines( mapFile ) <> 0
    watcomText = LineIn( mapFile )
    Parse Value watcomText With segName className groupName address size .
    If segName = "" Then Leave;          /* Empty line, break from loop. */
-   length = Substr( size, 4, 5 ) || 'H     '
+   if f32bit then
+     length = size || 'H  '
+   else
+     length = Substr( size, 4, 5 ) || 'H     '
    segName = Left( segName, 23 )
    call lineout outfile ,' ' || address || ' ' || length || segName || className
 End
@@ -121,11 +135,21 @@ call lineout outfile ,' '     /* Extra line feed. */
 call lineout outfile ,'  Address         Publics by Value'
 /* call lineout outfile ,' '*/
 
+LineTbl.0=0;
+LineIX = 0;
 Do While Lines( mapFile ) <> 0
    watcomText = LineIn( mapFile )
-   Parse Value watcomText With seg ':' ofs 10 . 16 declaration
+   Parse Value watcomText With seg ':' ofs declaration
+   if length(ofs) = 5 then
+     ofs = left(ofs, 4) || strip(translate(right(ofs, 1),, '+*'))
+   if length(ofs) = 9 then
+     ofs = left(ofs, 8) || strip(translate(right(ofs, 1),, '+*'))
+
    is_Adress = (is_Hex(seg) = 1) & (is_Hex(ofs) = 1)
    If (is_Adress = 1) Then Do;
+
+      if \ f32bit then
+        ofs = right(ofs, 4)
 
       /*--- Haven't done the work to xlate operator symbols - skip the line. */
       If Pos( '::operator', declaration ) <> 0 Then Iterate;
@@ -134,30 +158,60 @@ Do While Lines( mapFile ) <> 0
       declaration = StripMatchedParen( declaration )
 
       /*--- Strip array brackets if this is an array. */
-      sqBracket = Pos( '[', declaration )
+      sqBracket = Pos( '[', declaration );
       If sqBracket <> 0
          Then declaration = Substr(declaration, 1, sqBracket-1);
 
       /*--- Strip leading tokens from the function name.
          Eg., remove function return type, near/far, etc.  */
-      declaration = Word( declaration, Words(declaration) )
+      declaration = Word( declaration, Words(declaration) );
 
       /*--- Strip any remaining parens around function name. ---*/
-      declaration = ReplaceSubstr( '(', ' ', declaration )
-      declaration = ReplaceSubstr( ')', ' ', declaration )
+      declaration = ReplaceSubstr( '(', ' ', declaration );
+      declaration = ReplaceSubstr( ')', ' ', declaration );
 
       /*--- Debug kernel doesn't like symbol for scoping operator "::"
          in symbol names.  Replace :: with double underscore "__". ---*/
-      declaration = ReplaceSubstr( '::', '__', declaration )
+      declaration = ReplaceSubstr( '::', '__', declaration );
 
       /*--- Debug kernel doesn't like symbol for destructor "~"
          in symbol names.  Replace ~ with character "d" for "destructor.
          Note destructor for a class will translate "A::~A" -> "A__dA". ---*/
-      declaration = ReplaceSubstr( '~', 'd', declaration )
+      declaration = ReplaceSubstr( '~', 'd', declaration );
 
-      call lineout outfile ,' ' || seg || ':' || ofs || '       ' || declaration
+      /* remove any trailing underscore */
+      declaration = STRIP(declaration, 't', '_');
+
+      /* remove the first underscore (if any) */
+      if (LEFT(declaration,1) = '_') then do;
+        declaration = RIGHT(declaration, LENGTH(declaration)-1);
+      end;
+
+      fill = copies(' ', 7)
+      LineIX = LineIX + 1;
+      LineTbl.LineIX = seg || ':' || ofs || fill || declaration;
+      LineTbl.0 = LineIX;
    End;
 End; /* End While through symbol section, end of input file. */
+
+/* Sort the data */
+do i=2 to LineTbl.0;
+   t=LineTbl.i;
+   do j=i-1 to 1 by -1 while t<LineTbl.j;
+      k=j+1;
+      LineTbl.k=LineTbl.j;
+   end;
+   j=j+1;
+   LineTbl.j=t;
+end;
+
+/* output the data */
+do LineIX = 1 to LineTbl.0;
+  call lineout outfile , ' ' || LineTbl.LineIX;
+end;
+
+call stream mapfile, 'C', 'CLOSE'
+call lineout outfile
 
 Return;  /* End of program.  */
 
@@ -183,7 +237,7 @@ StripMatchedParen:
       string = StripMatchedParen( first ) || rest
       Return StripMatchedParen( string )
    End;
-End;
+
 
 ReplaceSubstr:
 /* Replaces oldPat (old pattern) with newPat (new pattern) in string. */
@@ -197,10 +251,9 @@ ReplaceSubstr:
       string = first || newPat || rest
    End;
    Return string
-End;
+
 
 is_Hex:
 /* Returns 1 if String is valid hex number, 0 otherwise. */
    Parse Arg string
    Return (Length(string) > 0) &  (Verify( string, '0123456789abcdefABCDEF' ) = 0)
-End;
