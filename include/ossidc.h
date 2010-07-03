@@ -40,70 +40,73 @@ typedef ULONG OSSRET;		//OSS error code
 //IDC communication packet
 typedef struct
 {
-  OSSSTREAMID streamid;	//IN:  stream id
-  ULONG       fileid;
-  union {
-	struct {
-		ULONG	handler16;	//IN: 16:16 address of pdd idc handler
-	} init;
-	struct {
-                ULONG   devicenr;       //IN:  nr of detected device
-                ULONG   streamtype;     //IN:  stream type
-	} open;
-        struct {
-                ULONG   devicenr;       //IN:  nr of detected device
-                ULONG   pDevCaps;       //IN:  16:16 stack based pointer to OSS32_DEVCAPS structure
-        } devcaps;
-	struct {
-		ULONG   position; 	//OUT: stream position
-	} getpos;
-        struct {
-                ULONG   hwparams;       //IN:  16:16 pointer to OSS32_HWPARAMS structure
-        } sethwparams;
-	struct {
-                ULONG   bytesavail;     //OUT: bytes available in dma buffer
-	} getspace;
-        struct {
-                ULONG   volume;         //IN:  wave stream volume
-        } setwavevol;
-	struct {
-		ULONG 	buffer;		//IN:  physical address of mmpm/2 buffer
-		ULONG 	size;		//IN:  size of mmpm/2 buffer
-                ULONG   transferred;	//OUT: nr of bytes transferred
-	} buffer;
-	struct {
-		ULONG   midiByte;
-	} midiwrite;
-	struct {
-		ULONG   buffer;         //IN: data buffer
-		ULONG   bufsize;        //IN: size of data buffer
-                ULONG   transferred;	//OUT: nr of bytes transferred
-	} midiread;
-        struct {
-                ULONG   pCaps;          //IN: 16:16 stack based pointer to OSSMIDICAPS structure
-        } midicaps;
-        struct {
-                BYTE    channel;        //IN: channel nr
-                BYTE    param1;         //IN: midi command parameter 1
-                BYTE    param2;         //IN: midi command parameter 2
-        } midicmd;
-        struct {
-                ULONG   line;           //IN: mixer line
-                ULONG   volume;         //IN/OUT: volume (set/get)
-        } mixvol;
-        struct {
-                ULONG   property;       //IN: mixer property
-                ULONG   value;          //IN/OUT: property value (set/get)
-        } mixprop;
-        struct {
-                ULONG   pCaps;          //IN: 16:16 stack based pointer to OSSMIXCAPS structure
-        } mixcaps;
-	struct {
-		ULONG 	param1;
-		ULONG 	param2;
-		ULONG 	param3;
+	OSSSTREAMID streamid;	//IN:  stream id
+	ULONG       fileid;
+	union {
+		struct {
+			ULONG	handler16;	//IN: 16:16 address of pdd idc handler
+		} init;
+		struct {
+			ULONG   devicenr;       //IN:  nr of detected device
+			ULONG   streamtype;     //IN:  stream type
+		} open;
+		struct {
+			ULONG   devicenr;       //IN:  nr of detected device
+			ULONG   pDevCaps;       //IN:  16:16 stack based pointer to OSS32_DEVCAPS structure
+		} devcaps;
+		struct {
+			ULONG   position; 	//OUT: stream position
+		} getpos;
+		struct {
+			ULONG   state;	//OUT: stream state
+		} status;
+		struct {
+			ULONG   hwparams;       //IN:  16:16 pointer to OSS32_HWPARAMS structure
+		} sethwparams;
+		struct {
+			ULONG   bytesavail;     //OUT: bytes available in dma buffer
+		} getspace;
+		struct {
+			ULONG   volume;         //IN:  wave stream volume
+		} setwavevol;
+		struct {
+			ULONG 	buffer;		//IN:  physical address of mmpm/2 buffer
+			ULONG 	size;		//IN:  size of mmpm/2 buffer
+			ULONG   transferred;	//OUT: nr of bytes transferred
+		} buffer;
+		struct {
+			ULONG   midiByte;
+		} midiwrite;
+		struct {
+			ULONG   buffer;         //IN: data buffer
+			ULONG   bufsize;        //IN: size of data buffer
+			ULONG   transferred;	//OUT: nr of bytes transferred
+		} midiread;
+		struct {
+			ULONG   pCaps;          //IN: 16:16 stack based pointer to OSSMIDICAPS structure
+		} midicaps;
+		struct {
+			BYTE    channel;        //IN: channel nr
+			BYTE    param1;         //IN: midi command parameter 1
+			BYTE    param2;         //IN: midi command parameter 2
+		} midicmd;
+		struct {
+			ULONG   line;           //IN: mixer line
+			ULONG   volume;         //IN/OUT: volume (set/get)
+		} mixvol;
+		struct {
+			ULONG   property;       //IN: mixer property
+			ULONG   value;          //IN/OUT: property value (set/get)
+		} mixprop;
+		struct {
+			ULONG   pCaps;          //IN: 16:16 stack based pointer to OSSMIXCAPS structure
+		} mixcaps;
+		struct {
+			ULONG 	param1;
+			ULONG 	param2;
+			ULONG 	param3;
+		};
 	};
-  };
 } IDC32_PACKET, NEAR *PIDC32_PACKET;
 
 //IOCTL commands
@@ -164,6 +167,7 @@ typedef struct
 #define IDC32_WAVE_GETPOS             	0x1B
 #define IDC32_WAVE_SETVOLUME           	0x1C
 #define IDC32_WAVE_GETHWPTR             0x1D
+#define IDC32_WAVE_GETSTATUS             0x1E
 
 #define IDC32_MIXER_OPEN                0x20
 #define IDC32_MIXER_SETVOLUME		0x21

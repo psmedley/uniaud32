@@ -58,6 +58,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG buffer, ULONG size, ULONG
 OSSRET OSS32_WaveGetPosition(OSSSTREAMID streamid, ULONG *pPosition);
 OSSRET OSS32_WaveGetSpace(OSSSTREAMID streamid, ULONG *pBytesAvail);
 OSSRET OSS32_WaveGetHwPtr(OSSSTREAMID streamid, ULONG *pBytesAvail);
+OSSRET OSS32_WaveGetStatus(OSSSTREAMID streamid, ULONG *pStatus);
 OSSRET OSS32_WaveSetVolume(OSSSTREAMID streamid, ULONG volume);
 
 OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId);

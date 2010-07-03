@@ -1207,7 +1207,6 @@ OSSRET OSS32_WaveGetPosition(ULONG streamid, ULONG *pPosition)
     soundhandle        *pHandle = (soundhandle *)streamid;
     struct snd_pcm_status    status;
     int                 ret;
-    ULONG               delta;
 
     if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
         DebugInt3();
@@ -1272,7 +1271,6 @@ OSSRET OSS32_WaveGetHwPtr(ULONG streamid, ULONG *pPosition)
     soundhandle        *pHandle = (soundhandle *)streamid;
     struct snd_pcm_status    status;
     int                 ret;
-    ULONG               delta;
 
     if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
         DebugInt3();
@@ -1297,7 +1295,37 @@ OSSRET OSS32_WaveGetHwPtr(ULONG streamid, ULONG *pPosition)
     *pPosition = samples_to_bytes(status.appl_ptr);  //return new hardware position
     return OSSERR_SUCCESS;
 }
+//******************************************************************************
+//******************************************************************************
+OSSRET OSS32_WaveGetStatus(ULONG streamid, ULONG *pStatus)
+{
+    soundhandle        *pHandle = (soundhandle *)streamid;
+    struct snd_pcm_status    status;
+    int                 ret;
 
+    if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
+        DebugInt3();
+        return OSSERR_INVALID_STREAMID;
+    }
+    if(pStatus == NULL) {
+        DebugInt3();
+        return OSSERR_INVALID_PARAMETER;
+    }
+
+    //set operation to non-blocking
+    pHandle->file.f_flags = O_NONBLOCK;
+
+    //Get the status of the stream
+    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+
+    if(ret) {
+        DebugInt3();
+        return UNIXToOSSError(ret);
+    }
+
+    *pStatus = status.state;
+    return OSSERR_SUCCESS;
+}
 //******************************************************************************
 //******************************************************************************
 OSSRET OSS32_WaveSetVolume(OSSSTREAMID streamid, ULONG volume)
