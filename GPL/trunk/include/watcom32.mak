@@ -13,11 +13,11 @@ WAT2MAP=$(ALSA_TOOLS)\wat2map.cmd
 
 !if "$(DEBUG)" == "1"
 CFLAGS  = -dDEBUG -bt=os2v2 -e60 -hc -d2 -5r -omlinear -s -w4 -ze -zdp -zl -zq -nt=CODE32 -zff -zgf
-CPPFLAGS= -xd 
-ASFLAGS = -Mb -Li -Sv:M510
+CPPFLAGS= -xd
+ASFLAGS = -D:DEBUG -Mb -Li -Sv:M510
 !else
 CFLAGS  = -bt=os2v2 -e60 -5r -omlinear -s -w4 -ze -zdp -zl -zq -nt=CODE32 -zff -zgf
-CPPFLAGS= -xd 
+CPPFLAGS= -xd
 ASFLAGS = -Mb -Li -Sv:M510
 !endif
 
@@ -110,9 +110,9 @@ IMPLIB  = IMPLIB $(IFLAGS)
 .BEFORE
    @set WATCOM=$(WATCOM)
    @if not exist .\$(OBJDIR) $(CREATEPATH) .\$(OBJDIR)
-   @if not exist $(ALSA_LIB_) mkdir $(ALSA_LIB_) 
+   @if not exist $(ALSA_LIB_) mkdir $(ALSA_LIB_)
    @if not exist $(ALSA_LIB) mkdir $(ALSA_LIB)
-   @if not exist $(ALSA_BIN_) mkdir $(ALSA_BIN_) 
+   @if not exist $(ALSA_BIN_) mkdir $(ALSA_BIN_)
    @if not exist $(ALSA_BIN) mkdir $(ALSA_BIN)
 
 

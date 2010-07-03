@@ -144,6 +144,14 @@ OSSRET OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket)
        return rc;
   }
 
+  case IDC32_WAVE_GETSTATUS:
+  {
+       ULONG status = 0;
+       rc = OSS32_WaveGetStatus(pPacket->streamid, &status);
+       pPacket->status.state = status;
+       return rc;
+  }
+
   case IDC32_WAVE_SETVOLUME:
        return OSS32_WaveSetVolume(pPacket->streamid, pPacket->setwavevol.volume);
 
@@ -224,5 +232,6 @@ OSSRET OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket)
   case IDC32_MIDI_PITCH_BEND:
        return OSS32_MidiCommand(pPacket->streamid, cmd, pPacket->midicmd.channel, pPacket->midicmd.param1, pPacket->midicmd.param2);
   }
-  return 0;
+
+  return OSSERR_INVALID_PARAMETER;
 }
