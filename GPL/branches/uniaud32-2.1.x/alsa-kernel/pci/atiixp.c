@@ -378,6 +378,7 @@ static int atiixp_build_dma_packets(struct atiixp *chip, struct atiixp_dma *dma,
 		writel((u32)dma->desc_buf.addr | ATI_REG_LINKPTR_EN, 
 			(char*)chip->remap_addr + dma->ops->llp_offset); 
 		return 0;
+	}
 
 	/* reset DMA before changing the descriptor table */
 	spin_lock_irqsave(&chip->reg_lock, flags);
