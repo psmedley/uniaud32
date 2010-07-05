@@ -420,7 +420,7 @@ struct intel8x0 {
 	u32 int_sta_mask;		/* interrupt status mask */
 };
 
-static struct pci_device_id snd_intel8x0_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(snd_intel8x0_ids) = {
 	{ PCI_VDEVICE(INTEL, 0x2415), DEVICE_INTEL },	/* 82801AA */
 	{ PCI_VDEVICE(INTEL, 0x2425), DEVICE_INTEL },	/* 82901AB */
 	{ PCI_VDEVICE(INTEL, 0x2445), DEVICE_INTEL },	/* 82801BA */
@@ -1838,14 +1838,14 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x1028,
-		.subdevice = 0x014e,
-		.name = "Dell D800", /* STAC9750/51 */
+		.subdevice = 0x0151,
+		.name = "Dell Optiplex GX270",  /* AD1981B */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
 		.subvendor = 0x1028,
-		.subdevice = 0x0151,
-		.name = "Dell Optiplex GX270",  /* AD1981B */
+		.subdevice = 0x014e,
+		.name = "Dell D800", /* STAC9750/51 */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
@@ -1904,20 +1904,14 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x103c,
-		.subdevice = 0x0934,
-		.name = "HP nc8220",
-		.type = AC97_TUNE_HP_MUTE_LED
+		.subdevice = 0x129d,
+		.name = "HP xw8000",
+		.type = AC97_TUNE_HP_ONLY
 	},
 	{
 		.subvendor = 0x103c,
 		.subdevice = 0x0938,
 		.name = "HP nc4200",
-		.type = AC97_TUNE_HP_MUTE_LED
-	},
-	{
-		.subvendor = 0x103c,
-		.subdevice = 0x0944,
-		.name = "HP nc6220",
 		.type = AC97_TUNE_HP_MUTE_LED
 	},
 	{
@@ -1928,9 +1922,15 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x103c,
-		.subdevice = 0x129d,
-		.name = "HP xw8000",
-		.type = AC97_TUNE_HP_ONLY
+		.subdevice = 0x0944,
+		.name = "HP nc6220",
+		.type = AC97_TUNE_HP_MUTE_LED
+	},
+	{
+		.subvendor = 0x103c,
+		.subdevice = 0x0934,
+		.name = "HP nc8220",
+		.type = AC97_TUNE_HP_MUTE_LED
 	},
 	{
 		.subvendor = 0x103c,
@@ -1952,8 +1952,26 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x104d,
+		.subdevice = 0x8144,
+		.name = "Sony",
+		.type = AC97_TUNE_INV_EAPD
+	},
+	{
+		.subvendor = 0x104d,
 		.subdevice = 0x8197,
 		.name = "Sony S1XP",
+		.type = AC97_TUNE_INV_EAPD
+	},
+	{
+		.subvendor = 0x104d,
+		.subdevice = 0x81c0,
+		.name = "Sony VAIO VGN-T350P", /*AD1981B*/
+		.type = AC97_TUNE_INV_EAPD
+	},
+	{
+		.subvendor = 0x104d,
+		.subdevice = 0x81c5,
+		.name = "Sony VAIO VGN-B1VP", /*AD1981B*/
 		.type = AC97_TUNE_INV_EAPD
 	},
  	{
@@ -2047,6 +2065,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
+		.subvendor = 0x161f,
+		.subdevice = 0x203a,
+		.name = "Gateway 4525GZ",		/* AD1981B */
+		.type = AC97_TUNE_INV_EAPD
+	},
+	{
 		.subvendor = 0x1734,
 		.subdevice = 0x0088,
 		.name = "Fujitsu-Siemens D1522",	/* AD1981 */
@@ -2056,12 +2080,6 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subvendor = 0x107B,
 		.subdevice = 0x0111,
 		.name = "Gateway 2000 ICH2/AD1885",
-		.type = AC97_TUNE_HP_ONLY
-	},
-	{
-		.subvendor = 0x8086,
-		.subdevice = 0x0104,
-		.name = "Intel D845GEBV2",              /* AD1981B */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{

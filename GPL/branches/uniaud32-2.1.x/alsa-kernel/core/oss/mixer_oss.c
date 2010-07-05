@@ -43,6 +43,10 @@ static int snd_mixer_oss_open(struct inode *inode, struct file *file)
 	struct snd_mixer_oss_file *fmixer;
 	int err;
 
+	err = nonseekable_open(inode, file);
+	if (err < 0)
+		return err;
+
 	card = snd_lookup_oss_minor_data(iminor(inode),
 					 SNDRV_OSS_DEVICE_TYPE_MIXER);
 	if (card == NULL)
@@ -408,9 +412,10 @@ static const struct file_operations snd_mixer_oss_f_ops =
 	.owner =	THIS_MODULE,
 	.open =		snd_mixer_oss_open,
 	.release =	snd_mixer_oss_release,
+	.llseek =	no_llseek,
 #ifdef CONFIG_SND_HAVE_NEW_IOCTL
-	.unlocked_ioctl =	snd_mixer_oss_ioctl,
-	.compat_ioctl =	snd_mixer_oss_ioctl_compat,
+ 	.unlocked_ioctl =	snd_mixer_oss_ioctl,
+ 	.compat_ioctl =	snd_mixer_oss_ioctl_compat,
 #else
 	.ioctl =	snd_mixer_oss_ioctl_old,
 #endif	
@@ -1169,7 +1174,8 @@ static void snd_mixer_oss_proc_write(struct snd_info_entry *entry,
 				     struct snd_info_buffer *buffer)
 {
 	struct snd_mixer_oss *mixer = entry->private_data;
-	char line[128], str[32], idxstr[16], *cptr;
+	char line[128], str[32], idxstr[16];
+	const char *cptr;
 	int ch, idx;
 	struct snd_mixer_oss_assign_table *tbl;
 	struct slot *slot;
@@ -1265,7 +1271,9 @@ static void snd_mixer_oss_build(struct snd_mixer_oss *mixer)
 		{ SOUND_MIXER_SYNTH,	"FM",			0 }, /* fallback */
 		{ SOUND_MIXER_SYNTH,	"Music",		0 }, /* fallback */
 		{ SOUND_MIXER_PCM,	"PCM",			0 },
-		{ SOUND_MIXER_SPEAKER,	"PC Speaker", 		0 },
+		{ SOUND_MIXER_SPEAKER,	"Beep", 		0 },
+		{ SOUND_MIXER_SPEAKER,	"PC Speaker", 		0 }, /* fallback */
+		{ SOUND_MIXER_SPEAKER,	"Speaker", 		0 }, /* fallback */
 		{ SOUND_MIXER_LINE,	"Line", 		0 },
 		{ SOUND_MIXER_MIC,	"Mic", 			0 },
 		{ SOUND_MIXER_CD,	"CD", 			0 },

@@ -22,6 +22,7 @@
 #include <linux/stat.h>
 #include <linux/major.h>
 #include <linux/fs.h>
+#include <linux/pid.h>
 #include <linux/err.h>
 #include <linux/gfp.h>
 #include <linux/workqueue.h>

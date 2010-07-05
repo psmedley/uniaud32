@@ -272,4 +272,7 @@ extern void kill_fasync(struct fasync_struct *, int, int);
 #define iminor(x) minor((x)->i_rdev)
 #define imajor(x) major((x)->i_rdev)
 
+#define no_llseek	NULL
+#define nonseekable_open(i,f) 0
+
 #endif /* _LINUX_FS_H */

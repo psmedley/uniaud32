@@ -172,5 +172,5 @@ struct vm_operations_struct {
 
 #define SetPageReserved(a)		a
 #define ClearPageReserved(a)		a
-
+struct page *vmalloc_to_page(void *addr);
 #endif

@@ -48,6 +48,7 @@
 #define MODULE_PARM(var,type)
 #define MODULE_PARM_DESC(var,desc)
 #define MODULE_LICENSE(a)
+#define EXPORT_SYMBOL_GPL(a)
 #else
 #define MODULE_PARM(var,type)			\
 const char __module_parm_##var[]=		\

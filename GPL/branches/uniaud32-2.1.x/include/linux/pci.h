@@ -713,4 +713,12 @@ static inline void *pci_ioremap_bar(struct pci_dev *pdev, int bar)
 	PCI_VENDOR_ID_##vendor, (device),	\
 	PCI_ANY_ID, PCI_ANY_ID, 0, 0
 
+#define pci_clear_master(x)
+
+/* originally it's __devinitconst but we use __devinitdata to be compatible
+ * with older kernels
+ */
+#define DEFINE_PCI_DEVICE_TABLE(_table) \
+	const struct pci_device_id _table[] __devinitdata
+
 #endif /* LINUX_PCI_H */

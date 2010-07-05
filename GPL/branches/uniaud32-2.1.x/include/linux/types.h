@@ -137,4 +137,7 @@ typedef unsigned __nocast gfp_t;
 typedef __u32 __le32;
 typedef unsigned int fmode_t;
 
+typedef int _Bool;
+typedef _Bool bool;
+
 #endif /* _LINUX_TYPES_H */
