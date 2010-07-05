@@ -1,0 +1,54 @@
+LOGO=-h
+
+NMAKEOPTS=-f makefile.os2 $(LOGO) ACPI=$(ACPI) KEE=$(KEE) DEBUG=$(DEBUG) 
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: subdirs
+
+subdirs: .SYMBOLIC
+    @echo BUILDING core
+    @cd core
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING drivers
+    @cd drivers
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING isa
+    @cd isa
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING pci
+    @cd pci
+    @wmake $(NMAKEOPTS)
+    @cd ..
+    @echo BUILDING synth
+    @cd synth
+    @wmake $(NMAKEOPTS)
+    @cd ..
+
+clean: .SYMBOLIC
+    @echo CLEANING core
+    @cd core
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING drivers
+    @cd drivers
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING isa
+    @cd isa
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING pci
+    @cd pci
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
+    @echo CLEANING synth
+    @cd synth
+    @wmake $(NMAKEOPTS) clean
+    @cd ..
