@@ -543,12 +543,12 @@ static unsigned long stac9205_capsws[] = {
 };
 
 static hda_nid_t stac9200_pin_nids[8] = {
-	0x08, 0x09, 0x0d, 0x0e, 
+	0x08, 0x09, 0x0d, 0x0e,
 	0x0f, 0x10, 0x11, 0x12,
 };
 
 static hda_nid_t stac925x_pin_nids[8] = {
-	0x07, 0x08, 0x0a, 0x0b, 
+	0x07, 0x08, 0x0a, 0x0b,
 	0x0c, 0x0d, 0x10, 0x11,
 };
 
@@ -1211,21 +1211,21 @@ static unsigned int gateway9200_m4_2_pin_configs[8] = {
     102801E8
 */
 static unsigned int dell9200_d21_pin_configs[8] = {
-	0x400001f0, 0x400001f1, 0x02214030, 0x01014010, 
+	0x400001f0, 0x400001f1, 0x02214030, 0x01014010,
 	0x02a19020, 0x01a19021, 0x90100140, 0x01813122,
 };
 
-/* 
+/*
     STAC 9200 pin configs for
     102801C0
     102801C1
 */
 static unsigned int dell9200_d22_pin_configs[8] = {
-	0x400001f0, 0x400001f1, 0x0221401f, 0x01014010, 
+	0x400001f0, 0x400001f1, 0x0221401f, 0x01014010,
 	0x01813020, 0x02a19021, 0x90100140, 0x400001f2,
 };
 
-/* 
+/*
     STAC 9200 pin configs for
     102801C4 (Dell Dimension E310)
     102801C5
@@ -1235,12 +1235,12 @@ static unsigned int dell9200_d22_pin_configs[8] = {
     102801E3
 */
 static unsigned int dell9200_d23_pin_configs[8] = {
-	0x400001f0, 0x400001f1, 0x0221401f, 0x01014010, 
-	0x01813020, 0x01a19021, 0x90100140, 0x400001f2, 
+	0x400001f0, 0x400001f1, 0x0221401f, 0x01014010,
+	0x01813020, 0x01a19021, 0x90100140, 0x400001f2,
 };
 
 
-/* 
+/*
     STAC 9200-32 pin configs for
     102801B5 (Dell Inspiron 630m)
     102801D8 (Dell Inspiron 640m)
@@ -1250,20 +1250,20 @@ static unsigned int dell9200_m21_pin_configs[8] = {
 	0x408003fb, 0x03a11020, 0x401003fc, 0x403003fd,
 };
 
-/* 
+/*
     STAC 9200-32 pin configs for
     102801C2 (Dell Latitude D620)
-    102801C8 
+    102801C8
     102801CC (Dell Latitude D820)
-    102801D4 
-    102801D6 
+    102801D4
+    102801D6
 */
 static unsigned int dell9200_m22_pin_configs[8] = {
-	0x40c003fa, 0x0144131f, 0x0321121f, 0x90170310, 
+	0x40c003fa, 0x0144131f, 0x0321121f, 0x90170310,
 	0x90a70321, 0x03a11020, 0x401003fb, 0x40f000fc,
 };
 
-/* 
+/*
     STAC 9200-32 pin configs for
     102801CE (Dell XPS M1710)
     102801CF (Dell Precision M90)
@@ -1274,15 +1274,15 @@ static unsigned int dell9200_m23_pin_configs[8] = {
 };
 
 /*
-    STAC 9200-32 pin configs for 
+    STAC 9200-32 pin configs for
     102801C9
     102801CA
     102801CB (Dell Latitude 120L)
     102801D3
 */
 static unsigned int dell9200_m24_pin_configs[8] = {
-	0x40c003fa, 0x404003fb, 0x0321121f, 0x90170310, 
-	0x408003fc, 0x03a11020, 0x401003fd, 0x403003fe, 
+	0x40c003fa, 0x404003fb, 0x0321121f, 0x90170310,
+	0x408003fc, 0x03a11020, 0x401003fd, 0x403003fe,
 };
 
 /*
@@ -1292,7 +1292,7 @@ static unsigned int dell9200_m24_pin_configs[8] = {
     102801EF
 */
 static unsigned int dell9200_m25_pin_configs[8] = {
-	0x40c003fa, 0x01441340, 0x0421121f, 0x90170310, 
+	0x40c003fa, 0x01441340, 0x0421121f, 0x90170310,
 	0x408003fb, 0x04a11020, 0x401003fc, 0x403003fd,
 };
 
@@ -1302,7 +1302,7 @@ static unsigned int dell9200_m25_pin_configs[8] = {
     102801F6
 */
 static unsigned int dell9200_m26_pin_configs[8] = {
-	0x40c003fa, 0x404003fb, 0x0421121f, 0x90170310, 
+	0x40c003fa, 0x404003fb, 0x0421121f, 0x90170310,
 	0x408003fc, 0x04a11020, 0x401003fd, 0x403003fe,
 };
 
@@ -1798,7 +1798,7 @@ static unsigned int dell_922x_d82_pin_configs[10] = {
 */
 static unsigned int dell_922x_m81_pin_configs[10] = {
 	0x0321101f, 0x01112024, 0x01111222, 0x91174220,
-	0x03a11050, 0x01116221, 0x90a70330, 0x01452340, 
+	0x03a11050, 0x01116221, 0x90a70330, 0x01452340,
 	0x40C003f1, 0x405003f0,
 };
 
@@ -1807,9 +1807,9 @@ static unsigned int dell_922x_m81_pin_configs[10] = {
     102801D7 (Dell XPS M1210)
 */
 static unsigned int dell_922x_m82_pin_configs[10] = {
-	0x02211211, 0x408103ff, 0x02a1123e, 0x90100310, 
-	0x408003f1, 0x0221121f, 0x03451340, 0x40c003f2, 
-	0x508003f3, 0x405003f4, 
+	0x02211211, 0x408103ff, 0x02a1123e, 0x90100310,
+	0x408003f1, 0x0221121f, 0x03451340, 0x40c003f2,
+	0x508003f3, 0x405003f4,
 };
 
 static unsigned int d945gtp3_pin_configs[10] = {
@@ -2002,7 +2002,7 @@ static struct snd_pci_quirk stac922x_cfg_tbl[] = {
 
 static unsigned int ref927x_pin_configs[14] = {
 	0x02214020, 0x02a19080, 0x0181304e, 0x01014010,
-	0x01a19040, 0x01011012, 0x01016011, 0x0101201f, 
+	0x01a19040, 0x01011012, 0x01016011, 0x0101201f,
 	0x183301f0, 0x18a001f0, 0x18a001f0, 0x01442070,
 	0x01c42190, 0x40000100,
 };
@@ -2464,7 +2464,7 @@ static int stac92xx_hp_switch_put(struct snd_kcontrol *kcontrol,
 	struct hda_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct sigmatel_spec *spec = codec->spec;
 	int nid = kcontrol->private_value;
- 
+
 	spec->hp_switch = ucontrol->value.integer.value[0] ? nid : 0;
 
 	/* check to be sure that the ports are upto date with
@@ -4174,7 +4174,7 @@ static void stac_toggle_power_map(struct hda_codec *codec, hda_nid_t nid,
 				  int enable);
 
 static inline int get_int_hint(struct hda_codec *codec, const char *key,
-			       int *valp)
+			       unsigned int *valp)
 {
 	const char *p;
 	p = snd_hda_get_hint(codec, key);
@@ -4523,7 +4523,7 @@ static void stac92xx_line_out_detect(struct hda_codec *codec,
 				spec->gpio_dir, spec->gpio_data |
 				spec->eapd_mask);
 	}
-} 
+}
 
 /* return non-zero if the hp-pin of the given array index isn't
  * a jack-detection target
@@ -4602,13 +4602,13 @@ static void stac92xx_hp_detect(struct hda_codec *codec)
  *
  * So, it's basically a problem of default pin configs, likely a BIOS issue.
  * But, disabling the code below just works around it, and I'm too tired of
- * bug reports with such devices... 
+ * bug reports with such devices...
  */
 		else
 			stac92xx_reset_pinctl(codec, cfg->hp_pins[i], val);
 #endif /* FIXME */
 	}
-} 
+}
 
 static void stac_toggle_power_map(struct hda_codec *codec, hda_nid_t nid,
 				  int enable)
@@ -4860,7 +4860,7 @@ static void stac92hd_proc_hook(struct snd_info_buffer *buffer,
 			       struct hda_codec *codec, hda_nid_t nid)
 {
 	if (nid == codec->afg)
-		snd_iprintf(buffer, "Power-Map: 0x%02x\n", 
+		snd_iprintf(buffer, "Power-Map: 0x%02x\n",
 			    snd_hda_codec_read(codec, nid, 0, 0x0fec, 0x0));
 }
 

@@ -31,7 +31,7 @@
  *  CHANGES:
  *
  *  2004.12.01	Major rewrite by tiwai, merged the work of pshou
- * 
+ *
  */
 
 #include <asm/io.h>
@@ -354,7 +354,7 @@ struct azx_dev {
 
 #ifdef TARGET_OS2
 	volatile void __iomem *sd_addr;		/* stream descriptor pointer */
-#else 
+#else
 	void __iomem *sd_addr;	/* stream descriptor pointer */
 #endif
 
@@ -493,7 +493,7 @@ static char *driver_short_names[] __devinitdata = {
 	[AZX_DRIVER_SIS] = "HDA SIS966",
 	[AZX_DRIVER_ULI] = "HDA ULI M5461",
 	[AZX_DRIVER_NVIDIA] = "HDA NVidia",
-	[AZX_DRIVER_TERA] = "HDA Teradici", 
+	[AZX_DRIVER_TERA] = "HDA Teradici",
 	[AZX_DRIVER_GENERIC] = "HD-Audio Generic",
 };
 
@@ -948,7 +948,7 @@ static int azx_reset(struct azx *chip, int full_reset)
 
 /*
  * Lowlevel interface
- */  
+ */
 
 /* enable interrupts */
 static void azx_int_enable(struct azx *chip)
@@ -1089,7 +1089,7 @@ static void azx_init_pci(struct azx *chip)
 	case AZX_DRIVER_ATI:
 		/* For ATI SB450 azalia HD audio, we need to enable snoop */
 		update_pci_byte(chip->pci,
-				ATI_SB450_HDAUDIO_MISC_CNTR2_ADDR, 
+				ATI_SB450_HDAUDIO_MISC_CNTR2_ADDR,
 				0x07, ATI_SB450_HDAUDIO_ENABLE_SNOOP);
 		break;
 	case AZX_DRIVER_NVIDIA:
@@ -2798,6 +2798,7 @@ static DEFINE_PCI_DEVICE_TABLE(azx_ids) = {
 	/* ULI M5461 */
 	{ PCI_DEVICE(0x10b9, 0x5461), .driver_data = AZX_DRIVER_ULI },
 	/* NVIDIA MCP */
+	{ PCI_DEVICE(0x10de, 0x03f0), .driver_data = AZX_DRIVER_NVIDIA },
 	{ PCI_DEVICE(PCI_VENDOR_ID_NVIDIA, PCI_ANY_ID),
 	  .class = PCI_CLASS_MULTIMEDIA_HD_AUDIO << 8,
 	  .class_mask = 0xffffff,
