@@ -515,15 +515,20 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
 		pHandle->pids[idx].name, (ULONG)pHandle,
 		GET_VOLUME_L(volume), GET_VOLUME_R(volume), lVol, rVol, pElemInfo->value.integer.max);
 
+#if 1
+	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
+#else
     // looking for more, then one opened streams to prevent of muting active stream
     cnt = 0;
     for (idx=0; idx < 8*256; idx++)
         if (opened_handles[idx].handle != 0)
             cnt++;
 
+	printk("OSS32_MixSetVolume old cnt=%X line=%x lVol=%x rVol=%x\n", cnt, line, lVol, rVol);
     //    if (((cnt == 1 && (lVol==0 && rVol==0)) || (lVol>0 && rVol>0)) ||
     if (cnt == 1 || line != OSS32_MIX_VOLUME_PCM)
     {
+		printk("OSS32_MixSetVolume Ioctl\n");
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
 
         if(idxMute != -1 && volume == 0) {
@@ -533,9 +538,11 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
 
             pElem->value.integer.value[0] = FALSE;  //switch, not mute control (inversed)
             pElem->value.integer.value[1] = FALSE;
+			printk("OSS32_MixSetVolume Ioctl mute\n");
             ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
         }
     }
+#endif
 
     kfree(pElem);
     pElem = NULL;

@@ -38,7 +38,6 @@
 #include <linux/workqueue.h>
 #include <linux/firmware.h>
 #include <dbgos2.h>
-#include <printfos2.h>
 
 struct new_utsname system_utsname = {0};
 struct resource ioport_resource = {NULL, 0, 0, IORESOURCE_IO, NULL, NULL, NULL};
