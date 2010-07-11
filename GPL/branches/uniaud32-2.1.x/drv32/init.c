@@ -35,13 +35,13 @@
 #include <version.h>
 #include <ossidc32.h>
 #include <dbgos2.h>
-#include <printfos2.h>
 #include <irqos2.h>
 //#include <bsedos16.h>
 #ifdef KEE
 #include <kee.h>
 #endif
 #include "parse.h"
+#include "malloc.h"
 
 const char ERR_ERROR[]   = "ERROR: ";
 const char ERR_LOCK[]    = "Unable to lock 32 bit data & code segments, exiting...\r\r\n";
@@ -67,12 +67,14 @@ extern "C" char szLastALSAError1[];
 extern "C" char szLastALSAError2[];
 extern "C" int sprintf (char *buffer, const char *format, ...);
 
-extern "C" int wrOffset;
-extern "C" char *szprintBuf;
 extern "C" APIRET APIENTRY DOS16OPEN(PSZ pszFileName, PHFILE phf, PULONG pulAction, ULONG cbFile, ULONG ulAttribute, ULONG fsOpenFlags, ULONG fsOpenMode, PEAOP2 peaop2 );
 extern "C" APIRET APIENTRY DOS16CLOSE(HFILE hFile);
 extern "C" APIRET APIENTRY DOS16WRITE(HFILE hFile, PVOID pBuffer, ULONG cbWrite, PULONG pcbActual);
 extern "C" void SaveBuffer(void);
+
+#define VMDHA_FIXED             0x0002
+
+extern "C" APIRET VMAlloc(ULONG size, ULONG flags, char NEAR* *pAddr);
 
 //Print messages with DosWrite when init is done or has failed (see startup.asm)
 void DevSaveMessage(char FAR48 *str, int length)
@@ -90,13 +92,8 @@ void DevSaveMessage(char FAR48 *str, int length)
   return;
 }
 
-void _cdecl printfos2(char *string)
-{
-   DevSaveMessage(string, strlen(string));
-}
-
 //SvL: Lock our 32 bits data & code segments
-int LockSegments(void) 
+int LockSegments(void)
 {
 #ifdef KEE
     KEEVMLock lock;
@@ -193,7 +190,7 @@ void SaveBuffer(void)
 }
 #endif
 // Initialize device driver
-WORD32 DiscardableInit(RPInit __far* rp)  
+WORD32 DiscardableInit(RPInit __far* rp)
 {
     char        debugmsg[64];
     char FAR48 *args;
@@ -208,8 +205,20 @@ WORD32 DiscardableInit(RPInit __far* rp)
     	return RPDONE | RPERR_COMMAND;
     }
 
+	DebugLevel = 1;
     rp->Out.FinalCS = 0;
     rp->Out.FinalDS = 0;
+
+	if ( szprintBuf == 0 ) {
+		VMAlloc( DBG_MAX_BUF_SIZE, VMDHA_FIXED, &szprintBuf );
+		if (szprintBuf) {
+			memset( szprintBuf, 0, DBG_MAX_BUF_SIZE );
+			wrOffset= 0;
+		}
+	}
+	if (!HeapInit(HEAP_SIZE)) {
+		dprintf(("HeapInit failed!"));
+	}
 
     args = MAKE_FARPTR32(rp->In.Args);
     GetParms(args);
@@ -267,7 +276,7 @@ WORD32 DiscardableInit(RPInit __far* rp)
 
 #if 0
         for(int i=1;i<OSS32_MAX_AUDIOCARDS;i++) {
-            if(OSS32_QueryNames(i, szDeviceName, sizeof(szDeviceName), szMixerName, sizeof(szMixerName)) == OSSERR_SUCCESS) 
+            if(OSS32_QueryNames(i, szDeviceName, sizeof(szDeviceName), szMixerName, sizeof(szMixerName)) == OSSERR_SUCCESS)
             {
                 WriteString(szDeviceName, strlen(szDeviceName));
                 WriteString(szEOL, sizeof(szEOL)-1);
@@ -280,17 +289,11 @@ WORD32 DiscardableInit(RPInit __far* rp)
 #endif
         WriteString(szEOL, sizeof(szEOL)-1);
     }
-#ifdef DEBUG
-    dprintf(("DiscardableInit. cp1"));
-#endif
     // Complete the installation
     rp->Out.FinalCS = _OffsetFinalCS16;
     rp->Out.FinalDS = _OffsetFinalDS16;
-#ifdef DEBUG
-    dprintf(("DiscardableInit. cp2"));
-#endif
 
-//    SaveBuffer();
+	//SaveBuffer();
 
     // Confirm a successful installation
     return RPDONE;

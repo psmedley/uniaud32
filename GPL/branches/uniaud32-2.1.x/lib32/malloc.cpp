@@ -37,15 +37,12 @@
 #define min(a,b)  (((a) < (b)) ? (a) : (b))
 #endif
 
-#define  DEFAULT_HEAP	256*1024
-#define  HEAP_SIZE      256*1024
-
 #define  SIGNATURE      0xBEEFDEAD      // "DeadBeef" when view in hex in word order.
 
 #pragma pack(4)
 typedef struct _MEMBLOCK {
     ULONG                  ulSignature;
-    ULONG                  uSize;
+    ULONG                  ulSize;
     struct _MEMBLOCK NEAR *pmbNext;
 #ifdef DEBUGHEAP
     char             NEAR *pszFile;
@@ -68,6 +65,17 @@ PMEMBLOCK  pmbFree  = 0;    // Points to head of list of available memory blocks
 unsigned   uMemFree = 0;   // N bytes available for allocation.
 LINEAR     acHeap   = NULL;
 
+ULONG ulnAlloc = 0;           // Current number of allocated blocks.
+ULONG ulcAlloc = 0;           // Total memory in allocated blocks incl. headers.
+ULONG ulnAllocCalls = 0;      // Cumulative total, number of malloc() calls.
+ULONG ulnFree  = 0;           // Current number of free blocks.
+ULONG ulcFree  = 0;           // Total memory in free blocks incl. headers.
+ULONG ulnFreeCalls  = 0;      // Cumulative total, number of free() calls.
+ULONG ulnCompact = 0;         // Num of times we've joined two adjacent free
+                             // blocks into a single larger block.
+ULONG ulcTotalHeap = HEAP_SIZE;
+
+
 #pragma off (unreferenced)
 
 //--- Heap methods:
@@ -76,104 +84,93 @@ LINEAR     acHeap   = NULL;
 //*****************************************************************************
 void dumpheap(void)
 {
-    int i;
+    SHORT sI;
     PMEMBLOCK pmb;
-    unsigned u=0;
+    ULONG ulSize;
 
+	ulSize = 0;
     pmb=pmbUsed;
-    dprintf(("HEAP: Heap Dump - Used blocks\n"));
-    for (i=0; i<10; i++) {
-        dprintf(("  pmb=%p, length=%ui\n",(void __far *) pmb, pmb->uSize));
-        u+=pmb->uSize;
+	dprintf(("HEAP:Heap Dump acHeap=%lx Used=%p Free=%p\n", (void __far *)acHeap, pmbUsed, pmbFree));
+    dprintf(("  Used blocks\n"));
+    for (sI=0; sI<10; sI++) {
+        dprintf(("  pmb=%p, length=%lx\n",(void __far *) pmb, pmb->ulSize));
+        ulSize+=pmb->ulSize;
         pmb=pmb->pmbNext;
         if (!pmb) break;
     }
-    dprintf(("  Total used = %ui\n",u));
+    dprintf(("  Total used = %lx\n", ulSize));
 
-    u=0;
+    ulSize=0;
     pmb=pmbFree;
-    dprintf(("HEAP: Heap Dump - Free blocks\n"));
-    for (i=0; i<50; i++) {
-        dprintf(("  pmb=%p, length=%ui\n",(void __far *) pmb, pmb->uSize));
-        u+=pmb->uSize;
+    dprintf(("  Free blocks\n"));
+    for (sI=0; sI<50; sI++) {
+        dprintf(("  pmb=%p, length=%lx\n",(void __far *) pmb, pmb->ulSize));
+        ulSize+=pmb->ulSize;
         pmb=pmb->pmbNext;
         if (!pmb) break;
     }
-    dprintf(("  Total free = %ui\n",u));
+    dprintf(("  Total free = %lx\n", ulSize));
 }
 //*****************************************************************************
 //*****************************************************************************
 
-ULONG fMemoryDoc = 0;
-ULONG nAlloc = 0;           // Current number of allocated blocks.
-ULONG cAlloc = 0;           // Total memory in allocated blocks incl. headers.
-ULONG nAllocCalls = 0;      // Cumulative total, number of malloc() calls.
-ULONG nFree  = 0;           // Current number of free blocks.
-ULONG cFree  = 0;           // Total memory in free blocks incl. headers.
-ULONG nFreeCalls  = 0;      // Cumulative total, number of free() calls.
-ULONG nCompact = 0;         // Num of times we've joined two adjacent free
-                             // blocks into a single larger block.
-ULONG cTotalHeap = HEAP_SIZE;
-
 //*****************************************************************************
 //*****************************************************************************
-BOOL SignatureCheck ( PMEMBLOCK p, PSZ idText )
+SHORT SignatureCheck ( PMEMBLOCK p, PSZ idText )
 {
-    int bGoodPointer;
+    short sGoodPointer;
 
     // Set bGoodPointer to indicate whether or not 'p' points within heap.
-    bGoodPointer = ((LINEAR)p >= (acHeap))
-                    && ((LINEAR)p <= (( acHeap) + HEAP_SIZE)) ;
-                              //### heap might have less than HEAP_SIZE bytes
+    sGoodPointer = ((LINEAR)p >= (acHeap))
+					&& ((LINEAR)p <= (( acHeap) + HEAP_SIZE)) ;
+					//### heap might have less than HEAP_SIZE bytes
 
     // Check for correct signature.
-    if (bGoodPointer)
-        bGoodPointer = (p->ulSignature == SIGNATURE) && p->uSize < HEAP_SIZE;
+    if (sGoodPointer) sGoodPointer = (p->ulSignature == SIGNATURE) && p->ulSize < HEAP_SIZE;
 
-    if (! bGoodPointer)
-    {
-//      ddprintf( "Heap pointer out of range, or signature exception: %p %s\n", p, idText );
+    if (!sGoodPointer) {
+		dprintf(("SignatureCheck: Bad pointer %p %s\n", p, idText));
         DebugInt3();
     }
-    return bGoodPointer;
+    return sGoodPointer;
 }
 //*****************************************************************************
 //*****************************************************************************
-#ifdef DEBUG
 void HeapCheck ( PSZ idText )
 {
     PMEMBLOCK p;
-    for ( nAlloc = 0, cAlloc = 0, p = pmbUsed; p; p = p->pmbNext ) {
-        ++nAlloc;
+    for ( ulnAlloc = 0, ulcAlloc = 0, p = pmbUsed; p; p = p->pmbNext ) {
+        ++ulnAlloc;
+        ulcAlloc += p->ulSize + HDR_SIZE;
         SignatureCheck( p,(PSZ) "HeapCheck() Used list" );
-        cAlloc += p->uSize + HDR_SIZE;
+		if (p == p->pmbNext) {
+		 	dprintf(("HeapCheck: used %p points to itself\n", p));
+			DebugInt3();
+		}
     }
-    for ( nFree = 0, cFree = 0, p = pmbFree; p; p = p->pmbNext ) {
-        ++nFree;
+    for ( ulnFree = 0, ulcFree = 0, p = pmbFree; p; p = p->pmbNext ) {
+        ++ulnFree;
+        ulcFree += p->ulSize + HDR_SIZE;
         SignatureCheck( p,(PSZ) "HeapCheck() Free list" );
-        cFree += p->uSize + HDR_SIZE;
+		if (p == p->pmbNext) {
+		 	dprintf(("HeapCheck: free %p points to itself\n", p));
+			DebugInt3();
+		}
     }
-    if (fMemoryDoc & 1) {
-        if (cAlloc + cFree != cTotalHeap) {
-//         ddprintf( "Heap Alloc + Free != Total\n" );
-//       dumpheap();
-            DebugInt3();
-        }
-    }
+	if (ulcAlloc + ulcFree != ulcTotalHeap) {
+		dprintf(("HeapCheck: Alloc+Free != Total\n"));
+		//dumpheap();
+		DebugInt3();
+	}
 }
-#else
-#define HeapCheck(a)
-#endif
 
 //*****************************************************************************
 //*****************************************************************************
-
-
 
 // Threshold for creating a new free block.
 #define  MIN_Leftover  (HDR_SIZE + MIN_FragSize)
 
-/* make_new_free()
+/*
    Formats the back part of an existing free MEMBLOCK as a new, smaller
    "Free" MEMBLOCK.  Doesn't update Global vbls (caller responsibility).
       IN:   pmbOldFree - pointer to existing memory block.
@@ -226,52 +223,8 @@ equation must hold
   Case 2:  (n + HDR + MIN_FragSize) <= l
   We split the block into an allocated part to satisfy the allocation request,
   and a free block which can be allocated in a subsequent request.
-*/
 
-PMEMBLOCK make_new_free(PMEMBLOCK pmbOldFree, unsigned uRequest)
-{
-    PMEMBLOCK pmbNewFree;     // If we create a new free block, it goes here.
-
-    // Which of the two cases (as described in function header) have we got?
-    // We know we're big enough to satisfy request, is there enough leftover
-    // for a new free block?
-
-    if ((uRequest + MIN_Leftover) > pmbOldFree->uSize) {
-        // Not enough leftover, allocate the entire free block.  Don't
-        // change pmbOldFree->uSize.
-        pmbNewFree = 0;
-    }
-    else {
-        // We've got enough leftover to make a new free block.
-        pmbNewFree = (PMEMBLOCK) ((char *) pmbOldFree + HDR_SIZE + uRequest );
-        pmbNewFree->ulSignature = SIGNATURE;
-        pmbNewFree->uSize = pmbOldFree->uSize - (uRequest + HDR_SIZE);
-        pmbNewFree->pmbNext = pmbOldFree->pmbNext;
-
-        // Update the size of the free block that was passed in.
-        pmbOldFree->uSize -= (pmbNewFree->uSize + HDR_SIZE);
-    }
-
-    return pmbNewFree;
-}
-
-
-/**@internal _msize
- */
-unsigned _msize(void NEAR *pvBlock)
-{
-    PMEMBLOCK pmb;
-
-    if (!pvBlock)
-        return 0;
-
-    pmb = (PMEMBLOCK) ((char NEAR *) pvBlock - HDR_SIZE);
-    
-    return pmb->uSize;
-}
-
-
-/**@internal pmbAllocateBlock
+ @internal pmbAllocateBlock
  *  Update all data structures for allocation of one memory block.  It's
  *  assumed, on entry, that the block is large enough for the requested
  *  allocation.
@@ -285,18 +238,31 @@ unsigned _msize(void NEAR *pvBlock)
  * @return PMEMBLOCK - pointer to the data part of the allocated memory block,
  *  suitable for return to malloc() caller.
  */
-void NEAR *npvAllocateBlock( PMEMBLOCK pmb, ULONG uRequest, PMEMBLOCK pmbPrev )
+void NEAR *npvAllocateBlock( PMEMBLOCK pmb, ULONG ulRequest, PMEMBLOCK pmbPrev )
 {
+
     //pmb points to the selected block.
     //pmbPrev points to the block prior to the selected block, NULL if pmbFree.
     PMEMBLOCK pmbOldNext;            // Original free block that follows the block being allocated.
     PMEMBLOCK pmbNewFree;            // Leftover free memory from the allocated block.
 
     // Split this block into an allocated + free part if it's big enough.
-    pmbNewFree = make_new_free( pmb, uRequest );
+	pmbNewFree = 0;
+	if (pmb->ulSize >= (ulRequest + MIN_Leftover)) {
+		// We've got enough leftover to make a new free block.
+
+		/* create the new free block */
+		pmbNewFree = (PMEMBLOCK) ((char __near *) pmb + HDR_SIZE + ulRequest );
+		pmbNewFree->ulSignature = SIGNATURE;
+		pmbNewFree->ulSize = pmb->ulSize - (ulRequest + HDR_SIZE);
+		pmbNewFree->pmbNext = pmb->pmbNext;
+
+		// Update the size of the original free block that was passed in.
+		pmb->ulSize -= (pmbNewFree->ulSize + HDR_SIZE);
+	}
 
     // Update global memory counter.
-    uMemFree -= (pmb->uSize + HDR_SIZE);
+    uMemFree -= (pmb->ulSize + HDR_SIZE);
 
     // Add this block into the front of the Allocated list.
     pmbOldNext = pmb->pmbNext;
@@ -304,19 +270,13 @@ void NEAR *npvAllocateBlock( PMEMBLOCK pmb, ULONG uRequest, PMEMBLOCK pmbPrev )
     pmbUsed = pmb;
 
     // Remove the new allocation from the Free list.
-    if (pmbNewFree) {                // If we split off a new free block
-        pmbNewFree->pmbNext = pmbOldNext;
-        if (pmbPrev)                  // If we're not at head of Free list
-            pmbPrev->pmbNext = pmbNewFree;
-        else
-            pmbFree = pmbNewFree;
-    }
-    else {                           // We allocated the entire free block.
-        if (pmbPrev)                  // If we're not at head of Free list
-            pmbPrev->pmbNext = pmbOldNext;
-        else
-            if (pmbOldNext)
-                pmbFree = pmbOldNext;
+    if (pmbNewFree) { // If we split off a new free block
+        pmbNewFree->pmbNext = pmbOldNext; // If we're not at head of Free list
+        if (pmbPrev) pmbPrev->pmbNext = pmbNewFree;
+        else pmbFree = pmbNewFree;
+    } else { // We allocated the entire free block.
+        if (pmbPrev) pmbPrev->pmbNext = pmbOldNext; // If we're not at head of Free list
+        else pmbFree = pmbOldNext;
     }
 
     return (void NEAR *) pmb->achBlock;
@@ -335,60 +295,36 @@ See helper function make_new_free() for discussion of fragmentation handling.
 */
 
 #ifdef DEBUGHEAP
-void NEAR *malloc(unsigned uSize, const char *filename, int lineno)
+void NEAR *malloc(ULONG ulSize, const char *filename, int lineno)
 #else
-void NEAR *malloc( unsigned uSize )
+void NEAR *malloc( ULONG ulSize )
 #endif
 {
-    ULONG uRequest;                    // Request size after alignment.
+    ULONG ulRequest;                    // Request size after alignment.
     PMEMBLOCK pmb, pmbPrev;             // Use to walk free lists.
-    void NEAR *npvReturn = 0;         // Return value.
-    ULONG cpuflags;
+    void NEAR *npvReturn;         // Return value.
+    ULONG ulCpuFlags;
 
-#ifdef DEBUG
-//    dprintf(("malloc(). size: %d",uSize));
-#endif
-    if(acHeap == NULL) {
-        if (!HeapInit(HEAP_SIZE))
-        {
-#ifdef DEBUG
-            dprintf(("malloc(): error heap initing"));
-#endif
-            return 0;
-        }
-    }
-#ifdef DEBUG
-//    dprintf(("malloc(): heap inited"));
-#endif
-    if (!uSize || uSize > HEAP_SIZE) {
+    //dprintf(("malloc(). size: %d", ulSize));
+    if(acHeap == NULL) return 0;
+    if (!ulSize || ulSize > HEAP_SIZE) {
         DebugInt3();
         return 0;
     }
 
-    cpuflags = DevPushfCli();
-    ++nAllocCalls;                      // Diagnostics.
+    ulCpuFlags = DevPushfCli();
+	npvReturn = 0;
+    ++ulnAllocCalls;                      // Diagnostics.
     HeapCheck((PSZ) "malloc() entry" );
-#ifdef DEBUG
-//    dprintf(("malloc(): heap checked. pmbFree %x",pmbFree));
-#endif
 
-    uRequest = (uSize + 3) & -4;        // Force DWORD alignment.
+    ulRequest = (ulSize + 3) & -4;        // Force DWORD alignment.
 
-    if (pmbFree->uSize >= uRequest)
-        npvReturn = npvAllocateBlock( pmbFree, uRequest, NULL );
-    else {
-        pmbPrev = pmbFree;
-        for ( pmb=pmbFree->pmbNext; pmb; pmbPrev=pmb, pmb=pmb->pmbNext)
-        {
-#ifdef DEBUG
-//    dprintf(("malloc(): for. pmb %x",pmb));
-#endif
-            if (pmb->uSize >= uRequest) {
-                npvReturn = npvAllocateBlock( pmb, uRequest, pmbPrev );
-                break;
-            }
-        }
-    }
+	for (pmbPrev=NULL, pmb=pmbFree; pmb; pmbPrev=pmb, pmb=pmb->pmbNext) {
+		if (pmb->ulSize >= ulRequest) {
+			npvReturn = npvAllocateBlock(pmb, ulRequest, pmbPrev);
+			break;
+		}
+	}
 
     if (npvReturn) {
 #ifdef DEBUGHEAP
@@ -398,21 +334,13 @@ void NEAR *malloc( unsigned uSize )
         pBlock->ulLine  = lineno;
 #endif
         SignatureCheck( (PMEMBLOCK) (((PUCHAR) npvReturn) - HDR_SIZE), (PSZ) "malloc() exit, allocated block" );
-    }
-    else {
-#ifdef DEBUG
-    dprintf(("malloc(): out of memory"));
-#endif
-        // Out of Memory !!!
+    } else {
+		dprintf(("malloc(): out of memory"));
         DebugInt3();
     }
 
     HeapCheck((PSZ) "malloc() exit" );
-#ifdef DEBUG
-//    dprintf(("malloc(): malloc exit"));
-#endif
-
-    DevPopf(cpuflags);
+    DevPopf(ulCpuFlags);
     return npvReturn;
 }
 
@@ -447,8 +375,8 @@ can't possibly be also located after, and vice versa.  Hence, the
 
 Also, the newly freed block can only be adjacent to at most two other
 blocks.  Therefore, the operation of combining two adjacent free blocks can
-only happen at most twice.  The variable nFreed counts the number of times
-two blocks are combined.  The function exits if nFreed reaches two.  nFreed
+only happen at most twice.  The variable ulnFreed counts the number of times
+two blocks are combined.  The function exits if ulnFreed reaches two.  ulnFreed
 is initially 0.
 
 Helper macro after() takes a PMEMBLOCK (call it pmb) as a parameter,
@@ -458,7 +386,7 @@ physically located after pmb.
 Helper function remove() removes an element from the free list.
 */
 
-#define after(pmb) ((PMEMBLOCK) ((char *) pmb + pmb->uSize + HDR_SIZE))
+#define after(pmb) ((PMEMBLOCK) ((char *) pmb + pmb->ulSize + HDR_SIZE))
 
 void remove(PMEMBLOCK pmb)
 {
@@ -469,42 +397,36 @@ void remove(PMEMBLOCK pmb)
         return;
     }
 
-    for (pmbPrev=pmbFree; pmbPrev; pmbPrev=pmbPrev->pmbNext)
+    for (pmbPrev=pmbFree; pmbPrev; pmbPrev=pmbPrev->pmbNext) {
         if (pmbPrev->pmbNext == pmb) {
             pmbPrev->pmbNext = pmb->pmbNext;
             return;
         }
+	}
 }
 //*****************************************************************************
 //*****************************************************************************
 void compact(void)
 {
     PMEMBLOCK pmb;
-    int iFreed = 0;
+    SHORT sFreed;
 
+	sFreed = 0;
     for (pmb=pmbFree->pmbNext; pmb; pmb=pmb->pmbNext) {
-        if (pmb == pmb->pmbNext) {
-//         ddprintf("HEAP: heap loop, %p points to itself\n", (void __far *) pmb);
-            DebugInt3();
-        }
-
         if (after(pmb)  == pmbFree) {
-// ddprintf("HEAP: compact found pointer %p (size=%ui) before pmbFree %p\n", (void __far *) pmb, pmb->uSize, (void __far *) pmbFree);
-            pmb->uSize += HDR_SIZE + pmbFree->uSize;
+			// ddprintf("HEAP: compact found pointer %p (size=%ui) before pmbFree %p\n", (void __far *) pmb, pmb->uSize, (void __far *) pmbFree);
+            pmb->ulSize += HDR_SIZE + pmbFree->ulSize;
             remove(pmbFree);
-            if (++iFreed == 2) goto exit;
-        } 
-        else 
-        if (after(pmbFree) == pmb) {
-// ddprintf("HEAP: compact found pointer %p (size=%ui) after pmbFree %p\n", (void __far *) pmb, pmb->uSize, (void __far *) pmbFree);
-            pmbFree->uSize += HDR_SIZE + pmb->uSize;
+            if (++sFreed == 2) break;
+        } else if (after(pmbFree) == pmb) {
+			// ddprintf("HEAP: compact found pointer %p (size=%ui) after pmbFree %p\n", (void __far *) pmb, pmb->uSize, (void __far *) pmbFree);
+            pmbFree->ulSize += HDR_SIZE + pmb->ulSize;
             remove(pmb);
-            if (++iFreed == 2) goto exit;
+            if (++sFreed == 2) break;
         }
     }
 
-exit:
-    nCompact += iFreed;
+    ulnCompact += sFreed;
 }
 //*****************************************************************************
 //*****************************************************************************
@@ -515,52 +437,45 @@ void free(void NEAR *pvBlock)
 #endif
 {
     PMEMBLOCK pmb,pmbPrev,pmbBlock;
-    int fSentinel;
-    ULONG cpuflags;
+    ULONG ulCpuFlags;
 
     if(acHeap == NULL) {
         DebugInt3();
         return;
     }
 
-    ++nFreeCalls;
+    ++ulnFreeCalls;
     if (!pvBlock) return;     // support freeing of NULL
 
-    cpuflags = DevPushfCli();
+    ulCpuFlags = DevPushfCli();
     pmbBlock=(PMEMBLOCK) ((char NEAR *) pvBlock - HDR_SIZE);
 
     SignatureCheck( pmbBlock,(PSZ) "free() entry, Block to be freed" );
     HeapCheck((PSZ) "free() entry" );
 
-    uMemFree += pmbBlock->uSize + HDR_SIZE;
+    uMemFree += pmbBlock->ulSize + HDR_SIZE;
 
-    if (pmbBlock == pmbUsed) {       // are we freeing the first block?
-        pmbUsed = pmbUsed->pmbNext;   // the 2nd block is now the 1st
-        pmbBlock->pmbNext = pmbFree;  // this block is now free, so it points to 1st free block
-        pmbFree = pmbBlock;           // this is now the 1st free block
-        compact();
-        goto exit;
-    }
+	/* find the block on the used chain */
+	for (pmbPrev=NULL, pmb=pmbUsed; pmb; pmbPrev=pmb, pmb=pmb->pmbNext) {
+		if (pmb == pmbBlock) { /* found the block */
+			if (pmbPrev) { /* it is in the middle of the chain */
+				pmbPrev->pmbNext = pmb->pmbNext; /* delete this block from the chain */
+			} else { /* it is the first block on the used list */
+				pmbUsed = pmbUsed->pmbNext;	// the 2nd block is now the head
+			}
+			pmbBlock->pmbNext = pmbFree; /* This block is now free, so it points to the first free block */
+			pmbFree = pmbBlock; /* This is now the first free block */
+			break;
+		}
+	}
+	if (pmb == 0) {
+	 	dprintf(("free: block not found %x\n", pmb));
+		DebugInt3();
+	}
+	compact();
 
-    pmbPrev=pmbUsed;
-    fSentinel = FALSE;
-    for (pmb=pmbUsed->pmbNext; pmb; pmbPrev=pmb, pmb=pmb->pmbNext) {
-        if (pmb == pmbBlock) {
-            if (fSentinel) {
-                dprintf(("HEAP: free sentinel triggered, pmb=%p\n", (void __far *) pmb));
-                DebugInt3();
-            }
-            pmbPrev->pmbNext = pmb->pmbNext;   // delete this block from the chain
-            pmbBlock->pmbNext = pmbFree;
-            pmbFree = pmbBlock;
-            compact();
-            fSentinel = TRUE;
-        }
-    }
-
-exit: //--- Check things are still intact.
     HeapCheck((PSZ) "free() exit" );
-    DevPopf(cpuflags);
+    DevPopf(ulCpuFlags);
 }
 //*****************************************************************************
 //*****************************************************************************
@@ -570,22 +485,37 @@ unsigned _memfree(void)
 }
 //*****************************************************************************
 //*****************************************************************************
+/**@internal _msize
+ */
+unsigned _msize(void NEAR *pvBlock)
+{
+    PMEMBLOCK pmb;
+
+    if (!pvBlock)
+        return 0;
+
+    pmb = (PMEMBLOCK) ((char NEAR *) pvBlock - HDR_SIZE);
+
+    return pmb->ulSize;
+}
+
+
 #ifdef DEBUGHEAP
-void NEAR *realloc(void NEAR *pvBlock, unsigned usLength, const char *filename, int lineno)
+void NEAR *realloc(void NEAR *pvBlock, ULONG ulLength, const char *filename, int lineno)
 #else
-void NEAR *realloc(void NEAR *pvBlock, unsigned usLength)
+void NEAR *realloc(void NEAR *pvBlock, ULONG ulLength)
 #endif
 {
     void NEAR *pv;
 
     if (!pvBlock)                 // if ptr is null, alloc block
 #ifdef DEBUGHEAP
-        return malloc(usLength, filename, lineno);
+        return malloc(ulLength, filename, lineno);
 #else
-        return malloc(usLength);
+        return malloc(ulLength);
 #endif
 
-    if (!usLength) {              // if length is 0, free block
+    if (!ulLength) {              // if length is 0, free block
 #ifdef DEBUGHEAP
         free(pvBlock, filename, lineno);
 #else
@@ -595,14 +525,14 @@ void NEAR *realloc(void NEAR *pvBlock, unsigned usLength)
     }
 
 #ifdef DEBUGHEAP
-    pv = malloc(usLength, filename, lineno);          // attempt to allocate the new block
+    pv = malloc(ulLength, filename, lineno);          // attempt to allocate the new block
 #else
-    pv = malloc(usLength);          // attempt to allocate the new block
+    pv = malloc(ulLength);          // attempt to allocate the new block
 #endif
     if (!pv)                      // can't do it?
         return 0;                  // just fail.  Version 2 will try harder
-    
-    memcpy(pv, pvBlock, min( _msize(pvBlock), usLength));
+
+    memcpy(pv, pvBlock, min( _msize(pvBlock), ulLength));
 
 #ifdef DEBUGHEAP
     free(pvBlock, filename, lineno);
@@ -613,7 +543,7 @@ void NEAR *realloc(void NEAR *pvBlock, unsigned usLength)
 }
 //*****************************************************************************
 //*****************************************************************************
-BOOL IsHeapAddr(ULONG addr) 
+BOOL IsHeapAddr(ULONG addr)
 {
     int bGoodPointer;
 
@@ -625,32 +555,28 @@ BOOL IsHeapAddr(ULONG addr)
 //*****************************************************************************
 extern "C" APIRET VMAlloc(ULONG size, ULONG flags, LINEAR *pAddr) ;
 //*****************************************************************************
-unsigned HeapInit(unsigned uSize)
+ULONG HeapInit(ULONG ulSize)
 {
     LINEAR addr;
     SHORT sel;
 
-    if (!uSize)
-        uSize = DEFAULT_HEAP;
+    if (!ulSize) ulSize = DEFAULT_HEAP;
 
-    if (uSize > HEAP_SIZE)
-        uSize = HEAP_SIZE;
+    if (ulSize > HEAP_SIZE) ulSize = HEAP_SIZE;
 
-    if(VMAlloc(uSize, VMDHA_FIXED, &addr)) {
+    if(VMAlloc(ulSize, VMDHA_FIXED, &addr)) {
 	    DebugInt3();
 	    return 0;
     }
     acHeap = addr;
-#ifdef DEBUG
-//    dprintf(("HeapInit(): addr: %x", acHeap));
-#endif
+	//dprintf(("HeapInit(): addr: %x", acHeap));
 
     pmbFree = (PMEMBLOCK) acHeap;
-    pmbFree->uSize = uSize - HDR_SIZE;
+    pmbFree->ulSize = ulSize - HDR_SIZE;
     pmbFree->ulSignature = SIGNATURE;
     pmbFree->pmbNext = 0;
-    uMemFree = pmbFree->uSize;
-    return pmbFree->uSize;
+    uMemFree = pmbFree->ulSize;
+    return pmbFree->ulSize;
 }
 //*****************************************************************************
 //*****************************************************************************

@@ -25,28 +25,39 @@
 #ifndef __COMMDBG_H__
 #define __COMMDBG_H__
 
-//#ifdef DEBUG
-#if 1
 #ifdef __cplusplus
 extern "C" {
 #endif
 extern int DebugLevel;
-
+extern int wrOffset;
+extern char *szprintBuf;
+//void _cdecl DPD(int level, char *x, ...) ; /* not debugging: nothing */
 void _cdecl DPE(char *x, ...) ; /* not debugging: nothing */
-void _cdecl DPD(int level, char *x, ...) ; /* not debugging: nothing */
 #ifdef __cplusplus
 }
 #endif
-#define dprintf(a)	if(DebugLevel > 0) DPE a
+
+/* rprintf always prints to the log buffer, and to SIO if enabled */
+#define rprintf(a) DPE a
+
+/* the dprintf functions only print if DEBUG is defined */
+#ifdef DEBUG
+#define DBG_MAX_BUF_SIZE 0x100000
+#define dprintf(a)	DPE a
+#define dprintf1(a)	if(DebugLevel > 0) DPE a
 #define dprintf2(a)	if(DebugLevel > 1) DPE a
 #define dprintf3(a)	if(DebugLevel > 2) DPE a
-#define DebugInt3()	; //_asm int 3;
-#define DebInt3()	_asm int 3;
-#else // #ifdef DEBUG
+#define DebugInt3()	; //_asm int 3
+//#define DebInt3()	_asm int 3;
+#else
+// not DEBUG
+#define DBG_MAX_BUF_SIZE 0x10000
 #define dprintf(a)
+#define dprintf1(a)
 #define dprintf2(a)
 #define dprintf3(a)
-#define DebugInt3()     ;
-#endif // #ifdef DEBUG
+#define DebugInt3()
+#endif
 
 #endif //__COMMDBG_H__
+

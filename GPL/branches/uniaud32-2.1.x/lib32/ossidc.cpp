@@ -109,9 +109,9 @@ OSSRET OSS32_Initialize(void)
         DebugInt3();
         return OSSERR_INIT_FAILED;
     }
-    dprintf(("\nUniaud version %s\n",UNIAUD_VERSION));
+    rprintf(("\nUniaud version %s\n",UNIAUD_VERSION));
     dprintf(("OSS32_Initialize. Start address: %X", OffsetBeginCS32));
-//    DebugInt3();
+	//DebugInt3();
 
     if(call_module_init(alsa_sound_init) != 0)       return OSSERR_INIT_FAILED;
     dprintf(("OSS32_Initialize1. Start address: %X", OffsetBeginCS32));
@@ -285,7 +285,7 @@ OSSRET OSS32_Initialize(void)
         for(int i=0;i<nrCardsDetected;i++) {
             FillCaps(i);
         }
-        dprintf(("OSS32_Initialize: SUCCESS. nr. of cards: %d",nrCardsDetected));
+        dprintf(("OSS32_Initialize: SUCCESS. Cards=%d", nrCardsDetected));
         return OSSERR_SUCCESS;
     }
     dprintf(("OSS32_Initialize. FAILED"));
@@ -339,6 +339,6 @@ int MyDevBlock(ULONG id, ULONG tout, char flag)
 
 int OSS32_DebugString(char *buffer, ULONG size)
 {
-    dprintf(("U16: %s",buffer));
+    rprintf(("U16: %s", buffer));
     return size;
 }

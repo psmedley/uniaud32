@@ -24,16 +24,19 @@
 #ifndef MALLOC_INCLUDED
 #define MALLOC_INCLUDED
 
+#define  DEFAULT_HEAP	256*1024
+#define  HEAP_SIZE      256*1024
+
 // Standard malloc.h functions
 
 //NOTE: enabling this in the non-KEE driver causes problems (file name strings
 //      put in seperate private segments)
 #ifdef DEBUGHEAP
-void NEAR *malloc(unsigned size, const char *filename, int lineno);
+void NEAR *malloc(ULONG size, const char *filename, int lineno);
 void       free(void *NEAR ptr, const char *filename, int lineno);
 void NEAR *realloc(void *NEAR ptr, unsigned newsize, const char *filename, int lineno);
 #else
-void NEAR *malloc(unsigned);
+void NEAR *malloc(ULONG size);
 void       free(void NEAR *);
 void NEAR *realloc(void NEAR *, unsigned);
 #endif
@@ -48,7 +51,7 @@ unsigned _msize(void NEAR *);
 unsigned _memfree(void);            // returns available space
 
 // Specialized routines
-unsigned HeapInit(unsigned);        // initializes the heap manager
+ULONG HeapInit(ULONG size);        // initializes the heap manager
 void dumpheap(void);
 
 BOOL IsHeapAddr(ULONG addr);
