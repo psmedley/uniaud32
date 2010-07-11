@@ -695,7 +695,6 @@ OSSRET OSS32_WaveStart(OSSSTREAMID streamid)
     }
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
-
     ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_START, 0);
     if (ret)
         printk("Wave start ret = %i, streamid %X\n",ret,(ULONG)pHandle);

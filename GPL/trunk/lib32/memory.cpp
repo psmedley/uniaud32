@@ -196,11 +196,10 @@ __again:
     if (rc == 0) {
         *pAddr = (LINEAR)addr;
         if (flags & VMDHA_USEHIGHMEM)
-            dprintf((("allocated %X in HIGH memory\n"), size));
-        else dprintf((("allocated %X in LOW memory\n"), size));
+            dprintf1((("allocated %X in HIGH memory\n"), size));
+        else dprintf1((("allocated %X in LOW memory\n"), size));
     }
-    if ((rc == 87) &&
-        (flags & VMDHA_USEHIGHMEM))
+    if ((rc == 87) && (flags & VMDHA_USEHIGHMEM))
     {
         // EARLYMEMINIT workaround
         flags = flags & (~VMDHA_USEHIGHMEM);
@@ -279,13 +278,9 @@ void *__get_free_dma_pages(unsigned long size, unsigned long flags)
     if(addr) {
         //only done to save size of memory block
         AddBaseAddress(addr, addr, size);
-#ifdef DEBUG
         dprintf(("get_free_dma_pages %d -> %x (phys %x)", size, (ULONG)addr, virt_to_phys((void *)addr)));
-#endif
         ulget_free_pagesMemUsed += size;
-#ifdef DEBUG
         dprintf(("get_free_dma_pages: total alloc size %d", ulget_free_pagesMemUsed));
-#endif
     }
 
     return (void *)addr;
@@ -330,7 +325,7 @@ void *__get_free_pages(int gfp_mask, unsigned long order)
 		DebugInt3();
 		return 0;
 	}
-////	dprintf(("__get_free_pages %d returned %x", order*PAGE_SIZE, addr));
+	//dprintf(("__get_free_pages %d returned %x", order*PAGE_SIZE, addr));
     if(gfp_mask & (GFP_DMA|GFP_DMAHIGHMEM))
     {//must be aligned at 64kb boundary
         ULONG physaddr = virt_to_phys((void *)addr);
@@ -358,13 +353,9 @@ void *__get_free_pages(int gfp_mask, unsigned long order)
         AddBaseAddress(addr, addr, allocsize);
     }
     if(addr) {
-#ifdef DEBUG
         dprintf(("get_free_pages %d (%d) -> %x (phys %x)", allocsize, size, (ULONG)addr, virt_to_phys((void *)addr)));
-#endif
         ulget_free_pagesMemUsed += allocsize;
-#ifdef DEBUG
         dprintf(("get_free_pages: total alloc size %d", ulget_free_pagesMemUsed));
-#endif
     }
     return (void *)addr;
 }
@@ -381,15 +372,11 @@ int free_pages(unsigned long addr, unsigned long order)
         DebugInt3();
     }
     else {
-#ifdef DEBUG
         dprintf(("free_pages %x size %d", (ULONG)addr, size));
-#endif
         ulget_free_pagesMemUsed -= size;
-#ifdef DEBUG
         dprintf(("free_pages: total alloc size %d", ulget_free_pagesMemUsed));
-#endif
     }
-////	dprintf(("free_pages %x", addr));
+	//dprintf(("free_pages %x", addr));
 	return 0;
 }
 //******************************************************************************
@@ -408,15 +395,11 @@ void *vmalloc(unsigned long size)
 		return 0;
 	}
     if(addr) {
-#ifdef DEBUG
         //dprintf(("vmalloc %d -> %x (phys %x)", size, addr, virt_to_phys((void *)addr)));
-#endif
         //only done to save size of memory block
         AddBaseAddress(addr, addr, size);
         ulget_free_pagesMemUsed += size;
-#ifdef DEBUG
         //dprintf(("vmalloc: total alloc size %d", ulget_free_pagesMemUsed));
-#endif
     }
     return (void *)addr;
 }
@@ -433,13 +416,9 @@ void vfree(void *ptr)
         DebugInt3();
     }
     else {
-#ifdef DEBUG
         //dprintf(("vfree %x size %d", (ULONG)ptr, size));
-#endif
         ulget_free_pagesMemUsed -= size;
-#ifdef DEBUG
         //dprintf(("vfree: total alloc size %d", ulget_free_pagesMemUsed));
-#endif
     }
 }
 //******************************************************************************
@@ -473,13 +452,13 @@ void * __ioremap(unsigned long physaddr, unsigned long size, unsigned long flags
     //dprintf(("ioremap: len %d phys %x off %x", Length, PhysicalAddress, Offset));
 
     //round to next page boundary
-//    size = size + PAGE_SIZE - 1;
-//    size &= 0xFFFFF000;
+	//size = size + PAGE_SIZE - 1;
+	//size &= 0xFFFFF000;
 
 #ifdef KEE
     SHORT sel;
 
-//    rc = KernVMAlloc(size, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&physaddr, &sel);
+	//rc = KernVMAlloc(size, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&physaddr, &sel);
     rc = KernVMAlloc(Length, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&PhysicalAddress, &sel);
 #else
     //rc = DevVMAlloc(VMDHA_PHYS, size, (LINEAR)&physaddr, __Stack32ToFlat((ULONG)&addr));
@@ -615,7 +594,7 @@ void *__kmalloc(int size, int flags)
     	DebugInt3();
     	return 0;
     }
-////    dprintf(("kmalloc %d returned %x", size, addr));
+	//dprintf(("kmalloc %d returned %x", size, addr));
     return addr;
 }
 //******************************************************************************
@@ -633,7 +612,7 @@ void __kfree(const void *ptr)
     	DebugInt3();
     	return;
     }
-////  dprintf(("kfree %x", addr));
+	//dprintf(("kfree %x", addr));
     if(IsHeapAddr(addr)) {
 #ifdef DEBUGHEAP
         free((void *)addr, filename, lineno);

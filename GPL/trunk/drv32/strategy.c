@@ -37,7 +37,7 @@ ULONG StratRead(RP __far *_rp);
 ULONG StratIOCtl(RP __far *_rp);
 ULONG StratClose(RP __far *_rp);
 
-ULONG DiscardableInit(RPInit __far*);  
+ULONG DiscardableInit(RPInit __far*);
 
 ULONG deviceOwner = DEV_NO_OWNER;
 ULONG numOS2Opens = 0;
@@ -69,9 +69,7 @@ ULONG StratInit(RP __far* _rp)
 
     RPInit __far* rp = (RPInit __far*)_rp;
     rc = DiscardableInit(rp);
-#ifdef DEBUG
-    dprintf(("StratInit. cp1.rc %d", rc));
-#endif
+    dprintf(("StratInit End rc=%d", rc));
     return rc;
 }
 //******************************************************************************
@@ -88,7 +86,7 @@ struct SaveIRQForSlot
     ULONG  ulSlotNo;
     BYTE   LowIRQ;
     BYTE   HighIRQ;
-    BYTE   Pin;   
+    BYTE   Pin;
 };
 extern struct SaveIRQForSlot sISRHigh[];
 extern int  SaveIRQCounter;
@@ -137,7 +135,7 @@ ULONG StratShutdown(RP __far *_rp)
  dprintf(("StratShutdown %d", rp->Function));
 #endif
   if(rp->Function == 1) {//end of shutdown
-  	OSS32_Shutdown(); 
+  	OSS32_Shutdown();
   }
   return(RPDONE);
 }
