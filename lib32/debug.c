@@ -26,6 +26,9 @@
 #include <os2.h>
 
 #include <string.h>
+#include <dbgos2.h>
+
+#define COMM_DEBUG
 
 #define CR 0x0d
 #define LF 0x0a
@@ -33,12 +36,7 @@
 #define LEADING_ZEROES          0x8000
 #define SIGNIFICANT_FIELD       0x0007
 
-BOOL  fLineTerminate=TRUE;
-int   DebugLevel = 1;
-
-extern int wrOffset;
-extern char *szprintBuf;
-extern int max_buf_size;
+int DebugLevel;
 
 char hextab[]="0123456789ABCDEF";
 
@@ -143,14 +141,6 @@ char  * HexLongToASCII(char  *StrPtr, ULONG wHexVal, USHORT Option)
    return (StrPtr);
 }
 
-#ifdef DEBUG
-#define COMM_DEBUG
-//------------------------- StringOut --------------------------//
-
-#define VMDHA_FIXED             0x0002
-
-extern APIRET VMAlloc(ULONG size, ULONG flags, char NEAR* *pAddr);
-
 /**
  * Finds the length of a string up to cchMax.
  * @returns   Length.
@@ -217,79 +207,54 @@ ReadyCheck:
 }
 #endif
 
+//------------------------- StringOut --------------------------//
 void StringOut(char *DbgStr)
 {
-   int len;
-#ifdef COMM_DEBUG
-   int i;
-#endif /* DEBUG */
+	int len;
 
-   len= _strnlen( DbgStr, 1024 );
-/*
-   while (*DbgStr)
-      CharOut(*DbgStr++);
-      */
-#ifdef COMM_DEBUG
-   if (MAGIC_COMM_PORT)   //PS+++ If have comport - out to it
-   {
-       for( i= 0; i < len; i++ )
-           CharOut( DbgStr[i] );
+	len= _strnlen( DbgStr, 1024 );
 
-       if (fLineTerminate)
-       {
-           CharOut(CR);                              // append carriage return,
-           CharOut(LF);                              // linefeed
-       }
-   }
+#ifdef COMM_DEBUG
+	if (MAGIC_COMM_PORT) {
+		int i;
+
+		for( i= 0; i < len; i++ ) CharOut( DbgStr[i] );
+
+		CharOut(CR);                              // append carriage return,
+		CharOut(LF);                              // linefeed
+	}
 #endif
-   if( szprintBuf == 0 )
-   {
-      VMAlloc( max_buf_size, VMDHA_FIXED, &szprintBuf );
-      if( szprintBuf )
-         memset( szprintBuf, 0, max_buf_size );
-      wrOffset= 0;
-   }
-   if( szprintBuf )
-   {
-       if( (len + wrOffset) > max_buf_size )
-       {
-          int cntr;
-          cntr= max_buf_size - wrOffset;
-          memcpy( szprintBuf +  wrOffset, DbgStr, cntr );
-          DbgStr+= cntr;
-          len= len - cntr;
-          wrOffset= 0;
-       }
-       if( len )
-       {
-          memcpy( szprintBuf + wrOffset, DbgStr, len );
-          wrOffset= wrOffset + len;
-          if( wrOffset >= max_buf_size )
-              wrOffset= 0;
-       }
-       if (fLineTerminate)
-       {
-//           if( (wrOffset+1) >= max_buf_size )
-//               wrOffset= 0;
-           szprintBuf[wrOffset]= CR;
-           if( ++wrOffset >= max_buf_size )
-               wrOffset= 0;
-           szprintBuf[wrOffset]= LF;
-           if( ++wrOffset >= max_buf_size )
-               wrOffset= 0;
-       }
-   }
+
+	if (szprintBuf == 0) return;
+
+	if( (len + wrOffset) > DBG_MAX_BUF_SIZE ) {
+		int cntr;
+		cntr = DBG_MAX_BUF_SIZE - wrOffset;
+		memcpy( szprintBuf +  wrOffset, DbgStr, cntr );
+		DbgStr += cntr;
+		len = len - cntr;
+		wrOffset= 0;
+	}
+
+	if ( len ) {
+		memcpy( szprintBuf + wrOffset, DbgStr, len );
+		wrOffset= wrOffset + len;
+		if( wrOffset >= DBG_MAX_BUF_SIZE ) wrOffset= 0;
+	}
+
+	if ( (wrOffset+1) >= DBG_MAX_BUF_SIZE ) wrOffset= 0;
+	szprintBuf[wrOffset]= CR;
+	if ( ++wrOffset >= DBG_MAX_BUF_SIZE ) wrOffset= 0;
+	szprintBuf[wrOffset]= LF;
+	if ( ++wrOffset >= DBG_MAX_BUF_SIZE ) wrOffset= 0;
 }
-#endif
 
-#ifdef  DEBUG
 char BuildString[1024];
-#endif          // DEBUG
 
+#if 0
 //------------------------- PrintfOut -
 void _cdecl DPD(int level, char *DbgStr, ...)
 {
-#ifdef DEBUG
    char *BuildPtr=BuildString;
    char *pStr=(char *) DbgStr;
    char *SubStr;
@@ -397,13 +362,11 @@ void _cdecl DPD(int level, char *DbgStr, ...)
 
    *BuildPtr=0;                                 // cauterize the string
    StringOut((char *) BuildString);
-#endif                            //DEBUG
 }
-
+#endif
 
 void _cdecl DPE(char *DbgStr, ...)
 {
-#ifdef DEBUG
    char *BuildPtr=BuildString;
    char *pStr = (char *) DbgStr;
    char *SubStr;
@@ -516,7 +479,6 @@ void _cdecl DPE(char *DbgStr, ...)
 
    *BuildPtr=0;                                 // cauterize the string
    StringOut((char *) BuildString);
-#endif                            //DEBUG
 }
 
 struct snd_info_buffer {

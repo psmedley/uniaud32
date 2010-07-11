@@ -173,18 +173,14 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
     int rc;
     IRQ_SLOT	*pSlot;
 
-#ifdef DEBUG
-//    dprintf(("enter int proc %d %d",ulSlotNo, *pulIrq));
-#endif
+	//dprintf(("enter int proc %d %d",ulSlotNo, *pulIrq));
 
     if(fSuspended)
     {//If our device is suspended, then we can't receive interrupts, so it must
         //be for some other device
         //Don't pass it to the linux handler as the device doesn't respond as expected
         //when suspended
-#ifdef DEBUG
         dprintf(("Slot %d IRQ %d suspended",ulSlotNo, *pulIrq));
-#endif
         return FALSE;
     }
 
@@ -228,18 +224,14 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
 
                     //ok, this interrupt was intended for us; notify the 16 bits MMPM/2 driver
                     OSS32_ProcessIRQ();
-#ifdef DEBUG
-//                    dprintf(("exit(1) int proc %d %d",ulSlotNo, *pulIrq));
-#endif
+					//dprintf(("exit(1) int proc %d %d",ulSlotNo, *pulIrq));
                     eoiIrq[pSlot->irqNo] = 0;
                     return TRUE;
                 }
             }
         }
     }
-#ifdef DEBUG
-//                    dprintf(("exit(0) int proc %d %d",ulSlotNo, *pulIrq));
-#endif
+	//dprintf(("exit(0) int proc %d %d",ulSlotNo, *pulIrq));
 
     return FALSE;
 }

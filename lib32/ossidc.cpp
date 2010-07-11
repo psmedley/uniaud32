@@ -109,9 +109,9 @@ OSSRET OSS32_Initialize(void)
         DebugInt3();
         return OSSERR_INIT_FAILED;
     }
-    dprintf(("\nUniaud version %s\n",UNIAUD_VERSION));
+    rprintf(("\nUniaud version %s\n",UNIAUD_VERSION));
     dprintf(("OSS32_Initialize. Start address: %X", OffsetBeginCS32));
-//    DebugInt3();
+	//DebugInt3();
 
     if(call_module_init(alsa_sound_init) != 0)       return OSSERR_INIT_FAILED;
     dprintf(("OSS32_Initialize1. Start address: %X", OffsetBeginCS32));
@@ -134,6 +134,7 @@ OSSRET OSS32_Initialize(void)
     call_module_init(patch_realtek_init);
     call_module_init(patch_sigmatel_init);
     call_module_init(patch_via_init);
+    dprintf(("OSS32_Initialize: ForceCard: %d",ForceCard));
 #if 0
     int i;
 
@@ -161,7 +162,6 @@ OSSRET OSS32_Initialize(void)
         }
     }
 #else
-    dprintf(("force card: %d",ForceCard));
     //Check for SoundBlaster Live!
     if((ForceCard == CARD_NONE || ForceCard == CARD_ICH) &&
        nrCardsDetected < (OSS32_MAX_AUDIOCARDS-1) && call_module_init(alsa_card_intel8x0_init) == 0)
@@ -286,7 +286,7 @@ OSSRET OSS32_Initialize(void)
         for(int i=0;i<nrCardsDetected;i++) {
             FillCaps(i);
         }
-        dprintf(("OSS32_Initialize: SUCCESS. nr. of cards: %d",nrCardsDetected));
+        dprintf(("OSS32_Initialize: SUCCESS. Cards=%d", nrCardsDetected));
         return OSSERR_SUCCESS;
     }
     dprintf(("OSS32_Initialize. FAILED"));
@@ -340,6 +340,6 @@ int MyDevBlock(ULONG id, ULONG tout, char flag)
 
 int OSS32_DebugString(char *buffer, ULONG size)
 {
-    dprintf(("U16: %s",buffer));
+    rprintf(("U16: %s", buffer));
     return size;
 }
