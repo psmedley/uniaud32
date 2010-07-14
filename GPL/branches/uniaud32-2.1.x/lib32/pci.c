@@ -54,9 +54,9 @@ extern int nrCardsDetected;
 #define PCI_CONFIG_ADDRESS      0xCF8
 #define PCI_CONFIG_DATA         0xCFC
 
-#ifdef ACPI 
-APIRET APIENTRY ACPIFindPCIDevice(ULONG Bus, ULONG Dev, ULONG Fun, ULONG *PicIRQ, ULONG *ApicIRQ, ULONG *Hdl, char *Component); 
-#endif 
+#ifdef ACPI
+APIRET APIENTRY ACPIFindPCIDevice(ULONG Bus, ULONG Dev, ULONG Fun, ULONG *PicIRQ, ULONG *ApicIRQ, ULONG *Hdl, char *Component);
+#endif
 
 //******************************************************************************
 #define CONFIG_CMD(dev, where)	\
@@ -134,13 +134,13 @@ int pcidev_deactivate(struct pci_dev *dev)
 
 //******************************************************************************
 //******************************************************************************
-#ifdef ACPI 
+#ifdef ACPI
 struct SaveIRQForSlot
 {
     ULONG  ulSlotNo;
     BYTE   LowIRQ;
     BYTE   HighIRQ;
-    BYTE   Pin;   
+    BYTE   Pin;
 };
 extern struct SaveIRQForSlot sISRHigh[];
 extern int  SaveIRQCounter;
@@ -149,14 +149,12 @@ extern int  SaveIRQCounter;
 static int pci_query_device(unsigned int vendor, unsigned int device,
                             struct pci_dev near *pcidev, int idx)
 {
-#ifdef ACPI 
-    APIRET           rc; 
-#endif 
     int		resNo, addr, found = 0;
     u32		devNr, busNr, funcNr, detectedId, pciId, cfgaddrreg, temp, temp2;
-#ifdef ACPI 
-    ULONG            temp1,temp3; //PS++ 
-#endif 
+#ifdef ACPI
+    APIRET           rc;
+    ULONG            temp1,temp3; //PS++
+#endif
     u8		headerType;
 
     pciId = (device << 16) | vendor;
@@ -241,29 +239,29 @@ static int pci_query_device(unsigned int vendor, unsigned int device,
 
                         // IRQ and PIN
                         pci_read_config_dword(pcidev, PCI_INTERRUPT_LINE, &temp);
-#ifdef ACPI 
+#ifdef ACPI
                         sISRHigh[SaveIRQCounter].Pin  = (temp >> 8) & 0xf;
-                        temp2 = temp3 = 0; 
-                        rc = ACPIFindPCIDevice( (ULONG)busNr,                        // Bus 
-                                                (ULONG)devNr,                        // Dev 
-                                                (ULONG)(pcidev->devfn >> 8) & 7,     // Function 
-                                                &temp1,                              // PIC IRQ 
-                                                &temp3,                              // APIC IRQ 
-                                                NULL,                                // ACPI handle to finding device 
-                                                "Uniaud32");                         // Name for acpi log 
-                        if (!rc) 
-                        { 
-                        // Check APIC IRQ, if we have /SMP /APIC, must be set 
-                        if (temp1) 
-                           temp = (temp & (~0xff)) | (temp1 & 0xff); 
-                        // Check PIC IRQ 
-                        else if (temp3) 
-                                 temp = (temp & (~0xff)) | (temp3 & 0xff); 
-                        dprintf(("pci_query_device: IRQs ACPI PIC%d APIC%d", temp1, temp3)); 
+                        temp2 = temp3 = 0;
+                        rc = ACPIFindPCIDevice( (ULONG)busNr,                        // Bus
+                                                (ULONG)devNr,                        // Dev
+                                                (ULONG)(pcidev->devfn >> 8) & 7,     // Function
+                                                &temp1,                              // PIC IRQ
+                                                &temp3,                              // APIC IRQ
+                                                NULL,                                // ACPI handle to finding device
+                                                "Uniaud32");                         // Name for acpi log
+                        if (!rc)
+                        {
+                        // Check APIC IRQ, if we have /SMP /APIC, must be set
+                        if (temp1)
+                           temp = (temp & (~0xff)) | (temp1 & 0xff);
+                        // Check PIC IRQ
+                        else if (temp3)
+                                 temp = (temp & (~0xff)) | (temp3 & 0xff);
+                        dprintf(("pci_query_device: IRQs ACPI PIC%d APIC%d", temp1, temp3));
                         sISRHigh[SaveIRQCounter].LowIRQ  = temp1;
                         sISRHigh[SaveIRQCounter].HighIRQ = temp3;
-                        } 
-#endif /* ACPI */ 
+                        }
+#endif /* ACPI */
                         if( (u8)temp && (u8)temp != 0xff )
                         {
                             pcidev->irq_resource[0].flags = IORESOURCE_IRQ;

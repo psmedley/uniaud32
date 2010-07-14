@@ -1123,7 +1123,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 			rprintf(("Internal Error: Xrun\n"));
 		}
 
-		iRet = pHandle->file.f_op->write(&pHandle->file, (char *)ulBuffer, ulReqSize, &pHandle->file.f_pos);
+		iRet = pHandle->file.f_op->write(&pHandle->file, (char *)ulBuffer, ulSize, &pHandle->file.f_pos);
 
 		if (iRet < 0 ) break;
 		ulTransferred = iRet;
@@ -1131,15 +1131,14 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 		//first check how much room is left in the circular dma buffer
 		//this is done to make sure we don't block inside ALSA while trying to write
 		//more data than fits in the internal dma buffer.
-		ulSize = ulReqSize;
-		ulReqSize = min(ulReqSize, samples_to_bytes(status.avail));
+		ulSize = min(ulReqSize, samples_to_bytes(status.avail));
 
 		//printk("OSS32_WaveAddBuffer N:%d hw=%x app=%x avail=%x req size=%x size=%x\n",
 		//	CountWv, samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr), samples_to_bytes(status.avail), ulSize, ulReqSize);
 
-		if (ulReqSize == 0) {
+		if (ulSize == 0) {
 			rprintf(("OSS32_WaveAddBuffer: no room left in hardware buffer!!\n"));
-			rprintf(("state=%x avail=%x SizeReq=%x\n", status.state, status.avail, ulSize));
+			rprintf(("state=%x avail=%x SizeReq=%x\n", status.state, status.avail, ulReqSize));
 			*pulTransferred = 0;
 			return OSSERR_BUFFER_FULL;
 		}
@@ -1147,7 +1146,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 		// size should be aligned to channels number * samplesize  //PS+++ what is it and why?!?!?!
 		ulJ = 10;			 // 10 try if error
 		iRet = -11;
-		while (ulReqSize && ulJ && iRet)
+		while (ulSize && ulJ && iRet)
 		{
 			for (i=0; i < 1000; i++)
 			{
@@ -1168,7 +1167,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 				break;	   // We have any global error, don't try more
 			}
 
-			iRet = pHandle->file.f_op->write(&pHandle->file, (char *)ulBuffer, ulReqSize, &pHandle->file.f_pos);
+			iRet = pHandle->file.f_op->write(&pHandle->file, (char *)ulBuffer, ulSize, &pHandle->file.f_pos);
 
 			if (iRet < 0 ) {  // We have any error, don't try more
 				ulJ--;
@@ -1181,10 +1180,8 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 			ulTransferred += iRet;
 			// printk("written: now: %d, trans: %d need %d tot:%d\n", iRet, ulTransferred, ulReqSize,ulSize);
 			ulBuffer += iRet;
-			if (ulReqSize > iRet)
-				ulReqSize	-= iRet;
-			else
-				ulReqSize = 0;
+			if (ulSize > iRet) ulSize	-= iRet;
+			else ulSize = 0;
 		}
 #endif
 		break;
