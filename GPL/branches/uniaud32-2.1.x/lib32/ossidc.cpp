@@ -103,7 +103,7 @@ void FillCaps(ULONG deviceid);
 // This routine should be discarded after init time
 OSSRET OSS32_Initialize(void)
 {
-	short sI;
+	short sI, iTmp;
 
 	fStrategyInit = TRUE;
 
@@ -144,7 +144,13 @@ OSSRET OSS32_Initialize(void)
 		//dprintf(("calling: %x at %x", cardcalls[sI].card_id, cardcalls[sI].cinitcall));
 		if (cardcalls[sI].cinitcall == NULL) continue;
 		if (*cardcalls[sI].cinitcall == NULL) continue;
-		if ((*cardcalls[sI].cinitcall)() == 0) fnCardExitCall[nrCardsDetected] = *cardcalls[sI].cexitcall;
+		iTmp = (*cardcalls[sI].cinitcall)();
+		if (iTmp <= 0) continue;
+		while (iTmp) {
+			fnCardExitCall[nrCardsDetected++] = *cardcalls[sI].cexitcall;
+			iTmp--;
+			if (nrCardsDetected >= OSS32_MAX_AUDIOCARDS) break;
+		}
 		if (nrCardsDetected >= OSS32_MAX_AUDIOCARDS) break;
 	}
 
