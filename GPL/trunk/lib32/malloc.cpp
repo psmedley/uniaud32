@@ -414,12 +414,12 @@ void compact(void)
 	sFreed = 0;
     for (pmb=pmbFree->pmbNext; pmb; pmb=pmb->pmbNext) {
         if (after(pmb)  == pmbFree) {
-			// ddprintf("HEAP: compact found pointer %p (size=%ui) before pmbFree %p\n", (void __far *) pmb, pmb->uSize, (void __far *) pmbFree);
+			// dprintf(("HEAP: compact found pointer %p (size=%ui) before pmbFree %p\n", (void __far *) pmb, pmb->uSize, (void __far *) pmbFree));
             pmb->ulSize += HDR_SIZE + pmbFree->ulSize;
             remove(pmbFree);
             if (++sFreed == 2) break;
         } else if (after(pmbFree) == pmb) {
-			// ddprintf("HEAP: compact found pointer %p (size=%ui) after pmbFree %p\n", (void __far *) pmb, pmb->uSize, (void __far *) pmbFree);
+			// dprintf(("HEAP: compact found pointer %p (size=%ui) after pmbFree %p\n", (void __far *) pmb, pmb->uSize, (void __far *) pmbFree);
             pmbFree->ulSize += HDR_SIZE + pmb->ulSize;
             remove(pmb);
             if (++sFreed == 2) break;

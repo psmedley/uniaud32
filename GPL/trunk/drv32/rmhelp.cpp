@@ -149,7 +149,7 @@ BOOL RMRequestMem(ULONG ulMemBase, ULONG ulMemLength)
 //******************************************************************************
 //******************************************************************************
 //PS+++ see to irq.cpp
-#ifdef ACPI 
+#ifdef ACPI
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -158,7 +158,7 @@ struct SaveIRQForSlot
     ULONG  ulSlotNo;
     BYTE   LowIRQ;
     BYTE   HighIRQ;
-    BYTE   Pin;   
+    BYTE   Pin;
 };
 extern struct SaveIRQForSlot sISRHigh[];
 extern int  SaveIRQCounter;

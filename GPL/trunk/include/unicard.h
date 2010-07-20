@@ -50,7 +50,7 @@
 #define CARD_VORTEX     20 // unsupported
 #define CARD_CS5535	21
 
-#define CARDS_NUM       21
+#define CARDS_NUM       22
 
 #define CARD_STRING_SBLIVE	"SBLIVE"
 #define CARD_STRING_CMEDIA	"CMEDIA"

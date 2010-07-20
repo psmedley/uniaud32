@@ -86,7 +86,7 @@ int request_irq(unsigned irq, irq_handler_t handler,
     if( pSlot )
     {
 	if(RMRequestIRQ(/*hResMgr,*/ irq , (x0 & SA_SHIRQ) != 0) == FALSE) {
-            dprintf(("RMRequestIRQ failed for irq %d", irq));
+            rprintf(("RMRequestIRQ failed for irq %d", irq));
             //	return 0;
         }
 
@@ -112,7 +112,7 @@ int request_irq(unsigned irq, irq_handler_t handler,
         }
     }
 
-    dprintf(("request_irq: Unable to register irq handler for irq %d\n", irq & 0xff ));
+    rprintf(("request_irq: Unable to register irq handler for irq %d\n", irq & 0xff ));
     return 1;
 }
 
