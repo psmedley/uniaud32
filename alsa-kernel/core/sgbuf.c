@@ -117,9 +117,7 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 	struct snd_sg_page *table;
 	struct page **pgtable;
 
-#ifdef DEBUG
-	dprintf(("snd_malloc_sgbuf_pages. size %x",size));
-#endif
+	dprintf(("snd_malloc_sgbuf_pages. size %x", size));
 
 	dmab->area = NULL;
 	dmab->addr = 0;

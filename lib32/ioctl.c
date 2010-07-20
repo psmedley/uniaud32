@@ -283,7 +283,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
     pcminfo = (struct snd_pcm_info *)kmalloc(sizeof(struct snd_pcm_info)+sizeof(struct snd_pcm_hw_params), GFP_KERNEL);
     if(pcminfo == NULL) {
         DebugInt3();
-        printk("GetUniaudPcmCaps: out of memory\n");
+        rprintf(("GetUniaudPcmCaps: out of memory"));
         return OSSERR_OUT_OF_MEMORY;
     }
     params = (struct snd_pcm_hw_params *)(pcminfo+1);
@@ -301,14 +301,14 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
             ret = OSS32_WaveOpen(deviceid, (j == 0) ? OSS32_STREAM_WAVEOUT : OSS32_STREAM_WAVEIN, &streamid, i, 0);
             if(ret != OSSERR_SUCCESS)
             {
-                printk("GetUniaudPcmCaps: wave open error %i %s at pcm %i\n", ret,
-                       (j == 0) ?"PLAY":"REC", i);
+                rprintf(("GetUniaudPcmCaps: wave open error %i %s at pcm %i", ret,
+                       (j == 0) ?"PLAY":"REC", i));
                 continue;
 //                goto fail;
             }
             pHandle = (soundhandle *)streamid;
             if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
-                printk("GetUniaudPcmCaps: invalid stream id \n");
+                rprintf(("GetUniaudPcmCaps: invalid stream id"));
                 ret = OSSERR_INVALID_STREAMID;
 //                goto fail;
             }
@@ -316,10 +316,10 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
             //set operation to non-blocking
             pHandle->file.f_flags = O_NONBLOCK;
 
-            printk("GetUniaudPcmCaps: cp1. phandle %x\n", pHandle);
+            dprintf(("GetUniaudPcmCaps: cp1. phandle %x", pHandle));
             ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_INFO, (ULONG)pcminfo);
             if(ret != 0) {
-                printk("GetUniaudPcmCaps: SNDRV_PCM_IOCTL_INFO error %i\n", ret);
+                rprintf(("GetUniaudPcmCaps: SNDRV_PCM_IOCTL_INFO error %i", ret));
                 ret = UNIXToOSSError(ret);
                 continue;
             }
@@ -334,21 +334,21 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 
             pWaveCaps->nrStreams = pcminfo->subdevices_count;
 
-            printk("GetUniaudPcmCaps: cp2. nr of streams: %i\n", pWaveCaps->nrStreams);
+            dprintf(("GetUniaudPcmCaps: cp2. nr of streams: %i", pWaveCaps->nrStreams));
             //get all hardware parameters
             _snd_pcm_hw_params_any(params);
             ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)params);
             if(ret != 0) {
-                printk("GetUniaudPcmCaps: SNDRV_PCM_IOCTL_HW_REFINE error %i\n", ret);
+                rprintf(("GetUniaudPcmCaps: SNDRV_PCM_IOCTL_HW_REFINE error %i", ret));
                 ret = UNIXToOSSError(ret);
                 //goto fail;
                 continue;
             }
-            printk("GetUniaudPcmCaps: cp3\n");
+            //dprintf("GetUniaudPcmCaps: cp3"));
 
             pWaveCaps->ulMinChannels = hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS)->min;
             pWaveCaps->ulMaxChannels = hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS)->max;
-            printk("chan: from %i to %i\n", pWaveCaps->ulMinChannels,pWaveCaps->ulMaxChannels);
+            dprintf(("chan: from %i to %i\n", pWaveCaps->ulMinChannels,pWaveCaps->ulMaxChannels));
             pWaveCaps->ulChanFlags   = 0;
             if(pWaveCaps->ulMinChannels == 1) {
                 pWaveCaps->ulChanFlags |= OSS32_CAPS_PCM_CHAN_MONO;
@@ -367,7 +367,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
             pWaveCaps->ulMaxRate     = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->max;
 
             mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_RATE_MASK);
-//            mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
+			//mask = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
             pWaveCaps->ulRateFlags   = mask->bits[0];
 
             pWaveCaps->ulRateFlags   = ALSAToOSSRateFlags(pWaveCaps->ulRateFlags);
@@ -402,7 +402,7 @@ void FillCaps(ULONG deviceid)
 
     pcms = pcm_instances(deviceid);
 
-    printk("pcms = %i\n", pcms); //uncommented
+    dprintf(("FillCaps: pcms=%i\n", pcms));
     if (!pcmcaps[deviceid])
     {
         pcmcaps[deviceid] = (POSS32_DEVCAPS)kmalloc(sizeof(OSS32_DEVCAPS)*pcms, GFP_KERNEL);

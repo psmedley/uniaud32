@@ -66,7 +66,7 @@ struct SaveIRQForSlot
     ULONG  ulSlotNo;
     BYTE   LowIRQ;
     BYTE   HighIRQ;
-    BYTE   Pin;   
+    BYTE   Pin;
 } sISRHigh[8];     //FIX me to MAX_DEVICES or same
 
 int  SaveIRQCounter = 0;       //PS+++ current position in array
@@ -135,14 +135,14 @@ ULONG ALSA_Interrupt(ULONG ulSlotNo)
 {
     ULONG	ulIrqNo;
 
-   // enable interrupts that have higher priority we should 
+   // enable interrupts that have higher priority we should
    // allow higher priority interrupts
-   sti(); 
+   sti();
    if( process_interrupt(ulSlotNo, &ulIrqNo) ) {
-       // We've cleared all service requests.  
-       // Clear (disable) Interrupts, Send EOI 
+       // We've cleared all service requests.
+       // Clear (disable) Interrupts, Send EOI
        // and clear the carry flag (tells OS/2 kernel that Int was handled).
-       // Note carry flag is handled in setup.asm 
+       // Note carry flag is handled in setup.asm
        cli();
        DevEOI( (WORD16)ulIrqNo );
        return TRUE;

@@ -31,22 +31,23 @@ extern "C" {
 extern int DebugLevel;
 extern int wrOffset;
 extern char *szprintBuf;
-//void _cdecl DPD(int level, char *x, ...) ; /* not debugging: nothing */
-void _cdecl DPE(char *x, ...) ; /* not debugging: nothing */
+//void _cdecl DPE(char *x, ...) ; /* not debugging: nothing */
+int _cdecl printk(const char * fmt, ...);
 #ifdef __cplusplus
 }
 #endif
 
+
 /* rprintf always prints to the log buffer, and to SIO if enabled */
-#define rprintf(a) DPE a
+#define rprintf(a) printk a
 
 /* the dprintf functions only print if DEBUG is defined */
 #ifdef DEBUG
 #define DBG_MAX_BUF_SIZE 0x100000
-#define dprintf(a)	DPE a
-#define dprintf1(a)	if(DebugLevel > 0) DPE a
-#define dprintf2(a)	if(DebugLevel > 1) DPE a
-#define dprintf3(a)	if(DebugLevel > 2) DPE a
+#define dprintf(a)	printk a
+#define dprintf1(a)	if(DebugLevel > 0) printk a
+#define dprintf2(a)	if(DebugLevel > 1) printk a
+#define dprintf3(a)	if(DebugLevel > 2) printk a
 #define DebugInt3()	; //_asm int 3
 //#define DebInt3()	_asm int 3;
 #else
