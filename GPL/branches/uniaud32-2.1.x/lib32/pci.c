@@ -476,7 +476,7 @@ int pci_enable_device(struct pci_dev *dev)
 {
 	u16 pci_command;
 
-	printk("pci_enable_device %x\n", dev);
+	dprintf(("pci_enable_device %x\n", dev));
 
 	pci_read_config_word(dev, PCI_COMMAND, &pci_command);
 	pci_write_config_word(dev, PCI_COMMAND, pci_command | (PCI_COMMAND_IO | PCI_COMMAND_MEMORY));
@@ -494,21 +494,19 @@ int pci_register_driver(struct pci_driver *driver)
 	if (!driver->probe) return 0;
 
 	iNumCards = 0;
-	ulLast = 0;
-	pcidev=&pci_devices[0];
+
+	/* find an empty slot */
+	for (iTmp=0; iTmp<MAX_PCI_DEVICES; iTmp++) {
+		if (pci_devices[iTmp].devfn == 0) break;
+	}
+	if (iTmp >= MAX_PCI_DEVICES) return 0;
+	pcidev = &pci_devices[iTmp];
 
 	for( iTableIx = 0; driver->id_table[iTableIx].vendor; iTableIx++) {
-
-		if (pcidev->devfn) { /* find an empty slot */
-			for (iTmp=0; iTmp<MAX_PCI_DEVICES; iTmp++) {
-				if (pci_devices[iTmp].devfn == 0) break;
-			}
-			if (iTmp >= MAX_PCI_DEVICES) break;
-			pcidev=&pci_devices[iTmp];
-		}
-
-
+		ulLast = 0;
 		while( (ulLast = pci_query_device(&driver->id_table[iTableIx], pcidev, ulLast)) ) {
+
+
 			RMInit();
 			dprintf(("pci_register_driver: found=%x:%x searching for %x:%x\n",
 				pcidev->vendor, pcidev->device, driver->id_table[iTableIx].vendor, driver->id_table[iTableIx].device));
@@ -520,6 +518,13 @@ int pci_register_driver(struct pci_driver *driver)
 				// create adapter
 				RMDone((pcidev->device << 16) | pcidev->vendor);
 				iNumCards++;
+
+				/* find another empty slot */
+				for (iTmp=0; iTmp<MAX_PCI_DEVICES; iTmp++) {
+					if (pci_devices[iTmp].devfn == 0) break;
+				}
+				if (iTmp >= MAX_PCI_DEVICES) break;
+				pcidev = &pci_devices[iTmp];
 			} else pcidev->devfn = 0;
 
 			RMDone(0);
@@ -611,9 +616,7 @@ void *pci_alloc_consistent(struct pci_dev *hwdev,
 	void *ret = NULL;
 	int gfp = GFP_ATOMIC;
 	int order;
-#ifdef DEBUG
 	dprintf(("pci_alloc_consistent %d mask %x", size, (hwdev) ? hwdev->dma_mask : 0));
-#endif
 	if (hwdev == NULL || hwdev->dma_mask != 0xffffffff) {
 		//try not to exhaust low memory (< 16mb) so allocate from the high region first
 		//if that doesn't satisfy the dma mask requirement, then get it from the low
@@ -964,7 +967,7 @@ OSSRET OSS32_APMSuspend()
 	int i;
 	struct pci_driver *driver;
 
-	dprintf(("OSS32_APMSuspend"));
+	dprintf(("OSS32_APMSuspend 1"));
 
 	fSuspended = TRUE;
 
@@ -979,6 +982,7 @@ OSSRET OSS32_APMSuspend()
 		}
 	}
 
+	dprintf(("OSS32_APMSuspend 2"));
 	return OSSERR_SUCCESS;
 }
 

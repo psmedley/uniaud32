@@ -956,7 +956,7 @@ static snd_pcm_uframes_t snd_cmipci_pcm_pointer(struct cmipci *cm, struct cmipci
 		rem = snd_cmipci_read_w(cm, reg);
 		if (rem < rec->dma_size)
 			goto ok;
-	} 
+	}
 	printk(KERN_ERR "cmipci: invalid PCM pointer: %#x\n", rem);
 	return SNDRV_PCM_POS_XRUN;
 ok:

@@ -1442,7 +1442,7 @@ static int snd_ac97_mixer_build(struct snd_ac97 * ac97)
 	}
 	
 	/* build Beep controls */
-	if (!(ac97->flags & AC97_HAS_NO_PC_BEEP) && 
+	if (!(ac97->flags & AC97_HAS_NO_PC_BEEP) &&
 		((ac97->flags & AC97_HAS_PC_BEEP) ||
 	    snd_ac97_try_volume_mix(ac97, AC97_PC_BEEP))) {
 		for (idx = 0; idx < 2; idx++)
@@ -2360,6 +2360,7 @@ static void snd_ac97_powerdown(struct snd_ac97 *ac97)
 	udelay(100);
 	power |= AC97_PD_PR2;	/* Analog Mixer powerdown (Vref on) */
 	snd_ac97_write(ac97, AC97_POWERDOWN, power);
+#ifdef CONFIG_SND_AC97_POWER_SAVE
 	if (ac97_is_power_save_mode(ac97)) {
 		power |= AC97_PD_PR3;	/* Analog Mixer powerdown */
 		snd_ac97_write(ac97, AC97_POWERDOWN, power);
@@ -2369,6 +2370,7 @@ static void snd_ac97_powerdown(struct snd_ac97 *ac97)
 		power |= AC97_PD_PR4 | AC97_PD_PR5;
 		snd_ac97_write(ac97, AC97_POWERDOWN, power);
 	}
+#endif
 }
 
 
@@ -2913,16 +2915,16 @@ int snd_ac97_tune_hardware(struct snd_ac97 *ac97, struct ac97_quirk *quirk, cons
 {
 	int result;
 
-	snd_printdd("ac97_tune_hardware quirk=%lx override=%s pci=(%04x:%04x %04x:%04x) ac97=(%04x:%04x)\n",
+	dprintf(("ac97_tune_hardware: quirk=%lx override=%s pci=(%04x:%04x %04x:%04x) ac97=(%04x:%04x)",
 		quirk, override,
 		ac97->pci->vendor, ac97->pci->device, ac97->pci->subsystem_vendor, ac97->pci->subsystem_device,		
-		ac97->subsystem_vendor, ac97->subsystem_device);
+		ac97->subsystem_vendor, ac97->subsystem_device));
 	/* quirk overriden? */
 	if (override && strcmp(override, "-1") && strcmp(override, "default")) {
-		snd_printdd("ac97 quirk for %s (%04x:%04x)\n", override, ac97->subsystem_vendor, ac97->subsystem_device);
+		rprintf(("ac97 quirk for %s (%04x:%04x)", override, ac97->subsystem_vendor, ac97->subsystem_device));
 		result = apply_quirk_str(ac97, override);
 		if (result < 0)
-			snd_printk(KERN_ERR "applying quirk type %s failed (%d)\n", override, result);
+			rprintf(("applying quirk type %s failed (%d)", override, result));
 		return result;
 	}
 
@@ -2942,9 +2944,9 @@ int snd_ac97_tune_hardware(struct snd_ac97 *ac97, struct ac97_quirk *quirk, cons
 			if (quirk->subdevice != ac97->subsystem_device) continue;
 		}
 		if ( quirk->codec_id && (quirk->codec_id != ac97->id) ) continue;
-		snd_printdd("ac97 quirk for %s (%04x:%04x)\n", quirk->name, ac97->subsystem_vendor, ac97->subsystem_device);
+		rprintf(("ac97 quirk for %s (%04x:%04x)", quirk->name, ac97->subsystem_vendor, ac97->subsystem_device));
 		result = apply_quirk(ac97, quirk->type);
-		if (result < 0) snd_printk(KERN_ERR "applying quirk type %d for %s failed (%d)\n", quirk->type, quirk->name, result);
+		if (result < 0) rprintf(("applying quirk type %d for %s failed (%d)", quirk->type, quirk->name, result));
 		return result;
 	}
 	return 0;

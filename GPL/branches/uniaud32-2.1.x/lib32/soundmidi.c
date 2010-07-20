@@ -107,7 +107,7 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
 
     ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
     if(ret) {
-        dprintf(("Midi Open %d failed with error %d", streamtype, ret));
+        rprintf(("Midi Open %d failed with error %d", streamtype, ret));
         kfree(pHandle);
         return UNIXToOSSError(ret);
     }
@@ -115,19 +115,19 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
     *pStreamId = (ULONG)pHandle;
 
     pHandle->state |= MIDISTATE_OPENED;
-    printk("Opened MIDI %x\n",(ULONG)pHandle);
-    if(streamtype == OSS32_STREAM_FM_MIDIOUT) 
+    dprintf(("Opened MIDI %x\n",(ULONG)pHandle));
+    if(streamtype == OSS32_STREAM_FM_MIDIOUT)
     {
         //get the client id
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_SEQ_IOCTL_CLIENT_ID, (ULONG)&pHandle->clientid);
         if(ret) {
-            dprintf(("Get client id failed with error %d", ret));
+            rprintf(("Get client id failed with error %d", ret));
             kfree(pHandle);
             return UNIXToOSSError(ret);
         }
-    
+
         //find the FM device
-        for(i=64;i<64+((deviceid+1)<<3);i++) 
+        for(i=64;i<64+((deviceid+1)<<3);i++)
         {
             memset((PVOID)__Stack32ToFlat(&clientinfo), 0, sizeof(clientinfo));
             clientinfo.client = i;
@@ -142,7 +142,7 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
             }
         }
         if(i == 64+((deviceid+1)<<3)) {
-            dprintf(("Couldn't find OPL3 device"));
+            rprintf(("Couldn't find OPL3 device"));
             ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
             kfree(pHandle);
             *pStreamId = 0;
@@ -158,13 +158,13 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
         portinfo.flags       = SNDRV_SEQ_PORT_TYPE_APPLICATION;
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_SEQ_IOCTL_CREATE_PORT, (ULONG)__Stack32ToFlat(&portinfo));
         if(ret) {
-            dprintf(("subscribe error %d", ret));
+            rprintf(("subscribe error %d", ret));
             kfree(pHandle);
             return UNIXToOSSError(ret);
         }
         pHandle->clientport = portinfo.addr.port;
         pHandle->state     |= MIDISTATE_PORTCREATED;
-        
+
         //subscribe to FM device port
         memset(&subs, 0, sizeof(subs));
         subs.dest.client   = pHandle->destclient;
@@ -173,12 +173,12 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
         subs.sender.port   = pHandle->clientport;
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_SEQ_IOCTL_SUBSCRIBE_PORT, (ULONG)__Stack32ToFlat(&subs));
         if(ret) {
-            dprintf(("subscribe error %d", ret));
+            rprintf(("subscribe error %d", ret));
             kfree(pHandle);
             return UNIXToOSSError(ret);
         }
         pHandle->state |= MIDISTATE_SUBSCRIBED;
-        
+
 #if 0
         //Load FM instruments (only done once)
         OSS32_FMMidiLoadInstruments((ULONG)pHandle);
@@ -199,7 +199,7 @@ OSSRET OSS32_MidiClose(OSSSTREAMID streamid)
         DebugInt3();
         return OSSERR_INVALID_STREAMID;
     }
-    printk("Closing MIDI %x\n",(ULONG)streamid);
+    dprintf(("Closing MIDI %x\n",(ULONG)streamid));
 
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
@@ -213,15 +213,15 @@ OSSRET OSS32_MidiClose(OSSSTREAMID streamid)
         subs.sender.port   = pHandle->clientport;
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_SEQ_IOCTL_UNSUBSCRIBE_PORT, (ULONG)__Stack32ToFlat(&subs));
         if(ret) {
-            dprintf(("unsubscribe error %d", ret));
+            rprintf(("unsubscribe error %d", ret));
             DebugInt3();
         }
     }
-    
+
     //delete port
     if(pHandle->state & MIDISTATE_SUBSCRIBED) {
         struct snd_seq_port_info       portinfo;
-        
+
         memset(&portinfo, 0, sizeof(portinfo));
         strcpy(portinfo.name, "Unamed port");
         portinfo.addr.client = pHandle->clientid;
@@ -247,7 +247,7 @@ OSSRET OSS32_MidiClose(OSSSTREAMID streamid)
 //******************************************************************************
 OSSRET OSS32_MidiWrite(OSSSTREAMID streamid, ULONG midiByte)
 {
-    printk("MIDI write %x\n",(ULONG)streamid);
+    dprintf(("MIDI write %x\n",(ULONG)streamid));
     return OSSERR_INVALID_STREAMID;
 }
 //******************************************************************************
@@ -268,7 +268,7 @@ OSSRET OSS32_MidiRead(OSSSTREAMID streamid, char *buffer, ULONG bufsize, ULONG *
     kfree(pHandle);   //free handle data
     if (ret > 0)
     {
-        printk("MIDI read %i bytes from %x. first byte is: %x\n",ret, (ULONG)streamid, (char*)buffer[0]);
+        dprintf(("MIDI read %i bytes from %x. first byte is: %x\n",ret, (ULONG)streamid, (char*)buffer[0]));
         *pTransferred = ret;
         return OSSERR_SUCCESS;
     }
@@ -278,7 +278,7 @@ OSSRET OSS32_MidiRead(OSSSTREAMID streamid, char *buffer, ULONG bufsize, ULONG *
 //******************************************************************************
 OSSRET OSS32_MidiQueryCaps(OSSSTREAMID streamid, POSS32_MIDICAPS pCaps)
 {
-    printk("MIDI query caps %x\n",(ULONG)streamid);
+    dprintf(("MIDI query caps %x\n",(ULONG)streamid));
     return OSSERR_INVALID_STREAMID;
 }
 //******************************************************************************
@@ -294,7 +294,7 @@ OSSRET OSS32_MidiCommand(OSSSTREAMID streamid, ULONG Cmd, BYTE channel, BYTE par
         DebugInt3();
         return OSSERR_INVALID_STREAMID;
     }
-    printk("MIDI command %x\n",(ULONG)streamid);
+    dprintf(("MIDI command %x\n",(ULONG)streamid));
 
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
@@ -333,7 +333,7 @@ OSSRET OSS32_MidiCommand(OSSSTREAMID streamid, ULONG Cmd, BYTE channel, BYTE par
     transferred = pHandle->file.f_op->write(&pHandle->file, (char *)__Stack32ToFlat(&fmevent), sizeof(fmevent), &pHandle->file.f_pos);
 
     if(transferred < 0) {
-        dprintf(("OSS32_MidiNoteOn failed!!"));
+        rprintf(("OSS32_MidiNoteOn failed!!"));
         DebugInt3();
         return UNIXToOSSError(transferred);
     }

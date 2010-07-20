@@ -3495,6 +3495,7 @@ out:
 }
 #endif /* CONFIG_SND_SUPPORT_OLD_API */
 
+#if 0 /* DAZ */
 #ifndef CONFIG_MMU
 static unsigned long snd_pcm_get_unmapped_area(struct file *file,
 					       unsigned long addr,
@@ -3518,6 +3519,7 @@ static unsigned long snd_pcm_get_unmapped_area(struct file *file,
 }
 #else
 # define snd_pcm_get_unmapped_area NULL
+#endif
 #endif
 
 /*

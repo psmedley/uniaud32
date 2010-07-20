@@ -280,7 +280,7 @@ ULONG ALSAToOSSRateFlags(ULONG fuRates)
 		   fuOSSRates |= OSS32_CAPS_PCM_RATE_32000;
 	   }
 	} else {
-	   printk("HDA audio detected - don't support 5512 - 32000 Hz audio sample rates\n");
+	   dprintf(("HDA audio detected - don't support 5512 - 32000 Hz audio sample rates\n"));
 	}
 	if(fuRates & SNDRV_PCM_RATE_44100) {
 		fuOSSRates |= OSS32_CAPS_PCM_RATE_44100;
@@ -330,22 +330,19 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 	struct snd_mask 		  *mask;
 	int max_ch;
 
-#ifdef DEBUG
 	dprintf(("OSS32_QueryDevCaps"));
-#endif
 //	  max_ch = GetMaxChannels(deviceid, OSS32_CAPS_WAVE_PLAYBACK);
 
 	//these structures are too big to put on the stack
 	pcminfo = (struct snd_pcm_info *)kmalloc(sizeof(struct snd_pcm_info)+sizeof(struct snd_pcm_hw_params), GFP_KERNEL);
 	if(pcminfo == NULL) {
 		DebugInt3();
-		printk("OSS32_QueryDevCaps: out of memory\n");
+		rprintf(("OSS32_QueryDevCaps: out of memory\n"));
 		return OSSERR_OUT_OF_MEMORY;
 	}
 	params = (struct snd_pcm_hw_params *)(pcminfo+1);
 
-	printk("Number of cards: %i",nrCardsDetected);
-	printk("dev id: %i",deviceid);
+	dprintf(("Number of cards=%i dev id=%i", nrCardsDetected, deviceid));
 	pDevCaps->nrDevices  = 1;//nrCardsDetected;
 //	  pDevCaps->nrDevices  = nrCardsDetected;
 	pDevCaps->ulCaps	 = OSS32_CAPS_WAVE_PLAYBACK | OSS32_CAPS_WAVE_CAPTURE;
@@ -358,13 +355,13 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 		ret = OSS32_WaveOpen(deviceid, (i == 0) ? OSS32_STREAM_WAVEOUT : OSS32_STREAM_WAVEIN, &streamid, 0, 0);
 		if(ret != OSSERR_SUCCESS)
 		{
-			printk("OSS32_QueryDevCaps: wave open error %i\n", ret);
+			rprintf(("OSS32_QueryDevCaps: wave open error %i\n", ret));
 			DebugInt3();
 			goto fail;
 		}
 		pHandle = (soundhandle *)streamid;
 		if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
-			printk("OSS32_QueryDevCaps: invalid stream id \n");
+			rprintf(("OSS32_QueryDevCaps: invalid stream id \n"));
 			ret = OSSERR_INVALID_STREAMID;
 			goto fail;
 		}
@@ -373,7 +370,7 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 
 		ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_INFO, (ULONG)pcminfo);
 		if(ret != 0) {
-			printk("OSS32_QueryDevCaps: SNDRV_PCM_IOCTL_INFO error %i\n", ret);
+			rprintf(("OSS32_QueryDevCaps: SNDRV_PCM_IOCTL_INFO error %i\n", ret));
 			ret = UNIXToOSSError(ret);
 			goto fail;
 		}
@@ -383,14 +380,14 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 			}
 			else strncpy(pDevCaps->szDeviceName, pcminfo->id, sizeof(pDevCaps->szDeviceName));
 		}
-		printk("Device name: %s", pDevCaps->szDeviceName);
+		dprintf(("Device name: %s", pDevCaps->szDeviceName));
 		pWaveCaps->nrStreams = pcminfo->subdevices_count;
 
 		//get all hardware parameters
 		_snd_pcm_hw_params_any(params);
 		ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)params);
 		if(ret != 0) {
-			printk("OSS32_QueryDevCaps: SNDRV_PCM_IOCTL_HW_REFINE error %i\n", ret);
+			rprintf(("OSS32_QueryDevCaps: SNDRV_PCM_IOCTL_HW_REFINE error %i\n", ret));
 			ret = UNIXToOSSError(ret);
 			goto fail;
 		}
@@ -467,10 +464,10 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 
 	if(OSS32_MixQueryName(deviceid, &pDevCaps->szMixerName, sizeof(pDevCaps->szMixerName)) != OSSERR_SUCCESS) {
 		DebugInt3();
-		printk("OSS32_QueryDevCaps: OSS32_MixQueryName error\n");
+		rprintf(("OSS32_QueryDevCaps: OSS32_MixQueryName error\n"));
 		goto fail;
 	}
-	printk("OSS32_QueryDevCaps: devname: [%s]\n", pDevCaps->szDeviceName);
+	dprintf(("OSS32_QueryDevCaps: devname: [%s]\n", pDevCaps->szDeviceName));
 	kfree(pcminfo);
 	streamid = 0;
 
@@ -478,7 +475,7 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 	return OSSERR_SUCCESS;
 
 fail:
-	printk("OSS32_QueryDevCaps failed\n");
+	rprintf(("OSS32_QueryDevCaps failed\n"));
 	DebugInt3();
 	if(streamid)   OSS32_WaveClose(streamid);
 	if(pcminfo)    kfree(pcminfo);
@@ -496,26 +493,23 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 		*pStreamId = 0;
 	else
 	{
-		printk("ERROR: invalid stream id pointer passed\n");
+		rprintf(("ERROR: invalid stream id pointer\n"));
 		return OSSERR_OUT_OF_MEMORY;
 	}
 
 	if(alsa_fops == NULL) {
 		DebugInt3();
-#ifdef DEBUG
-		dprintf(("OSS32_WaveOpen: no devices"));
-#endif
-		printk("OSS32_WaveOpen: no devices\n");
+		rprintf(("OSS32_WaveOpen: no devices"));
 
 		return OSSERR_NO_DEVICE_AVAILABLE;
 	}
 
-//	  printk("dev id: %i\n",deviceid);
+	//dprintf(("dev id: %i\n",deviceid));
 
 	pHandle = kmalloc(sizeof(soundhandle), GFP_KERNEL);
 	if(pHandle == NULL) {
 		DebugInt3();
-		printk("OSS32_WaveOpen: out of memory\n");
+		rprintf(("OSS32_WaveOpen: out of memory\n"));
 		return OSSERR_OUT_OF_MEMORY;
 	}
 	memset(pHandle, 0, sizeof(soundhandle));
@@ -539,12 +533,12 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 	default:
 		DebugInt3();
 		kfree(pHandle);
-		printk("OSS32_WaveOpen: invalid parameter\n");
+		rprintf(("OSS32_WaveOpen: invalid parameter\n"));
 		return OSSERR_INVALID_PARAMETER;
 	}
 
 	ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
-	printk("OSS32_WaveOpen. ret: %i\n", ret);
+	//dprintf(("OSS32_WaveOpen. ret: %i\n", ret));
 	/* check if PCM already opened (stupid uniaud16.sys doesnt closes it) */
 	if (ret == -16)
 	{
@@ -563,7 +557,7 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 						//opened_handles[i].handle = 0;
 						kfree(opened_handles[i].handle);   //free handle data
 						ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
-						printk("OSS32_WaveOpen. Reopen ret: %i\n", ret);
+						dprintf(("OSS32_WaveOpen. Reopen ret: %i\n", ret));
 					}
 					else
 					{
@@ -591,14 +585,14 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 	if(ret) {
 		kfree(pHandle);
 		DebugInt3();
-		printk("OSS32_WaveOpen: open error: %i\n",ret);
+		rprintf(("OSS32_WaveOpen: open error: %i\n",ret));
 		return UNIXToOSSError(ret);
 	}
 	pHandle->magic = MAGIC_WAVE_ALSA32;
 	if (pStreamId)
 		*pStreamId = (ULONG)pHandle;
 	// filling opened handles table
-	printk("OSS32_WaveOpen. streamid %X\n",(ULONG)pHandle);
+	dprintf(("OSS32_WaveOpen. streamid %X\n",(ULONG)pHandle));
 	return OSSERR_SUCCESS;
 }
 //******************************************************************************
@@ -611,7 +605,7 @@ OSSRET OSS32_WaveClose(OSSSTREAMID streamid)
 
 	if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
 		DebugInt3();
-		printk("OSS32_WaveClose. invalid streamid %X\n",(ULONG)pHandle);
+		rprintf(("OSS32_WaveClose. invalid streamid %X\n",(ULONG)pHandle));
 		return OSSERR_INVALID_STREAMID;
 	}
 
@@ -622,7 +616,7 @@ OSSRET OSS32_WaveClose(OSSSTREAMID streamid)
 	{
 		if (opened_handles[i].handle == pHandle)
 		{
-			printk("Found phandle for closing: %x reuse flag: %i\n", pHandle, opened_handles[i].reuse);
+			dprintf(("Found phandle for closing: %x reuse flag: %i\n", pHandle, opened_handles[i].reuse));
 			if (!opened_handles[i].reuse)
 			{
 				ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
@@ -642,17 +636,17 @@ OSSRET OSS32_WaveClose(OSSSTREAMID streamid)
 	if (i >= 8*256)
 	{
 		//all already closed
-		printk("phandle %x not found\n", pHandle);
+		dprintf(("phandle %x not found\n", pHandle));
 //		  return OSSERR_SUCCESS;
 	}
 
 
 	if(ret) {
-		printk("Error closing wave. rc = %i\n", ret);
+		dprintf(("Error closing wave. rc = %i\n", ret));
 		DebugInt3();
 		return UNIXToOSSError(ret);
 	}
-	printk("OSS32_WaveClose. streamid %X\n",(ULONG)pHandle);
+	dprintf(("OSS32_WaveClose. streamid %X\n", (ULONG)pHandle));
 	return OSSERR_SUCCESS;
 }
 //******************************************************************************
@@ -662,15 +656,11 @@ OSSRET OSS32_WavePrepare(OSSSTREAMID streamid)
 	soundhandle    *pHandle = (soundhandle *)streamid;
 	int 			ret;
 
-#ifdef DEBUG
 	dprintf(("OSS32_WavePrepare"));
-#endif
 
 	if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
 		DebugInt3();
-//#ifdef DEBUG
-		printk("vladest: OSS32_WavePrepare: invalid streamID\n");
-//#endif
+		rprintf(("vladest: OSS32_WavePrepare: invalid streamID\n"));
 
 		  return OSSERR_INVALID_STREAMID;
 	}
@@ -679,7 +669,7 @@ OSSRET OSS32_WavePrepare(OSSSTREAMID streamid)
 
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
 	if (ret)
-		printk("Wave prepare ret = %i, streamid %X\n",ret,(ULONG)pHandle);
+		rprintf(("Wave prepare ret = %i, streamid %X\n",ret,(ULONG)pHandle));
 
 	return UNIXToOSSError(ret);;
 }
@@ -698,7 +688,7 @@ OSSRET OSS32_WaveStart(OSSSTREAMID streamid)
 	pHandle->file.f_flags = O_NONBLOCK;
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_START, 0);
 	if (ret)
-		printk("Wave start ret = %i, streamid %X\n",ret,(ULONG)pHandle);
+		rprintf(("Wave start ret = %i, streamid %X\n",ret,(ULONG)pHandle));
 
 	return UNIXToOSSError(ret);;
 }
@@ -718,7 +708,7 @@ OSSRET OSS32_WaveStop(OSSSTREAMID streamid)
 
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_DROP, 0);
 	if (ret)
-		printk("Wave stop ret = %i. streamid %X\n",ret,(ULONG)pHandle);
+		rprintf(("Wave stop ret = %i. streamid %X\n",ret,(ULONG)pHandle));
 
 	return UNIXToOSSError(ret);;
 }
@@ -738,7 +728,7 @@ OSSRET OSS32_WavePause(OSSSTREAMID streamid)
 
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PAUSE, 0);
 	if (ret)
-		printk("Wave pause ret = %i, streamid %X\n",ret,(ULONG)pHandle);
+		rprintf(("Wave pause ret = %i, streamid %X\n",ret,(ULONG)pHandle));
 
 	return UNIXToOSSError(ret);;
 }
@@ -758,7 +748,7 @@ OSSRET OSS32_WaveResume(OSSSTREAMID streamid)
 
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PAUSE, 1);
 	if (ret)
-		printk("Wave resume ret = %i, streamid %X\n",ret,(ULONG)pHandle);
+		rprintf(("Wave resume ret = %i, streamid %X\n",ret,(ULONG)pHandle));
 
 	return UNIXToOSSError(ret);;
 }
@@ -800,7 +790,7 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
 		  return OSSERR_INVALID_PARAMETER;
 	}
 	if ((int)pHwParams->ulNumChannels <= 0) {
-		printk("OSS32_WaveSetHwParams error. Invalid number of channels: %i\n", pHwParams->ulNumChannels);
+		rprintf(("OSS32_WaveSetHwParams error. Invalid number of channels: %i\n", pHwParams->ulNumChannels));
 		DebugInt3();
 		return OSSERR_INVALID_PARAMETER;
 	}
@@ -839,21 +829,21 @@ tryagain:
 						   OSSToALSADataType[pHwParams->ulDataType], 0);
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
 	if(ret != 0) {
-		dprintf(("invalid format %lx\n", OSSToALSADataType[pHwParams->ulDataType]));
+		rprintf(("invalid format %lx\n", OSSToALSADataType[pHwParams->ulDataType]));
 		return UNIXToOSSError(ret);
 	}
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
 						  pHwParams->ulBitsPerSample, 0);
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
 	if(ret != 0) {
-		dprintf(("invalid number of sample bits %d\n", pHwParams->ulBitsPerSample));
+		rprintf(("invalid number of sample bits %d\n", pHwParams->ulBitsPerSample));
 		return UNIXToOSSError(ret);
 	}
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
 						  pHwParams->ulBitsPerSample*pHwParams->ulNumChannels, 0);
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
 	if(ret != 0) {
-		dprintf(("invalid number of frame bits %d\n", pHwParams->ulBitsPerSample*pHwParams->ulNumChannels));
+		rprintf(("invalid number of frame bits %d\n", pHwParams->ulBitsPerSample*pHwParams->ulNumChannels));
 		return UNIXToOSSError(ret);
 	}
 
@@ -870,7 +860,7 @@ tryagain:
 						  pHwParams->ulSampleRate, 0);
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
 	if(ret != 0) {
-		dprintf(("32_WSetHwPms (first pass) error %d bps:%d fmt: %d ch: %d sr: %d\n",
+		rprintf(("32_WSetHwPms (first pass) error %d bps:%d fmt: %d ch: %d sr: %d\n",
 				  ret,
 				  pHwParams->ulBitsPerSample,
 				  OSSToALSADataType[pHwParams->ulDataType],
@@ -946,7 +936,7 @@ tryagain:
 		nrperiods = bufsize/periodbytes;
 	}
 	else {
-		dprintf(("32_WSHwPrms error. Invalid periodsize (=0). closing file\n"));
+		rprintf(("32_WSHwPrms error. Invalid periodsize (=0). closing file\n"));
 		DebugInt3();
 		return OSSERR_INVALID_PARAMETER;
 	}
@@ -963,7 +953,7 @@ tryagain:
 	//an odd nr of periods is not always a good thing (CMedia -> clicks during 8 bps playback),
 	//so we make sure it's an even number.
 	if(nrperiods == 1) {
-		dprintf(("32_WSHwPrms error. Invalid Num periods(=1). closing file\n"));
+		rprintf(("32_WSHwPrms error. Invalid Num periods(=1). closing file\n"));
 		DebugInt3();
 		return OSSERR_INVALID_PARAMETER;
 	}
@@ -1005,7 +995,7 @@ tryagain:
 	{
 		ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
 		fTryAgain = TRUE;
-		dprintf((" Error -77 from first IOCTL HW Parms"));
+		rprintf((" Error -77 from first IOCTL HW Parms"));
 		goto tryagain;
 	}
 
@@ -1023,7 +1013,7 @@ tryagain:
 				goto tryagain;
 			}
 		}
-		dprintf(("Error %ld second time.. Bailing", ret));
+		rprintf(("Error %ld second time.. Bailing", ret));
 		return UNIXToOSSError(ret);
 	}
 
@@ -1055,7 +1045,7 @@ tryagain:
 		   (status.state != SNDRV_PCM_STATE_SETUP) &&
 		   (status.state != SNDRV_PCM_STATE_RUNNING) &&
 		   (status.state != SNDRV_PCM_STATE_DRAINING))) {
-		dprintf(("Device is not in proper state: %lx. Calling prepare\n", status.state));
+		rprintf(("Device is not in proper state: %lx. Calling prepare\n", status.state));
 		ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
 	}
 	return UNIXToOSSError(ret);
@@ -1148,7 +1138,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 		iRet = -11;
 		while (ulSize && ulJ && iRet)
 		{
-			for (i=0; i < 1000; i++)
+			for (ulI=0; ulI < 1000; ulI++)
 			{
 				iRet1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
 				// If here any state and have free buffer to any byte
@@ -1156,7 +1146,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 				if (status.state == SNDRV_PCM_STATE_XRUN) {
 					rprintf(("Internal Error: Xrun\n"));
 				}
-				if (i > 998) {
+				if (ulI > 998) {
 					// printk("timeout stat %x avail:%d hw:%d app:%d\n",status.state,samples_to_bytes(status.avail),samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr));
 					iRet1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
 				}

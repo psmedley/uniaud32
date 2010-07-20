@@ -23,7 +23,7 @@
  */
 
 #define INCL_NOPMAPI
-#define INCL_DOSINFOSEG      // Need Global info seg in rm.cpp algorithms
+#define INCL_DOSINFOSEG 	 // Need Global info seg in rm.cpp algorithms
 #include <os2.h>
 
 #include <devhelp.h>
@@ -50,7 +50,7 @@ ULONG StratOpen(RP __far*)
 		deviceOwner = DEV_PDD_OWNER;
 	}
 	numOS2Opens++;
-        return RPDONE;
+		return RPDONE;
 }
 //******************************************************************************
 //******************************************************************************
@@ -65,31 +65,31 @@ static ULONG StratWrite(RP __far* _rp)
 //******************************************************************************
 ULONG StratInit(RP __far* _rp)
 {
-    ULONG rc;
+	ULONG rc;
 
-    RPInit __far* rp = (RPInit __far*)_rp;
-    rc = DiscardableInit(rp);
-    dprintf(("StratInit End rc=%d", rc));
-    return rc;
+	RPInit __far* rp = (RPInit __far*)_rp;
+	rc = DiscardableInit(rp);
+	dprintf(("StratInit End rc=%d", rc));
+	return rc;
 }
 //******************************************************************************
 // External initialization complete entry-point
 #ifdef ACPI
 // See desription in irq.cpp
-#include "irqos2.h"                 //PS+++
+#include "irqos2.h" 				//PS+++
 #ifdef __cplusplus
 extern "C" {
 #endif
-ULONG InitCompleteWas = 0;          //PS+++ Indication of InitComplete call
+ULONG InitCompleteWas = 0;			//PS+++ Indication of InitComplete call
 struct SaveIRQForSlot
 {
-    ULONG  ulSlotNo;
-    BYTE   LowIRQ;
-    BYTE   HighIRQ;
-    BYTE   Pin;
+	ULONG  ulSlotNo;
+	BYTE   LowIRQ;
+	BYTE   HighIRQ;
+	BYTE   Pin;
 };
 extern struct SaveIRQForSlot sISRHigh[];
-extern int  SaveIRQCounter;
+extern int	SaveIRQCounter;
 #ifdef __cplusplus
 }
 #endif
@@ -101,26 +101,24 @@ ULONG StratInitComplete(RP __far* _rp)
 {
 #ifdef ACPI
 //PS+++ Begin
-    ULONG  i, rc = 0;
+	ULONG  i, rc = 0;
 
-    InitCompleteWas = 1;
-    for (i = 0; i < SaveIRQCounter; i++)
-    {
-         dprintf(("Close IRQ%d - Open IRQ%d",(ULONG)sISRHigh[i].LowIRQ,(ULONG)sISRHigh[i].HighIRQ));
-         if (sISRHigh[i].HighIRQ)
-         {
-             ALSA_FreeIrq(sISRHigh[i].LowIRQ);
-             if (!ALSA_SetIrq(sISRHigh[i].HighIRQ, sISRHigh[i].ulSlotNo, 1))
-             {
-                 return (RPERR_COMMAND | RPDONE);
-             }
-         }
-    }
+	InitCompleteWas = 1;
+	for (i = 0; i < SaveIRQCounter; i++)
+	{
+		 dprintf(("Close IRQ%d - Open IRQ%d",(ULONG)sISRHigh[i].LowIRQ,(ULONG)sISRHigh[i].HighIRQ));
+		 if (sISRHigh[i].HighIRQ)
+		 {
+			 ALSA_FreeIrq(sISRHigh[i].LowIRQ);
+			 if (!ALSA_SetIrq(sISRHigh[i].HighIRQ, sISRHigh[i].ulSlotNo, 1))
+			 {
+				 return (RPERR_COMMAND | RPDONE);
+			 }
+		 }
+	}
 #endif
 //PS++ End
-#ifdef DEBUG
-    dprintf(("StratInitComplete"));
-#endif
+	dprintf(("StratInitComplete"));
   return(RPDONE);
 }
 //******************************************************************************
@@ -129,14 +127,13 @@ ULONG StratInitComplete(RP __far* _rp)
 ULONG StratShutdown(RP __far *_rp)
 #pragma on (unreferenced)
 {
- RPShutdown __far *rp = (RPShutdown __far *)_rp;
+	RPShutdown __far *rp = (RPShutdown __far *)_rp;
 
-#ifdef DEBUG
- dprintf(("StratShutdown %d", rp->Function));
-#endif
-  if(rp->Function == 1) {//end of shutdown
-  	OSS32_Shutdown();
-  }
+	dprintf(("StratShutdown Start %d", rp->Function));
+	if(rp->Function == 1) {//end of shutdown
+		OSS32_Shutdown();
+	}
+	dprintf(("StratShutdown End"));
   return(RPDONE);
 }
 //******************************************************************************
@@ -154,38 +151,38 @@ static ULONG StratError(RP __far*)
 typedef ULONG (*RPHandler)(RP __far* rp);
 RPHandler StratDispatch[] =
 {
-  StratInit,                  // 00 (BC): Initialization
-  StratError,                 // 01 (B ): Media check
-  StratError,                 // 02 (B ): Build BIOS parameter block
-  StratError,                 // 03 (  ): Unused
-  StratRead,                  // 04 (BC): Read
-  StratError,                 // 05 ( C): Nondestructive read with no wait
-  StratError,                 // 06 ( C): Input status
-  StratError,                 // 07 ( C): Input flush
-  StratWrite,                 // 08 (BC): Write
-  StratError,                 // 09 (BC): Write verify
-  StratError,                 // 0A ( C): Output status
-  StratError,                 // 0B ( C): Output flush
-  StratError,                 // 0C (  ): Unused
-  StratOpen,                  // 0D (BC): Open
-  StratClose,                 // 0E (BC): Close
-  StratError,                 // 0F (B ): Removable media check
-  StratIOCtl,                 // 10 (BC): IO Control
-  StratError,                 // 11 (B ): Reset media
-  StratError,                 // 12 (B ): Get logical unit
-  StratError,                 // 13 (B ): Set logical unit
-  StratError,                 // 14 ( C): Deinstall character device driver
-  StratError,                 // 15 (  ): Unused
-  StratError,                 // 16 (B ): Count partitionable fixed disks
-  StratError,                 // 17 (B ): Get logical unit mapping of fixed disk
-  StratError,                 // 18 (  ): Unused
-  StratError,                 // 19 (  ): Unused
-  StratError,                 // 1A (  ): Unused
-  StratError,                 // 1B (  ): Unused
-  StratShutdown,              // 1C (BC): Notify start or end of system shutdown
-  StratError,                 // 1D (B ): Get driver capabilities
-  StratError,                 // 1E (  ): Unused
-  StratInitComplete           // 1F (BC): Notify end of initialization
+  StratInit,				  // 00 (BC): Initialization
+  StratError,				  // 01 (B ): Media check
+  StratError,				  // 02 (B ): Build BIOS parameter block
+  StratError,				  // 03 (  ): Unused
+  StratRead,				  // 04 (BC): Read
+  StratError,				  // 05 ( C): Nondestructive read with no wait
+  StratError,				  // 06 ( C): Input status
+  StratError,				  // 07 ( C): Input flush
+  StratWrite,				  // 08 (BC): Write
+  StratError,				  // 09 (BC): Write verify
+  StratError,				  // 0A ( C): Output status
+  StratError,				  // 0B ( C): Output flush
+  StratError,				  // 0C (  ): Unused
+  StratOpen,				  // 0D (BC): Open
+  StratClose,				  // 0E (BC): Close
+  StratError,				  // 0F (B ): Removable media check
+  StratIOCtl,				  // 10 (BC): IO Control
+  StratError,				  // 11 (B ): Reset media
+  StratError,				  // 12 (B ): Get logical unit
+  StratError,				  // 13 (B ): Set logical unit
+  StratError,				  // 14 ( C): Deinstall character device driver
+  StratError,				  // 15 (  ): Unused
+  StratError,				  // 16 (B ): Count partitionable fixed disks
+  StratError,				  // 17 (B ): Get logical unit mapping of fixed disk
+  StratError,				  // 18 (  ): Unused
+  StratError,				  // 19 (  ): Unused
+  StratError,				  // 1A (  ): Unused
+  StratError,				  // 1B (  ): Unused
+  StratShutdown,			  // 1C (BC): Notify start or end of system shutdown
+  StratError,				  // 1D (B ): Get driver capabilities
+  StratError,				  // 1E (  ): Unused
+  StratInitComplete 		  // 1F (BC): Notify end of initialization
 };
 //******************************************************************************
 // Strategy entry point
@@ -198,7 +195,7 @@ ULONG Strategy(RP __far* rp);
 ULONG Strategy(RP __far* rp)
 {
   if (rp->Command < sizeof(StratDispatch)/sizeof(StratDispatch[0]))
-       	return(StratDispatch[rp->Command](rp));
+	   	return(StratDispatch[rp->Command](rp));
   else	return(RPERR_COMMAND | RPDONE);
 }
 //******************************************************************************

@@ -215,7 +215,7 @@ void snd_free_dev_pages(struct device *dev, size_t size, void *ptr,
 int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 			struct snd_dma_buffer *dmab)
 {
-    dprintf(("snd_dma_alloc_pages with size = %d",size));
+    dprintf(("snd_dma_alloc_pages with size = %d", size));
 	if (WARN_ON(!size))
 		return -ENXIO;
 	if (WARN_ON(!dmab))

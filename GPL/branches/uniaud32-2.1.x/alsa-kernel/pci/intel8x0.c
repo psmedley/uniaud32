@@ -2406,9 +2406,11 @@ static int snd_intel8x0_ich_chip_init(struct intel8x0 *chip, int probing)
 	cnt = igetdword(chip, ICHREG(GLOB_STA));
 	iputdword(chip, ICHREG(GLOB_STA), cnt & status);
 
+#ifdef CONFIG_SND_AC97_POWER_SAVE
 	if (snd_intel8x0_ich_chip_can_cold_reset(chip))
 		err = snd_intel8x0_ich_chip_cold_reset(chip);
 	else
+#endif
 		err = snd_intel8x0_ich_chip_reset(chip);
 	if (err < 0)
 		return err;
@@ -2795,7 +2797,7 @@ static void __devinit intel8x0_measure_ac97_clock(struct intel8x0 *chip)
 	t = stop_time.tv_sec - start_time.tv_sec;
 	t *= 1000000;
 	t += (stop_time.tv_nsec - start_time.tv_nsec) / 1000;
-	printk(KERN_INFO "%s: measured %lu usecs (%lu samples)\n", __func__, t, pos);
+	dprintf(("%s: measured %lu usecs (%lu samples)\n", __func__, t, pos));
 	if (t == 0) {
 		snd_printk(KERN_ERR "intel8x0: ?? calculation error..\n");
 		goto __retry;
@@ -2816,7 +2818,7 @@ static void __devinit intel8x0_measure_ac97_clock(struct intel8x0 *chip)
 		/* not 48000Hz, tuning the clock.. */
 		chip->ac97_bus->clock = (chip->ac97_bus->clock * 48000) / pos;
       __end:
-	printk(KERN_INFO "intel8x0: clocking to %d\n", chip->ac97_bus->clock);
+	dprintf(("intel8x0: clocking to %d\n", chip->ac97_bus->clock));
 	snd_ac97_update_power(chip->ac97[0], AC97_PCM_FRONT_DAC_RATE, 0);
 }
 

@@ -217,7 +217,7 @@ WORD32 DiscardableInit(RPInit __far* rp)
 		}
 	}
 	if (!HeapInit(HEAP_SIZE)) {
-		dprintf(("HeapInit failed!"));
+		rprintf(("HeapInit failed!"));
 	}
 
     args = MAKE_FARPTR32(rp->In.Args);

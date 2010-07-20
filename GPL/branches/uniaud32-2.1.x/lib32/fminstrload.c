@@ -41,7 +41,7 @@
 #include "soundoss.h"
 #include "instrfm.h"
 
-#define assert(a)   
+#define assert(a)
 
 typedef struct sbi_header
 {
@@ -100,7 +100,7 @@ static void load_sb (midihandle *pHandle, char *pFile, int filesize, int bank);
 OSSRET OSS32_FMMidiLoadInstruments(OSSSTREAMID streamid)
 {
     midihandle  *pHandle = (midihandle *)streamid;
-    
+
     if(pHandle == NULL || pHandle->magic != MAGIC_MIDI_ALSA32) {
         DebugInt3();
         return OSSERR_INVALID_STREAMID;
@@ -118,7 +118,7 @@ OSSRET OSS32_FMMidiLoadInstruments(OSSSTREAMID streamid)
 
     //load drums
     load_sb(pHandle, drumsopl3, sizeof(drumsopl3), 128);
-   
+
     return OSSERR_SUCCESS;
 }
 //******************************************************************************
@@ -225,7 +225,7 @@ static int load_patch (midihandle *pHandle, struct fm_instrument * fm_instr, int
 /*
  * Parse standard .sb or .o3 file
  */
-static void load_sb (midihandle *pHandle, char *pFile, int filesize, int bank) 
+static void load_sb (midihandle *pHandle, char *pFile, int filesize, int bank)
 {
     int len, i, offset = 0;
     int prg;
@@ -244,11 +244,11 @@ static void load_sb (midihandle *pHandle, char *pFile, int filesize, int bank)
 
         if (!strncmp (sbi_instr.header.key, "SBI\032", 4) || !strncmp (sbi_instr.header.key, "2OP\032", 4)) {
             fm_instr_type = FM_PATCH_OPL2;
-        } 
-        else 
+        }
+        else
         if (!strncmp (sbi_instr.header.key, "4OP\032", 4)) {
             fm_instr_type = FM_PATCH_OPL3;
-        } 
+        }
         else {
             fm_instr_type = 0;
         }
@@ -373,7 +373,7 @@ int snd_instr_header_malloc(snd_instr_header_t **ptr, size_t len)
 
     memset(*ptr, 0, sizeof(snd_instr_header_t) + len);
 	(*ptr)->len = len;
-          
+
 	return 0;
 }
 

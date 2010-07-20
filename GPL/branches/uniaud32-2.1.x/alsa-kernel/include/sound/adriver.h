@@ -1,3 +1,5 @@
+DAZ - Apparently this file is not used by the driver on OS2
+
 #ifndef __SOUND_LOCAL_DRIVER_H
 #define __SOUND_LOCAL_DRIVER_H
 
@@ -962,8 +964,8 @@ static inline unsigned long msecs_to_jiffies(const unsigned int m)
 #define module_param(name, type, perm) \
 	MODULE_PARM(name, SNDRV_MODULE_TYPE_##type)
 #else
-#define module_param_array(name, type, nump, perm) 
-#define module_param(name, type, perm) 
+#define module_param_array(name, type, nump, perm)
+#define module_param(name, type, perm)
 #endif /* TARGET_OS2 */
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 10)
 #include <linux/moduleparam.h>

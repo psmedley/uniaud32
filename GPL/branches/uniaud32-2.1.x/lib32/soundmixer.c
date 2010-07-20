@@ -473,7 +473,7 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
         goto fail;
     }
     if(idx == -1) {
-        dprintf(("Unknown control %d", line));
+        rprintf(("Unknown control %d", line));
         ret = OSSERR_INVALID_PARAMETER;
         goto fail;
     }
@@ -511,9 +511,9 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
         pElem->value.integer.value[1] = rVol;
     }
 
-	printk("OSS32_MixSetVolume of %s streamid %X to (%d,%d)(%d,%d) caps %d\n",
+	dprintf(("OSS32_MixSetVolume of %s streamid %X to (%d,%d)(%d,%d) caps %d",
 		pHandle->pids[idx].name, (ULONG)pHandle,
-		GET_VOLUME_L(volume), GET_VOLUME_R(volume), lVol, rVol, pElemInfo->value.integer.max);
+		GET_VOLUME_L(volume), GET_VOLUME_R(volume), lVol, rVol, pElemInfo->value.integer.max));
 
 #if 1
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
@@ -524,11 +524,11 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
         if (opened_handles[idx].handle != 0)
             cnt++;
 
-	printk("OSS32_MixSetVolume old cnt=%X line=%x lVol=%x rVol=%x\n", cnt, line, lVol, rVol);
+	dprintf(("OSS32_MixSetVolume old cnt=%X line=%x lVol=%x rVol=%x", cnt, line, lVol, rVol));
     //    if (((cnt == 1 && (lVol==0 && rVol==0)) || (lVol>0 && rVol>0)) ||
     if (cnt == 1 || line != OSS32_MIX_VOLUME_PCM)
     {
-		printk("OSS32_MixSetVolume Ioctl\n");
+		dprintf(("OSS32_MixSetVolume Ioctl"));
         ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
 
         if(idxMute != -1 && volume == 0) {
@@ -538,7 +538,7 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
 
             pElem->value.integer.value[0] = FALSE;  //switch, not mute control (inversed)
             pElem->value.integer.value[1] = FALSE;
-			printk("OSS32_MixSetVolume Ioctl mute\n");
+			dprintf(("OSS32_MixSetVolume Ioctl mute"));
             ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
         }
     }
@@ -547,7 +547,7 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     kfree(pElem);
     pElem = NULL;
     if(ret) {
-        printk("ret = %i\n", ret);
+        rprintf(("OSS32_MixSetVolume ret=%x", ret));
         DebugInt3();
         return UNIXToOSSError(ret);
     }

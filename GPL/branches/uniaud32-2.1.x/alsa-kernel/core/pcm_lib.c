@@ -359,6 +359,7 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 	}
       __delta:
 	delta = (new_hw_ptr - old_hw_ptr) % runtime->boundary;
+#ifdef CONFIG_SND_PCM_XRUN_DEBUG
 	if (xrun_debug(substream, in_interrupt ?
 			XRUN_DEBUG_PERIODUPDATE : XRUN_DEBUG_HWPTRUPDATE)) {
 		char name[16];
@@ -375,6 +376,7 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 			   (unsigned long)new_hw_ptr,
 			   (unsigned long)runtime->hw_ptr_base);
 	}
+#endif
 	/* something must be really wrong */
 	if (delta >= runtime->buffer_size + runtime->period_size) {
 		hw_ptr_error(substream,

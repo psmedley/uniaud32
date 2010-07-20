@@ -4798,8 +4798,8 @@ static int find_mute_led_gpio(struct hda_codec *codec, int default_polarity)
 	const struct dmi_device *dev = NULL;
 
 	if ((codec->subsystem_id >> 16) == PCI_VENDOR_ID_HP) {
-		while ((dev = dmi_find_device(DMI_DEV_TYPE_OEM_STRING,
-								NULL, dev))) {
+#if dmi_find_device != 0 /* DAZ to stop a compler warning */
+		while (dev = dmi_find_device(DMI_DEV_TYPE_OEM_STRING, NULL, dev)) {
 			if (sscanf(dev->name, "HP_Mute_LED_%d_%d",
 				  &spec->gpio_led_polarity,
 				  &spec->gpio_led) == 2) {
@@ -4812,6 +4812,7 @@ static int find_mute_led_gpio(struct hda_codec *codec, int default_polarity)
 				return 1;
 			}
 		}
+#endif
 
 		/*
 		 * Fallback case - if we don't find the DMI strings,

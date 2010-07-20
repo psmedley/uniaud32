@@ -263,7 +263,7 @@ void *__get_free_dma_pages(unsigned long size, unsigned long flags)
                 if(startpage != endpage) {
                     //oops, this didn't work, fail
                     VMFree((LINEAR)addr);
-                    dprintf(("get_free_dma_pages failed %x size:%x st:%x end:%x, trying wasteful method instead",physaddr,size,startpage,endpage));
+                    dprintf(("get_free_dma_pages failed %x size:%x st:%x end:%x, trying wasteful method instead", physaddr, size, startpage, endpage));
                     return 0;
                 }
             }
@@ -278,9 +278,9 @@ void *__get_free_dma_pages(unsigned long size, unsigned long flags)
     if(addr) {
         //only done to save size of memory block
         AddBaseAddress(addr, addr, size);
-        dprintf(("get_free_dma_pages %d -> %x (phys %x)", size, (ULONG)addr, virt_to_phys((void *)addr)));
         ulget_free_pagesMemUsed += size;
-        dprintf(("get_free_dma_pages: total alloc size %d", ulget_free_pagesMemUsed));
+        dprintf(("get_free_dma_pages: size=%x adr=%x (phys %x) total alloc size=%x",
+			size, (ULONG)addr, virt_to_phys((void *)addr), ulget_free_pagesMemUsed));
     }
 
     return (void *)addr;
@@ -353,9 +353,9 @@ void *__get_free_pages(int gfp_mask, unsigned long order)
         AddBaseAddress(addr, addr, allocsize);
     }
     if(addr) {
-        dprintf(("get_free_pages %d (%d) -> %x (phys %x)", allocsize, size, (ULONG)addr, virt_to_phys((void *)addr)));
+        //dprintf(("get_free_pages %d (%d) -> %x (phys %x)", allocsize, size, (ULONG)addr, virt_to_phys((void *)addr)));
         ulget_free_pagesMemUsed += allocsize;
-        dprintf(("get_free_pages: total alloc size %d", ulget_free_pagesMemUsed));
+        //dprintf(("get_free_pages: total alloc size %d", ulget_free_pagesMemUsed));
     }
     return (void *)addr;
 }
@@ -372,9 +372,9 @@ int free_pages(unsigned long addr, unsigned long order)
         DebugInt3();
     }
     else {
-        dprintf(("free_pages %x size %d", (ULONG)addr, size));
+        //dprintf(("free_pages %x size %d", (ULONG)addr, size));
         ulget_free_pagesMemUsed -= size;
-        dprintf(("free_pages: total alloc size %d", ulget_free_pagesMemUsed));
+        //dprintf(("free_pages: total alloc size %d", ulget_free_pagesMemUsed));
     }
 	//dprintf(("free_pages %x", addr));
 	return 0;

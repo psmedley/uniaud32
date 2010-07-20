@@ -1,6 +1,6 @@
 /*
  * Universal Interface for Intel High Definition Audio Codec
- * 
+ *
  * Generic proc interface
  *
  * Copyright (c) 2004 Takashi Iwai <tiwai@suse.de>
@@ -71,9 +71,10 @@ int             ilog2(unsigned long n)
     if (n)
         i++;                    /* Update our search position */
     return i;
-} 
+}
 #endif
 
+#ifndef TARGET_OS2
 static char *bits_names(unsigned int bits, char *names[], int size)
 {
 	int i, n;
@@ -88,6 +89,7 @@ static char *bits_names(unsigned int bits, char *names[], int size)
 
 	return buf;
 }
+#endif
 
 static const char *get_wid_type_name(unsigned int wid_value)
 {

@@ -548,7 +548,7 @@ static int conexant_build_controls(struct hda_codec *codec)
 		if (err < 0)
 			return err;
 		spec->multiout.share_spdif = 1;
-	} 
+	}
 	if (spec->dig_in_nid) {
 		err = snd_hda_create_spdif_in_ctls(codec,spec->dig_in_nid);
 		if (err < 0)
@@ -789,7 +789,7 @@ static void cxt5045_hp_automute(struct hda_codec *codec)
 
 	spec->hp_present = snd_hda_jack_detect(codec, 0x11);
 
-	bits = (spec->hp_present || !spec->cur_eapd) ? HDA_AMP_MUTE : 0; 
+	bits = (spec->hp_present || !spec->cur_eapd) ? HDA_AMP_MUTE : 0;
 	snd_hda_codec_amp_stereo(codec, 0x10, HDA_OUTPUT, 0,
 				 HDA_AMP_MUTE, bits);
 }
@@ -897,7 +897,7 @@ static struct hda_verb cxt5045_init_verbs[] = {
 	{0x13, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT},
 	{ 0x13, AC_VERB_SET_CONNECT_SEL, 0x0 },
 	/* EAPD */
-	{0x10, AC_VERB_SET_EAPD_BTLENABLE, 0x2 }, /* default on */ 
+	{0x10, AC_VERB_SET_EAPD_BTLENABLE, 0x2 }, /* default on */
 	{0} /* end */
 };
 
@@ -1454,7 +1454,7 @@ static struct hda_verb cxt5047_test_init_verbs[] = {
 	 */
 	{0x18, AC_VERB_SET_DIGI_CONVERT_1, 0},
 
-	/* Ensure mic1, mic2, line1 pin widgets take input from the 
+	/* Ensure mic1, mic2, line1 pin widgets take input from the
 	 * OUT1 sum bus when acting as an output.
 	 */
 	{0x1a, AC_VERB_SET_CONNECT_SEL, 0},
@@ -1785,7 +1785,7 @@ static struct hda_verb cxt5051_init_verbs[] = {
 	/* SPDIF route: PCM */
 	{0x1c, AC_VERB_SET_CONNECT_SEL, 0x0},
 	/* EAPD */
-	{0x1a, AC_VERB_SET_EAPD_BTLENABLE, 0x2}, /* default on */ 
+	{0x1a, AC_VERB_SET_EAPD_BTLENABLE, 0x2}, /* default on */
 	{0x16, AC_VERB_SET_UNSOLICITED_ENABLE, AC_USRSP_EN|CONEXANT_HP_EVENT},
 	{0} /* end */
 };
@@ -2976,6 +2976,7 @@ static int patch_cxt5066(struct hda_codec *codec)
 {
 	struct conexant_spec *spec;
 	int board_config;
+	int rc;
 
 	spec = kzalloc(sizeof(*spec), GFP_KERNEL);
 	if (!spec)
@@ -3052,7 +3053,7 @@ static int patch_cxt5066(struct hda_codec *codec)
 		spec->port_d_mode = 0;
 		spec->dell_vostro = 1;
 		spec->mic_boost = 3; /* default 30dB gain */
-		snd_hda_attach_beep_device(codec, 0x13);
+		rc = snd_hda_attach_beep_device(codec, 0x13);
 
 		/* no S/PDIF out */
 		spec->multiout.dig_out_nid = 0;

@@ -303,7 +303,7 @@ snd_emu10k1_alloc_pages(struct snd_emu10k1 *emu, struct snd_pcm_substream *subst
 
 	if (snd_BUG_ON(!emu))
 		return NULL;
-	if (snd_BUG_ON(runtime->dma_bytes <= 0 ||
+	if (snd_BUG_ON(runtime->dma_bytes == 0 ||
 		       runtime->dma_bytes >= MAXPAGES * EMUPAGESIZE))
 		return NULL;
 	hdr = emu->memhdr;
@@ -369,7 +369,7 @@ struct snd_util_memblk *
 snd_emu10k1_synth_alloc(struct snd_emu10k1 *hw, unsigned int size)
 {
 	struct snd_emu10k1_memblk *blk;
-	struct snd_util_memhdr *hdr = hw->memhdr; 
+	struct snd_util_memhdr *hdr = hw->memhdr;
 
 	mutex_lock(&hdr->block_mutex);
 	blk = (struct snd_emu10k1_memblk *)__snd_util_mem_alloc(hdr, size);
@@ -395,7 +395,7 @@ EXPORT_SYMBOL(snd_emu10k1_synth_alloc);
 int
 snd_emu10k1_synth_free(struct snd_emu10k1 *emu, struct snd_util_memblk *memblk)
 {
-	struct snd_util_memhdr *hdr = emu->memhdr; 
+	struct snd_util_memhdr *hdr = emu->memhdr;
 	struct snd_emu10k1_memblk *blk = (struct snd_emu10k1_memblk *)memblk;
 	unsigned long flags;
 

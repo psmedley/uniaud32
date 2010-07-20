@@ -32,6 +32,8 @@ struct workqueue_struct *create_workqueue(const char *name);
 void destroy_workqueue(struct workqueue_struct *wq);
 int queue_work(struct workqueue_struct *wq, struct work_struct *work);
 void flush_workqueue(struct workqueue_struct *wq);
+int queue_delayed_work(struct workqueue_struct *wq, struct delayed_work *dwork, unsigned long delay);
+int cancel_delayed_work(struct delayed_work *dwork);
 
 #define INIT_WORK(_work, _func, _data)			\
 	do {						\
