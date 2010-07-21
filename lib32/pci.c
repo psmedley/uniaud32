@@ -546,21 +546,18 @@ int pci_module_init(struct pci_driver *drv)
 int pci_unregister_driver(struct pci_driver *driver)
 {
 	struct pci_dev *pcidev;
-	int i = 0, j;
+	int i, j;
 
-	while(driver->id_table[i].vendor)
-	{
-		for(j=0;j<MAX_PCI_DEVICES;j++)
-		{
-			if(pci_devices[j].vendor == driver->id_table[i].vendor &&
-			   pci_devices[j].device == driver->id_table[i].device)
-			{
-				if(driver->remove) {
-					driver->remove(&pci_devices[j]);
-				}
-			}
+	for (i=0; driver->id_table[i].vendor; i++) {
+		for(j=0; j<MAX_PCI_DEVICES; j++) {
+			pcidev = &pci_devices[j];
+			if (pcidev->devfn == 0) continue;
+			if(pcidev->vendor != driver->id_table[i].vendor) continue;
+			if ( (driver->id_table[i].device != PCI_ANY_ID) && (pcidev->device != driver->id_table[i].device) ) continue;
+			dprintf(("pci unreg match: %x:%x %x:%x", pci_devices[j].vendor, pci_devices[j].device, driver->id_table[i].vendor, driver->id_table[i].device));
+			if(!driver->remove) continue;
+			driver->remove(pcidev);
 		}
-		i++;
 	}
 	return 0;
 }
