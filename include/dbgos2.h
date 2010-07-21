@@ -31,7 +31,6 @@ extern "C" {
 extern int DebugLevel;
 extern int wrOffset;
 extern char *szprintBuf;
-//void _cdecl DPE(char *x, ...) ; /* not debugging: nothing */
 int _cdecl printk(const char * fmt, ...);
 #ifdef __cplusplus
 }

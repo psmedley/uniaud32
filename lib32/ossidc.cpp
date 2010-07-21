@@ -161,7 +161,7 @@ OSSRET OSS32_Initialize(void)
 		for(int i=0;i<nrCardsDetected;i++) {
 			FillCaps(i);
 		}
-		dprintf(("OSS32_Initialize: SUCCESS. Cards=%d", nrCardsDetected));
+		rprintf(("OSS32_Initialize: SUCCESS. Cards=%d", nrCardsDetected));
 		return OSSERR_SUCCESS;
 	}
 	rprintf(("OSS32_Initialize. FAILED"));
@@ -172,33 +172,21 @@ OSSRET OSS32_Initialize(void)
 //******************************************************************************
 OSSRET OSS32_Shutdown()
 {
-	dprintf(("OSS32_Shutdown 1"));
 	CallOSS16(IDC16_EXIT, 0, 0);
-	dprintf(("OSS32_Shutdown 2"));
 
 	for(int i=0;i<nrCardsDetected;i++) {
 		if(fnCardExitCall[i]) fnCardExitCall[i]();
 	}
 
-	dprintf(("OSS32_Shutdown 3"));
 	call_module_exit(alsa_mpu401_uart_exit);
-	dprintf(("OSS32_Shutdown 4"));
 	call_module_exit(alsa_opl3_seq_exit);
-	dprintf(("OSS32_Shutdown 5"));
 	call_module_exit(alsa_opl3_exit);
-	dprintf(("OSS32_Shutdown 6"));
 	call_module_exit(alsa_seq_exit);
-	dprintf(("OSS32_Shutdown 7"));
 	call_module_exit(alsa_rawmidi_exit);
-	dprintf(("OSS32_Shutdown 8"));
 	call_module_exit(alsa_timer_exit);
-	dprintf(("OSS32_Shutdown 9"));
 	call_module_exit(alsa_hwdep_exit);
-	dprintf(("OSS32_Shutdown 10"));
 	call_module_exit(alsa_pcm_exit);
-	dprintf(("OSS32_Shutdown 11"));
 	call_module_exit(alsa_sound_exit);
-	dprintf(("OSS32_Shutdown 12"));
 
 	return OSSERR_SUCCESS;
 }

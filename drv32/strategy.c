@@ -69,7 +69,7 @@ ULONG StratInit(RP __far* _rp)
 
 	RPInit __far* rp = (RPInit __far*)_rp;
 	rc = DiscardableInit(rp);
-	dprintf(("StratInit End rc=%d", rc));
+	//dprintf(("StratInit End rc=%d", rc));
 	return rc;
 }
 //******************************************************************************
@@ -118,8 +118,8 @@ ULONG StratInitComplete(RP __far* _rp)
 	}
 #endif
 //PS++ End
-	dprintf(("StratInitComplete"));
-  return(RPDONE);
+	//dprintf(("StratInitComplete"));
+	return(RPDONE);
 }
 //******************************************************************************
 //******************************************************************************
@@ -129,12 +129,11 @@ ULONG StratShutdown(RP __far *_rp)
 {
 	RPShutdown __far *rp = (RPShutdown __far *)_rp;
 
-	dprintf(("StratShutdown Start %d", rp->Function));
+	//dprintf(("StratShutdown %d", rp->Function));
 	if(rp->Function == 1) {//end of shutdown
 		OSS32_Shutdown();
 	}
-	dprintf(("StratShutdown End"));
-  return(RPDONE);
+	return(RPDONE);
 }
 //******************************************************************************
 //******************************************************************************
