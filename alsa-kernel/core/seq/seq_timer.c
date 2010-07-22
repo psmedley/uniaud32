@@ -46,7 +46,7 @@ static void snd_seq_timer_set_tick_resolution(struct snd_seq_timer_tick *tick,
 		tick->resolution = (tempo / ppq) * 1000;
 		tick->resolution += s;
 	}
-	if (tick->resolution <= 0)
+	if (tick->resolution == 0)  /* DAZ was 'unsigned <= 0' */
 		tick->resolution = 1;
 	snd_seq_timer_update_tick(tick, 0);
 }
@@ -399,7 +399,7 @@ snd_seq_real_time_t snd_seq_timer_get_cur_time(struct snd_seq_timer *tmr)
 	snd_seq_real_time_t cur_time;
 
 	cur_time = tmr->cur_time;
-	if (tmr->running) { 
+	if (tmr->running) {
 		struct timeval tm;
 		int usec;
 		do_gettimeofday(&tm);
@@ -413,7 +413,7 @@ snd_seq_real_time_t snd_seq_timer_get_cur_time(struct snd_seq_timer *tmr)
 		}
 		snd_seq_sanity_real_time(&cur_time);
 	}
-                
+
 	return cur_time;	
 }
 

@@ -711,6 +711,7 @@ static int snd_emu1010_load_firmware(struct snd_emu10k1 *emu, const char *filena
 	return 0;
 }
 
+#if kthread_create != 0 /* DAZ to stop compiler warning */
 static int emu1010_firmware_thread(void *data)
 {
 	struct snd_emu10k1 *emu = data;
@@ -772,6 +773,7 @@ static int emu1010_firmware_thread(void *data)
 	snd_printk(KERN_INFO "emu1010: firmware thread stopping\n");
 	return 0;
 }
+#endif
 
 /*
  * EMU-1010 - details found out from this driver, official MS Win drivers,
