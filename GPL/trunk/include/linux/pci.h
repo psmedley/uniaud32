@@ -701,6 +701,7 @@ static inline int snd_pci_enable_msi(struct pci_dev *dev) { return -1; }
 #define pci_enable_msi(dev) snd_pci_enable_msi(dev)
 #undef pci_disable_msi
 #define pci_disable_msi(dev)
+extern int snd_pci_dev_present(const struct pci_device_id *ids);
 #define pci_dev_present(x) snd_pci_dev_present(x)
 extern void * __ioremap(unsigned long offset, unsigned long size, unsigned long flags);
 static inline void *pci_ioremap_bar(struct pci_dev *pdev, int bar)

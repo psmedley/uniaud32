@@ -248,7 +248,7 @@ open_patch(struct snd_sf_list *sflist, const char __user *data,
 	if (is_special_type(parm.type)) {
 		parm.type |= SNDRV_SFNT_PAT_SHARED;
 		sf = newsf(sflist, parm.type, NULL);
-	} else 
+	} else
 		sf = newsf(sflist, parm.type, parm.name);
 	if (sf == NULL) {
 		return -ENOMEM;
@@ -542,7 +542,9 @@ load_info(struct snd_sf_list *sflist, const void __user *data, long count)
 	data += sizeof(hdr);
 	count -= sizeof(hdr);
 
+#pragma disable_message (136)
 	if (hdr.nvoices <= 0 || hdr.nvoices >= 100) {
+#pragma enable_message (136)
 		printk(KERN_ERR "Soundfont error: Illegal voice number %d\n",
 		       hdr.nvoices);
 		return -EINVAL;
@@ -1065,7 +1067,7 @@ load_guspatch(struct snd_sf_list *sflist, const char __user *data,
 		release += calc_gus_envelope_time
 			(patch.env_rate[5], patch.env_offset[4],
 			 patch.env_offset[5]);
-		zone->v.parm.volatkhld = 
+		zone->v.parm.volatkhld =
 			(snd_sf_calc_parm_hold(hold) << 8) |
 			snd_sf_calc_parm_attack(attack);
 		zone->v.parm.voldcysus = (calc_gus_sustain(patch.env_offset[2]) << 8) |

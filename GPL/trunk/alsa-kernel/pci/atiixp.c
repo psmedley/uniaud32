@@ -512,6 +512,7 @@ static int snd_atiixp_aclink_reset(struct atiixp *chip)
 
 	/* perform a software reset */
 	atiixp_update(chip, CMD, ATI_REG_CMD_AC_SOFT_RESET, ATI_REG_CMD_AC_SOFT_RESET);
+#pragma disable_message (302)
 	atiixp_read(chip, CMD);
 	udelay(10);
 	atiixp_update(chip, CMD, ATI_REG_CMD_AC_SOFT_RESET, 0);
@@ -529,6 +530,7 @@ static int snd_atiixp_aclink_reset(struct atiixp *chip)
 			break;
 		}
 	}
+#pragma enable_message (302)
 
 	/* deassert RESET and assert SYNC to make sure */
 	atiixp_update(chip, CMD, ATI_REG_CMD_AC_SYNC|ATI_REG_CMD_AC_RESET,

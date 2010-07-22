@@ -2388,9 +2388,11 @@ static int snd_intel8x0_ich_chip_init(struct intel8x0 *chip, int probing)
 	cnt = igetdword(chip, ICHREG(GLOB_STA));
 	iputdword(chip, ICHREG(GLOB_STA), cnt & status);
 
+#ifdef CONFIG_SND_AC97_POWER_SAVE
 	if (snd_intel8x0_ich_chip_can_cold_reset(chip))
 		err = snd_intel8x0_ich_chip_cold_reset(chip);
 	else
+#endif
 		err = snd_intel8x0_ich_chip_reset(chip);
 	if (err < 0)
 		return err;

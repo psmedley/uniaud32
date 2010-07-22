@@ -268,6 +268,8 @@ static void run_workqueue(struct workqueue_struct *wq)
 //******************************************************************************
 void flush_workqueue(struct workqueue_struct *wq)
 {
+	short sDAZ;
+
 	if (wq->task == current) {
 		run_workqueue(wq);
 	} else {
@@ -277,9 +279,14 @@ void flush_workqueue(struct workqueue_struct *wq)
 		set_current_state(TASK_UNINTERRUPTIBLE);
 		spin_lock_irq(&wq->lock);
 		add_wait_queue(&wq->work_done, &wait);
+		sDAZ = 0;
 		while (!list_empty(&wq->worklist)) {
+			if (sDAZ++ > 20) { // Temporary hack to prevent system hangs
+				rprintf(("flush_workqueue: can't empty list"));
+				break;
+			}			
 			spin_unlock_irq(&wq->lock);
-			schedule();
+			schedule();  // DAZ system hangs here because this function does nothing
 			spin_lock_irq(&wq->lock);
 		}
 		set_current_state(TASK_RUNNING);

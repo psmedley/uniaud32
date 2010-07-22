@@ -2477,6 +2477,7 @@ static int __devinit azx_create(struct snd_card *card, struct pci_dev *pci,
 		}
 	}
 
+#pragma disable_message (135,302)
 	/* allow 64bit DMA address if supported by H/W */
 	if ((gcap & ICH6_GCAP_64OK) && !pci_set_dma_mask(pci, DMA_BIT_MASK(64)))
 		pci_set_consistent_dma_mask(pci, DMA_BIT_MASK(64));
@@ -2484,6 +2485,7 @@ static int __devinit azx_create(struct snd_card *card, struct pci_dev *pci,
 		pci_set_dma_mask(pci, DMA_BIT_MASK(32));
 		pci_set_consistent_dma_mask(pci, DMA_BIT_MASK(32));
 	}
+#pragma enable_message (135,302)
 
 	/* read number of streams from GCAP register instead of using
 	 * hardcoded value
