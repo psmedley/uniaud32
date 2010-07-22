@@ -86,11 +86,10 @@ int snd_device_free(struct snd_card *card, void *device_data)
 			continue;
 		/* unlink */
 		list_del(&dev->list);
-		if (dev->state == SNDRV_DEV_REGISTERED &&
-		    dev->ops->dev_disconnect)
+		if (dev->state == SNDRV_DEV_REGISTERED && dev->ops->dev_disconnect) {
 			if (dev->ops->dev_disconnect(dev))
-				snd_printk(KERN_ERR
-					   "device disconnect failure\n");
+				snd_printk(KERN_ERR "device disconnect failure\n");
+		}
 		if (dev->ops->dev_free) {
 			if (dev->ops->dev_free(dev))
 				snd_printk(KERN_ERR "device free failure\n");

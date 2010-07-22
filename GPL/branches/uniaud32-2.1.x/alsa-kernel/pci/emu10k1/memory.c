@@ -303,7 +303,7 @@ snd_emu10k1_alloc_pages(struct snd_emu10k1 *emu, struct snd_pcm_substream *subst
 
 	if (snd_BUG_ON(!emu))
 		return NULL;
-	if (snd_BUG_ON(runtime->dma_bytes == 0 ||
+	if (snd_BUG_ON(runtime->dma_bytes == 0 || /* DAZ was unsigned <= 0 */
 		       runtime->dma_bytes >= MAXPAGES * EMUPAGESIZE))
 		return NULL;
 	hdr = emu->memhdr;
