@@ -1115,6 +1115,8 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 
 		iRet = pHandle->file.f_op->write(&pHandle->file, (char *)ulBuffer, ulSize, &pHandle->file.f_pos);
 
+		if (iRet != ulSize) rprintf(("WaveAddBuffer: ReqSize=%x Size=%x iRet=%x\n", ulReqSize, ulSize, iRet));
+
 		if (iRet < 0 ) break;
 		ulTransferred = iRet;
 #else
@@ -1133,13 +1135,13 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 			return OSSERR_BUFFER_FULL;
 		}
 
+		rprintf(("WaveAddBuffer: ReqSize=%x Size=%x\n", ulReqSize, ulSize));
+
 		// size should be aligned to channels number * samplesize  //PS+++ what is it and why?!?!?!
 		ulJ = 10;			 // 10 try if error
 		iRet = -11;
-		while (ulSize && ulJ && iRet)
-		{
-			for (ulI=0; ulI < 1000; ulI++)
-			{
+		while (ulSize && ulJ && iRet) {
+			for (ulI=0; ulI < 1000; ulI++) {
 				iRet1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
 				// If here any state and have free buffer to any byte
 				if ((status.state != SNDRV_PCM_STATE_XRUN ) && samples_to_bytes(status.avail) ) break;
@@ -1147,26 +1149,31 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 					rprintf(("Internal Error: Xrun\n"));
 				}
 				if (ulI > 998) {
-					// printk("timeout stat %x avail:%d hw:%d app:%d\n",status.state,samples_to_bytes(status.avail),samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr));
+					rprintf(("timeout state=%x avail=%d hw=%d app=%d",status.state,samples_to_bytes(status.avail),samples_to_bytes(status.hw_ptr), samples_to_bytes(status.appl_ptr)));
 					iRet1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
 				}
 			}
 
 			if (iRet1 < 0) {
-				// printk("Status Error iRet1:%i trans: %i need %d tot:%d\n",iRet1,ulTransferred, ulReqSize,ulSize);
+				rprintf(("iRet1=%i trans=%x ReqSize=%x Size=%x\n", iRet1, ulTransferred, ulReqSize, ulSize));
 				break;	   // We have any global error, don't try more
 			}
 
 			iRet = pHandle->file.f_op->write(&pHandle->file, (char *)ulBuffer, ulSize, &pHandle->file.f_pos);
+			rprintf(("J=%x iRet=%x", ulJ, iRet));
 
 			if (iRet < 0 ) {  // We have any error, don't try more
 				ulJ--;
-				if ( iRet != -11 )
-				iRet1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
-				// printk("Error ret:%i ret1:%i trans: %d need %d tot:%d\n",iRet,iRet1,ulTransferred, ulReqSize,ulSize);
+				rprintf(("Error ret=%i ret1=%i trans=%x ReqSize=%x Size=%x", iRet, iRet1, ulTransferred, ulReqSize, ulSize));
+				if ( iRet != -11 ) {
+					rprintf(("Doing prepare"));
+					iRet1 = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
+				}
 				continue;
 			}
-			if (iRet == 0)  continue;
+			if (iRet == 0) {
+				continue;
+			}
 			ulTransferred += iRet;
 			// printk("written: now: %d, trans: %d need %d tot:%d\n", iRet, ulTransferred, ulReqSize,ulSize);
 			ulBuffer += iRet;
