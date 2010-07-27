@@ -40,11 +40,11 @@
 #include <dbgos2.h>
 #include <osspci.h>
 
-#define	MAX_PCI_BUSSES		16
+#define	MAX_PCI_BUSSES		256
 #define	MAX_PCI_DEVICES		16
 
 struct pci_dev pci_devices[MAX_PCI_DEVICES] = {0};
-struct pci_bus pci_busses[MAX_PCI_BUSSES] = {0};
+//struct pci_bus pci_busses[MAX_PCI_BUSSES] = {0};
 
 BOOL	fSuspended = FALSE;
 extern int nrCardsDetected;
@@ -157,7 +157,7 @@ static ULONG pci_query_device(const struct pci_device_id *id_table, struct pci_d
 #endif
 	u8		headerType;
 
-	busNr = (ulLast >> 8) & 0x1f;
+	busNr = (ulLast >> 8) & 0xff;
 	devNr = PCI_SLOT(ulLast);
 	funcNr = PCI_FUNC(ulLast);
 	if (ulLast) funcNr++;
@@ -199,7 +199,10 @@ static ULONG pci_query_device(const struct pci_device_id *id_table, struct pci_d
 
 				pcidev->vendor		= detectedId & 0xffff;
 				pcidev->device		= detectedId >> 16;
-				pcidev->bus 		= &pci_busses[busNr];
+				//pcidev->bus 		= &pci_busses[busNr];
+				pcidev->bus 		= kmalloc(sizeof(struct pci_bus), GFP_KERNEL);
+				if (pcidev->bus == NULL) return 0;
+				memset (pcidev->bus, 0, sizeof(struct pci_bus));
 				pcidev->bus->number = busNr;
 				pcidev->devfn		= PCI_DEVFN(devNr, funcNr);
 				pcidev->hdr_type	= headerType & 0x7f;
@@ -506,7 +509,6 @@ int pci_register_driver(struct pci_driver *driver)
 		ulLast = 0;
 		while( (ulLast = pci_query_device(&driver->id_table[iTableIx], pcidev, ulLast)) ) {
 
-
 			RMInit();
 			dprintf(("pci_register_driver: found=%x:%x searching for %x:%x\n",
 				pcidev->vendor, pcidev->device, driver->id_table[iTableIx].vendor, driver->id_table[iTableIx].device));
@@ -525,7 +527,10 @@ int pci_register_driver(struct pci_driver *driver)
 				}
 				if (iTmp >= MAX_PCI_DEVICES) break;
 				pcidev = &pci_devices[iTmp];
-			} else pcidev->devfn = 0;
+			} else {
+				kfree(pcidev->bus);
+				pcidev->devfn = 0;
+			}
 
 			RMDone(0);
 		}
@@ -552,11 +557,12 @@ int pci_unregister_driver(struct pci_driver *driver)
 		for(j=0; j<MAX_PCI_DEVICES; j++) {
 			pcidev = &pci_devices[j];
 			if (pcidev->devfn == 0) continue;
-			if(pcidev->vendor != driver->id_table[i].vendor) continue;
+			if (pcidev->vendor != driver->id_table[i].vendor) continue;
 			if ( (driver->id_table[i].device != PCI_ANY_ID) && (pcidev->device != driver->id_table[i].device) ) continue;
 			dprintf(("pci unreg match: %x:%x %x:%x", pci_devices[j].vendor, pci_devices[j].device, driver->id_table[i].vendor, driver->id_table[i].device));
-			if(!driver->remove) continue;
-			driver->remove(pcidev);
+			if (driver->remove) driver->remove(pcidev);
+			kfree(pcidev->bus);
+			pcidev->devfn = 0;
 		}
 	}
 	return 0;
