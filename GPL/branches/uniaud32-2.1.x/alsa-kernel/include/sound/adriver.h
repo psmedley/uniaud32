@@ -679,27 +679,24 @@ struct work_struct {
 int snd_compat_schedule_work(struct work_struct *work);
 #define schedule_work(w) snd_compat_schedule_work(w)
 struct workqueue_struct *snd_compat_create_workqueue(const char *name);
-#ifndef TARGET_OS2
-#define create_workqueue(name) snd_compat_create_workqueue((name))
-#endif
+
 void snd_compat_flush_workqueue(struct workqueue_struct *wq);
 #define flush_workqueue(wq) snd_compat_flush_workqueue((wq));
 void snd_compat_destroy_workqueue(struct workqueue_struct *wq);
-#ifndef TARGET_OS2
-#define destroy_workqueue(wq) snd_compat_destroy_workqueue((wq));
-#endif
 int snd_compat_queue_work(struct workqueue_struct *wq, struct work_struct *work);
-#ifndef TARGET_OS2
-#define queue_work(wq, work) snd_compat_queue_work((wq), (work))
-#endif
 int snd_compat_queue_delayed_work(struct workqueue_struct *wq, struct delayed_work *work, unsigned long delay);
-#ifndef TARGET_OS2
-#define queue_delayed_work(wq, work, delay) snd_compat_queue_delayed_work((wq), (work), (delay))
-#endif
 #define schedule_delayed_work(work, delay) snd_compat_queue_delayed_work(NULL, (work), (delay))
 int snd_compat_cancel_delayed_work(struct delayed_work *work);
 #define cancel_delayed_work(work) snd_compat_cancel_delayed_work(work)
 #define flush_scheduled_work()
+
+#ifndef TARGET_OS2
+#define create_workqueue(name) snd_compat_create_workqueue((name))
+#define destroy_workqueue(wq) snd_compat_destroy_workqueue((wq));
+#define queue_work(wq, work) snd_compat_queue_work((wq), (work))
+#define queue_delayed_work(wq, work, delay) snd_compat_queue_delayed_work((wq), (work), (delay))
+#endif
+
 #ifdef TARGET_OS2
 struct completion {
         unsigned int done;

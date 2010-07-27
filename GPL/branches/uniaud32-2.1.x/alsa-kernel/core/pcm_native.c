@@ -2599,15 +2599,15 @@ static int snd_pcm_common_ioctl1(struct file *file,
 	case SNDRV_PCM_IOCTL_DROP:
 		return snd_pcm_drop(substream);
 	case SNDRV_PCM_IOCTL_PAUSE:
-	{
+		{
 		int res;
 		snd_pcm_stream_lock_irq(substream);
 		res = snd_pcm_pause(substream, (int)(unsigned long)arg);
 		snd_pcm_stream_unlock_irq(substream);
 		return res;
+		}
 	}
-	}
-	snd_printd("unknown ioctl = 0x%x\n", cmd);
+	snd_printd("snd_pcm_common_ioctl1: unknown ioctl = 0x%x", cmd);
 	return -ENOTTY;
 }
 
