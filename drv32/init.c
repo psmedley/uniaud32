@@ -47,7 +47,11 @@ const char ERR_ERROR[]   = "ERROR: ";
 const char ERR_LOCK[]    = "Unable to lock 32 bit data & code segments, exiting...\r\r\n";
 const char ERR_INIT[]    = "Initialization failed\r\r\n";
 const char ERR_NAMES[]    = "Query names failed\r\r\n";
+#ifdef DEBUG
+const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"-DEBUG\r\nBased on ALSA "ALSA_VERSION"\r\n";
+#else
 const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"\r\nBased on ALSA "ALSA_VERSION"\r\n";
+#endif
 
 //const char szCopyRight1[]= "Copyright 2000-2002 InnoTek Systemberatung GmbH\r\n";
 const char szCopyRight2[]= "Copyright 2000-2010 The ALSA Project\r\n\r\n";
@@ -223,11 +227,18 @@ WORD32 DiscardableInit(RPInit __far* rp)
     args = MAKE_FARPTR32(rp->In.Args);
     GetParms(args);
 
+#ifdef DEBUG
+	rprintf(("Uniaud32 version %s-DEBUG",UNIAUD_VERSION));
+#else
+	rprintf(("Uniaud32 version %s",UNIAUD_VERSION));
+#endif
+
     if(fVerbose) {
         WriteString(szALSA, sizeof(szALSA)-1);
         WriteString(szCopyRight3, sizeof(szCopyRight3)-1);
         WriteString(szCopyRight2, sizeof(szCopyRight2)-1);
     }
+
 
     if(fDebug) {
     	sprintf(debugmsg, szCodeStartEnd, OffsetBeginCS32, OffsetFinalCS32);
