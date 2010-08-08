@@ -112,7 +112,6 @@ OSSRET OSS32_Initialize(void)
 		DebugInt3();
 		return OSSERR_INIT_FAILED;
 	}
-	rprintf(("\nUniaud version %s\n",UNIAUD_VERSION));
 	dprintf(("OSS32_Initialize. Start address: %X", OffsetBeginCS32));
 
 	if(call_module_init(alsa_sound_init) != 0)		 return OSSERR_INIT_FAILED;
