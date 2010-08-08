@@ -510,8 +510,8 @@ int pci_register_driver(struct pci_driver *driver)
 		while( (ulLast = pci_query_device(&driver->id_table[iTableIx], pcidev, ulLast)) ) {
 
 			RMInit();
-			dprintf(("pci_register_driver: found=%x:%x searching for %x:%x\n",
-				pcidev->vendor, pcidev->device, driver->id_table[iTableIx].vendor, driver->id_table[iTableIx].device));
+			dprintf(("pci_register_driver: found=%x:%x searching for %x:%x with %s",
+				pcidev->vendor, pcidev->device, driver->id_table[iTableIx].vendor, driver->id_table[iTableIx].device, driver->name));
 
 			if(driver->probe(pcidev, &driver->id_table[iTableIx]) == 0) {
 				pcidev->pcidriver = (void *)driver;

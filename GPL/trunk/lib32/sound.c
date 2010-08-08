@@ -1321,8 +1321,8 @@ OSSRET OSS32_WaveGetHwPtr(ULONG streamid, ULONG *pPosition)
 //******************************************************************************
 OSSRET OSS32_WaveGetStatus(ULONG streamid, ULONG *pStatus)
 {
+	struct snd_pcm_status status;
 	soundhandle 	   *pHandle = (soundhandle *)streamid;
-	struct snd_pcm_status	 status;
 	int 				ret;
 
 	if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
@@ -1339,13 +1339,9 @@ OSSRET OSS32_WaveGetStatus(ULONG streamid, ULONG *pStatus)
 
 	//Get the status of the stream
 	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
-
-	if(ret) {
-		DebugInt3();
-		return UNIXToOSSError(ret);
-	}
-
+	if(ret) return UNIXToOSSError(ret);
 	*pStatus = status.state;
+
 	return OSSERR_SUCCESS;
 }
 //******************************************************************************
