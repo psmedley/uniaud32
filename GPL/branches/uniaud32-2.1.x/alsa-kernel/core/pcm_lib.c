@@ -393,7 +393,6 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 #ifdef CONFIG_SND_PCM_XRUN_DEBUG
 	if (!xrun_debug(substream, XRUN_DEBUG_JIFFIESCHECK))
 		goto no_jiffies_check;
-#endif
 	/* Skip the jiffies check for hardwares with BATCH flag.
 	 * Such hardware usually just increases the position at each IRQ,
 	 * thus it can't give any strange position.
@@ -436,6 +435,7 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 		hw_base = new_hw_ptr - (new_hw_ptr % runtime->buffer_size);
 	}
  no_jiffies_check:
+#endif
 	if (delta > runtime->period_size + runtime->period_size / 2) {
 		hw_ptr_error(substream,
 			     "Lost interrupts? %s"

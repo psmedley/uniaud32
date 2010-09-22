@@ -26,6 +26,7 @@
 #define INCL_DOSMISC
 #include <os2.h>
 
+#include <dbgos2.h>
 #include <devhelp.h>
 #include <devtype.h>
 #include <devrp.h>
@@ -374,21 +375,19 @@ ULONG StratIOCtl(RP __far* _rp)
     case IOCTL_OSS32_CNTRL_PUT:
         {
 
-            if (rp->DataLength < sizeof(ULONG))
-            {
+            if (rp->DataLength < sizeof(ULONG)) {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
                 break;
             }
 
-            if (rp->ParmLength < sizeof(ULONG))
-            {
+            if (rp->ParmLength < sizeof(ULONG)) {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
                 break;
             }
 
-            pData = (ULONG *) linData;
+            pData = (ULONG *)linData;
             ULONG id = *((ULONG *)linParm);
             card_id = (id >> 16) & 0x0000FFFF;
             ctl_id = id & 0x0000FFFF;
