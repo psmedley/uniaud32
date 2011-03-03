@@ -148,55 +148,47 @@ BOOL RMRequestMem(ULONG ulMemBase, ULONG ulMemLength)
 
 //******************************************************************************
 //******************************************************************************
-//PS+++ see to irq.cpp
-#ifdef ACPI
-#ifdef __cplusplus
-extern "C" {
-#endif
-struct SaveIRQForSlot
+BOOL RMRequestIRQ(ULONG ulIrq, BOOL fShared, PHRESOURCE phRes)
 {
-    ULONG  ulSlotNo;
-    BYTE   LowIRQ;
-    BYTE   HighIRQ;
-    BYTE   Pin;
-};
-extern struct SaveIRQForSlot sISRHigh[];
-extern int  SaveIRQCounter;
-#ifdef __cplusplus
-}
-#endif
-#endif
-BOOL RMRequestIRQ(ULONG ulIrq, BOOL fShared)
-{
-  RESOURCESTRUCT	Resource;
-  HRESOURCE		hres;
-  APIRET		rc;
+	RESOURCESTRUCT	Resource;
+	HRESOURCE		hres;
+	APIRET		rc;
 
-  Resource.ResourceType          = RS_TYPE_IRQ;
-#ifdef ACPI  //PS+++
-  Resource.IRQResource.PCIIrqPin = (USHORT)(sISRHigh[SaveIRQCounter].Pin & 0xf);
-  if (sISRHigh[SaveIRQCounter].HighIRQ)
-      Resource.IRQResource.IRQLevel  = (USHORT)sISRHigh[SaveIRQCounter].HighIRQ & 0xff;
-  else
-      Resource.IRQResource.IRQLevel  = (USHORT)ulIrq & 0xff;
-#else
-  Resource.IRQResource.IRQLevel  = (USHORT)ulIrq & 0xff;
-  Resource.IRQResource.PCIIrqPin = 0;
-#endif
-  Resource.IRQResource.IRQFlags  = ( fShared ) ? RS_IRQ_SHARED : RS_IRQ_EXCLUSIVE;
+	Resource.ResourceType          = RS_TYPE_IRQ;
+	Resource.IRQResource.IRQLevel  = (USHORT)ulIrq & 0xff;
+	Resource.IRQResource.PCIIrqPin = 0;
+	Resource.IRQResource.IRQFlags  = ( fShared ) ? RS_IRQ_SHARED : RS_IRQ_EXCLUSIVE;
 
-  rc = RMAllocResource(DriverHandle,			// Handle to driver.
-		       FlatToSel((ULONG)&hres),		// OUT:  "allocated" resource node handle
+	rc = RMAllocResource(DriverHandle,			// Handle to driver.
+		       FlatToSel((ULONG)&hres),			// OUT:  "allocated" resource node handle
 		       FlatToSel((ULONG)&Resource));	// Resource to allocate.
 
-  if( rc == 0 && ctResHandles < MAX_RESHANDLES )
-  {
-    arResHandles[ctResHandles++] = hres;	return TRUE;
-  }
+	if (rc == 0) {
+		if (ctResHandles < MAX_RESHANDLES ) arResHandles[ctResHandles++] = hres;
+		*phRes = hres;
+	}
 
-  dprintf(("RMAllocResource[%d] IRQ rc = %d\n", ctResHandles, rc));
+	dprintf(("RMAllocResource[%d] IRQ rc = %d\n", ctResHandles, rc));
 
-  return rc == 0;
+	return rc == 0;
+}
+
+//******************************************************************************
+//******************************************************************************
+BOOL RMDeallocateIRQ(HRESOURCE hRes)
+{
+	ULONG ulI;
+
+	RMDeallocResource(DriverHandle, hRes);
+
+	for (ulI=0; ulI<ctResHandles; ulI++) {
+		if (arResHandles[ulI] == hRes) {
+			arResHandles[ulI] = 0;
+			break;
+		}		
+	}
+
+	return 0;
 }
 
 

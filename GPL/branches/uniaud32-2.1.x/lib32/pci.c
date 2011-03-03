@@ -134,26 +134,14 @@ int pcidev_deactivate(struct pci_dev *dev)
 
 //******************************************************************************
 //******************************************************************************
-#ifdef ACPI
-struct SaveIRQForSlot
-{
-	ULONG  ulSlotNo;
-	BYTE   LowIRQ;
-	BYTE   HighIRQ;
-	BYTE   Pin;
-};
-extern struct SaveIRQForSlot sISRHigh[];
-extern int	SaveIRQCounter;
-#endif
-
 //Find the next matching PCI device starting with the device specified by pcidev
 static ULONG pci_query_device(const struct pci_device_id *id_table, struct pci_dev near *pcidev, ULONG ulLast)
 {
 	int		resNo, addr;
-	u32 devNr, busNr, funcNr, detectedId, cfgaddrreg, temp, temp2;
+	u32 devNr, busNr, funcNr, detectedId, cfgaddrreg, ulPciAdr, ulTmp1, ulTmp2;
 #ifdef ACPI
 	APIRET			 rc;
-	ULONG			 temp1,temp3; //PS++
+	ULONG			 PicIRQ, ApicIRQ;
 #endif
 	u8		headerType;
 
@@ -167,8 +155,8 @@ static ULONG pci_query_device(const struct pci_device_id *id_table, struct pci_d
 		for(;devNr<32;devNr++) {
 			for(;funcNr<8;funcNr++)	{
 				headerType = 0;
-				temp = PCI_CONFIG_ENABLE | (busNr<<16) | (devNr<<11) | (funcNr<<8);
-				outl(temp, PCI_CONFIG_ADDRESS);
+				ulPciAdr = PCI_CONFIG_ENABLE | (busNr<<16) | (devNr<<11) | (funcNr<<8);
+				outl(ulPciAdr, PCI_CONFIG_ADDRESS);
 				detectedId = inl(PCI_CONFIG_DATA);
 
 				if ( detectedId == 0xffffffff ) {
@@ -176,21 +164,21 @@ static ULONG pci_query_device(const struct pci_device_id *id_table, struct pci_d
 					continue;
 				}
 
-				outl(temp + PCI_CLASS_REVISION, PCI_CONFIG_ADDRESS);
-				temp2 = inl(PCI_CONFIG_DATA) >> 8; /* get class */
+				outl(ulPciAdr + PCI_CLASS_REVISION, PCI_CONFIG_ADDRESS);
+				ulTmp2 = inl(PCI_CONFIG_DATA) >> 8; /* get class */
 
-				//dprintf(("det=%x(%x) %x need=%x%x %x", detectedId, headerType, temp2, id_table->device&0xffff, id_table->vendor, id_table->class));
+				//dprintf(("det=%x(%x) %x need=%x%x %x", detectedId, headerType, ulTmp2, id_table->device&0xffff, id_table->vendor, id_table->class));
 
 				if ( id_table->class ) {
-					if ( (temp2 & id_table->class_mask) != id_table->class ) continue;
+					if ( (ulTmp2 & id_table->class_mask) != id_table->class ) continue;
 				} else {
-					if ( (id_table->device == PCI_ANY_ID) && ((temp2 >> 8) != PCI_CLASS_MULTIMEDIA_AUDIO) ) continue;
+					if ( (id_table->device == PCI_ANY_ID) && ((ulTmp2 >> 8) != PCI_CLASS_MULTIMEDIA_AUDIO) ) continue;
 				}
 
 				if (id_table->vendor != (detectedId & 0xffff)) continue;
 				if ( (id_table->device != PCI_ANY_ID) && (id_table->device != (detectedId >> 16)) ) continue;
 
-				outl(temp | (PCI_HEADER_TYPE & ~3), PCI_CONFIG_ADDRESS);
+				outl(ulPciAdr | (PCI_HEADER_TYPE & ~3), PCI_CONFIG_ADDRESS);
 				headerType = inb(PCI_CONFIG_DATA + (PCI_HEADER_TYPE & 3));
 
 				if ( (headerType & 0x7f) != PCI_HEADER_TYPE_NORMAL ) continue;
@@ -223,57 +211,52 @@ static ULONG pci_query_device(const struct pci_device_id *id_table, struct pci_d
 				// I/O	and MEM
 				resNo = 0;
 				for( addr = PCI_BASE_ADDRESS_0; addr <= PCI_BASE_ADDRESS_5; addr += 4 ) {
-					pci_read_config_dword(pcidev, addr, &temp);
-					if( temp != 0 && temp != 0xffffffff ) {
+					pci_read_config_dword(pcidev, addr, &ulTmp1);
+					if( ulTmp1 != 0 && ulTmp1 != 0xffffffff ) {
 						pci_write_config_dword(pcidev, addr, 0xffffffff);
-						pci_read_config_dword(pcidev, addr, &temp2);
-						pci_write_config_dword(pcidev, addr, temp);
+						pci_read_config_dword(pcidev, addr, &ulTmp2);
+						pci_write_config_dword(pcidev, addr, ulTmp1);
 
-						if( temp & PCI_BASE_ADDRESS_SPACE_IO ) {
+						if( ulTmp1 & PCI_BASE_ADDRESS_SPACE_IO ) {
 							pcidev->resource[resNo].flags = IORESOURCE_IO | PCI_BASE_ADDRESS_SPACE_IO;
-							pcidev->resource[resNo].start = temp & PCI_BASE_ADDRESS_IO_MASK;
+							pcidev->resource[resNo].start = ulTmp1 & PCI_BASE_ADDRESS_IO_MASK;
 							pcidev->resource[resNo].end   = pcidev->resource[resNo].start +
-								~(temp2 & PCI_BASE_ADDRESS_IO_MASK) + 1;
+								~(ulTmp2 & PCI_BASE_ADDRESS_IO_MASK) + 1;
 						}
 						else
 						{
 							pcidev->resource[resNo].flags = IORESOURCE_MEM | IORESOURCE_MEM_WRITEABLE;
-							pcidev->resource[resNo].start = temp & PCI_BASE_ADDRESS_MEM_MASK;
+							pcidev->resource[resNo].start = ulTmp1 & PCI_BASE_ADDRESS_MEM_MASK;
 							pcidev->resource[resNo].end   = pcidev->resource[resNo].start +
-								~(temp2 & PCI_BASE_ADDRESS_MEM_MASK) + 1;
+								~(ulTmp2 & PCI_BASE_ADDRESS_MEM_MASK) + 1;
 						}
 
 						resNo++;
-
 					}
 				}
 
 				// IRQ and PIN
-				pci_read_config_dword(pcidev, PCI_INTERRUPT_LINE, &temp);
+				pci_read_config_dword(pcidev, PCI_INTERRUPT_LINE, &ulTmp1);
+				rprintf(("pci_query_device: PCI config IRQ=%d", ulTmp1&0xff));
 #ifdef ACPI
-				sISRHigh[SaveIRQCounter].Pin  = (temp >> 8) & 0xf;
-				temp2 = temp3 = 0;
 				rc = ACPIFindPCIDevice( (ULONG)busNr,						 // Bus
 										(ULONG)devNr,						 // Dev
 										(ULONG)(pcidev->devfn >> 8) & 7,	 // Function
-										&temp1, 							 // PIC IRQ
-										&temp3, 							 // APIC IRQ
+										&PicIRQ, 							 // PIC IRQ
+										&ApicIRQ, 							 // APIC IRQ
 										NULL,								 // ACPI handle to finding device
 										"Uniaud32");						 // Name for acpi log
 				if (!rc) {
 					// Check APIC IRQ, if we have /SMP /APIC, must be set
-					if (temp1) temp = (temp & (~0xff)) | (temp1 & 0xff);
-					// Check PIC IRQ
-					else if (temp3) temp = (temp & (~0xff)) | (temp3 & 0xff);
-					dprintf(("pci_query_device: IRQs ACPI PIC%d APIC%d", temp1, temp3));
-					sISRHigh[SaveIRQCounter].LowIRQ  = temp1;
-					sISRHigh[SaveIRQCounter].HighIRQ = temp3;
+					if (ApicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (ApicIRQ & 0xff);
+					else if (PicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (PicIRQ & 0xff);
+					rprintf(("pci_query_device: IRQs ACPI PIC=%ld APIC=%ld chosen=%d", PicIRQ, ApicIRQ, ulTmp1&0xff));
 				}
 #endif /* ACPI */
-				if( (u8)temp && (u8)temp != 0xff ) {
+				if( (u8)ulTmp1 && (u8)ulTmp1 != 0xff ) {
 					pcidev->irq_resource[0].flags = IORESOURCE_IRQ;
-					pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = temp & 0xffff;
-					pcidev->irq = (u8)temp;
+					pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = ulTmp1 & 0xffff;
+					pcidev->irq = (u8)ulTmp1;
 				}
 
 				return (0x8000 | (busNr << 8) | PCI_DEVFN(devNr, funcNr));
@@ -989,3 +972,38 @@ OSSRET OSS32_APMSuspend()
 	return OSSERR_SUCCESS;
 }
 
+void PciAdjustInterrupts() {
+	int i;
+	struct pci_dev *pcidev;
+	struct pci_driver *driver;
+	ULONG PicIRQ, ApicIRQ, ulTmp1, rc;
+
+	for (i=0; i<MAX_PCI_DEVICES; i++) {
+		if (!pci_devices[i].devfn) continue;
+		pcidev = &pci_devices[i];
+		rc = ACPIFindPCIDevice( pcidev->bus->number,				 // Bus
+								PCI_SLOT(pcidev->devfn),			 // Dev
+								PCI_FUNC(pcidev->devfn),			 // Function
+								&PicIRQ, 							 // PIC IRQ
+								&ApicIRQ, 							 // APIC IRQ
+								NULL,								 // ACPI handle to finding device
+								"Uniaud32");						 // Name for acpi log
+		if (!rc) {
+			ulTmp1 = 0;
+			// Check APIC IRQ, if we have /SMP /APIC, must be set
+			if (ApicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (ApicIRQ & 0xff);
+			else if (PicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (PicIRQ & 0xff);
+			rprintf(("PciAdjustInterrupts: IRQs ACPI PIC=%ld APIC=%ld was=%d chosen=%ld", PicIRQ, ApicIRQ, pcidev->irq, ulTmp1));
+			if( (u8)ulTmp1 && ((u8)ulTmp1 != 0xff) && ((u8)ulTmp1 != pcidev->irq) ) {
+				driver = pcidev->pcidriver;
+				if(driver && driver->suspend) driver->suspend(pcidev, SNDRV_CTL_POWER_D0);
+
+				pcidev->irq_resource[0].flags = IORESOURCE_IRQ;
+				pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = ulTmp1 & 0xffff;
+				pcidev->irq = (u8)ulTmp1;
+
+				if(driver && driver->resume) driver->resume(pcidev);
+			}
+		}
+	} /* for loop */
+}
