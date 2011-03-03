@@ -44,21 +44,21 @@ extern BOOL fSuspended; //pci.c
 //******************************************************************************
 
 static IRQ_SLOT		arSlots[MAX_IRQ_SLOTS] = { 0 };
-static ULONG           eoiIrq[255] = {0};
+static ULONG		   eoiIrq[255] = {0};
 
 
 //******************************************************************************
 //******************************************************************************
 static IRQ_SLOT *FindSlot(unsigned irq)
 {
-    IRQ_SLOT      *pSlot;
+	IRQ_SLOT	  *pSlot;
 
-    for( pSlot = arSlots; pSlot != &arSlots[MAX_IRQ_SLOTS]; pSlot++ )
-    {
-        if( pSlot->irqNo == irq )   return pSlot;
-    }
+	for( pSlot = arSlots; pSlot != &arSlots[MAX_IRQ_SLOTS]; pSlot++ )
+	{
+		if( pSlot->irqNo == irq )	return pSlot;
+	}
 
-    return NULL;
+	return NULL;
 }
 
 
@@ -66,54 +66,51 @@ static IRQ_SLOT *FindSlot(unsigned irq)
 //******************************************************************************
 
 int request_irq(unsigned irq, irq_handler_t handler,
-		    unsigned long x0, const char *x1, void *x2)
+			unsigned long ulSharedFlag, const char *pchName, void *pUserData)
 {
-    IRQ_SLOT 	*pSlot = FindSlot(irq & 0xff);
-    unsigned 	u, uSlotNo = (unsigned)-1;
-    if( !pSlot )
-    {
-        // find empty slot
-        for( uSlotNo = 0; uSlotNo < MAX_IRQ_SLOTS; uSlotNo++ )
-        {
-            if( arSlots[uSlotNo].flHandlers == 0 )
-            {
-                pSlot = &arSlots[uSlotNo];	break;
-            }
-        }
+	IRQ_SLOT 	*pSlot = FindSlot(irq & 0xff);
+	unsigned 	u, uSlotNo = (unsigned)-1;
+	ULONG hRes;
 
-    }
+	dprintf(("request_irq: Enter for irq %d", irq & 0xff ));
+	if ( !pSlot ) {
+		// find empty slot
+		for( uSlotNo = 0; uSlotNo < MAX_IRQ_SLOTS; uSlotNo++ ) {
+			if( arSlots[uSlotNo].flHandlers == 0 ) {
+				pSlot = &arSlots[uSlotNo];
+				break;
+			}
+		}
+	}
 
-    if( pSlot )
-    {
-	if(RMRequestIRQ(/*hResMgr,*/ irq , (x0 & SA_SHIRQ) != 0) == FALSE) {
-            rprintf(("RMRequestIRQ failed for irq %d", irq));
-            //	return 0;
-        }
+	if ( pSlot ) {
+		hRes = NULL;
+		if (RMRequestIRQ(irq, (ulSharedFlag & SA_SHIRQ) != 0, &hRes) == FALSE) {
+			rprintf(("RMRequestIRQ failed for irq %d", irq));
+			//	return 0;
+		}
+		pSlot->irqNo = irq & 0xff;
+		pSlot->hRes = hRes;
 
-        for( u = 0; u < MAX_SHAREDIRQS; u++ )
-        {
-            if( pSlot->irqHandlers[u].handler == NULL )
-            {
-                pSlot->irqNo = irq & 0xff;
-                pSlot->irqHandlers[u].handler = handler;
-                pSlot->irqHandlers[u].x0 = x0;
-                pSlot->irqHandlers[u].x1 = (char *)x1;
-                pSlot->irqHandlers[u].x2 = x2;
+		for ( u = 0; u < MAX_SHAREDIRQS; u++ ) {
+			if ( pSlot->irqHandlers[u].handler == NULL ) {
+				pSlot->irqHandlers[u].handler = handler;
+				pSlot->irqHandlers[u].x0 = ulSharedFlag;
+				pSlot->irqHandlers[u].x1 = (char *)pchName;
+				pSlot->irqHandlers[u].x2 = pUserData;
 
-                if( pSlot->flHandlers != 0 ||
-                   ALSA_SetIrq( irq & 0xff, uSlotNo, (x0 & SA_SHIRQ) != 0) )
-                {
-                    pSlot->flHandlers |= 1 << u;
-                    return 0;
-                }
+				if( pSlot->flHandlers != 0 || ALSA_SetIrq( irq & 0xff, uSlotNo, (ulSharedFlag & SA_SHIRQ) != 0) ) {
+					pSlot->flHandlers |= 1 << u;
+					return 0;
+				}
 
-                break;
-            }
-        }
-    }
+				break;
+			}
+		}
+	}
 
-    rprintf(("request_irq: Unable to register irq handler for irq %d\n", irq & 0xff ));
-    return 1;
+	rprintf(("request_irq: Unable to register irq handler for irq %d", irq & 0xff ));
+	return 1;
 }
 
 
@@ -121,33 +118,32 @@ int request_irq(unsigned irq, irq_handler_t handler,
 //******************************************************************************
 void free_irq(unsigned int irq, void *userdata)
 {
-    unsigned 	u;
-    IRQ_SLOT 	*pSlot;
+	unsigned 	u;
+	IRQ_SLOT 	*pSlot;
 
-    if( (pSlot = FindSlot(irq)) != NULL )
-    {
-        for( u = 0; u < MAX_SHAREDIRQS; u++ )
-        {
-            if( pSlot->irqHandlers[u].x2 == userdata )
-            {
-                pSlot->flHandlers &= ~(1 << u);
-                if( pSlot->flHandlers == 0 )
-                {
-                    ALSA_FreeIrq(pSlot->irqNo);
-                    pSlot->irqNo = 0;
-                    //	  pSlot->fEOI = 0;
-                }
+	if( (pSlot = FindSlot(irq&0xff)) != NULL ) {
+		for( u = 0; u < MAX_SHAREDIRQS; u++ ) {
+			if( pSlot->irqHandlers[u].x2 == userdata ) {
+				pSlot->flHandlers &= ~(1 << u);
+				if( pSlot->flHandlers == 0 ) {
+					dprintf(("free_irq: irq %d", irq & 0xff ));
+					ALSA_FreeIrq(pSlot->irqNo);
+					pSlot->irqNo = 0;
+					RMDeallocateIRQ(pSlot->hRes);
+					pSlot->hRes = NULL;
+					// pSlot->fEOI = 0;
+				}
 
-                pSlot->irqHandlers[u].handler = NULL;
-                pSlot->irqHandlers[u].x0 = 0;
-                pSlot->irqHandlers[u].x1 = NULL;
-                pSlot->irqHandlers[u].x2 = NULL;
+				pSlot->irqHandlers[u].handler = NULL;
+				pSlot->irqHandlers[u].x0 = 0;
+				pSlot->irqHandlers[u].x1 = NULL;
+				pSlot->irqHandlers[u].x2 = NULL;
 
-                return;
+				return;
 
-            }
-        }
-    }
+			}
+		}
+	}
 }
 
 
@@ -155,13 +151,13 @@ void free_irq(unsigned int irq, void *userdata)
 //******************************************************************************
 void eoi_irq(unsigned int irq)
 {
-    /*(void)irq; */
-    /*
-     IRQ_SLOT	*pSlot = FindSlot(irq);
+	/*(void)irq; */
+	/*
+	 IRQ_SLOT	*pSlot = FindSlot(irq);
 
-     if( pSlot )	pSlot->fEOI = 1;
-     */
-    eoiIrq[irq & 0xff]++;
+	 if( pSlot )	pSlot->fEOI = 1;
+	 */
+	eoiIrq[irq & 0xff]++;
 }
 
 
@@ -169,71 +165,71 @@ void eoi_irq(unsigned int irq)
 //******************************************************************************
 BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
 {
-    unsigned	u;
-    int rc;
-    IRQ_SLOT	*pSlot;
+	unsigned	u;
+	int rc;
+	IRQ_SLOT	*pSlot;
 
 	//dprintf(("enter int proc %d %d",ulSlotNo, *pulIrq));
 
-    if(fSuspended)
-    {//If our device is suspended, then we can't receive interrupts, so it must
-        //be for some other device
-        //Don't pass it to the linux handler as the device doesn't respond as expected
-        //when suspended
-        dprintf(("Slot %d IRQ %d suspended",ulSlotNo, *pulIrq));
-        return FALSE;
-    }
+	if(fSuspended)
+	{//If our device is suspended, then we can't receive interrupts, so it must
+		//be for some other device
+		//Don't pass it to the linux handler as the device doesn't respond as expected
+		//when suspended
+		dprintf(("Slot %d IRQ %d suspended",ulSlotNo, *pulIrq));
+		return FALSE;
+	}
 
-    if( ulSlotNo < MAX_IRQ_SLOTS )
-    {
-        pSlot = &arSlots[ulSlotNo];
+	if( ulSlotNo < MAX_IRQ_SLOTS )
+	{
+		pSlot = &arSlots[ulSlotNo];
 
-        for( u = 0; u < MAX_SHAREDIRQS; u++ )
-        {
-            if(pSlot && pSlot->irqHandlers[u].handler )
-            {
-                fInInterrupt = TRUE;
+		for( u = 0; u < MAX_SHAREDIRQS; u++ )
+		{
+			if(pSlot && pSlot->irqHandlers[u].handler )
+			{
+				fInInterrupt = TRUE;
 #if 0
-                rc = pSlot->irqHandlers[u].handler(pSlot->irqNo,
-                                                   pSlot->irqHandlers[u].x2, 0);
+				rc = pSlot->irqHandlers[u].handler(pSlot->irqNo,
+												   pSlot->irqHandlers[u].x2, 0);
 #else
-                rc = pSlot->irqHandlers[u].handler(pSlot->irqNo,
-                                                   pSlot->irqHandlers[u].x2);
+				rc = pSlot->irqHandlers[u].handler(pSlot->irqNo,
+												   pSlot->irqHandlers[u].x2);
 #endif
 
-                // HDA Hardware generates controller interrupts and stream interrupts
-                // the uniaud16 driver only cares about stream interrupts.
-                // azx_interrupt in alsa-kernel/pci/hda/hda_intel.c will return rc 2 if
-                // the interrupt is from the  controller. There is no need to call uniaud16
+				// HDA Hardware generates controller interrupts and stream interrupts
+				// the uniaud16 driver only cares about stream interrupts.
+				// azx_interrupt in alsa-kernel/pci/hda/hda_intel.c will return rc 2 if
+				// the interrupt is from the  controller. There is no need to call uniaud16
 				// for these interrupts
-                if ( rc == 2 ) {
-                    fInInterrupt = FALSE;
-                    *pulIrq = pSlot->irqNo;
-                    eoiIrq[pSlot->irqNo] = 0;
-                    return TRUE;
-                }
+				if ( rc == 2 ) {
+					fInInterrupt = FALSE;
+					*pulIrq = pSlot->irqNo;
+					eoiIrq[pSlot->irqNo] = 0;
+					return TRUE;
+				}
 
-                if (rc == 1) eoi_irq(pSlot->irqNo);
-                rc = (eoiIrq[pSlot->irqNo] > 0);
-                fInInterrupt = FALSE;
+				if (rc == 1) eoi_irq(pSlot->irqNo);
+				rc = (eoiIrq[pSlot->irqNo] > 0);
+				fInInterrupt = FALSE;
 
-                if( rc /*== 1 || pSlot->fEOI*/ ) {
+				if( rc /*== 1 || pSlot->fEOI*/ ) {
 
-                    *pulIrq = pSlot->irqNo;
-                    //	    pSlot->fEOI = 0;
+					*pulIrq = pSlot->irqNo;
+					//		pSlot->fEOI = 0;
 
-                    //ok, this interrupt was intended for us; notify the 16 bits MMPM/2 driver
-                    OSS32_ProcessIRQ();
+					//ok, this interrupt was intended for us; notify the 16 bits MMPM/2 driver
+					OSS32_ProcessIRQ();
 					//dprintf(("exit(1) int proc %d %d",ulSlotNo, *pulIrq));
-                    eoiIrq[pSlot->irqNo] = 0;
-                    return TRUE;
-                }
-            }
-        }
-    }
+					eoiIrq[pSlot->irqNo] = 0;
+					return TRUE;
+				}
+			}
+		}
+	}
 	//dprintf(("exit(0) int proc %d %d",ulSlotNo, *pulIrq));
 
-    return FALSE;
+	return FALSE;
 }
 
 
@@ -241,7 +237,7 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
 //******************************************************************************
 int in_interrupt()
 {
-    return fInInterrupt;
+	return fInInterrupt;
 }
 
 
@@ -249,7 +245,7 @@ int in_interrupt()
 //******************************************************************************
 void disable_irq(int irq)
 {
-    dprintf(("disable_irq %d NOT implemented", irq));
+	dprintf(("disable_irq %d NOT implemented", irq));
 }
 
 //******************************************************************************

@@ -32,7 +32,8 @@ extern "C" {
 VOID	RMInit(VOID);
 BOOL    RMRequestIO(ULONG ulIOBase, ULONG ulIOLength);
 BOOL    RMRequestMem(ULONG ulMemBase, ULONG ulMemLength);
-BOOL    RMRequestIRQ(ULONG ulIrq, BOOL fShared);
+BOOL    RMRequestIRQ(ULONG ulIrq, BOOL fShared, ULONG *phRes);
+BOOL    RMDeallocateIRQ(ULONG hRes);
 VOID	RMDone(ULONG DevID);
 
 #ifdef __cplusplus
