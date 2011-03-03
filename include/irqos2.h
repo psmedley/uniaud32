@@ -47,6 +47,7 @@ typedef struct
   unsigned              fEOI;
   unsigned              flHandlers;
   IRQHANDLER_INFO       irqHandlers[MAX_SHAREDIRQS];
+  ULONG					hRes;
 } IRQ_SLOT;
 
 
@@ -58,7 +59,7 @@ BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared);
 BOOL ALSA_FreeIrq(ULONG ulIrq);
 
 BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq);
-
+void PciAdjustInterrupts(void);
 ULONG os2gettimemsec();
 ULONG os2gettimesec();
 
