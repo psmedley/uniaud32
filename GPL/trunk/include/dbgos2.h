@@ -25,6 +25,12 @@
 #ifndef __COMMDBG_H__
 #define __COMMDBG_H__
 
+typedef struct {
+	unsigned short usState;
+	unsigned long ulIntServiced[4];
+	unsigned long ulIntUnserviced[4];
+} DBGINT;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

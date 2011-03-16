@@ -63,11 +63,13 @@ APIRET CDECL RMAllocResource(HDRIVER hDriver, FARPTR16 phResource,
 
 APIRET CDECL RMDeallocResource(HDRIVER hDriver, HRESOURCE hResource);
 
-APIRET CDECL RMGetNodeInfo(RMHANDLE RMHandle, 
+APIRET CDECL RMModifyResources(HDRIVER hDriver, HADAPTER hAdapter, USHORT ModifyAction, HRESOURCE hResource);
+
+APIRET CDECL RMGetNodeInfo(RMHANDLE RMHandle,
                            FARPTR16 pNodeInfo,
 	                   USHORT   BufferSize);
 
-APIRET CDECL RMDevIDToHandleList(RMHANDLE RMHandle, 
+APIRET CDECL RMDevIDToHandleList(RMHANDLE RMHandle,
                                  DEVID DeviceID,
     	                         DEVID FunctionID,
                                  DEVID CompatibleID,

@@ -112,10 +112,10 @@ OSSRET OSS32_Initialize(void)
 		DebugInt3();
 		return OSSERR_INIT_FAILED;
 	}
-	dprintf(("OSS32_Initialize. Start address: %X", OffsetBeginCS32));
+	dprintf(("OSS32_Initialize: Start address: %X", OffsetBeginCS32));
 
 	if(call_module_init(alsa_sound_init) != 0)		 return OSSERR_INIT_FAILED;
-	dprintf(("OSS32_Initialize1. Start address: %X", OffsetBeginCS32));
+	dprintf(("OSS32_Initialize1: Start address: %X", OffsetBeginCS32));
 	if(call_module_init(alsa_pcm_init) != 0)		 return OSSERR_INIT_FAILED;
 	if(call_module_init(alsa_hwdep_init) != 0)		 return OSSERR_INIT_FAILED;
 	if(call_module_init(alsa_timer_init) != 0)		 return OSSERR_INIT_FAILED;
@@ -163,7 +163,7 @@ OSSRET OSS32_Initialize(void)
 		rprintf(("OSS32_Initialize: SUCCESS. Cards=%d", nrCardsDetected));
 		return OSSERR_SUCCESS;
 	}
-	rprintf(("OSS32_Initialize. FAILED"));
+	rprintf(("OSS32_Initialize: FAILED"));
 	return OSSERR_INIT_FAILED;
 }
 //******************************************************************************
