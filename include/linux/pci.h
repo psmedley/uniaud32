@@ -373,7 +373,11 @@ struct pci_dev {
 	int (*activate)(struct pci_dev *dev);
 	int (*deactivate)(struct pci_dev *dev);
 #ifdef TARGET_OS2
-        void *pcidriver;
+	unsigned int picirq;
+	unsigned int apicirq;
+	unsigned long hAdapter;
+	unsigned long hDevice;
+	void *pcidriver;
 #endif
 };
 

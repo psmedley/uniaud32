@@ -72,7 +72,7 @@ int request_irq(unsigned irq, irq_handler_t handler,
 	unsigned 	u, uSlotNo = (unsigned)-1;
 	ULONG hRes;
 
-	dprintf(("request_irq: Enter for irq %d", irq & 0xff ));
+	rprintf(("request_irq: irq %d", irq & 0xff ));
 	if ( !pSlot ) {
 		// find empty slot
 		for( uSlotNo = 0; uSlotNo < MAX_IRQ_SLOTS; uSlotNo++ ) {
@@ -126,7 +126,7 @@ void free_irq(unsigned int irq, void *userdata)
 			if( pSlot->irqHandlers[u].x2 == userdata ) {
 				pSlot->flHandlers &= ~(1 << u);
 				if( pSlot->flHandlers == 0 ) {
-					dprintf(("free_irq: irq %d", irq & 0xff ));
+					rprintf(("free_irq: irq %d", irq & 0xff ));
 					ALSA_FreeIrq(pSlot->irqNo);
 					pSlot->irqNo = 0;
 					RMDeallocateIRQ(pSlot->hRes);
@@ -176,7 +176,7 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
 		//be for some other device
 		//Don't pass it to the linux handler as the device doesn't respond as expected
 		//when suspended
-		dprintf(("Slot %d IRQ %d suspended",ulSlotNo, *pulIrq));
+		rprintf(("Slot %d IRQ %d suspended",ulSlotNo, *pulIrq));
 		return FALSE;
 	}
 

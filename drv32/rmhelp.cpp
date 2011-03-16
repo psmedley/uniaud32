@@ -39,9 +39,11 @@ PFN			RM_Help0;
 PFN			RM_Help3;
 ULONG			RMFlags;
 
-static HDRIVER		DriverHandle = (HDRIVER)-1;
-static ULONG		ctResHandles = 0;
-static HRESOURCE	arResHandles[MAX_RESHANDLES];
+static HDRIVER DriverHandle = (HDRIVER)-1;
+static HDEVICE DeviceHandle = 0;
+static HADAPTER	AdapterHandle = 0;
+static ULONG ctResHandles = 0;
+static HRESOURCE arResHandles[MAX_RESHANDLES];
 
 
 //******************************************************************************
@@ -79,9 +81,8 @@ VOID RMInit(VOID)
 
      rc = RMCreateDriver( FlatToSel((ULONG)&DriverStruct), FlatToSel((ULONG)&hDriver) );
 
-     dprintf(("RMCreateDriver rc = %d\n", rc));
-
      if( rc == RMRC_SUCCESS )	DriverHandle = hDriver;
+     dprintf(("RMCreateDriver rc=%d DriverHandle=%x", rc, DriverHandle));
   }
 
   while( ctResHandles )
@@ -112,7 +113,7 @@ BOOL RMRequestIO(ULONG ulIOBase, ULONG ulIOLength)
     arResHandles[ctResHandles++] = hres;	return TRUE;
   }
 
-  dprintf(("RMAllocResource[%d] IO rc = %d\n", ctResHandles, rc));
+  dprintf(("RMAllocResource[%d] IO rc = %d", ctResHandles, rc));
 
   return FALSE;
 }
@@ -140,7 +141,7 @@ BOOL RMRequestMem(ULONG ulMemBase, ULONG ulMemLength)
     arResHandles[ctResHandles++] = hres;	return TRUE;
   }
 
-  dprintf(("RMAllocResource[%d] MEM rc = %d\n", ctResHandles, rc));
+  dprintf(("RMAllocResource[%d] MEM rc = %d", ctResHandles, rc));
 
   return rc == 0;
 }
@@ -151,7 +152,7 @@ BOOL RMRequestMem(ULONG ulMemBase, ULONG ulMemLength)
 BOOL RMRequestIRQ(ULONG ulIrq, BOOL fShared, PHRESOURCE phRes)
 {
 	RESOURCESTRUCT	Resource;
-	HRESOURCE		hres;
+	HRESOURCE		hRes;
 	APIRET		rc;
 
 	Resource.ResourceType          = RS_TYPE_IRQ;
@@ -160,15 +161,21 @@ BOOL RMRequestIRQ(ULONG ulIrq, BOOL fShared, PHRESOURCE phRes)
 	Resource.IRQResource.IRQFlags  = ( fShared ) ? RS_IRQ_SHARED : RS_IRQ_EXCLUSIVE;
 
 	rc = RMAllocResource(DriverHandle,			// Handle to driver.
-		       FlatToSel((ULONG)&hres),			// OUT:  "allocated" resource node handle
+		       FlatToSel((ULONG)&hRes),			// OUT:  "allocated" resource node handle
 		       FlatToSel((ULONG)&Resource));	// Resource to allocate.
 
+
 	if (rc == 0) {
-		if (ctResHandles < MAX_RESHANDLES ) arResHandles[ctResHandles++] = hres;
-		*phRes = hres;
+		*phRes = hRes;
+		if (DeviceHandle) {
+			dprintf(("RMRequestIRQ: DriverHandle=%x DeviceHandle=%x hRes=%x", DriverHandle, DeviceHandle, hRes));
+			rc = RMModifyResources(DriverHandle, DeviceHandle, RM_MODIFY_ADD, hRes);
+		} else {
+			if (ctResHandles < MAX_RESHANDLES ) arResHandles[ctResHandles++] = hRes;
+		}
 	}
 
-	dprintf(("RMAllocResource[%d] IRQ rc = %d\n", ctResHandles, rc));
+	dprintf(("RMAllocResource[%d] IRQ=%d rc=%d", ctResHandles, ulIrq, rc));
 
 	return rc == 0;
 }
@@ -177,24 +184,18 @@ BOOL RMRequestIRQ(ULONG ulIrq, BOOL fShared, PHRESOURCE phRes)
 //******************************************************************************
 BOOL RMDeallocateIRQ(HRESOURCE hRes)
 {
-	ULONG ulI;
+	APIRET rc;
 
-	RMDeallocResource(DriverHandle, hRes);
+	dprintf(("RMDeallocateIRQ: DriverHandle=%x DeviceHandle=%x hRes=%x", DriverHandle, DeviceHandle, hRes));
+	rc = RMModifyResources(DriverHandle, DeviceHandle, RM_MODIFY_DELETE, hRes);
 
-	for (ulI=0; ulI<ctResHandles; ulI++) {
-		if (arResHandles[ulI] == hRes) {
-			arResHandles[ulI] = 0;
-			break;
-		}		
-	}
-
-	return 0;
+	return rc == 0;
 }
 
 
 //******************************************************************************
 //******************************************************************************
-VOID RMDone(ULONG DevID)
+VOID RMDone(ULONG DevID, PHADAPTER phAdapter, PHDEVICE phDevice)
 {
   APIRET	rc;
   HDEVICE	hDevice;
@@ -204,8 +205,7 @@ VOID RMDone(ULONG DevID)
   char		AdapterName[sizeof(RM_ADAPTER_NAME)];
   char		szDeviceName[128];
   char		szMixerName[64];
-  struct
-  {
+  struct {
     ULONG	NumResource;
     HRESOURCE	hResource[MAX_RESHANDLES];
   } ahResource;
@@ -213,8 +213,8 @@ VOID RMDone(ULONG DevID)
   szDeviceName[0] = szMixerName[0] = '\0';
 
   if( DevID && OSS32_QueryNames(OSS32_DEFAULT_DEVICE,
-		 szDeviceName, sizeof(szDeviceName),
-		 szMixerName, sizeof(szMixerName), FALSE) == OSSERR_SUCCESS )
+		szDeviceName, sizeof(szDeviceName),
+		szMixerName, sizeof(szMixerName), FALSE) == OSSERR_SUCCESS )
   {
     switch(DevID) {
     case PCIID_VIA_686A:
@@ -284,7 +284,7 @@ VOID RMDone(ULONG DevID)
     case PCIID_AUDIGYLS2:
 	break;
 */
-    }
+    } /* switch */
 
 
     if( ctResHandles )
@@ -316,39 +316,44 @@ VOID RMDone(ULONG DevID)
 			   NULL,				// Parent device (defaults OK)
 			   NULL);				// Allocated resources.
 
-      dprintf(("RMCreateAdapter rc = %d\n", rc));
+      dprintf(("RMCreateAdapter rc=%d", rc));
 
       if( rc == 0 )
       {
-	if( !szDeviceName[0] )	strcpy(szDeviceName, "Unknown");
+		AdapterHandle = hAdapter;
+		if (phAdapter) *phAdapter = hAdapter;
+		if( !szDeviceName[0] )	strcpy(szDeviceName, "Unknown");
 
-	//NOTE: Assumes szDeviceName is a stack pointer!!
-	memset( (PVOID) &DeviceStruct, 0, sizeof(DeviceStruct) );
-	DeviceStruct.DevDescriptName = FlatToSel((ULONG)szDeviceName);
-	DeviceStruct.DevFlags        = DS_FIXED_LOGICALNAME;
-	DeviceStruct.DevType         = DS_TYPE_AUDIO;
-	DeviceStruct.pAdjunctList    = NULL;
+		//NOTE: Assumes szDeviceName is a stack pointer!!
+		memset( (PVOID) &DeviceStruct, 0, sizeof(DeviceStruct) );
+		DeviceStruct.DevDescriptName = FlatToSel((ULONG)szDeviceName);
+		DeviceStruct.DevFlags        = DS_FIXED_LOGICALNAME;
+		DeviceStruct.DevType         = DS_TYPE_AUDIO;
+		DeviceStruct.pAdjunctList    = NULL;
 
-	rc = RMCreateDevice(DriverHandle,			// Handle to driver
+		rc = RMCreateDevice(DriverHandle,			// Handle to driver
 			    FlatToSel((ULONG)&hDevice),		// (OUT) Handle to device, unused.
 			    FlatToSel((ULONG)&DeviceStruct),	// Device structure
 			    hAdapter,				// Parent adapter
 			    FlatToSel((ULONG)&ahResource));	// Allocated resources
 
-	dprintf(("RMCreateDevice rc = %d\n", rc));
+		dprintf(("RMCreateDevice rc=%d", rc));
 
-	if( rc == 0 )
-	{
-	  // no resource handles to be freed
-	  ctResHandles = 0;	return;
-	}
+		if( rc == 0 )
+		{
+		  DeviceHandle = hDevice;
+		  if (phDevice) *phDevice = hDevice;
+		  ctResHandles = 0;  // no resource handles to be freed
+			dprintf(("RMDone: DriverHandle=%x DeviceHandle=%x", DriverHandle, DeviceHandle));
+		  return;
+		}
 
-// !!! Not implemented in startup.asm
-//	RMDestroyAdapter(DriverHandle, hAdapter);
-      }
-    }
-    else	dprintf(("No resources allocated !!!\n"));
-  }
+		// !!! Not implemented in startup.asm
+		//	RMDestroyAdapter(DriverHandle, hAdapter);
+      } /* if rc == 0 */
+    } /* ctResHandles */
+    else	dprintf(("No resources allocated !!!"));
+  } /* if DevID */
 
 
   // free resource handles
@@ -357,4 +362,11 @@ VOID RMDone(ULONG DevID)
 }
 
 
+/* DAZ - dirty hack so that resource manager is updated correctly
+ * when using APIC and multiple adapters */
+VOID RMSetHandles(HADAPTER hAdapter, HDEVICE hDevice)
+{
+	AdapterHandle = hAdapter;
+	DeviceHandle = hDevice;
+}
 

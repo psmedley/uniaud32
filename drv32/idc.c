@@ -33,11 +33,13 @@ extern "C" {               // 16-bit header files are not C++ aware
 #include <ossidc32.h>
 #include <irqos2.h>
 #include <stacktoflat.h>
+#include <dbgos2.h>
 
 //16:32 address of 16 bits pdd idc handler
 IDC16_HANDLER idc16_PddHandler = 0;
 extern "C" int pcm_device;
 WORD32 OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket);
+extern "C" BOOL fRewired; //pci.c
 
 //packet pointer must reference a structure on the stack
 
@@ -48,6 +50,12 @@ OSSRET AlsaIDC(ULONG cmd, ULONG packet)
     PIDC32_PACKET pPacket = (PIDC32_PACKET)__Stack16ToFlat(packet);
     ULONG  oldfileid;
     OSSRET rc;
+
+	if (fRewired) {
+		fRewired = FALSE;
+		rprintf(("AlsaIDC: Resuming"));
+		OSS32_APMResume();
+	}
 
     //Sets file id in current task structure
     oldfileid = OSS32_SetFileId(pPacket->fileid);

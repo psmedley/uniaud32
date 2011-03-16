@@ -474,6 +474,42 @@ _RMAllocResource16 proc far
 _RMAllocResource16 endp
 
                 ALIGN 2
+                PUBLIC  _RMModifyResourcesOrg
+_RMModifyResourcesOrg proc far
+		enter16
+                test    byte ptr _RMFlags, 01H
+                je      short ModifyL1
+                lea     eax, [bp+6]
+                push    ss
+                push    ax
+                push    001bH
+                push    cs
+                call    near ptr _CallRM
+                mov     sp,bp
+                ret16
+ModifyL1:        test    byte ptr _RMFlags,02H
+                je      short ModifyL2
+                sub     ax,ax
+                ret16
+ModifyL2:        mov     ax,0001H
+                ret16
+_RMModifyResourcesOrg endp
+
+                ALIGN 2
+                PUBLIC  _RMModifyResources16
+_RMModifyResources16 proc far
+		enter32
+		xor	eax, eax
+		push	dword ptr [bp+22]
+		push	word ptr [bp+18]
+		push	dword ptr [bp+14]
+		push	dword ptr [bp+10]
+		call	_RMModifyResourcesOrg
+		add	sp, 14
+                ret32
+_RMModifyResources16 endp
+
+                ALIGN 2
                 PUBLIC  _RMCreateAdapterOrg
 _RMCreateAdapterOrg proc far
 		enter16
@@ -1397,6 +1433,7 @@ HelpClose endp
 ;resource manager wrappers (switch stack and call 16 bits function)
 ;*******************************************************************************
         public _RMAllocResource
+        public _RMModifyResources
         public _RMDeallocResource
         public _RMCreateDevice
         public _RMCreateAdapter
@@ -1419,6 +1456,19 @@ _RMAllocResource proc near
 	add	sp, 12
         retKEERM
 _RMAllocResource endp
+
+        ALIGN 4
+_RMModifyResources proc near
+	enterKEERM
+	xor	eax, eax
+	push	dword ptr [edi+20]
+	push	dword ptr [edi+16]
+	push	dword ptr [edi+12]
+	push	dword ptr [edi+8]
+	call	fword ptr RMModifyResources1632
+	add	sp, 16
+        retKEERM
+_RMModifyResources endp
 
 	ALIGN 	4
 _RMDeallocResource proc near
@@ -1530,6 +1580,7 @@ DATA32 	segment
     public  PDDName
     public  _MSG_TABLE32
     public  RMAllocResource1632
+    public  RMModifyResources1632
     public  RMDeallocResource1632
     public  RMCreateDevice1632
     public  RMCreateAdapter1632
@@ -1591,6 +1642,9 @@ ENDIF
 ;16:32 addresses of resource manager functions in 16 bits code segment
     RMAllocResource1632  dd OFFSET CODE16:_RMAllocResource16
 		         dw SEG CODE16:_RMAllocResource16
+		         dw 0
+    RMModifyResources1632  dd OFFSET CODE16:_RMModifyResources16
+		         dw SEG CODE16:_RMModifyResources16
 		         dw 0
     RMDeallocResource1632 dd OFFSET CODE16:_RMDeallocResource16
  		          dw SEG CODE16:_RMDeallocResource16
