@@ -45,6 +45,8 @@ static FARPTR16 *pISR[MAX_IRQ_SLOTS] = {
    &ISR07
 };
 
+extern DBGINT DbgInt;
+
 //******************************************************************************
 BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
 {
@@ -63,14 +65,14 @@ BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
     }
 
     if (rc != 0) {                    // If error ...
-       dprintf(("ERROR: RMSetIrq %d %d %x - failed to set shared - trying exclusive!!", ulIrq, fShared, ulSlotNo));
+       rprintf(("ERROR: RMSetIrq %d %d %x - failed to set shared - trying exclusive!!", ulIrq, fShared, ulSlotNo));
 	rc = DevIRQSet((WORD16) *pISR[ulSlotNo],
                        (WORD16)ulIrq,
                        0);   // failed, so try exclusive instead
     }
 
     if (rc != 0) {                    // If error ...
-        dprintf(("ERROR: RMSetIrq %d %d %x FAILED shared and exclusive mode!!", ulIrq, fShared, ulSlotNo));
+        rprintf(("ERROR: RMSetIrq %d %d %x FAILED shared and exclusive mode!!", ulIrq, fShared, ulSlotNo));
         DebugInt3();
         return FALSE;
     }
@@ -95,6 +97,7 @@ ULONG ALSA_Interrupt(ULONG ulSlotNo)
    // allow higher priority interrupts
    sti();
    if( process_interrupt(ulSlotNo, &ulIrqNo) ) {
+		DbgInt.ulIntServiced[DbgInt.usState]++;
        // We've cleared all service requests.
        // Clear (disable) Interrupts, Send EOI
        // and clear the carry flag (tells OS/2 kernel that Int was handled).
@@ -103,6 +106,7 @@ ULONG ALSA_Interrupt(ULONG ulSlotNo)
        DevEOI( (WORD16)ulIrqNo );
        return TRUE;
    }
+	DbgInt.ulIntUnserviced[DbgInt.usState]++;
    // Indicate Interrupt not serviced by setting carry flag before
    // returning to OS/2 kernel.  OS/2 will then shut down the interrupt!
    // NOTE: Make sure interrupts are not turned on again when this irq isn't ours!

@@ -16,6 +16,8 @@ void iounmap(void *addr);
 
 }
 
+extern DBGINT DbgInt;
+
 ULONG StratRead(RP __far* _rp)
 {
   RPRWV __far* rp = (RPRWV __far*)_rp;

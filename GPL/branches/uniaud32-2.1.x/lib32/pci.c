@@ -47,6 +47,7 @@ struct pci_dev pci_devices[MAX_PCI_DEVICES] = {0};
 //struct pci_bus pci_busses[MAX_PCI_BUSSES] = {0};
 
 BOOL	fSuspended = FALSE;
+BOOL	fRewired = FALSE;
 extern int nrCardsDetected;
 
 
@@ -247,16 +248,17 @@ static ULONG pci_query_device(const struct pci_device_id *id_table, struct pci_d
 										NULL,								 // ACPI handle to finding device
 										"Uniaud32");						 // Name for acpi log
 				if (!rc) {
-					// Check APIC IRQ, if we have /SMP /APIC, must be set
-					if (ApicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (ApicIRQ & 0xff);
-					else if (PicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (PicIRQ & 0xff);
+					if (PicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (PicIRQ & 0xff); // Choose Pic interrupt for init time processing
+					else if (ApicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (ApicIRQ & 0xff);
 					rprintf(("pci_query_device: IRQs ACPI PIC=%ld APIC=%ld chosen=%d", PicIRQ, ApicIRQ, ulTmp1&0xff));
+					pcidev->picirq = PicIRQ;   // Save the Pic and
+					pcidev->apicirq = ApicIRQ; // Save the Apic interrupt for switching later
 				}
 #endif /* ACPI */
 				if( (u8)ulTmp1 && (u8)ulTmp1 != 0xff ) {
 					pcidev->irq_resource[0].flags = IORESOURCE_IRQ;
 					pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = ulTmp1 & 0xffff;
-					pcidev->irq = (u8)ulTmp1;
+					pcidev->irq = (u8)ulTmp1; // This is the interrupt used for init time processing
 				}
 
 				return (0x8000 | (busNr << 8) | PCI_DEVFN(devNr, funcNr));
@@ -501,7 +503,7 @@ int pci_register_driver(struct pci_driver *driver)
 				pcidev->current_state = 4;
 
 				// create adapter
-				RMDone((pcidev->device << 16) | pcidev->vendor);
+				RMDone((pcidev->device << 16) | pcidev->vendor, &pcidev->hAdapter, &pcidev->hDevice);
 				iNumCards++;
 
 				/* find another empty slot */
@@ -515,7 +517,7 @@ int pci_register_driver(struct pci_driver *driver)
 				pcidev->devfn = 0;
 			}
 
-			RMDone(0);
+			RMDone(0, 0, 0);
 		}
 	}
 
@@ -937,6 +939,7 @@ OSSRET OSS32_APMResume()
 	{
 		if(pci_devices[i].devfn)
 		{
+			RMSetHandles(pci_devices[i].hAdapter, pci_devices[i].hDevice); /* DAZ - dirty hack */
 			driver = pci_devices[i].pcidriver;
 			if(driver && driver->resume) {
 				driver->resume(&pci_devices[i]);
@@ -961,6 +964,7 @@ OSSRET OSS32_APMSuspend()
 	{
 		if(pci_devices[i].devfn)
 		{
+			RMSetHandles(pci_devices[i].hAdapter, pci_devices[i].hDevice); /* DAZ - dirty hack */
 			driver = pci_devices[i].pcidriver;
 			if(driver && driver->suspend) {
 				driver->suspend(&pci_devices[i], SNDRV_CTL_POWER_D3cold);
@@ -976,34 +980,27 @@ void PciAdjustInterrupts() {
 	int i;
 	struct pci_dev *pcidev;
 	struct pci_driver *driver;
-	ULONG PicIRQ, ApicIRQ, ulTmp1, rc;
+	ULONG ulTmp1, rc;
 
 	for (i=0; i<MAX_PCI_DEVICES; i++) {
 		if (!pci_devices[i].devfn) continue;
 		pcidev = &pci_devices[i];
-		rc = ACPIFindPCIDevice( pcidev->bus->number,				 // Bus
-								PCI_SLOT(pcidev->devfn),			 // Dev
-								PCI_FUNC(pcidev->devfn),			 // Function
-								&PicIRQ, 							 // PIC IRQ
-								&ApicIRQ, 							 // APIC IRQ
-								NULL,								 // ACPI handle to finding device
-								"Uniaud32");						 // Name for acpi log
-		if (!rc) {
-			ulTmp1 = 0;
-			// Check APIC IRQ, if we have /SMP /APIC, must be set
-			if (ApicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (ApicIRQ & 0xff);
-			else if (PicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (PicIRQ & 0xff);
-			rprintf(("PciAdjustInterrupts: IRQs ACPI PIC=%ld APIC=%ld was=%d chosen=%ld", PicIRQ, ApicIRQ, pcidev->irq, ulTmp1));
-			if( (u8)ulTmp1 && ((u8)ulTmp1 != 0xff) && ((u8)ulTmp1 != pcidev->irq) ) {
-				driver = pcidev->pcidriver;
-				if(driver && driver->suspend) driver->suspend(pcidev, SNDRV_CTL_POWER_D0);
+		ulTmp1 = pcidev->irq;
+		if (pcidev->apicirq) ulTmp1 = pcidev->apicirq;
+		else if (pcidev->picirq) ulTmp1 = pcidev->picirq;
+		rprintf(("PciAdjustInterrupts: IRQs ACPI PIC=%ld APIC=%ld was=%d chosen=%ld", pcidev->picirq, pcidev->apicirq, pcidev->irq, ulTmp1));
+		if( (u8)ulTmp1 && ((u8)ulTmp1 != 0xff) && ((u8)ulTmp1 != pcidev->irq) ) {
+			RMSetHandles(pcidev->hAdapter, pcidev->hDevice); /* DAZ - dirty hack */
+			driver = pcidev->pcidriver;
+			if(driver && driver->suspend) driver->suspend(pcidev, SNDRV_CTL_POWER_D0);
+			fSuspended = TRUE;
 
-				pcidev->irq_resource[0].flags = IORESOURCE_IRQ;
-				pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = ulTmp1 & 0xffff;
-				pcidev->irq = (u8)ulTmp1;
+			pcidev->irq_resource[0].flags = IORESOURCE_IRQ;
+			pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = ulTmp1 & 0xffff;
+			pcidev->irq = (u8)ulTmp1;
 
-				if(driver && driver->resume) driver->resume(pcidev);
-			}
+			fRewired = TRUE;
+			// if(driver && driver->resume) driver->resume(pcidev);
 		}
 	} /* for loop */
 }
