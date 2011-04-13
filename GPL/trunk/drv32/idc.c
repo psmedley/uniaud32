@@ -55,6 +55,7 @@ OSSRET AlsaIDC(ULONG cmd, ULONG packet)
 		fRewired = FALSE;
 		rprintf(("AlsaIDC: Resuming"));
 		OSS32_APMResume();
+		DbgPrintIrq();
 	}
 
     //Sets file id in current task structure
@@ -128,6 +129,7 @@ OSSRET OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket)
        return OSS32_WaveStart(pPacket->streamid);
 
   case IDC32_WAVE_STOP:
+		DbgPrintIrq();
        return OSS32_WaveStop(pPacket->streamid);
 
   case IDC32_WAVE_SETHWPARAMS:
