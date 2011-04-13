@@ -301,6 +301,7 @@ static int snd_pcm_update_hw_ptr_interrupt(struct snd_pcm_substream *substream)
 #ifdef CONFIG_SND_PCM_XRUN_DEBUG
 	if (!xrun_debug(substream, 4))
 		goto no_jiffies_check;
+#endif
 	/* Skip the jiffies check for hardwares with BATCH flag.
 	 * Such hardware usually just increases the position at each IRQ,
 	 * thus it can't give any strange position.
@@ -334,7 +335,6 @@ static int snd_pcm_update_hw_ptr_interrupt(struct snd_pcm_substream *substream)
 		delta = 0;
 	}
  no_jiffies_check:
-#endif
 	if (delta > runtime->period_size + runtime->period_size / 2) {
 		hw_ptr_error(substream,
 			     "Lost interrupts? "
@@ -417,6 +417,7 @@ int snd_pcm_update_hw_ptr(struct snd_pcm_substream *substream)
 #ifdef CONFIG_SND_PCM_XRUN_DEBUG
 	if (!xrun_debug(substream, 4))
 		goto no_jiffies_check;
+#endif
 	if (delta < runtime->delay)
 		goto no_jiffies_check;
 	delta -= runtime->delay;
@@ -430,7 +431,6 @@ int snd_pcm_update_hw_ptr(struct snd_pcm_substream *substream)
 		return 0;
 	}
  no_jiffies_check:
-#endif
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK &&
 	    runtime->silence_size > 0)
 		snd_pcm_playback_silence(substream, new_hw_ptr);
