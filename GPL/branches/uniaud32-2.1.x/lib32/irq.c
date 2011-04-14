@@ -37,8 +37,6 @@
 
 
 BOOL fInInterrupt = FALSE;
-extern BOOL fSuspended; //pci.c
-
 
 //******************************************************************************
 //******************************************************************************
@@ -170,15 +168,6 @@ BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq)
 	IRQ_SLOT	*pSlot;
 
 	//dprintf(("enter int proc %d %d",ulSlotNo, *pulIrq));
-
-	if(fSuspended)
-	{//If our device is suspended, then we can't receive interrupts, so it must
-		//be for some other device
-		//Don't pass it to the linux handler as the device doesn't respond as expected
-		//when suspended
-		rprintf(("Slot %d IRQ %d suspended",ulSlotNo, *pulIrq));
-		return FALSE;
-	}
 
 	if( ulSlotNo < MAX_IRQ_SLOTS )
 	{

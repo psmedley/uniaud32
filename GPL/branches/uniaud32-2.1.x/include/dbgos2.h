@@ -26,7 +26,7 @@
 #define __COMMDBG_H__
 
 typedef struct {
-	unsigned short usState;
+	unsigned long ulState;
 	unsigned long ulIntServiced[4];
 	unsigned long ulIntUnserviced[4];
 } DBGINT;
@@ -38,6 +38,7 @@ extern int DebugLevel;
 extern int wrOffset;
 extern char *szprintBuf;
 int _cdecl printk(const char * fmt, ...);
+extern void DbgPrintIrq(void);
 #ifdef __cplusplus
 }
 #endif

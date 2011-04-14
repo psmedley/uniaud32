@@ -45,7 +45,7 @@ static FARPTR16 *pISR[MAX_IRQ_SLOTS] = {
    &ISR07
 };
 
-extern DBGINT DbgInt;
+extern "C" DBGINT DbgInt;
 
 //******************************************************************************
 BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
@@ -97,7 +97,7 @@ ULONG ALSA_Interrupt(ULONG ulSlotNo)
    // allow higher priority interrupts
    sti();
    if( process_interrupt(ulSlotNo, &ulIrqNo) ) {
-		DbgInt.ulIntServiced[DbgInt.usState]++;
+		DbgInt.ulIntServiced[DbgInt.ulState]++;
        // We've cleared all service requests.
        // Clear (disable) Interrupts, Send EOI
        // and clear the carry flag (tells OS/2 kernel that Int was handled).
@@ -106,7 +106,7 @@ ULONG ALSA_Interrupt(ULONG ulSlotNo)
        DevEOI( (WORD16)ulIrqNo );
        return TRUE;
    }
-	DbgInt.ulIntUnserviced[DbgInt.usState]++;
+	DbgInt.ulIntUnserviced[DbgInt.ulState]++;
    // Indicate Interrupt not serviced by setting carry flag before
    // returning to OS/2 kernel.  OS/2 will then shut down the interrupt!
    // NOTE: Make sure interrupts are not turned on again when this irq isn't ours!

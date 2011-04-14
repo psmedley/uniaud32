@@ -40,6 +40,7 @@ int DebugLevel;
 
 char hextab[]="0123456789ABCDEF";
 
+DBGINT DbgInt;
                                         //-------------------- DecLongToASCII -
 char * DecLongToASCII(char *StrPtr, ULONG lDecVal,USHORT Option)
 {
@@ -388,5 +389,12 @@ int snd_iprintf(snd_info_buffer_t * buffer, char *fmt,...)
    buffer->curr += res;
    buffer->size += res;
    return res;
+}
+
+void DbgPrintIrq(void) {
+	rprintf(("Init=%ld/%ld Between=%ld/%ld Complete=%ld/%ld",
+		DbgInt.ulIntServiced[0], DbgInt.ulIntUnserviced[0],
+		DbgInt.ulIntServiced[1], DbgInt.ulIntUnserviced[1],
+		DbgInt.ulIntServiced[2], DbgInt.ulIntUnserviced[2]));
 }
 

@@ -401,7 +401,7 @@ void FillCaps(ULONG deviceid)
 
 	pcms = pcm_instances(deviceid);
 
-	dprintf(("FillCaps: pcms=%i\n", pcms));
+	//dprintf(("FillCaps: pcms=%i\n", pcms));
 	if (!pcmcaps[deviceid])
 	{
 		pcmcaps[deviceid] = (POSS32_DEVCAPS)kmalloc(sizeof(OSS32_DEVCAPS)*pcms, GFP_KERNEL);
@@ -545,9 +545,8 @@ int GetUniaudCardInfo(ULONG deviceid, void *info)
 {
 	mixerhandle *pHandle = NULL;
 	int 		 ret, i, j;
-//	  struct snd_ctl_card_info *pinfo;
 
-	dprintf(("GetUniaudCardInfo"));
+	//dprintf(("GetUniaudCardInfo"));
 
 	if(alsa_fops == NULL) {
 		ret = OSSERR_NO_DEVICE_AVAILABLE;
@@ -602,7 +601,7 @@ int GetUniaudControlNum(ULONG deviceid)
 	mixerhandle *pHandle = NULL;
 	int 		 ret, i, j, sz;
 
-	dprintf(("GetUniaudControlNum"));
+	//dprintf(("GetUniaudControlNum"));
 
 	if(alsa_fops == NULL) {
 		ret = OSSERR_NO_DEVICE_AVAILABLE;
@@ -669,7 +668,7 @@ int GetUniaudControls(ULONG deviceid, void *pids)
 	mixerhandle *pHandle = NULL;
 	int 		 ret, i, j, sz;
 
-	dprintf(("GetUniaudControls"));
+	//dprintf(("GetUniaudControls"));
 
 	if(alsa_fops == NULL) {
 		ret = OSSERR_NO_DEVICE_AVAILABLE;
@@ -761,7 +760,7 @@ int GetUniaudControlInfo(ULONG deviceid, ULONG id, void *info)
 	mixerhandle *pHandle = NULL;
 	int 		 ret, i, j, sz;
 
-	dprintf(("GetUniaudControlInfo"));
+	//dprintf(("GetUniaudControlInfo"));
 
 	if(alsa_fops == NULL) {
 		ret = OSSERR_NO_DEVICE_AVAILABLE;
@@ -862,7 +861,7 @@ int GetUniaudControlValueGet(ULONG deviceid, ULONG id, void *value)
 	ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
 	if(pHandle) kfree(pHandle);
 
-	dprintf(("GetUniaudControlValueGet: id=%x 0=%x 1=%x", pElem->id.numid, pElem->value.integer.value[0], pElem->value.integer.value[1]));
+	//dprintf(("GetUniaudControlValueGet: id=%x 0=%x 1=%x", pElem->id.numid, pElem->value.integer.value[0], pElem->value.integer.value[1]));
 
 	return OSSERR_SUCCESS;
 failure:
@@ -938,7 +937,7 @@ int UniaudIoctlHWRefine(OSSSTREAMID streamid, void *pHwParams)
 	struct snd_pcm_hw_params *params = NULL;
 	params = (struct snd_pcm_hw_params *)pHwParams;
 
-	dprintf(("UniaudIoctlHWRefine"));
+	//dprintf(("UniaudIoctlHWRefine"));
 
 	if (!params) return -1001;
 
@@ -956,7 +955,7 @@ int UniaudIoctlHWParamSet(OSSSTREAMID streamid, void *pHwParams)
 	struct snd_pcm_hw_params *params = NULL;
 	params = (struct snd_pcm_hw_params *)pHwParams;
 
-	dprintf(("UniaudIoctlHWParamSet"));
+	//dprintf(("UniaudIoctlHWParamSet"));
 
 	if (!params) return -1001;
 	if (!pHandle) return -1002;
@@ -974,7 +973,7 @@ int UniaudIoctlSWParamSet(OSSSTREAMID streamid, void *pSwParams)
 
 	params = (struct snd_pcm_sw_params *)pSwParams;
 
-	dprintf(("UniaudIoctlSWParamSet"));
+	//dprintf(("UniaudIoctlSWParamSet"));
 
 	if (!params) return -1001;
 	if (!pHandle) return -1002;
@@ -991,7 +990,7 @@ int UniaudIoctlPCMStatus(OSSSTREAMID streamid, void *pstatus)
 	soundhandle 	   *pHandle = (soundhandle *)streamid;
 	struct snd_pcm_status	*status = (struct snd_pcm_status *)pstatus;
 
-	dprintf(("UniaudIoctlPCMStatus"));
+	//dprintf(("UniaudIoctlPCMStatus"));
 
 	if (!status) return -1001;
 	if (!pHandle) return -1002;
@@ -1007,7 +1006,7 @@ int UniaudIoctlPCMWrite(OSSSTREAMID streamid, char *buf, int size)
 	int ret;
 	soundhandle 	   *pHandle = (soundhandle *)streamid;
 
-	dprintf(("UniaudIoctlPCMWrite"));
+	//dprintf(("UniaudIoctlPCMWrite"));
 
 	if (!buf) return -1001;
 	if (!pHandle) return -1002;
@@ -1027,7 +1026,7 @@ int UniaudIoctlPCMRead(OSSSTREAMID streamid, char *buf, int size)
 	if (!buf) return -1001;
 	if (!pHandle) return -1002;
 
-	dprintf(("UniaudIoctlPCMRead"));
+	//dprintf(("UniaudIoctlPCMRead"));
 
 	pHandle->file.f_flags = O_NONBLOCK;
 
@@ -1041,7 +1040,7 @@ int UniaudIoctlPCMPrepare(OSSSTREAMID streamid)
 	int ret;
 	soundhandle 	   *pHandle = (soundhandle *)streamid;
 
-	dprintf(("UniaudIoctlPCMPrepare"));
+	//dprintf(("UniaudIoctlPCMPrepare"));
 
 	if (!pHandle) return -1002;
 
@@ -1056,7 +1055,7 @@ int UniaudIoctlPCMResume(OSSSTREAMID streamid, int pause)
 	int ret;
 	soundhandle 	   *pHandle = (soundhandle *)streamid;
 
-	dprintf(("UniaudIoctlPCMResume: %x", pause));
+	//dprintf(("UniaudIoctlPCMResume: %x", pause));
 
 	if (!pHandle) return -1002;
 
@@ -1072,7 +1071,7 @@ int UniaudIoctlPCMStart(OSSSTREAMID streamid)
 	int ret;
 	soundhandle 	   *pHandle = (soundhandle *)streamid;
 
-	dprintf(("UniaudIoctlPCMStart"));
+	//dprintf(("UniaudIoctlPCMStart"));
 
 	if (!pHandle) return -1002;
 
@@ -1088,7 +1087,7 @@ int UniaudIoctlPCMDrop(OSSSTREAMID streamid)
 	int ret;
 	soundhandle 	   *pHandle = (soundhandle *)streamid;
 
-	dprintf(("UniaudIoctlPCMDrop"));
+	//dprintf(("UniaudIoctlPCMDrop"));
 
 	if (!pHandle) return -1002;
 

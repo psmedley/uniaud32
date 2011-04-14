@@ -43,7 +43,7 @@ ULONG deviceOwner = DEV_NO_OWNER;
 ULONG numOS2Opens = 0;
 extern "C" BOOL fRewired; //pci.c
 
-DBGINT DbgInt;
+extern "C" DBGINT DbgInt;
 
 //******************************************************************************
 //******************************************************************************
@@ -71,11 +71,13 @@ ULONG StratInit(RP __far* _rp)
 	ULONG rc;
 
 	memset(&DbgInt, 0, sizeof(DbgInt));
+	DbgPrintIrq();
 
 	RPInit __far* rp = (RPInit __far*)_rp;
 	rc = DiscardableInit(rp);
 	//dprintf(("StratInit End rc=%d", rc));
-	DbgInt.usState = 1;
+	DbgPrintIrq();
+	DbgInt.ulState = 1;
 	return rc;
 }
 //******************************************************************************
@@ -88,14 +90,11 @@ ULONG StratInit(RP __far* _rp)
 ULONG StratInitComplete(RP __far* _rp)
 #pragma on (unreferenced)
 {
-	DbgInt.usState = 2;
+	DbgInt.ulState = 2;
 #ifdef ACPI
 	PciAdjustInterrupts();
 #endif
-	rprintf(("StratInitComplete: Init=%ld/%ld Between=%ld/%ld Complete=%ld/%ld",
-		DbgInt.ulIntServiced[0], DbgInt.ulIntUnserviced[0],
-		DbgInt.ulIntServiced[1], DbgInt.ulIntUnserviced[1],
-		DbgInt.ulIntServiced[2], DbgInt.ulIntUnserviced[2]));
+	DbgPrintIrq();
 	//dprintf(("StratInitComplete"));
 	return(RPDONE);
 }
@@ -175,6 +174,7 @@ ULONG Strategy(RP __far* rp)
 		fRewired = FALSE;
 		rprintf(("Strategy: Resuming"));
 		OSS32_APMResume();
+		DbgPrintIrq();
 	}
 
 	if (rp->Command < sizeof(StratDispatch)/sizeof(StratDispatch[0]))

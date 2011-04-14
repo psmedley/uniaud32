@@ -46,7 +46,6 @@
 struct pci_dev pci_devices[MAX_PCI_DEVICES] = {0};
 //struct pci_bus pci_busses[MAX_PCI_BUSSES] = {0};
 
-BOOL	fSuspended = FALSE;
 BOOL	fRewired = FALSE;
 extern int nrCardsDetected;
 
@@ -933,8 +932,6 @@ OSSRET OSS32_APMResume()
 
 	dprintf(("OSS32_APMResume"));
 
-	fSuspended = FALSE;
-
 	for(i=0;i<MAX_PCI_DEVICES;i++)
 	{
 		if(pci_devices[i].devfn)
@@ -957,8 +954,6 @@ OSSRET OSS32_APMSuspend()
 	struct pci_driver *driver;
 
 	dprintf(("OSS32_APMSuspend 1"));
-
-	fSuspended = TRUE;
 
 	for(i=0;i<MAX_PCI_DEVICES;i++)
 	{
@@ -993,7 +988,6 @@ void PciAdjustInterrupts() {
 			RMSetHandles(pcidev->hAdapter, pcidev->hDevice); /* DAZ - dirty hack */
 			driver = pcidev->pcidriver;
 			if(driver && driver->suspend) driver->suspend(pcidev, SNDRV_CTL_POWER_D0);
-			fSuspended = TRUE;
 
 			pcidev->irq_resource[0].flags = IORESOURCE_IRQ;
 			pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = ulTmp1 & 0xffff;
