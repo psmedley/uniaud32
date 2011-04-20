@@ -85,7 +85,7 @@ int request_irq(unsigned irq, irq_handler_t handler,
 		hRes = NULL;
 		if (RMRequestIRQ(irq, (ulSharedFlag & SA_SHIRQ) != 0, &hRes) == FALSE) {
 			rprintf(("RMRequestIRQ failed for irq %d", irq));
-			//	return 0;
+			return 1;
 		}
 		pSlot->irqNo = irq & 0xff;
 		pSlot->hRes = hRes;
