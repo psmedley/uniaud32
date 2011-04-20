@@ -695,7 +695,7 @@ static unsigned int azx_rirb_get_response(struct hda_bus *bus,
 
  again:
 	timeout = jiffies + msecs_to_jiffies(1000);
-	for (;;) {
+	for ( ; ; ) {
 		if (chip->polling_mode || do_poll) {
 			spin_lock_irq(&chip->reg_lock);
 			azx_update_rirb(chip);
@@ -744,8 +744,9 @@ static unsigned int azx_rirb_get_response(struct hda_bus *bus,
 		goto again;
 	}
 #ifdef TARGET_OS2
-	if (count >= 5000)
+	if (count >= 5000) {
 		snd_printk(KERN_WARNING "hda_intel: count >= 5000, aborting loop in azx_rirb_get_response\n");
+	}
 #endif
 	if (chip->msi) {
 		snd_printk(KERN_WARNING SFX "No response from codec, "
