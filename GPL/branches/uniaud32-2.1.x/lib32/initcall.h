@@ -107,8 +107,10 @@ extern_module_init(alsa_card_azx_init)
 extern_module_exit(alsa_card_azx_exit)
 extern_module_init(patch_analog_init)
 extern_module_exit(patch_analog_exit)
-extern_module_init(patch_atihdmi_init)
-extern_module_exit(patch_atihdmi_init)
+#if 0
+extern_module_init(patch_hdmi_init)
+extern_module_exit(patch_hdmi_init)
+#endif
 extern_module_init(patch_cmedia_init)
 extern_module_exit(patch_cmedia_exit)
 extern_module_init(patch_conexant_init)
