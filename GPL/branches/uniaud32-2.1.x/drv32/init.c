@@ -54,8 +54,8 @@ const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"\r\nBased on ALS
 #endif
 
 //const char szCopyRight1[]= "Copyright 2000-2002 InnoTek Systemberatung GmbH\r\n";
-const char szCopyRight2[]= "Copyright 2000-2010 The ALSA Project\r\n\r\n";
-const char szCopyRight3[]= "Copyright 2005-2010 Netlabs http://www.netlabs.org\r\n";
+const char szCopyRight2[]= "Copyright 2000-2012 The ALSA Project\r\n\r\n";
+const char szCopyRight3[]= "Copyright 2005-2012 Netlabs http://www.netlabs.org\r\n";
 
 const char szCodeStartEnd[] = "Code 0x%0x - 0x%0x\r\n\r\n";
 const char szMixerFound[]= "Detected Mixer: ";
