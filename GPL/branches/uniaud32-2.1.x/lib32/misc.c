@@ -434,6 +434,18 @@ int schedule_work(struct work_struct *works)
 }
 //******************************************************************************
 //******************************************************************************
+bool flush_delayed_work_sync(struct delayed_work *dwork)
+{
+	bool ret;
+	ret = cancel_delayed_work(dwork);
+	if (ret) {
+		schedule_delayed_work(dwork, 0);
+		flush_scheduled_work();
+	}
+	return ret;
+}
+//******************************************************************************
+//******************************************************************************
 static void delayed_work_timer_fn(unsigned long __data)
 {
 	struct work_struct *work = (struct work_struct *)__data;

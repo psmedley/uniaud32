@@ -89,7 +89,6 @@
 #endif
 #define CONFIG_SND_DMA_SGBUF
 #define CONFIG_SND_HDA_CODEC_ANALOG
-#define CONFIG_SND_HDA_CODEC_ATIHDMI
 #define CONFIG_SND_HDA_CODEC_CONEXANT
 #define CONFIG_SND_HDA_CODEC_CMEDIA
 #define CONFIG_SND_HDA_CODEC_REALTEK
@@ -113,6 +112,22 @@
 #define __builtin_expect(x, expected_value) (x)
 #define BUG_ON(x) /* nothing */
 #define assert(a)
+#define no_llseek	NULL
+#define noop_llseek	NULL
+
+struct class;
+struct class_device;
+struct class_device_attribute {int x; }; /* dummy */
+#define __ATTR(cls,perm,read,write) {NULL } /* dummy */
+
+#define min_t(type, x, y) ({                    \
+        type __min1 = (x);                      \
+        type __min2 = (y);                      \
+        __min1 < __min2 ? __min1: __min2; })
+
+#define true	1
+#define false	0
+
+#define BUILD_BUG_ON(condition)
 
 #endif //__ALSA_CONFIG_H__
-

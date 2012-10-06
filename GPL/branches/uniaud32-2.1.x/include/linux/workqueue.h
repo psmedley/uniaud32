@@ -61,5 +61,5 @@ static inline void snd_INIT_WORK(struct work_struct *w, void (*f)(struct work_st
 #define schedule_delayed_work(work, delay) queue_delayed_work(NULL, (work), (delay))
 
 #define create_singlethread_workqueue(name) create_workqueue(name)
-
+#define cancel_delayed_work_sync flush_delayed_work_sync
 #endif /* __LINUX_WORKQUEUE_H */

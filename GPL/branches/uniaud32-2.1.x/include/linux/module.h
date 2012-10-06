@@ -75,5 +75,6 @@ extern int this_module[64];
 #define MODULE_GENERIC_TABLE(gtype,name)
 #define MODULE_DEVICE_TABLE(type,name)
 #define EXPORT_SYMBOL(a)
-
+#define MODULE_ALIAS_CHARDEV(x)
+#define module_param(name, type, perm) 
 #endif /* _LINUX_MODULE_H */
