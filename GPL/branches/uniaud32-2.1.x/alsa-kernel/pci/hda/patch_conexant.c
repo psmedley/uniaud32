@@ -1274,8 +1274,10 @@ static int patch_cxt5045(struct hda_codec *codec)
 		break;
 	}
 
+    #ifdef NOT_USED
 	if (spec->beep_amp)
 		snd_hda_attach_beep_device(codec, spec->beep_amp);
+    #endif		
 
 	return 0;
 }
@@ -2093,8 +2095,10 @@ static int patch_cxt5051(struct hda_codec *codec)
 		break;
 	}
 
+    #ifdef NOT_USED
 	if (spec->beep_amp)
 		snd_hda_attach_beep_device(codec, spec->beep_amp);
+	#endif
 
 	return 0;
 }
@@ -3270,8 +3274,10 @@ static int patch_cxt5066(struct hda_codec *codec)
 		break;
 	}
 
+    #ifdef NOT_USED
 	if (spec->beep_amp)
 		snd_hda_attach_beep_device(codec, spec->beep_amp);
+	#endif
 
 	return 0;
 }
@@ -3872,8 +3878,10 @@ static int patch_conexant_auto(struct hda_codec *codec)
 		return err;
 	}
 	codec->patch_ops = cx_auto_patch_ops;
+	#ifdef NOT_USED
 	if (spec->beep_amp)
 		snd_hda_attach_beep_device(codec, spec->beep_amp);
+	#endif
 	return 0;
 }
 

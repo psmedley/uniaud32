@@ -1008,7 +1008,7 @@ int hda_call_check_power_status(struct hda_codec *codec, hda_nid_t nid)
 	return 0;
 }
 #else	
-#define hda_call_check_power_status(codec, nid)		0
+#define hda_call_check_power_status(codec, nid)		
 #endif
 
 /*

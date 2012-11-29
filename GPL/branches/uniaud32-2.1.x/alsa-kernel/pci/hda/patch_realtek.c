@@ -11101,6 +11101,7 @@ static int patch_alc882(struct hda_codec *codec)
 		}
 	}
 
+    #ifdef NOT_USED
 	if (has_cdefine_beep(codec)) {
 		err = snd_hda_attach_beep_device(codec, 0x1);
 		if (err < 0) {
@@ -11108,6 +11109,7 @@ static int patch_alc882(struct hda_codec *codec)
 			return err;
 		}
 	}
+	#endif
 
 	if (board_config != ALC882_AUTO)
 		setup_preset(codec, &alc882_presets[board_config]);
@@ -15371,6 +15373,7 @@ static int patch_alc269(struct hda_codec *codec)
 		}
 	}
 
+    #ifdef NOT_USED
 	if (has_cdefine_beep(codec)) {
 		err = snd_hda_attach_beep_device(codec, 0x1);
 		if (err < 0) {
@@ -15378,6 +15381,7 @@ static int patch_alc269(struct hda_codec *codec)
 			return err;
 		}
 	}
+	#endif
 
 	if (board_config != ALC269_AUTO)
 		setup_preset(codec, &alc269_presets[board_config]);
@@ -19721,6 +19725,7 @@ static int patch_alc662(struct hda_codec *codec)
 		}
 	}
 
+    #ifdef NOT_USED
 	if (has_cdefine_beep(codec)) {
 		err = snd_hda_attach_beep_device(codec, 0x1);
 		if (err < 0) {
@@ -19728,6 +19733,7 @@ static int patch_alc662(struct hda_codec *codec)
 			return err;
 		}
 	}
+	#endif
 
 	if (board_config != ALC662_AUTO)
 		setup_preset(codec, &alc662_presets[board_config]);

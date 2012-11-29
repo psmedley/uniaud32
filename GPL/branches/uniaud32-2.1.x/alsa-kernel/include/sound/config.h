@@ -118,7 +118,7 @@
 struct class;
 struct class_device;
 struct class_device_attribute {int x; }; /* dummy */
-#define __ATTR(cls,perm,read,write) {NULL } /* dummy */
+#define __ATTR(cls,perm,read,write) {0 } /* dummy */
 
 #define min_t(type, x, y) ({                    \
         type __min1 = (x);                      \

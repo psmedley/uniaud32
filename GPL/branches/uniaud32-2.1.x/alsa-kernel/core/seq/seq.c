@@ -78,7 +78,7 @@ MODULE_PARM_DESC(seq_default_timer_subdevice, "The default timer subdevice numbe
 module_param(seq_default_timer_resolution, int, 0644);
 MODULE_PARM_DESC(seq_default_timer_resolution, "The default timer resolution in Hz.");
 
-MODULE_ALIAS_CHARDEV(CONFIG_SND_MAJOR, SNDRV_MINOR_SEQUENCER);
+MODULE_ALIAS_CHARDEV(CONFIG_SND_MAJOR);
 MODULE_ALIAS("devname:snd/seq");
 
 /*
