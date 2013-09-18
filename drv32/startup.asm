@@ -31,7 +31,7 @@
         INCL_DOSERRORS  equ 1
         include os2.inc
 
-	include segments.inc
+        include segments.inc
         include startup.inc
 
 DATA16 segment

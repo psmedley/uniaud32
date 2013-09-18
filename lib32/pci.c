@@ -971,6 +971,7 @@ OSSRET OSS32_APMSuspend()
 	return OSSERR_SUCCESS;
 }
 
+#ifdef ACPI
 void PciAdjustInterrupts() {
 	int i;
 	struct pci_dev *pcidev;
@@ -998,3 +999,4 @@ void PciAdjustInterrupts() {
 		}
 	} /* for loop */
 }
+#endif
