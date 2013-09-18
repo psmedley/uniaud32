@@ -82,7 +82,7 @@ int request_irq(unsigned irq, irq_handler_t handler,
 	}
 
 	if ( pSlot ) {
-		hRes = NULL;
+		hRes = 0;
 		if (RMRequestIRQ(irq, (ulSharedFlag & SA_SHIRQ) != 0, &hRes) == FALSE) {
 			rprintf(("RMRequestIRQ failed for irq %d", irq));
 			return 1;
@@ -128,7 +128,7 @@ void free_irq(unsigned int irq, void *userdata)
 					ALSA_FreeIrq(pSlot->irqNo);
 					pSlot->irqNo = 0;
 					RMDeallocateIRQ(pSlot->hRes);
-					pSlot->hRes = NULL;
+					pSlot->hRes = 0;
 					// pSlot->fEOI = 0;
 				}
 
