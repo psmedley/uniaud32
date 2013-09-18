@@ -75,7 +75,7 @@ if fixpack="" then
 else
 	projVers  = versionIn'-'fixpack
 
-projVers2 = major||minor||LEFT(projVersion, 1)
+projVers2 = major||minor||projVersion
 
 LINEIN(AlsaVersHdr,,0)
 
