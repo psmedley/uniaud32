@@ -1,0 +1,155 @@
+#
+# Makefile for the 32bit UNIAUD driver
+#
+# (C) 2000-2002 InnoTek Systemberatung GmbH
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Free
+# Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139,
+# USA.
+#
+
+.ERASE
+
+.SUFFIXES:
+.SUFFIXES: .sys .obj .asm .inc .def .lrf .ref .lst .sym .map .c .cpp .h .lib
+
+!include ..\include\version.mak
+
+# note: Watcom headers must be before DDK headers to avoid conflicts
+# with C runtime headers
+CINCLUDES   = .;..\include;$(%WATCOM)\h;$(DDK_BASE)\h
+
+AINCLUDES = -I:$(DDK_BASE)\INC
+
+TARGET   = uniaud32
+LNKFILE   = $(OBJDIR)\$(TARGET).lrf
+DEFFILE   = $(OBJDIR)\$(TARGET).def
+MAKEFILE  = makefile.os2
+
+!if "$(IBM_BUILD)" == "1"
+CDEFINES = -DIBM_BUILD
+!endif
+
+EVERYTHING_AS_CPP=1
+32BIT=1
+#Default packing on byte boundary
+PACK_1=1
+!include ..\makefile.inc
+
+
+#===================================================================
+#
+#   List of source files
+#
+#===================================================================
+
+FILEFIRST= begin.obj startup.obj
+FILE2    = strategy.obj read.obj
+FILE3    = init.obj parse.obj
+FILE4    = devhlp.obj
+FILE5    = idc.obj dispatch.obj
+FILE6    = rmhelp.obj irq.obj util.obj
+FILE7    = impdos.lib 
+!if "$(KEE)" == "1"
+FILE8    = impkee.lib
+!endif
+FILE10   = end.obj
+
+FILES    = $(FILEFIRST) $(FILE0) $(FILE1) $(FILE2) $(FILE3) $(FILE4) $(FILE5) $(FILE6) $(FILE7) $(FILE8) $(FILE9) $(FILE10)
+
+LIBS     = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\drivers.lib $(ALSA_LIB)\ac97.lib $(ALSA_LIB)\pci.lib  $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\hda.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib $(ALSA_LIB)\mpu401.lib $(ALSA_LIB)\synth.lib $(ALSA_LIB)\cs46xx.lib $(ALSA_LIB)\cs5535audio.lib $(ALSA_LIB)\emu10k1.lib $(ALSA_LIB)\ymfpci.lib $(ALSA_LIB)\ali5451.lib $(ALSA_LIB)\trident.lib $(ALSA_LIB)\nm256.lib $(ALSA_LIB)\sb.lib $(ALSA_LIB)\core_oss.lib 
+WMAPNAME = $(OBJDIR)\$(TARGET).wmap
+# $(ALSA_LIB)\au88xx.lib 
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: $(OBJDIR)\$(TARGET).sys $(OBJDIR)\$(TARGET).sym
+
+!ifdef USE_WLINK
+$(LNKFILE): $(MAKEFILE)
+    @%write $^@ option quiet
+    @%write $^@ option verbose
+    @%write $^@ option caseexact
+    @%write $^@ option cache
+    @%write $^@ option alignment=16
+    @%write $^@ option map=$(WMAPNAME)
+!if "$(ACPI)" == "1" 
+    @%write $^@ option description '$(%BUILDLEVEL) (ACPI)' 
+!else if "$(KEE)" == "1" !else if "$(KEE)" == "1"
+    @%write $^@ option description '$(%BUILDLEVEL) (KEE)'
+!else
+    @%write $^@ option description '$(%BUILDLEVEL) (W4)'
+!endif
+    @%write $^@ name $(OBJDIR)\$(TARGET).sys
+    @for %f in ($(FILES)) do @%append $^@ file $(OBJDIR)\%f
+    @for %f in ($(LIBS)) do @%append $^@ library %f
+!if "$(ACPI)" == "1" 
+    @%write $^@ $(ACPI_LIB)\acpidrv.lib
+!endif
+    @%write $^@ library $(%WATCOM)\lib386\os2\clib3r.lib
+    @%write $^@ library $(%WATCOM)\lib386\os2\os2386.lib
+!else
+$(LNKFILE): $(MAKEFILE)
+    @%write $^@ /OUT:$(OBJDIR)\$(TARGET).sys
+    @%write $^@ /MAP:$(OBJDIR)\$(TARGET).map
+    @for %f in ($(FILES)) do @%append $^@ $(OBJDIR)\%f
+    @for %f in ($(LIBS)) do @%append $^@ %f
+!if "$(ACPI)" == "1" 
+    @%write $^@ $(ACPI_LIB)\acpidrv.lib
+!endif
+    @%write $^@ $(%WATCOM)\lib386\os2\clib3r.lib
+    @%write $^@ $(%WATCOM)\lib386\os2\os2386.lib
+    @%write $^@ $(DEFFILE)
+!endif
+
+$(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
+!if "$(ACPI)" == "1" 
+     @%write $(DEFFILE) description '$(%BUILDLEVEL) (ACPI)' 
+!else if "$(KEE)" == "1" 
+     @%write $(DEFFILE) description '$(%BUILDLEVEL) (KEE)'
+!else
+     @%write $(DEFFILE) description '$(%BUILDLEVEL) (W4)'
+!endif
+
+     $(LINK) @$(LNKFILE)
+
+     copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)
+         
+!if "$(ACPI)" == "1" 
+      copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN_)\$(TARGET)acpi.sys 
+!else if "$(KEE)" == "1" 
+      copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN_)\$(TARGET)kee.sys
+!else
+     copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN_)\$(TARGET)w4.sys
+!endif
+
+$(OBJDIR)\$(TARGET).sym: $(LIBS)
+!ifdef USE_WLINK
+     @$(WAT2MAP) $(WMAPNAME) $(OBJDIR)\$(TARGET).map
+!endif
+     cd $(OBJDIR)
+     mapsym $(TARGET).MAP
+     cd ..\..
+     copy $(OBJDIR)\$(TARGET).sym $(ALSA_BIN)
+
+clean: .SYMBOLIC
+     -@rm *.err
+     @cd $(OBJDIR)
+     -rm *.obj *.lnk *.lrf *.def *.sys *.sym *.lst *.map *.wmap *.lib
+     @cd ..\..
+     -@rm $(ALSA_BIN_)\$(TARGET)*.sys 
+     -@rm $(ALSA_BIN)\$(TARGET).sy* 
+     -@rm $(ALSA_LIB)\*.lib 
