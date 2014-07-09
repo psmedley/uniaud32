@@ -36,7 +36,7 @@ PACK_1=1
 
 # note: Watcom headers must be before DDK headers to avoid conflicts
 # with C runtime headers
-CINCLUDES = .;..\include;$(WATCOM)\h;$(DDK)\base\h
+CINCLUDES = .;$(ROOT)\include;$(WATCOM)\h;$(DDK)\base\h
 AINCLUDES = -I:$(DDK)\base\INC
 
 TARGET   = uniaud32

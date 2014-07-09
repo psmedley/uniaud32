@@ -5,7 +5,7 @@ ROOT=$(%ROOT)
 
 !include $(ROOT)\tools\header.mif
 
-CINCLUDES = ..\include;..\runtime;..\alsa-kernel\include;$(WATCOM)\H;$(WATCOM)\H\OS2;
+CINCLUDES = $(ROOT)\include;$(WATCOM)\H;$(WATCOM)\H\OS2;
 AINCLUDES = $(DDK)\base\H
 
 CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
