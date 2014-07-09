@@ -7,6 +7,7 @@ CINCLUDES = ..\..\..\include;..\..\include;$(%WATCOM)\H
 AINCLUDES = $(DDK)\base\H
 
 CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
+#-DCONFIG_SND_CS46XX_NEW_DSP
 
 !include $(ROOT)\tools\header.mif
 
@@ -16,11 +17,10 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #   List of source files
 #
 #===================================================================
-# au8810.obj au8810_core.obj au8810_pcm.obj au8810_mixer.obj au8810_mpu401.obj au8810_eq.obj
-FILES = au8820.obj au8820_core.obj au8820_pcm.obj au8820_mixer.obj au8820_mpu401.obj au8820_synth.obj
-# au8830.obj au8830_core.obj au8830_pcm.obj au8830_mixer.obj au8830_mpu401.obj au8830_eq.obj au8830_synth.obj
+FILES = cs46xx.obj cs46xx_lib.obj
+# dsp_spos.obj dsp_spos_scb_lib.obj
 
-TARGET = au88xx
+TARGET = cs46xx
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 
@@ -42,7 +42,7 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 clean: .SYMBOLIC
-    -@rm  *.err
+    -@rm *.err
     @if exist obj @rm.exe -r obj
     @if exist bin @rm.exe -r bin
 

@@ -3,26 +3,39 @@
 !endif
 ROOT=$(%ROOT)
 
-CINCLUDES = ..\..\..\include;..\..\include;$(%WATCOM)\H
+CINCLUDES = ..\..\..\..\include;..\..\..\include;$(%WATCOM)\H
 AINCLUDES = $(DDK)\base\H
 
 CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
 
 !include $(ROOT)\tools\header.mif
 
+WMAKEOPTS=-h $(__MAKEOPTS__)
+
+!if "$(DEBUG)" == "1"
+WMAKEOPTS += DEBUG=1
+!endif
+
+!if "$(KEE)" == "0"
+WMAKEOPTS += KEE=0
+KEE=0
+!else
+WMAKEOPTS += KEE=1
+KEE=1
+!endif
 
 #===================================================================
 #
 #   List of source files
 #
 #===================================================================
-# au8810.obj au8810_core.obj au8810_pcm.obj au8810_mixer.obj au8810_mpu401.obj au8810_eq.obj
-FILES = au8820.obj au8820_core.obj au8820_pcm.obj au8820_mixer.obj au8820_mpu401.obj au8820_synth.obj
-# au8830.obj au8830_core.obj au8830_pcm.obj au8830_mixer.obj au8830_mpu401.obj au8830_eq.obj au8830_synth.obj
+FILES = seq_oss.obj seq_oss_init.obj seq_oss_timer.obj seq_oss_ioctl.obj &
+  seq_oss_event.obj seq_oss_rw.obj seq_oss_synth.obj &
+  seq_oss_midi.obj seq_oss_readq.obj seq_oss_writeq.obj
 
-TARGET = au88xx
+TARGET   = seq-oss
 
-LNKFILE = $(OBJDIR)\$(TARGET).lnk
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
 
 
 #===================================================================
@@ -30,7 +43,7 @@ LNKFILE = $(OBJDIR)\$(TARGET).lnk
 #   Specific dependencies
 #
 #===================================================================
-all: $(OBJDIR)\$(TARGET).lib
+all: $(OBJDIR)\$(TARGET).lib subdirs
 
 
 $(LNKFILE): Makefile
@@ -41,8 +54,18 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
+subdirs: .SYMBOLIC
+#    @echo BUILDING instr
+#    @cd instr
+#    @wmake $(WMAKEOPTS)
+#    @cd ..
+
 clean: .SYMBOLIC
-    -@rm  *.err
+#    @echo BUILDING instr
+#    @cd instr
+#    @wmake $(WMAKEOPTS) clean
+#    @cd ..
+    -@rm *.err
     @if exist obj @rm.exe -r obj
     @if exist bin @rm.exe -r bin
 

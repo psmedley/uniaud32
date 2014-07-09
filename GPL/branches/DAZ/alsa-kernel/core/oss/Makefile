@@ -10,19 +10,30 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 
 !include $(ROOT)\tools\header.mif
 
+WMAKEOPTS=-h $(__MAKEOPTS__)
+
+!if "$(DEBUG)" == "1"
+WMAKEOPTS += DEBUG=1
+!endif
+
+!if "$(KEE)" == "0"
+WMAKEOPTS += KEE=0
+KEE=0
+!else
+WMAKEOPTS += KEE=1
+KEE=1
+!endif
 
 #===================================================================
 #
 #   List of source files
 #
 #===================================================================
-# au8810.obj au8810_core.obj au8810_pcm.obj au8810_mixer.obj au8810_mpu401.obj au8810_eq.obj
-FILES = au8820.obj au8820_core.obj au8820_pcm.obj au8820_mixer.obj au8820_mpu401.obj au8820_synth.obj
-# au8830.obj au8830_core.obj au8830_pcm.obj au8830_mixer.obj au8830_mpu401.obj au8830_eq.obj au8830_synth.obj
+FILES    = pcm_oss.obj
 
-TARGET = au88xx
+TARGET   = core_oss
 
-LNKFILE = $(OBJDIR)\$(TARGET).lnk
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
 
 
 #===================================================================
@@ -30,7 +41,7 @@ LNKFILE = $(OBJDIR)\$(TARGET).lnk
 #   Specific dependencies
 #
 #===================================================================
-all: $(OBJDIR)\$(TARGET).lib
+all: $(OBJDIR)\$(TARGET).lib subdirs
 
 
 $(LNKFILE): Makefile
@@ -41,8 +52,18 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
+subdirs: .SYMBOLIC
+#    @echo BUILDING instr
+#    @cd instr
+#    @wmake $(WMAKEOPTS)
+#    @cd ..
+
 clean: .SYMBOLIC
-    -@rm  *.err
+#    @echo BUILDING instr
+#    @cd instr
+#    @wmake $(WMAKEOPTS) clean
+#    @cd ..
+    -@rm *.err
     @if exist obj @rm.exe -r obj
     @if exist bin @rm.exe -r bin
 

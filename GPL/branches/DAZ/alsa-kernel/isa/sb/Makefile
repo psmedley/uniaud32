@@ -16,11 +16,12 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #   List of source files
 #
 #===================================================================
-# au8810.obj au8810_core.obj au8810_pcm.obj au8810_mixer.obj au8810_mpu401.obj au8810_eq.obj
-FILES = au8820.obj au8820_core.obj au8820_pcm.obj au8820_mixer.obj au8820_mpu401.obj au8820_synth.obj
-# au8830.obj au8830_core.obj au8830_pcm.obj au8830_mixer.obj au8830_mpu401.obj au8830_eq.obj au8830_synth.obj
+FILES = sb_common.obj sb_mixer.obj
+#sb8_main.obj sb8_midi.obj
+#sb16_main.obj sb16_csp.obj sb8.obj sb16.obj sbawe.obj emu8000.obj
+#emu8000_synth.obj emu8000_callback.obj emu8000_patch.obj
 
-TARGET = au88xx
+TARGET = sb
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 
@@ -42,7 +43,7 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 clean: .SYMBOLIC
-    -@rm  *.err
+    -@rm *.err
     @if exist obj @rm.exe -r obj
     @if exist bin @rm.exe -r bin
 

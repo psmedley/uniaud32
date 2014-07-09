@@ -1,10 +1,46 @@
-#
-# Makefile for ALSA
-# Copyright (c) 2001 by Jaroslav Kysela <perex@perex.cz>
-#
+!ifndef %ROOT
+!error ROOT is not defined. Please check your SETENV.CMD.
+!endif
+ROOT=$(%ROOT)
 
-snd-ac97-codec-y := ac97_codec.o ac97_pcm.o
-snd-ac97-codec-$(CONFIG_PROC_FS) += ac97_proc.o
+CINCLUDES = ..\..\..\include;..\..\include;$(%WATCOM)\H
+AINCLUDES = $(DDK)\base\H
 
-# Toplevel Module Dependency
-obj-$(CONFIG_SND_AC97_CODEC) += snd-ac97-codec.o
+CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
+
+!include $(ROOT)\tools\header.mif
+
+
+#===================================================================
+#
+#   List of source files
+#
+#===================================================================
+FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+
+TARGET = ac97
+
+LNKFILE = $(OBJDIR)\$(TARGET).lnk
+
+
+#===================================================================
+#
+#   Specific dependencies
+#
+#===================================================================
+all: $(OBJDIR)\$(TARGET).lib
+
+
+$(LNKFILE): Makefile
+    @%create $(LNKFILE)
+    @for %f in ($(FILES)) do @%append $(LNKFILE) -+$(OBJDIR)\%f
+
+$(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
+    $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
+    copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
+
+clean: .SYMBOLIC
+    -@rm *.err
+    @if exist obj @rm.exe -r obj
+    @if exist bin @rm.exe -r bin
+

@@ -10,19 +10,22 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 
 !include $(ROOT)\tools\header.mif
 
+WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
 
 #===================================================================
 #
 #   List of source files
 #
 #===================================================================
-# au8810.obj au8810_core.obj au8810_pcm.obj au8810_mixer.obj au8810_mpu401.obj au8810_eq.obj
-FILES = au8820.obj au8820_core.obj au8820_pcm.obj au8820_mixer.obj au8820_mpu401.obj au8820_synth.obj
-# au8830.obj au8830_core.obj au8830_pcm.obj au8830_mixer.obj au8830_mpu401.obj au8830_eq.obj au8830_synth.obj
+FILES = seq_device.obj &
+  seq.obj seq_lock.obj seq_clientmgr.obj seq_memory.obj seq_queue.obj &
+  seq_fifo.obj seq_prioq.obj seq_timer.obj &
+  seq_system.obj seq_ports.obj seq_info.obj &
+  seq_midi.obj seq_midi_emul.obj seq_midi_event.obj seq_dummy.obj seq_virmidi.obj
 
-TARGET = au88xx
+TARGET   = sequencer
 
-LNKFILE = $(OBJDIR)\$(TARGET).lnk
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
 
 
 #===================================================================
@@ -30,7 +33,7 @@ LNKFILE = $(OBJDIR)\$(TARGET).lnk
 #   Specific dependencies
 #
 #===================================================================
-all: $(OBJDIR)\$(TARGET).lib
+all: $(OBJDIR)\$(TARGET).lib subdirs
 
 
 $(LNKFILE): Makefile
@@ -41,8 +44,18 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
+subdirs: .SYMBOLIC
+#    @echo BUILDING oss
+#    @cd oss
+#    @wmake $(WMAKEOPTS)
+#    @cd ..
+
 clean: .SYMBOLIC
-    -@rm  *.err
+#    @echo BUILDING oss
+#    @cd oss
+#    @wmake $(WMAKEOPTS) clean
+#    @cd ..
+    -@rm *.err
     @if exist obj @rm.exe -r obj
     @if exist bin @rm.exe -r bin
 

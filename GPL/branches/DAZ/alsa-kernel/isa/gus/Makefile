@@ -16,11 +16,13 @@ CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG
 #   List of source files
 #
 #===================================================================
-# au8810.obj au8810_core.obj au8810_pcm.obj au8810_mixer.obj au8810_mpu401.obj au8810_eq.obj
-FILES = au8820.obj au8820_core.obj au8820_pcm.obj au8820_mixer.obj au8820_mpu401.obj au8820_synth.obj
-# au8830.obj au8830_core.obj au8830_pcm.obj au8830_mixer.obj au8830_mpu401.obj au8830_eq.obj au8830_synth.obj
+FILES = gus_main.obj gus_io.obj gus_irq.obj gus_timer.obj &
+  gus_mem.obj gus_mem_proc.obj gus_dram.obj gus_dma.obj gus_volume.obj &
+  gus_pcm.obj gus_mixer.obj gus_uart.obj gus_reset.obj &
+  gus_synth.obj gus_sample.obj gus_simple.obj gus_instr.obj &
+  gusclassic.obj gusextreme.obj gusmax.obj interwave.obj interwave-stb.obj
 
-TARGET = au88xx
+TARGET = gus
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 
@@ -42,7 +44,7 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 clean: .SYMBOLIC
-    -@rm  *.err
+    -@rm *.err
     @if exist obj @rm.exe -r obj
     @if exist bin @rm.exe -r bin
 

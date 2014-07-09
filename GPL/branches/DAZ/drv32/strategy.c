@@ -82,18 +82,12 @@ ULONG StratInit(RP __far* _rp)
 }
 //******************************************************************************
 // External initialization complete entry-point
-#ifdef ACPI
-#include "irqos2.h"
-#endif //ACPI
 //******************************************************************************
 #pragma off (unreferenced)
 ULONG StratInitComplete(RP __far* _rp)
 #pragma on (unreferenced)
 {
 	DbgInt.ulState = 2;
-#ifdef ACPI
-	PciAdjustInterrupts();
-#endif
 	DbgPrintIrq();
 	//dprintf(("StratInitComplete"));
 	return(RPDONE);
