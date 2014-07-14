@@ -5,10 +5,7 @@ ROOT=$(%ROOT)
 
 !include $(ROOT)\tools\header.mif
 
-CINCLUDES = $(ROOT)\include;$(WATCOM)\H;$(WATCOM)\H\OS2;
 AINCLUDES = $(DDK)\base\H
-
-CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
 
 !if "$(IBM_BUILD)" == "1"
 CDEFINES += -DIBM_BUILD
@@ -24,7 +21,8 @@ FILES = spinlock.obj malloc.obj pci.obj irq.obj ioctl.obj &
   ossidc.obj semaphore.obj waitqueue.obj misc.obj &
   strncpy.obj task.obj &
   strncmp.obj timer.obj &
-  instropl2.obj instropl3.obj vsprintf.obj
+  instropl2.obj instropl3.obj vsprintf.obj &
+  pci_iomap_compat.obj
 # ossidc.obj semaphore.obj waitqueue.obj misc.obj fminstrload.obj
 !if $(KEE) == 0
 FILES += stack.obj

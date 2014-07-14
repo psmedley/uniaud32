@@ -101,10 +101,10 @@ struct QBASE
   WORD16      Index;          // Index of next byte out
   WORD16      Count;          // Count of bytes in queue
   };
-template <int s> struct QUEUE : public QBASE
-  {
-  BYTE        Buffer[s];      // Queue buffer
-  };
+//template <int s> struct QUEUE : public QBASE
+//  {
+//  BYTE        Buffer[s];      // Queue buffer
+//  };
 
 // Inter device driver communication structure
 struct        IDCDATA

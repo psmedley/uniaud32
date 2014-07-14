@@ -5,7 +5,7 @@
 
 #define inline __inline
 #define INLINE inline
-#define __attribute__
+#define __attribute__(a)
 
 #if __GNUC_MINOR__ >= 1  && __GNUC_MINOR__ < 4
 # define inline		__inline__ __attribute__((always_inline))
