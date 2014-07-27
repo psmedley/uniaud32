@@ -18,7 +18,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
-  
+
 #include <linux/time.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -445,7 +445,6 @@ int snd_pcm_limit_hw_rates(struct snd_pcm_runtime *runtime)
 			runtime->hw.rate_max = snd_pcm_known_rates.list[i];
 			break;
 		}
-
 	}
 	return 0;
 }

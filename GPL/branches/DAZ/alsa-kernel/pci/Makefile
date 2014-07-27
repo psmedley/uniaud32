@@ -29,7 +29,7 @@ LNKFILE = $(OBJDIR)\$(TARGET).lnk
 #   Specific dependencies
 #
 #===================================================================
-all: $(OBJDIR)\$(TARGET).lib subdirs
+all: $(OBJDIR)\$(TARGET).lib hda ac97 ali5451 cs46xx cs5535audio emu10k1 ca0106 nm256 trident ymfpci
 
 
 $(LNKFILE): Makefile
@@ -41,61 +41,86 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 
-subdirs: .SYMBOLIC
+hda: .SYMBOLIC
     @echo BUILDING hda
     @cd hda
     @wmake $(WMAKEOPTS)
     @cd ..
+
+ac97: .symbolic
     @echo BUILDING ac97
     @cd ac97
     @wmake $(WMAKEOPTS)
     @cd ..
+
+ali5451: .symbolic
     @echo BUILDING ali5451
     @cd ali5451
     @wmake $(WMAKEOPTS)
     @cd ..
+
+cs46xx: .symbolic
     @echo BUILDING cs46xx
     @cd cs46xx
     @wmake $(WMAKEOPTS)
     @cd ..
+
+cs5535audio: .symbolic
     @echo BUILDING cs5535audio
     @cd cs5535audio
     @wmake $(WMAKEOPTS)
     @cd ..
+
+emu10k1: .symbolic
     @echo BUILDING emu10k1
     @cd emu10k1
     @wmake $(WMAKEOPTS)
     @cd ..
+
+ca0106: .symbolic
     @echo BUILDING ca0106
     @cd ca0106
     @wmake $(WMAKEOPTS)
     @cd ..
+
+nm256: .symbolic
     @echo BUILDING nm256
     @cd nm256
     @wmake $(WMAKEOPTS)
     @cd ..
-#    @echo BUILDING rme9652
-#    @cd rme9652
-#    @wmake $(WMAKEOPTS)
-#    @cd ..
+
+trident: .symbolic
     @echo BUILDING trident
     @cd trident
     @wmake $(WMAKEOPTS)
     @cd ..
+
+ymfpci: .symbolic
     @echo BUILDING ymfpci
     @cd ymfpci
     @wmake $(WMAKEOPTS)
     @cd ..
-#    @echo BUILDING vortex
-#    @cd au88x0
-#    @wmake $(WMAKEOPTS)
-#    @cd ..
 
+#we don't build this
+rme9653: .symbolic
+    @echo BUILDING rme9652
+    @cd rme9652
+    @wmake $(WMAKEOPTS)
+    @cd ..
 
-##    @echo BUILDING wavefront
-##    @cd wavefront
-##    @nmake $(WMAKEOPTS)
-##    @cd ..
+#we don't build this
+vortex: .symbolic
+    @echo BUILDING vortex
+    @cd au88x0
+    @wmake $(WMAKEOPTS)
+    @cd ..
+
+#we don't build this
+wavefront: .symbolic
+    @echo BUILDING wavefront
+    @cd wavefront
+    @nmake $(WMAKEOPTS)
+    @cd ..
 
 
 clean: .SYMBOLIC

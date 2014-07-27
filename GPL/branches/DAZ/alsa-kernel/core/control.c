@@ -28,7 +28,9 @@
 #include <sound/minors.h>
 #include <sound/info.h>
 #include <sound/control.h>
+#ifdef TARGET_OS2
 #include <proto.h>
+#endif
 
 /* max number of user-defined controls */
 #define MAX_USER_CONTROLS	32
@@ -195,9 +197,7 @@ static struct snd_kcontrol *snd_ctl_new(struct snd_kcontrol *control,
 	
 	if (snd_BUG_ON(!control || !control->count))
 		return NULL;
-
 	kctl = kzalloc(sizeof(*kctl) + sizeof(struct snd_kcontrol_volatile) * control->count, GFP_KERNEL);
-
 	if (kctl == NULL) {
 		snd_printk(KERN_ERR "Cannot allocate control instance\n");
 		return NULL;

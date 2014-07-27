@@ -25,20 +25,26 @@ WMAKEOPTS += DEBUG=0
 #   Specific dependencies
 #
 #===================================================================
-all: subdirs
+all: subdirs alsa-kernel lib32 drv32
 
 subdirs: .SYMBOLIC
   @if not exist $(ALSA_LIB) $(CREATEPATH) $(ALSA_LIB)
   @if not exist $(ALSA_BIN) $(CREATEPATH) $(ALSA_BIN)
   @$(ROOT)\tools\mkversion.cmd
+
+alsa-kernel: .symbolic
   @echo BUILDING alsa-kernel
   @cd alsa-kernel
   @wmake $(WMAKEOPTS)
   @cd ..
+
+lib32: .symbolic
   @echo BUILDING lib32
   @cd lib32
   @wmake $(WMAKEOPTS)
   @cd ..
+
+drv32: .symbolic
   @echo BUILDING drv32
   @cd drv32
   @wmake $(WMAKEOPTS)

@@ -20,12 +20,10 @@
  */
 
 #include <linux/input.h>
-#include <linux/slab.h>
-#include <linux/module.h>
 #include <sound/jack.h>
 #include <sound/core.h>
 
-static int jack_switch_types[] = {
+static int jack_types[] = {
 	SW_HEADPHONE_INSERT,
 	SW_MICROPHONE_INSERT,
 	SW_LINEOUT_INSERT,
@@ -128,10 +126,10 @@ int snd_jack_new(struct snd_card *card, const char *id, int type,
 
 	jack->type = type;
 
-	for (i = 0; i < ARRAY_SIZE(jack_switch_types); i++)
+	for (i = 0; i < ARRAY_SIZE(jack_types); i++)
 		if (type & (1 << i))
 			input_set_capability(jack->input_dev, EV_SW,
-					     jack_switch_types[i]);
+					     jack_types[i]);
 
 	err = snd_device_new(card, SNDRV_DEV_JACK, jack, &ops);
 	if (err < 0)
@@ -225,11 +223,10 @@ void snd_jack_report(struct snd_jack *jack, int status)
 					 status & testbit);
 	}
 
-	for (i = 0; i < ARRAY_SIZE(jack_switch_types); i++) {
+	for (i = 0; i < ARRAY_SIZE(jack_types); i++) {
 		int testbit = 1 << i;
 		if (jack->type & testbit)
-			input_report_switch(jack->input_dev,
-					    jack_switch_types[i],
+			input_report_switch(jack->input_dev, jack_types[i],
 					    status & testbit);
 	}
 

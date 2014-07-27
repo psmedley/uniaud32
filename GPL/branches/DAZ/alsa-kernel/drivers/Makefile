@@ -8,13 +8,15 @@ NOOBJ=1
 
 WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
 
-all: subdirs
+all: opl3 mpu401
 
-subdirs: .SYMBOLIC
+opl3: .SYMBOLIC
     @echo BUILDING opl3
     @cd opl3
     @wmake $(WMAKEOPTS)
     @cd ..
+
+mpu401
     @echo BUILDING mpu401
     @cd mpu401
     @wmake $(WMAKEOPTS)

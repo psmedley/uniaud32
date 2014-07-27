@@ -27,7 +27,7 @@ LNKFILE = $(OBJDIR)\$(TARGET).lnk
 #   Specific dependencies
 #
 #===================================================================
-all: $(OBJDIR)\$(TARGET).lib subdirs
+all: $(OBJDIR)\$(TARGET).lib seq oss
 
 $(LNKFILE): Makefile
     @%create $(LNKFILE)
@@ -38,11 +38,13 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 
-subdirs: .SYMBOLIC
+seq: .SYMBOLIC
     @echo BUILDING seq
     @cd seq
     @wmake $(WMAKEOPTS)
     @cd ..
+
+oss: .symbolic
     @echo BUILDING oss
     @cd oss
     @wmake $(WMAKEOPTS)

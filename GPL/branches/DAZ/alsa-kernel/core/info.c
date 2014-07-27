@@ -648,6 +648,7 @@ int snd_info_card_register(struct snd_card *card)
 
 	if (!strcmp(card->id, card->proc_root->name))
 		return 0;
+		
 #ifndef TARGET_OS2
 	p = proc_symlink(card->id, snd_proc_root, card->proc_root->name);
 	if (p == NULL)

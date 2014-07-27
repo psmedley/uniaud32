@@ -1,3 +1,4 @@
+This file is not used by OS2
 /*
  * ALSA timer back-end using hrtimer
  * Copyright (C) 2008 Takashi Iwai
@@ -19,7 +20,6 @@
  */
 
 #include <linux/init.h>
-#include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/hrtimer.h>

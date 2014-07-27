@@ -24,7 +24,7 @@ LNKFILE = $(OBJDIR)\$(TARGET).lnk
 #   Specific dependencies
 #
 #===================================================================
-all: $(OBJDIR)\$(TARGET).lib subdirs
+all: $(OBJDIR)\$(TARGET).lib emux
 
 
 $(LNKFILE): Makefile
@@ -35,7 +35,7 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
-subdirs: .SYMBOLIC
+emux: .SYMBOLIC
     @echo BUILDING emux
     @cd emux
     @wmake $(WMAKEOPTS)

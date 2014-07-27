@@ -97,13 +97,13 @@ $(LNKFILE): $(MAKEFILE)
   @%write $^@ /OUT:$(OBJDIR)\$(TARGET).sys
   @%write $^@ /MAP:$(OBJDIR)\$(TARGET).map
   @for %f in ($(FILES)) do @%append $^@ $(OBJDIR)\%f
-  @for %f in ($(LIBS)) do @%append $^@ %f
+  @for %f in ($(LIBS)) do @if exist %f @%append $^@ %f
   @%write $^@ $(WATCOM)\lib386\os2\clib3r.lib
   @%write $^@ $(WATCOM)\lib386\os2\os2386.lib
   @%write $^@ $(DEFFILE)
 !endif
 
-$(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
+$(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES)
   @%create $(DEFFILE)
   $(ROOT)\tools\AddToFile.cmd $(DEFFILE),description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 and eCS (c) 2014 $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
   $(LINK) @$(LNKFILE)

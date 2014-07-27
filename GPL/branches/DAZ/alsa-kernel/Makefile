@@ -5,25 +5,33 @@ WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
 #   Specific dependencies
 #
 #===================================================================
-all: subdirs
+all: core drivers isa pci synth
 
-subdirs: .SYMBOLIC
+core: .SYMBOLIC
   @echo BUILDING core
   @cd core
   @wmake $(WMAKEOPTS)
   @cd ..
+
+drivers: .symbolic
   @echo BUILDING drivers
   @cd drivers
   @wmake $(WMAKEOPTS)
   @cd ..
+
+isa: .symbolic
   @echo BUILDING isa
   @cd isa
   @wmake $(WMAKEOPTS)
   @cd ..
+
+pci: .symbolic
   @echo BUILDING pci
   @cd pci
   @wmake $(WMAKEOPTS)
   @cd ..
+
+synth: .symbolic
   @echo BUILDING synth
   @cd synth
   @wmake $(WMAKEOPTS)

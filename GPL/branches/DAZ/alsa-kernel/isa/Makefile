@@ -8,44 +8,56 @@ NOOBJ=1
 
 WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
 
+#we only build sb
+all: sb
 
-all: subdirs
+ad1816a: .SYMBOLIC
+    @echo BUILDING ad1816a
+    @cd ad1816a
+    @wmake $(WMAKEOPTS)
+    @cd ..
 
-subdirs: .SYMBOLIC
-#    @echo BUILDING ad1816a
-#    @cd ad1816a
-#    @wmake $(WMAKEOPTS)
-#    @cd ..
-#    @echo BUILDING ad1848
-#    @cd ad1848
-#    @wmake $(WMAKEOPTS)
-#    @cd ..
-#    @echo BUILDING cs423x
-#    @cd cs423x
-#    @wmake $(WMAKEOPTS)
-#    @cd ..
-#    @echo BUILDING es1688
-#    @cd es1688
-#    @wmake $(WMAKEOPTS)
-#    @cd ..
-#    @echo BUILDING gus
-#    @cd gus
-#    @wmake $(WMAKEOPTS)
-#    @cd ..
-#    @echo BUILDING opti9xx
-#    @cd opti9xx
-#    @wmake $(WMAKEOPTS)
-#    @cd ..
+ad1848: .symbolic
+    @echo BUILDING ad1848
+    @cd ad1848
+    @wmake $(WMAKEOPTS)
+    @cd ..
+
+cs423x: .symbolic
+    @echo BUILDING cs423x
+    @cd cs423x
+    @wmake $(WMAKEOPTS)
+    @cd ..
+
+es1688: .symbolic
+    @echo BUILDING es1688
+    @cd es1688
+    @wmake $(WMAKEOPTS)
+    @cd ..
+
+gus: .symbolic
+    @echo BUILDING gus
+    @cd gus
+    @wmake $(WMAKEOPTS)
+    @cd ..
+
+opti9xx: .symbolic
+    @echo BUILDING opti9xx
+    @cd opti9xx
+    @wmake $(WMAKEOPTS)
+    @cd ..
+
+sb: .symbolic
     @echo BUILDING sb
     @cd sb
     @wmake $(WMAKEOPTS)
     @cd ..
 
-
-##    @echo BUILDING wavefront
-##    @cd wavefront
-##    @nmake $(WMAKEOPTS)
-##    @cd ..
+wavefront: .symbolic
+    @echo BUILDING wavefront
+    @cd wavefront
+    @nmake $(WMAKEOPTS)
+    @cd ..
 
 
 clean: .SYMBOLIC
