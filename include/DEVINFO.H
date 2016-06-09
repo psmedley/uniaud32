@@ -26,11 +26,6 @@
 #if !defined(DevInfo_h)
 #define DevInfo_h 1
 
-#if !defined(__cplusplus)
-#error C++ must be used for strict type checking
-#endif
-
-
 // Include the fundamental type definitions
 #include "DevType.h"
 

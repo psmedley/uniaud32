@@ -59,13 +59,14 @@ MODULE_PARM_DESC(slots, "Module names assigned to the slots.");
  */
 static int module_slot_match(struct module *module, int idx)
 {
+	int match = 1;
 #ifndef TARGET_OS2
 #ifdef MODULE
 	const char *s1, *s2;
 
-	int match = 1;
 	if (!module || !module->name || !slots[idx])
 		return 0;
+		
 	s1 = module->name;
 	s2 = slots[idx];
 	if (*s2 == '!') {
@@ -87,10 +88,7 @@ static int module_slot_match(struct module *module, int idx)
 		if (!c1)
 			break;
 	}
-
 #endif /* MODULE */
-#else
-	int match = 1;
 #endif
 	return match;
 }

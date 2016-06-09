@@ -4,6 +4,7 @@
  *
  * (C) 2000-2002 InnoTek Systemberatung GmbH
  * (C) 2000-2001 Sander van Leeuwen (sandervl@xs4all.nl)
+ * Copyright (c) 2013-2015 David Azarewicz david@88watts.net
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -23,163 +24,160 @@
  */
 
 #define INCL_NOPMAPI
-#define INCL_DOSINFOSEG 	 // Need Global info seg in rm.cpp algorithms
+#define INCL_DOSINFOSEG    // Need Global info seg in rm.cpp algorithms
 #include <os2.h>
 
 #include <devhelp.h>
-#include <devrp.h>
+//DAZ #include <devrp.h>
 #include <devown.h>
 #include "strategy.h"
 #include <ossidc32.h>
 #include <dbgos2.h>
 #include <string.h>
 
-ULONG StratRead(RP __far *_rp);
-ULONG StratIOCtl(RP __far *_rp);
-ULONG StratClose(RP __far *_rp);
+ULONG StratRead(REQPACKET __far *_rp);
+ULONG StratIOCtl(REQPACKET __far *_rp);
+ULONG StratClose(REQPACKET __far *_rp);
 
-ULONG DiscardableInit(RPInit __far*);
+ULONG DiscardableInit(REQPACKET __far*);
 ULONG deviceOwner = DEV_NO_OWNER;
 ULONG numOS2Opens = 0;
-extern "C" BOOL fRewired; //pci.c
+extern BOOL fRewired; //pci.c
 
-extern "C" DBGINT DbgInt;
+extern DBGINT DbgInt;
 
 //******************************************************************************
-//******************************************************************************
-ULONG StratOpen(RP __far*)
+ULONG StratOpen(REQPACKET __far* rp)
 {
-	if (numOS2Opens == 0) {
-		deviceOwner = DEV_PDD_OWNER;
-	}
-	numOS2Opens++;
-		return RPDONE;
+  if (numOS2Opens == 0)
+  {
+    deviceOwner = DEV_PDD_OWNER;
+  }
+  numOS2Opens++;
+  return RPDONE;
 }
+
 //******************************************************************************
-//******************************************************************************
-#pragma off (unreferenced)
-static ULONG StratWrite(RP __far* _rp)
-#pragma on (unreferenced)
+//DAZ #pragma off (unreferenced)
+static ULONG StratWrite(REQPACKET __far* rp)
+//DAZ #pragma on (unreferenced)
 {
   return RPDONE | RPERR;
 }
+
 //******************************************************************************
 // External initialization entry-point
 //******************************************************************************
-ULONG StratInit(RP __far* _rp)
+ULONG StratInit(REQPACKET __far* rp)
 {
-	ULONG rc;
+  ULONG rc;
 
-	memset(&DbgInt, 0, sizeof(DbgInt));
-	DbgPrintIrq();
+  memset(&DbgInt, 0, sizeof(DbgInt));
+  DbgPrintIrq();
 
-	RPInit __far* rp = (RPInit __far*)_rp;
-	rc = DiscardableInit(rp);
-	//dprintf(("StratInit End rc=%d", rc));
-	DbgPrintIrq();
-	DbgInt.ulState = 1;
-	return rc;
+  //DAZ RPInit __far* rp = (RPInit __far*)_rp;
+  rc = DiscardableInit(rp);
+  //dprintf(("StratInit End rc=%d", rc));
+  DbgPrintIrq();
+  DbgInt.ulState = 1;
+  return rc;
 }
+
 //******************************************************************************
 // External initialization complete entry-point
-#ifdef ACPI
-#include "irqos2.h"
-#endif //ACPI
 //******************************************************************************
-#pragma off (unreferenced)
-ULONG StratInitComplete(RP __far* _rp)
-#pragma on (unreferenced)
+//DAZ #pragma off (unreferenced)
+ULONG StratInitComplete(REQPACKET __far* rp)
+//DAZ #pragma on (unreferenced)
 {
-	DbgInt.ulState = 2;
-#ifdef ACPI
-	PciAdjustInterrupts();
-#endif
-	DbgPrintIrq();
-	//dprintf(("StratInitComplete"));
-	return(RPDONE);
+  DbgInt.ulState = 2;
+  DbgPrintIrq();
+  //dprintf(("StratInitComplete"));
+  return(RPDONE);
 }
-//******************************************************************************
-//******************************************************************************
-#pragma off (unreferenced)
-ULONG StratShutdown(RP __far *_rp)
-#pragma on (unreferenced)
-{
-	RPShutdown __far *rp = (RPShutdown __far *)_rp;
 
-	//dprintf(("StratShutdown %d", rp->Function));
-	if(rp->Function == 1) {//end of shutdown
-		OSS32_Shutdown();
-	}
-	return(RPDONE);
-}
 //******************************************************************************
+//DAZ #pragma off (unreferenced)
+ULONG StratShutdown(REQPACKET __far *rp)
+//DAZ #pragma on (unreferenced)
+{
+  //DAZ RPShutdown __far *rp = (RPShutdown __far *)_rp;
+
+  //dprintf(("StratShutdown %d", rp->Function));
+  if(rp->shutdown.Function == 1) //end of shutdown
+  {
+    OSS32_Shutdown();
+  }
+  return(RPDONE);
+}
+
 //******************************************************************************
 // Handle unsupported requests
-static ULONG StratError(RP __far*)
+static ULONG StratError(REQPACKET __far* rp)
 {
-  return RPERR_COMMAND | RPDONE;
+  return RPERR_BADCOMMAND | RPDONE;
 }
+
 //******************************************************************************
 // Strategy dispatch table
 //
 // This table is used by the strategy routine to dispatch strategy requests
 //******************************************************************************
-typedef ULONG (*RPHandler)(RP __far* rp);
+typedef ULONG (*RPHandler)(REQPACKET __far* rp);
 RPHandler StratDispatch[] =
 {
-  StratInit,				  // 00 (BC): Initialization
-  StratError,				  // 01 (B ): Media check
-  StratError,				  // 02 (B ): Build BIOS parameter block
-  StratError,				  // 03 (  ): Unused
-  StratRead,				  // 04 (BC): Read
-  StratError,				  // 05 ( C): Nondestructive read with no wait
-  StratError,				  // 06 ( C): Input status
-  StratError,				  // 07 ( C): Input flush
-  StratWrite,				  // 08 (BC): Write
-  StratError,				  // 09 (BC): Write verify
-  StratError,				  // 0A ( C): Output status
-  StratError,				  // 0B ( C): Output flush
-  StratError,				  // 0C (  ): Unused
-  StratOpen,				  // 0D (BC): Open
-  StratClose,				  // 0E (BC): Close
-  StratError,				  // 0F (B ): Removable media check
-  StratIOCtl,				  // 10 (BC): IO Control
-  StratError,				  // 11 (B ): Reset media
-  StratError,				  // 12 (B ): Get logical unit
-  StratError,				  // 13 (B ): Set logical unit
-  StratError,				  // 14 ( C): Deinstall character device driver
-  StratError,				  // 15 (  ): Unused
-  StratError,				  // 16 (B ): Count partitionable fixed disks
-  StratError,				  // 17 (B ): Get logical unit mapping of fixed disk
-  StratError,				  // 18 (  ): Unused
-  StratError,				  // 19 (  ): Unused
-  StratError,				  // 1A (  ): Unused
-  StratError,				  // 1B (  ): Unused
-  StratShutdown,			  // 1C (BC): Notify start or end of system shutdown
-  StratError,				  // 1D (B ): Get driver capabilities
-  StratError,				  // 1E (  ): Unused
-  StratInitComplete 		  // 1F (BC): Notify end of initialization
+  StratInit,          // 00 (BC): Initialization
+  StratError,         // 01 (B ): Media check
+  StratError,         // 02 (B ): Build BIOS parameter block
+  StratError,         // 03 (  ): Unused
+  StratRead,          // 04 (BC): Read
+  StratError,         // 05 ( C): Nondestructive read with no wait
+  StratError,         // 06 ( C): Input status
+  StratError,         // 07 ( C): Input flush
+  StratWrite,         // 08 (BC): Write
+  StratError,         // 09 (BC): Write verify
+  StratError,         // 0A ( C): Output status
+  StratError,         // 0B ( C): Output flush
+  StratError,         // 0C (  ): Unused
+  StratOpen,          // 0D (BC): Open
+  StratClose,         // 0E (BC): Close
+  StratError,         // 0F (B ): Removable media check
+  StratIOCtl,         // 10 (BC): IO Control
+  StratError,         // 11 (B ): Reset media
+  StratError,         // 12 (B ): Get logical unit
+  StratError,         // 13 (B ): Set logical unit
+  StratError,         // 14 ( C): Deinstall character device driver
+  StratError,         // 15 (  ): Unused
+  StratError,         // 16 (B ): Count partitionable fixed disks
+  StratError,         // 17 (B ): Get logical unit mapping of fixed disk
+  StratError,         // 18 (  ): Unused
+  StratError,         // 19 (  ): Unused
+  StratError,         // 1A (  ): Unused
+  StratError,         // 1B (  ): Unused
+  StratShutdown,        // 1C (BC): Notify start or end of system shutdown
+  StratError,         // 1D (B ): Get driver capabilities
+  StratError,         // 1E (  ): Unused
+  StratInitComplete       // 1F (BC): Notify end of initialization
 };
+
 //******************************************************************************
 // Strategy entry point
 //
 // The strategy entry point must be declared according to the STRATEGY
 // calling convention, which fetches arguments from the correct registers.
 //******************************************************************************
-ULONG Strategy(RP __far* rp);
 #pragma aux (STRATEGY) Strategy "ALSA_STRATEGY";
-ULONG Strategy(RP __far* rp)
+ULONG Strategy(REQPACKET __far* rp)
 {
-	if (fRewired) {
-		fRewired = FALSE;
-		rprintf(("Strategy: Resuming"));
-		OSS32_APMResume();
-		DbgPrintIrq();
-	}
+  if (fRewired)
+  {
+    fRewired = FALSE;
+    rprintf(("Strategy: Resuming"));
+    OSS32_APMResume();
+    DbgPrintIrq();
+  }
 
-	if (rp->Command < sizeof(StratDispatch)/sizeof(StratDispatch[0]))
-	   	return(StratDispatch[rp->Command](rp));
-	else return(RPERR_COMMAND | RPDONE);
+  if (rp->bCommand < sizeof(StratDispatch)/sizeof(StratDispatch[0])) return(StratDispatch[rp->bCommand](rp));
+  else return(RPERR_BADCOMMAND | RPDONE);
 }
-//******************************************************************************
-//******************************************************************************
+

@@ -22,7 +22,7 @@
  *
  */
 #ifdef TARGET_OS2
-#include <sound\config.h>
+#include <config.h>
 #endif
 
 #include <linux/module.h>
@@ -100,11 +100,11 @@ struct snd_device {
 
 struct snd_monitor_file {
 	struct file *file;
-#ifndef TARGET_OS2
+#ifndef TARGET_OS2	
 	const struct file_operations *disconnected_f_op;
 #else
 	struct file_operations *disconnected_f_op;
-#endif
+#endif	
 	struct list_head shutdown_list;	/* still need to shutdown */
 	struct list_head list;	/* link of monitor files */
 };
@@ -204,11 +204,11 @@ struct snd_minor {
 	int type;			/* SNDRV_DEVICE_TYPE_XXX */
 	int card;			/* card number */
 	int device;			/* device number */
-#ifndef TARGET_OS2
+#ifndef TARGET_OS2	
 	const struct file_operations *f_ops;	/* file operations */
 #else
 	struct file_operations *f_ops;	/* file operations */
-#endif
+#endif	
 	void *private_data;		/* private data for f_ops->open */
 	struct device *dev;		/* device for sysfs */
 };
@@ -233,11 +233,11 @@ void snd_request_card(int card);
 
 int snd_register_device_for_dev(int type, struct snd_card *card,
 				int dev,
-#ifndef TARGET_OS2
+#ifndef TARGET_OS2				
 				const struct file_operations *f_ops,
 #else
 				struct file_operations *f_ops,
-#endif
+#endif				
 				void *private_data,
 				const char *name,
 				struct device *device);
@@ -262,9 +262,9 @@ int snd_register_device_for_dev(int type, struct snd_card *card,
 static inline int snd_register_device(int type, struct snd_card *card, int dev,
 #ifndef TARGET_OS2
 				      const struct file_operations *f_ops,
-#else
+#else				
 				      struct file_operations *f_ops,
-#endif
+#endif				
 				      void *private_data,
 				      const char *name)
 {
@@ -284,7 +284,7 @@ int snd_register_oss_device(int type, struct snd_card *card, int dev,
 			    const struct file_operations *f_ops, void *private_data,
 #else
 			    struct file_operations *f_ops, void *private_data,
-#endif
+#endif			
 			    const char *name);
 int snd_unregister_oss_device(int type, struct snd_card *card, int dev);
 void *snd_lookup_oss_minor_data(unsigned int minor, int type);
@@ -375,7 +375,7 @@ void __snd_printk(unsigned int level, const char *file, int line,
 	printk(format, ##args)
 #else
 #define __snd_printk printk
-#endif /* nothing */
+#endif	
 #endif
 
 /**
@@ -417,7 +417,7 @@ void __snd_printk(unsigned int level, const char *file, int line,
  *
  * When CONFIG_SND_DEBUG is set, this macro evaluates the given condition,
  * and call WARN() and returns the value if it's non-zero.
- * 
+ *
  * When CONFIG_SND_DEBUG is not set, this just returns zero, and the given
  * condition is ignored.
  *
@@ -426,7 +426,6 @@ void __snd_printk(unsigned int level, const char *file, int line,
  * such as pre/post increment, to the argument of this macro.
  * If you want to evaluate and give a warning, use standard WARN_ON().
  */
-
 #define snd_BUG_ON(cond)	WARN((cond), "BUG? (%s)\n", __stringify(cond))
 
 #else /* !CONFIG_SND_DEBUG */
@@ -448,7 +447,6 @@ static inline int __snd_bug_on(int cond)
 }
 #define snd_BUG_ON(cond)	__snd_bug_on(0 && (cond))  /* always false */
 #endif
-
 
 #endif /* CONFIG_SND_DEBUG */
 

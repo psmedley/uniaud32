@@ -21,7 +21,7 @@
 #ifdef TARGET_OS2
 #include <sound/core.h>
 #endif
-#include <sound/config.h>
+#include <config.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>

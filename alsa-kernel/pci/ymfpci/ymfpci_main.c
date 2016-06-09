@@ -846,7 +846,7 @@ static irqreturn_t snd_ymfpci_interrupt(int irq, void *dev_id)
 static struct snd_pcm_hardware snd_ymfpci_playback =
 {
 	.info =			(SNDRV_PCM_INFO_MMAP |
-				 SNDRV_PCM_INFO_MMAP_VALID | 
+				 SNDRV_PCM_INFO_MMAP_VALID |
 				 SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
 				 SNDRV_PCM_INFO_PAUSE |
@@ -1957,7 +1957,7 @@ int __devinit snd_ymfpci_timer(struct snd_ymfpci *chip, int device)
  *  proc interface
  */
 
-static void snd_ymfpci_proc_read(struct snd_info_entry *entry, 
+static void snd_ymfpci_proc_read(struct snd_info_entry *entry,
 				 struct snd_info_buffer *buffer)
 {
 	struct snd_ymfpci *chip = entry->private_data;
@@ -2111,7 +2111,7 @@ static int __devinit snd_ymfpci_memalloc(struct snd_ymfpci *chip)
 	/* work_ptr must be aligned to 256 bytes, but it's already
 	   covered with the kernel page allocation mechanism */
 	if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, snd_dma_pci_data(chip->pci),
-				size, &chip->work_ptr) < 0) 
+				size, &chip->work_ptr) < 0)
 		return -ENOMEM;
 	ptr = chip->work_ptr.area;
 	ptr_addr = chip->work_ptr.addr;
@@ -2217,7 +2217,7 @@ static int snd_ymfpci_free(struct snd_ymfpci *chip)
 	/* Set PCI device to D3 state */
 #if 0
 	/* FIXME: temporarily disabled, otherwise we cannot fire up
-	 * the chip again unless reboot.  ACPI bug?
+	 * the chip again unless reboot.
 	 */
 	pci_set_power_state(chip->pci, 3);
 #endif

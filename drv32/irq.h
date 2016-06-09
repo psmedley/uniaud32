@@ -24,13 +24,13 @@
 #ifndef __IRQ_H__
 #define __IRQ_H__
 
-extern "C" FARPTR16 ISR00;
-extern "C" FARPTR16 ISR01;
-extern "C" FARPTR16 ISR02;
-extern "C" FARPTR16 ISR03;
-extern "C" FARPTR16 ISR04;
-extern "C" FARPTR16 ISR05;
-extern "C" FARPTR16 ISR06;
-extern "C" FARPTR16 ISR07;
+extern FARPTR16 ISR00;
+extern FARPTR16 ISR01;
+extern FARPTR16 ISR02;
+extern FARPTR16 ISR03;
+extern FARPTR16 ISR04;
+extern FARPTR16 ISR05;
+extern FARPTR16 ISR06;
+extern FARPTR16 ISR07;
 
 #endif //__IRQ_H__

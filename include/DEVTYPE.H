@@ -25,10 +25,6 @@
 #if !defined(DevType_h)
 #define DevType_h 1
 
-#if !defined(__WATCOMC__) || !defined(__cplusplus)
-#error Watcom C++ must be used for strict type checking.
-#endif
-
 #pragma pack(1)
 
 // Match OS/2's layout model for structures
@@ -101,10 +97,10 @@ struct QBASE
   WORD16      Index;          // Index of next byte out
   WORD16      Count;          // Count of bytes in queue
   };
-template <int s> struct QUEUE : public QBASE
-  {
-  BYTE        Buffer[s];      // Queue buffer
-  };
+//template <int s> struct QUEUE : public QBASE
+//  {
+//  BYTE        Buffer[s];      // Queue buffer
+//  };
 
 // Inter device driver communication structure
 struct        IDCDATA
@@ -136,7 +132,7 @@ struct        STACKUSAGE
 // file.
 struct DEVHEADER
   {
-  DEVHEADER FAR* Link;        // Link to next header in chain
+  struct DEVHEADER FAR* Link;        // Link to next header in chain
   WORD16      DAWFlags;       // Device attribute word
   VOID*       StrategyEntry;  // Entry point to strategy routine
   VOID*       IDCEntry;       // Entry point to IDC routine
@@ -146,7 +142,7 @@ struct DEVHEADER
   };
 
 // Constant for final DEVHEADER in chain
-#define       FinalLink       ((DEVHEADER FAR*)0xFFFFFFFFul)
+#define       FinalLink       ((struct DEVHEADER FAR*)0xFFFFFFFFul)
 
 // Constants for device attribute word
 #define  DAW_CHARACTER = 0x8000;     // Character device
@@ -181,15 +177,15 @@ struct DEVHEADER
 #define OffsetBeginCS32        ((WORD32)&_OffBeginCS32)
 #define OffsetBeginDS32        ((WORD32)&_OffBeginDS32)
 
-extern "C"
-{
+//extern "C"
+//{
   extern BYTE _OffFinalCS32;               // End of resident code
   extern BYTE _OffFinalDS32;               // End of resident code
   extern BYTE _OffBeginCS32;               // Begin of resident data
   extern BYTE _OffBeginDS32;               // Begin of resident data
   extern WORD16 _OffsetFinalCS16;
   extern WORD16 _OffsetFinalDS16;
-}
+//}
 
 #pragma pack()
 
