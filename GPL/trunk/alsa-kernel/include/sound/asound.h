@@ -41,6 +41,7 @@
 
 #endif /* __KERNEL__ **/
 
+#ifdef TARGET_OS2
 #ifndef __force
 #define __force
 #endif
@@ -49,7 +50,6 @@
 #define __bitwise
 #endif
 
-#ifdef TARGET_OS2
 #define SNDRV_PCM_VOL_FRONT_LEFT        0
 #define SNDRV_PCM_VOL_FRONT_RIGHT       1
 #define SNDRV_PCM_VOL_REAR_LEFT         2
@@ -322,11 +322,14 @@ struct snd_pcm_info {
 
 typedef int snd_pcm_hw_param_t;
 #define	SNDRV_PCM_HW_PARAM_ACCESS	0	/* Access type */
-#ifdef TARGET_OS2
+#ifndef TARGET_OS2
+#define	SNDRV_PCM_HW_PARAM_FORMAT	1	/* Format */
+#define	SNDRV_PCM_HW_PARAM_SUBFORMAT	2	/* Subformat */
+#else
 #define	SNDRV_PCM_HW_PARAM_RATE_MASK    1 /* Format */
-#endif
 #define	SNDRV_PCM_HW_PARAM_FORMAT	2	/* Format */
 #define	SNDRV_PCM_HW_PARAM_SUBFORMAT	3	/* Subformat */
+#endif
 #define	SNDRV_PCM_HW_PARAM_FIRST_MASK	SNDRV_PCM_HW_PARAM_ACCESS
 #define	SNDRV_PCM_HW_PARAM_LAST_MASK	SNDRV_PCM_HW_PARAM_SUBFORMAT
 
@@ -355,7 +358,7 @@ typedef int snd_pcm_hw_param_t;
 #define	SNDRV_PCM_HW_PARAM_FIRST_INTERVAL	SNDRV_PCM_HW_PARAM_SAMPLE_BITS
 #define	SNDRV_PCM_HW_PARAM_LAST_INTERVAL	SNDRV_PCM_HW_PARAM_TICK_TIME
 
-#define SNDRV_PCM_HW_PARAMS_NORESAMPLE		(1<<0)	/* avoid rate resampling */
+#define SNDRV_PCM_HW_PARAMS_NORESAMPLE	(1<<0)	/* avoid rate resampling */
 
 struct snd_interval {
 	unsigned int min, max;
@@ -788,7 +791,7 @@ struct snd_ctl_elem_id {
 	snd_ctl_elem_iface_t iface;	/* interface identifier */
 	unsigned int device;		/* device/client number */
 	unsigned int subdevice;		/* subdevice (substream) number */
-    unsigned char name[44];		/* ASCII name of item */
+        unsigned char name[44];		/* ASCII name of item */
 	unsigned int index;		/* index of item */
 };
 
@@ -835,7 +838,7 @@ struct snd_ctl_elem_info {
 struct snd_ctl_elem_value {
 	struct snd_ctl_elem_id id;	/* W: element ID */
 	unsigned int indirect: 1;	/* W: indirect access - obsoleted */
-    union {
+        union {
 		union {
 			long value[128];
 			long *value_ptr;	/* obsoleted */
@@ -853,9 +856,9 @@ struct snd_ctl_elem_value {
 			unsigned char *data_ptr;	/* obsoleted */
 		} bytes;
 		struct snd_aes_iec958 iec958;
-    } value;                /* RO */
+        } value;                /* RO */
 	struct timespec tstamp;
-    unsigned char reserved[128-sizeof(struct timespec)];
+        unsigned char reserved[128-sizeof(struct timespec)];
 };
 
 struct snd_ctl_tlv {

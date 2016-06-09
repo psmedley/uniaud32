@@ -33,7 +33,6 @@ extern "C" {
 
 #include <devhelp.h>
 #include <devtype.h>
-#include <devrp.h>
 #include <unicard.h>
 #include "parse.h"         // NUM_DEVICES
 #include <string.h>
@@ -45,10 +44,10 @@ int fVerbose  = FALSE;
 int fDebug    = FALSE;
 int ForceCard = CARD_NONE;
 
-extern "C" short int midi_port;
+extern short int midi_port;
 
 #ifdef COMM_DEBUG
-extern "C" short int MAGIC_COMM_PORT;
+extern short int MAGIC_COMM_PORT;
 #endif
 
 //*****************************************************************************

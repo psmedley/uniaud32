@@ -30,7 +30,8 @@
 // Device support
 #include <devhelp.h>
 #include <devtype.h>
-#include <devrp.h>
+//DAZ #include <devrp.h>
+#include <strategy.h>
 #include "devown.h"
 #include <version.h>
 #include <ossidc32.h>
@@ -66,19 +67,19 @@ typedef struct {
     WORD32  MsgPtr;
 } MSG_TABLE;
 
-extern "C" FARPTR16 MSG_TABLE32;
-extern "C" char szLastALSAError1[];
-extern "C" char szLastALSAError2[];
-extern "C" int sprintf (char *buffer, const char *format, ...);
+extern FARPTR16 MSG_TABLE32;
+extern char szLastALSAError1[];
+extern char szLastALSAError2[];
+extern int sprintf (char *buffer, const char *format, ...);
 
-extern "C" APIRET APIENTRY DOS16OPEN(PSZ pszFileName, PHFILE phf, PULONG pulAction, ULONG cbFile, ULONG ulAttribute, ULONG fsOpenFlags, ULONG fsOpenMode, PEAOP2 peaop2 );
-extern "C" APIRET APIENTRY DOS16CLOSE(HFILE hFile);
-extern "C" APIRET APIENTRY DOS16WRITE(HFILE hFile, PVOID pBuffer, ULONG cbWrite, PULONG pcbActual);
-extern "C" void SaveBuffer(void);
+extern APIRET APIENTRY DOS16OPEN(PSZ pszFileName, PHFILE phf, PULONG pulAction, ULONG cbFile, ULONG ulAttribute, ULONG fsOpenFlags, ULONG fsOpenMode, PEAOP2 peaop2 );
+extern APIRET APIENTRY DOS16CLOSE(HFILE hFile);
+extern APIRET APIENTRY DOS16WRITE(HFILE hFile, PVOID pBuffer, ULONG cbWrite, PULONG pcbActual);
+extern void SaveBuffer(void);
 
 #define VMDHA_FIXED             0x0002
 
-extern "C" APIRET VMAlloc(ULONG size, ULONG flags, char NEAR* *pAddr);
+extern APIRET VMAlloc(ULONG size, ULONG flags, char NEAR* *pAddr);
 
 //Print messages with DosWrite when init is done or has failed (see startup.asm)
 void DevSaveMessage(char FAR48 *str, int length)
@@ -88,7 +89,7 @@ void DevSaveMessage(char FAR48 *str, int length)
  int i;
 
   for(i=0;i<length;i++) {
-	str16[msg->MsgLength + i] = str[i];
+  str16[msg->MsgLength + i] = str[i];
   }
   str16[msg->MsgLength + length] = 0;
   msg->MsgLength += length;
@@ -115,7 +116,7 @@ int LockSegments(void)
     //      size of our code/data
     segsize = OffsetFinalDS32 - ((OffsetBeginDS32) & ~0xFFF);
     if(segsize & 0xFFF) {
-	    segsize += PAGE_SIZE;
+      segsize += PAGE_SIZE;
     }
     segsize &= ~0xFFF;
 #ifdef KEE
@@ -133,14 +134,14 @@ int LockSegments(void)
                    (LINEAR)lock,
                    (LINEAR)&PgCount)) {
 #endif
-	    return(1);
+      return(1);
     }
     /*
      * Locks CODE32 into physical memory
      */
     segsize = OffsetFinalCS32 - ((OffsetBeginCS32) & ~0xFFF);
     if(segsize & 0xFFF) {
-	    segsize += PAGE_SIZE;
+      segsize += PAGE_SIZE;
     }
     segsize &= ~0xFFF;
 #ifdef KEE
@@ -158,7 +159,7 @@ int LockSegments(void)
                  (LINEAR)lock,
                  (LINEAR)&PgCount)) {
 #endif
-	    return(1);
+      return(1);
     }
     return 0;
 }
@@ -194,119 +195,131 @@ void SaveBuffer(void)
 }
 #endif
 // Initialize device driver
-WORD32 DiscardableInit(RPInit __far* rp)
+WORD32 DiscardableInit(REQPACKET __far* rp)
 {
-    char        debugmsg[64];
-    char FAR48 *args;
+  char debugmsg[64];
+  char FAR48 *args;
 
 #ifdef KEE
-    GetTKSSBase();
+  GetTKSSBase();
 #endif
 
-    if(LockSegments()) {
-    	WriteString(ERR_ERROR, sizeof(ERR_ERROR)-1);
-        WriteString(ERR_LOCK, sizeof(ERR_LOCK)-1);
-    	return RPDONE | RPERR_COMMAND;
-    }
+  if(LockSegments())
+  {
+    WriteString(ERR_ERROR, sizeof(ERR_ERROR)-1);
+    WriteString(ERR_LOCK, sizeof(ERR_LOCK)-1);
+    return RPDONE | RPERR_BADCOMMAND;
+  }
 
-	DebugLevel = 1;
-    rp->Out.FinalCS = 0;
-    rp->Out.FinalDS = 0;
+  DebugLevel = 1;
+  rp->init_out.usCodeEnd = 0;
+  rp->init_out.usDataEnd = 0;
 
-	if ( szprintBuf == 0 ) {
-		VMAlloc( DBG_MAX_BUF_SIZE, VMDHA_FIXED, &szprintBuf );
-		if (szprintBuf) {
-			memset( szprintBuf, 0, DBG_MAX_BUF_SIZE );
-			wrOffset= 0;
-		}
-	}
-	if (!HeapInit(HEAP_SIZE)) {
-		rprintf(("HeapInit failed!"));
-	}
-
-    args = MAKE_FARPTR32(rp->In.Args);
-    GetParms(args);
-
-#ifdef DEBUG
-	rprintf(("Uniaud32 version %s-DEBUG",UNIAUD_VERSION));
-#else
-	rprintf(("Uniaud32 version %s",UNIAUD_VERSION));
-#endif
-
-    if(fVerbose) {
-        WriteString(szALSA, sizeof(szALSA)-1);
-        WriteString(szCopyRight3, sizeof(szCopyRight3)-1);
-        WriteString(szCopyRight2, sizeof(szCopyRight2)-1);
-    }
-
-
-    if(fDebug) {
-    	sprintf(debugmsg, szCodeStartEnd, OffsetBeginCS32, OffsetFinalCS32);
-    	WriteString(debugmsg, strlen(debugmsg));
-    }
-
-    //get the current time (to force retrieval of GIS pointer)
-    os2gettimemsec();
-
-    char szMixerName[64];
-    char szDeviceName[128];
-
-    if(OSS32_Initialize() != OSSERR_SUCCESS)
+  if ( szprintBuf == 0 )
+  {
+    VMAlloc( DBG_MAX_BUF_SIZE, VMDHA_FIXED, &szprintBuf );
+    if (szprintBuf)
     {
-    	WriteString(ERR_ERROR, sizeof(ERR_ERROR)-1);
-    	WriteString(ERR_INIT, sizeof(ERR_INIT)-1);
-        if(szLastALSAError1[0]) {
-            WriteString(szLastALSAError1, strlen(szLastALSAError1));
-        }
-        if(szLastALSAError2[0]) {
-            WriteString(szLastALSAError2, strlen(szLastALSAError2));
-        }
-    	// !! dont exit when error !! return RPDONE | RPERR_COMMAND;
-    } else if (OSS32_QueryNames(OSS32_DEFAULT_DEVICE, szDeviceName,
-                                sizeof(szDeviceName),szMixerName,
-                                sizeof(szMixerName), TRUE) != OSSERR_SUCCESS)
-    {
-        WriteString(ERR_ERROR, sizeof(ERR_ERROR)-1);
-        WriteString(ERR_NAMES, sizeof(ERR_INIT)-1);
-        if(szLastALSAError1[0]) {
-            WriteString(szLastALSAError1, strlen(szLastALSAError1));
-        }
-        if(szLastALSAError2[0]) {
-            WriteString(szLastALSAError2, strlen(szLastALSAError2));
-        }
-
-    	// !! dont exit when error !! return RPDONE | RPERR_COMMAND;
+      memset( szprintBuf, 0, DBG_MAX_BUF_SIZE );
+      wrOffset= 0;
     }
-    else
-    if(fVerbose) {
+  }
+  if (!HeapInit(HEAP_SIZE))
+  {
+    rprintf(("HeapInit failed!"));
+  }
+
+  args = MAKE_FARPTR32(rp->init_in.szArgs);
+  GetParms(args);
+
+  #ifdef DEBUG
+  rprintf(("Uniaud32 version %s-DEBUG",UNIAUD_VERSION));
+  #else
+  rprintf(("Uniaud32 version %s",UNIAUD_VERSION));
+  #endif
+
+  if(fVerbose)
+  {
+    WriteString(szALSA, sizeof(szALSA)-1);
+    WriteString(szCopyRight3, sizeof(szCopyRight3)-1);
+    WriteString(szCopyRight2, sizeof(szCopyRight2)-1);
+  }
+
+  if(fDebug)
+  {
+    sprintf(debugmsg, szCodeStartEnd, OffsetBeginCS32, OffsetFinalCS32);
+    WriteString(debugmsg, strlen(debugmsg));
+  }
+
+  //get the current time (to force retrieval of GIS pointer)
+  os2gettimemsec();
+
+  char szMixerName[64];
+  char szDeviceName[128];
+
+  if(OSS32_Initialize() != OSSERR_SUCCESS)
+  {
+    WriteString(ERR_ERROR, sizeof(ERR_ERROR)-1);
+    WriteString(ERR_INIT, sizeof(ERR_INIT)-1);
+      if(szLastALSAError1[0])
+      {
+        WriteString(szLastALSAError1, strlen(szLastALSAError1));
+      }
+      if(szLastALSAError2[0])
+      {
+        WriteString(szLastALSAError2, strlen(szLastALSAError2));
+      }
+    // !! dont exit when error !! return RPDONE | RPERR_COMMAND;
+  }
+  else if (OSS32_QueryNames(OSS32_DEFAULT_DEVICE, szDeviceName,
+                              sizeof(szDeviceName),szMixerName,
+                              sizeof(szMixerName), TRUE) != OSSERR_SUCCESS)
+  {
+    WriteString(ERR_ERROR, sizeof(ERR_ERROR)-1);
+    WriteString(ERR_NAMES, sizeof(ERR_INIT)-1);
+    if(szLastALSAError1[0])
+    {
+      WriteString(szLastALSAError1, strlen(szLastALSAError1));
+    }
+    if(szLastALSAError2[0])
+    {
+      WriteString(szLastALSAError2, strlen(szLastALSAError2));
+    }
+
+    // !! dont exit when error !! return RPDONE | RPERR_COMMAND;
+  }
+  else
+  if(fVerbose)
+  {
+    WriteString(szDeviceName, strlen(szDeviceName));
+    WriteString(szEOL, sizeof(szEOL)-1);
+    WriteString(szMixerFound, sizeof(szMixerFound)-1);
+    WriteString(szMixerName, strlen(szMixerName));
+    WriteString(szEOL, sizeof(szEOL)-1);
+
+    #if 0
+    for(int i=1;i<OSS32_MAX_AUDIOCARDS;i++)
+    {
+      if(OSS32_QueryNames(i, szDeviceName, sizeof(szDeviceName), szMixerName, sizeof(szMixerName)) == OSSERR_SUCCESS)
+      {
         WriteString(szDeviceName, strlen(szDeviceName));
         WriteString(szEOL, sizeof(szEOL)-1);
         WriteString(szMixerFound, sizeof(szMixerFound)-1);
         WriteString(szMixerName, strlen(szMixerName));
         WriteString(szEOL, sizeof(szEOL)-1);
-
-#if 0
-        for(int i=1;i<OSS32_MAX_AUDIOCARDS;i++) {
-            if(OSS32_QueryNames(i, szDeviceName, sizeof(szDeviceName), szMixerName, sizeof(szMixerName)) == OSSERR_SUCCESS)
-            {
-                WriteString(szDeviceName, strlen(szDeviceName));
-                WriteString(szEOL, sizeof(szEOL)-1);
-                WriteString(szMixerFound, sizeof(szMixerFound)-1);
-                WriteString(szMixerName, strlen(szMixerName));
-                WriteString(szEOL, sizeof(szEOL)-1);
-            }
-            else break;
-        }
-#endif
-        WriteString(szEOL, sizeof(szEOL)-1);
+      }
+      else break;
     }
-    // Complete the installation
-    rp->Out.FinalCS = _OffsetFinalCS16;
-    rp->Out.FinalDS = _OffsetFinalDS16;
+    #endif
+    WriteString(szEOL, sizeof(szEOL)-1);
+  }
+  // Complete the installation
+  rp->init_out.usCodeEnd = _OffsetFinalCS16;
+  rp->init_out.usDataEnd = _OffsetFinalDS16;
 
-	//SaveBuffer();
+  //SaveBuffer();
 
-    // Confirm a successful installation
-    return RPDONE;
+  // Confirm a successful installation
+  return RPDONE;
 }
 

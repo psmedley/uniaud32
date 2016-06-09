@@ -110,12 +110,8 @@ void snd_card_info_read_oss(struct snd_info_buffer *buffer);
 static inline void snd_card_info_read_oss(struct snd_info_buffer *buffer) {}
 #endif
 
-#ifndef TARGET_OS2
 int snd_iprintf(struct snd_info_buffer *buffer, char *fmt, ...) \
 				__attribute__ ((format (printf, 2, 3)));
-#else
-int snd_iprintf(struct snd_info_buffer * buffer, char *fmt,...);
-#endif
 int snd_info_init(void);
 int snd_info_done(void);
 

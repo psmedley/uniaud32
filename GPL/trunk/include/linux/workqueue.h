@@ -2,7 +2,7 @@
 #define __LINUX_WORKQUEUE_H
 
 #include <linux/timer.h>
-#include <sound/compat_22.h>
+#include <compat_22.h>
 /* we know this is used below exactly once for at most one waiter */
 
 struct work_struct {

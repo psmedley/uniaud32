@@ -34,11 +34,11 @@
 #ifdef DEBUGHEAP
 void NEAR *malloc(ULONG size, const char *filename, int lineno);
 void       free(void *NEAR ptr, const char *filename, int lineno);
-void NEAR *realloc(void *NEAR ptr, unsigned newsize, const char *filename, int lineno);
+void NEAR *realloc(void *NEAR ptr, unsigned long newsize, const char *filename, int lineno);
 #else
 void NEAR *malloc(ULONG size);
 void       free(void NEAR *);
-void NEAR *realloc(void NEAR *, unsigned);
+void NEAR *realloc(void NEAR *, unsigned long);
 #endif
 
 unsigned _msize(void NEAR *);

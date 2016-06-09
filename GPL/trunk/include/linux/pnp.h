@@ -12,11 +12,7 @@
 
 #ifdef __KERNEL__
 
-#ifndef TARGET_OS2
 #include <linux/isapnp.h>
-#else /* TARGET_OS2 */
-#include <sound/isapnp.h>
-#endif /* TARGET_OS2 */
 #include <linux/list.h>
 #include <linux/pm.h>
 

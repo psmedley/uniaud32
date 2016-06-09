@@ -29,7 +29,7 @@
 #include <sound/pcm_params.h>
 #include <sound/minors.h>
 #include <sound/asequencer.h>
-#include <sound/seqmid.h>
+#include <seqmid.h>
 #include <sound/seq_kernel.h>
 #include <linux/file.h>
 #include <linux/soundcard.h>

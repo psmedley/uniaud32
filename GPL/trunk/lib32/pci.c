@@ -30,7 +30,7 @@
 #include <asm/uaccess.h>
 #include <asm/hardirq.h>
 #include <asm/io.h>
-#include <sound/config.h>
+#include <config.h>
 #include <sound/core.h>
 #include <sound/asound.h>
 
@@ -53,10 +53,6 @@ extern int nrCardsDetected;
 #define PCI_CONFIG_ENABLE		0x80000000
 #define PCI_CONFIG_ADDRESS		0xCF8
 #define PCI_CONFIG_DATA 		0xCFC
-
-#ifdef ACPI
-APIRET APIENTRY ACPIFindPCIDevice(ULONG Bus, ULONG Dev, ULONG Fun, ULONG *PicIRQ, ULONG *ApicIRQ, ULONG *Hdl, char *Component);
-#endif
 
 //******************************************************************************
 #define CONFIG_CMD(dev, where)	\
@@ -139,10 +135,6 @@ static ULONG pci_query_device(const struct pci_device_id *id_table, struct pci_d
 {
 	int		resNo, addr;
 	u32 devNr, busNr, funcNr, detectedId, cfgaddrreg, ulPciAdr, ulTmp1, ulTmp2;
-#ifdef ACPI
-	APIRET			 rc;
-	ULONG			 PicIRQ, ApicIRQ;
-#endif
 	u8		headerType;
 
 	busNr = (ulLast >> 8) & 0xff;
@@ -238,22 +230,6 @@ static ULONG pci_query_device(const struct pci_device_id *id_table, struct pci_d
 				// IRQ and PIN
 				pci_read_config_dword(pcidev, PCI_INTERRUPT_LINE, &ulTmp1);
 				rprintf(("pci_query_device: PCI config IRQ=%d", ulTmp1&0xff));
-#ifdef ACPI
-				rc = ACPIFindPCIDevice( (ULONG)busNr,						 // Bus
-										(ULONG)devNr,						 // Dev
-										(ULONG)(pcidev->devfn >> 8) & 7,	 // Function
-										&PicIRQ, 							 // PIC IRQ
-										&ApicIRQ, 							 // APIC IRQ
-										NULL,								 // ACPI handle to finding device
-										"Uniaud32");						 // Name for acpi log
-				if (!rc) {
-					if (PicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (PicIRQ & 0xff); // Choose Pic interrupt for init time processing
-					else if (ApicIRQ) ulTmp1 = (ulTmp1 & (~0xff)) | (ApicIRQ & 0xff);
-					rprintf(("pci_query_device: IRQs ACPI PIC=%ld APIC=%ld chosen=%d", PicIRQ, ApicIRQ, ulTmp1&0xff));
-					pcidev->picirq = PicIRQ;   // Save the Pic and
-					pcidev->apicirq = ApicIRQ; // Save the Apic interrupt for switching later
-				}
-#endif /* ACPI */
 				if( (u8)ulTmp1 && (u8)ulTmp1 != 0xff ) {
 					pcidev->irq_resource[0].flags = IORESOURCE_IRQ;
 					pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = ulTmp1 & 0xffff;
@@ -971,32 +947,3 @@ OSSRET OSS32_APMSuspend()
 	return OSSERR_SUCCESS;
 }
 
-#ifdef ACPI
-void PciAdjustInterrupts() {
-	int i;
-	struct pci_dev *pcidev;
-	struct pci_driver *driver;
-	ULONG ulTmp1, rc;
-
-	for (i=0; i<MAX_PCI_DEVICES; i++) {
-		if (!pci_devices[i].devfn) continue;
-		pcidev = &pci_devices[i];
-		ulTmp1 = pcidev->irq;
-		if (pcidev->apicirq) ulTmp1 = pcidev->apicirq;
-		else if (pcidev->picirq) ulTmp1 = pcidev->picirq;
-		rprintf(("PciAdjustInterrupts: IRQs ACPI PIC=%ld APIC=%ld was=%d chosen=%ld", pcidev->picirq, pcidev->apicirq, pcidev->irq, ulTmp1));
-		if( (u8)ulTmp1 && ((u8)ulTmp1 != 0xff) && ((u8)ulTmp1 != pcidev->irq) ) {
-			RMSetHandles(pcidev->hAdapter, pcidev->hDevice); /* DAZ - dirty hack */
-			driver = pcidev->pcidriver;
-			if(driver && driver->suspend) driver->suspend(pcidev, SNDRV_CTL_POWER_D0);
-
-			pcidev->irq_resource[0].flags = IORESOURCE_IRQ;
-			pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = ulTmp1 & 0xffff;
-			pcidev->irq = (u8)ulTmp1;
-
-			fRewired = TRUE;
-			// if(driver && driver->resume) driver->resume(pcidev);
-		}
-	} /* for loop */
-}
-#endif

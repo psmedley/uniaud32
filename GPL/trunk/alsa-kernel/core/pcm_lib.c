@@ -229,6 +229,7 @@ static int snd_pcm_update_hw_ptr_post(struct snd_pcm_substream *substream,
 #else
 #define hw_ptr_error(substream, fmt, ...) ;
 #endif
+
 static int snd_pcm_update_hw_ptr_interrupt(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
