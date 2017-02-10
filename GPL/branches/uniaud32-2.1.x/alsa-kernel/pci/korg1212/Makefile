@@ -11,9 +11,9 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = korg1212.obj
 
-TARGET = ac97
+TARGET = korg1212
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 
@@ -35,7 +35,7 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
 clean: .SYMBOLIC
-    -@rm *.err
+    -@rm  *.err
     @if exist obj @rm.exe -r obj
     @if exist bin @rm.exe -r bin
 

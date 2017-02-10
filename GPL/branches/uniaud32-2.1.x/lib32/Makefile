@@ -5,18 +5,31 @@ ROOT=$(%ROOT)
 
 !include $(ROOT)\tools\header.mif
 
+AINCLUDES = $(DDK)\base\H
+
+!if "$(IBM_BUILD)" == "1"
+CDEFINES += -DIBM_BUILD
+!endif
 
 #===================================================================
 #
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = spinlock.obj malloc.obj pci.obj irq.obj ioctl.obj &
+  memory.obj debug.obj sound.obj soundmixer.obj soundmidi.obj &
+  ossidc.obj semaphore.obj waitqueue.obj misc.obj &
+  strncpy.obj task.obj &
+  strncmp.obj timer.obj &
+  instropl2.obj instropl3.obj vsprintf.obj
+# ossidc.obj semaphore.obj waitqueue.obj misc.obj fminstrload.obj
+!if $(KEE) == 0
+FILES += stack.obj
+!endif
 
-TARGET = ac97
+TARGET = linuxlib
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
-
 
 #===================================================================
 #
@@ -33,6 +46,7 @@ $(LNKFILE): Makefile
 $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
+
 
 clean: .SYMBOLIC
     -@rm *.err

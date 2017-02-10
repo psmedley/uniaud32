@@ -11,9 +11,10 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = emux.obj emux_synth.obj emux_seq.obj emux_nrpn.obj &
+  emux_effect.obj emux_proc.obj soundfont.obj
 
-TARGET = ac97
+TARGET = emux
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 
@@ -34,8 +35,9 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
+
 clean: .SYMBOLIC
-    -@rm *.err
+   -@rm *.err
     @if exist obj @rm.exe -r obj
     @if exist bin @rm.exe -r bin
 

@@ -11,9 +11,9 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = cs5535audio.obj cs5535audio_pcm.obj cs5535audio_pm.obj
 
-TARGET = ac97
+TARGET = cs5535audio
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 

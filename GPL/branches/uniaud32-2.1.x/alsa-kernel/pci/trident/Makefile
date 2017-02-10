@@ -11,9 +11,9 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = trident.obj trident_main.obj trident_memory.obj
 
-TARGET = ac97
+TARGET = trident
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 

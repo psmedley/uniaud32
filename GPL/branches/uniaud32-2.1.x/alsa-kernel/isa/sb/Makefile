@@ -11,9 +11,12 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = sb_common.obj sb_mixer.obj
+#sb8_main.obj sb8_midi.obj
+#sb16_main.obj sb16_csp.obj sb8.obj sb16.obj sbawe.obj emu8000.obj
+#emu8000_synth.obj emu8000_callback.obj emu8000_patch.obj
 
-TARGET = ac97
+TARGET = sb
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 

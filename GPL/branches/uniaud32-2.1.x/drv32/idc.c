@@ -22,14 +22,14 @@
  *
  */
 
-extern "C" {               // 16-bit header files are not C++ aware
+//DAZ extern "C" {               // 16-bit header files are not C++ aware
 #define INCL_NOPMAPI
 #define INCL_DOSINFOSEG
 #include <os2.h>
-}
+//DAZ }
 #include <devtype.h>
 #include <devhelp.h>
-#include <strategy.h>
+//#include <strategy.h>
 #include <ossidc32.h>
 #include <irqos2.h>
 #include <stacktoflat.h>
@@ -37,13 +37,12 @@ extern "C" {               // 16-bit header files are not C++ aware
 
 //16:32 address of 16 bits pdd idc handler
 IDC16_HANDLER idc16_PddHandler = 0;
-extern "C" int pcm_device;
+extern int pcm_device;
 WORD32 OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket);
-extern "C" BOOL fRewired; //pci.c
+extern BOOL fRewired; //pci.c
 
 //packet pointer must reference a structure on the stack
 
-OSSRET AlsaIDC(ULONG cmd, ULONG packet);
 #pragma aux AlsaIDC "ALSA_IDC" parm reverse [ecx edx]
 OSSRET AlsaIDC(ULONG cmd, ULONG packet)
 {

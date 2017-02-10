@@ -11,9 +11,13 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = gus_main.obj gus_io.obj gus_irq.obj gus_timer.obj &
+  gus_mem.obj gus_mem_proc.obj gus_dram.obj gus_dma.obj gus_volume.obj &
+  gus_pcm.obj gus_mixer.obj gus_uart.obj gus_reset.obj &
+  gus_synth.obj gus_sample.obj gus_simple.obj gus_instr.obj &
+  gusclassic.obj gusextreme.obj gusmax.obj interwave.obj interwave-stb.obj
 
-TARGET = ac97
+TARGET = gus
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 

@@ -11,11 +11,11 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = cs4231_lib.obj cs4236_lib.obj cs4231.obj cs4232.obj cs4236.obj
 
-TARGET = ac97
+TARGET   = cs423x
 
-LNKFILE = $(OBJDIR)\$(TARGET).lnk
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
 
 
 #===================================================================

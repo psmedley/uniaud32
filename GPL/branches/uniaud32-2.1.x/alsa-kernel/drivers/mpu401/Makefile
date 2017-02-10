@@ -11,11 +11,11 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = mpu401.obj mpu401_uart.obj
 
-TARGET = ac97
+TARGET   = mpu401
 
-LNKFILE = $(OBJDIR)\$(TARGET).lnk
+LNKFILE  = $(OBJDIR)\$(TARGET).lnk
 
 
 #===================================================================
@@ -34,8 +34,9 @@ $(OBJDIR)\$(TARGET).lib: $(LNKFILE) $(FILES)
     $(LIB) $(OBJDIR)\$(TARGET).lib @$(LNKFILE)
     copy $(OBJDIR)\$(TARGET).lib $(ALSA_LIB)
 
+
 clean: .SYMBOLIC
-    -@rm *.err
+    -@rm  *.err
     @if exist obj @rm.exe -r obj
     @if exist bin @rm.exe -r bin
 

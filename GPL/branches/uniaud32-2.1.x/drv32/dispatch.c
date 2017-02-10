@@ -29,45 +29,45 @@
 #include <dbgos2.h>
 #include <devhelp.h>
 #include <devtype.h>
-#include <devrp.h>
+#include <strategy.h>
 #include "devown.h"
 #include <ossidc.h>
 #include <ossidc32.h>
 #include <version.h>
 
-extern "C" int cdecl printk(const char * fmt, ...);
+extern int cdecl printk(const char * fmt, ...);
 //******************************************************************************
 // Dispatch IOCtl requests received from the Strategy routine
 //******************************************************************************
-extern "C" int GetUniaudCardInfo(ULONG deviceid, void *info);
-extern "C" int GetUniaudControlNum(ULONG deviceid);
-extern "C" int GetUniaudControls(ULONG deviceid, void *pids);
-extern "C" int GetUniaudControlInfo(ULONG deviceid, ULONG id, void *info);
-extern "C" int GetUniaudControlValueGet(ULONG deviceid, ULONG id, void *value);
-extern "C" int GetUniaudControlValuePut(ULONG deviceid, ULONG id, void *value);
-extern "C" int GetNumberOfPcm(int card_id);
-extern "C" int GetUniaudPcmCaps(ULONG deviceid, void *caps);
-extern "C" int SetPCMInstance(int card_id, int pcm);
-extern "C" int WaitForControlChange(int card_id, int timeout);
-extern "C" int GetNumberOfCards(void);
-extern "C" OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, int pcm, USHORT fileid);
-extern "C" OSSRET OSS32_WaveClose(OSSSTREAMID streamid);
-extern "C" int UniaudIoctlHWRefine(OSSSTREAMID streamid, void *pHwParams);
-extern "C" int UniaudIoctlHWParamSet(OSSSTREAMID streamid, void *pHwParams);
-extern "C" int UniaudIoctlSWParamSet(OSSSTREAMID streamid, void *pSwParams);
-extern "C" int UniaudIoctlPCMStatus(OSSSTREAMID streamid, void *pstatus);
-extern "C" int UniaudIoctlPCMWrite(OSSSTREAMID streamid, char *buf, int size);
-extern "C" int UniaudIoctlPCMRead(OSSSTREAMID streamid, char *buf, int size);
-extern "C" int UniaudIoctlPCMPrepare(OSSSTREAMID streamid);
-extern "C" int UniaudIoctlPCMStart(OSSSTREAMID streamid);
-extern "C" int UniaudIoctlPCMDrop(OSSSTREAMID streamid);
-extern "C" int UniaudIoctlPCMResume(OSSSTREAMID streamid, int pause);
-extern "C" void UniaudCloseAll(USHORT fileid);
-extern "C" int WaitForPCMInterrupt(void *file, int timeout);
-extern "C" int unlock_all;
-extern "C" int OSS32_CloseUNI16(void);
-extern "C" int UniaudCtlGetPowerState(ULONG deviceid, void *state);
-extern "C" int UniaudCtlSetPowerState(ULONG deviceid, void *state);
+extern int GetUniaudCardInfo(ULONG deviceid, void *info);
+extern int GetUniaudControlNum(ULONG deviceid);
+extern int GetUniaudControls(ULONG deviceid, void *pids);
+extern int GetUniaudControlInfo(ULONG deviceid, ULONG id, void *info);
+extern int GetUniaudControlValueGet(ULONG deviceid, ULONG id, void *value);
+extern int GetUniaudControlValuePut(ULONG deviceid, ULONG id, void *value);
+extern int GetNumberOfPcm(int card_id);
+extern int GetUniaudPcmCaps(ULONG deviceid, void *caps);
+extern int SetPCMInstance(int card_id, int pcm);
+extern int WaitForControlChange(int card_id, int timeout);
+extern int GetNumberOfCards(void);
+extern OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, int pcm, USHORT fileid);
+extern OSSRET OSS32_WaveClose(OSSSTREAMID streamid);
+extern int UniaudIoctlHWRefine(OSSSTREAMID streamid, void *pHwParams);
+extern int UniaudIoctlHWParamSet(OSSSTREAMID streamid, void *pHwParams);
+extern int UniaudIoctlSWParamSet(OSSSTREAMID streamid, void *pSwParams);
+extern int UniaudIoctlPCMStatus(OSSSTREAMID streamid, void *pstatus);
+extern int UniaudIoctlPCMWrite(OSSSTREAMID streamid, char *buf, int size);
+extern int UniaudIoctlPCMRead(OSSSTREAMID streamid, char *buf, int size);
+extern int UniaudIoctlPCMPrepare(OSSSTREAMID streamid);
+extern int UniaudIoctlPCMStart(OSSSTREAMID streamid);
+extern int UniaudIoctlPCMDrop(OSSSTREAMID streamid);
+extern int UniaudIoctlPCMResume(OSSSTREAMID streamid, int pause);
+extern void UniaudCloseAll(USHORT fileid);
+extern int WaitForPCMInterrupt(void *file, int timeout);
+extern int unlock_all;
+extern int OSS32_CloseUNI16(void);
+extern int UniaudCtlGetPowerState(ULONG deviceid, void *state);
+extern int UniaudCtlSetPowerState(ULONG deviceid, void *state);
 
 typedef UCHAR LOCKHANDLE[12];
 
@@ -84,9 +84,8 @@ typedef struct ioctl_pcm {
 } ioctl_pcm;
 #pragma pack()
 
-ULONG StratIOCtl(RP __far* _rp)
+ULONG StratIOCtl(REQPACKET __far* rp)
 {
-    RPIOCtl __far* rp = (RPIOCtl __far*)_rp;
     USHORT rc = 0;;
     LOCKHANDLE lhParm, lhData;
     LINEAR linParm, linData;
@@ -95,45 +94,36 @@ ULONG StratIOCtl(RP __far* _rp)
     ULONG card_id;
     ULONG ctl_id;
 
-    if (rp->Category != CAT_IOCTL_OSS32)
+    if (rp->ioctl.bCategory != CAT_IOCTL_OSS32)
     {
-//        printk("not our cat %x. func %x\n", rp->Category, rp->Function);
+        //printk("not our cat %x. func %x\n", rp->Category, rp->Function);
         // not our category, exit with error
-        return (RPERR_COMMAND | RPDONE);
+        return (RPERR_BADCOMMAND | RPDONE);
     }
 
-#ifdef DEBUG
+    #ifdef DEBUG
     //printk("StratIOCtl 0x%x\n", rp->Function);
-#endif
-//    printk("cmd: %x, len: %i, pack: %x\n",rp->Function, rp->ParmLength, rp->ParmPacket);
+    #endif
+    //    printk("cmd: %x, len: %i, pack: %x\n",rp->Function, rp->ioctl.usParmLen, rp->ParmPacket);
     // work with Parm Packet
-    if ((rp->ParmLength != 0 ||
-         rp->Function == IOCTL_OSS32_ATTACH /*16 bit ioctl*/) &&
-        ((rp->ParmPacket & 0xfffcffff) != 0))
+    if ((rp->ioctl.usParmLen != 0 ||
+         rp->ioctl.bFunction == IOCTL_OSS32_ATTACH /*16 bit ioctl*/) &&
+        ((rp->ioctl.pvParm & 0xfffcffff) != 0))
     {
         // got Parm Packet
-        rc = DevVirtToLin((USHORT)((ULONG)(rp->ParmPacket) >> 16),
-                          (ULONG)((USHORT)(rp->ParmPacket)),
+        rc = DevVirtToLin((USHORT)((ULONG)(rp->ioctl.pvParm) >> 16),
+                          (ULONG)((USHORT)(rp->ioctl.pvParm)),
                           (UCHAR * __far *)&linParm);
 
         if (rc == 0)
         {
-            if (rp->Function == IOCTL_OSS32_ATTACH)
+            if (rp->ioctl.bFunction == IOCTL_OSS32_ATTACH)
             {
-                rc = DevVMLock(VMDHL_LONG,
-                           (ULONG)linParm,
-                           4,
-                           (LINEAR)-1L,
-                           lhParm,
-                               (UCHAR*)&pages);
-            }else
+                rc = DevVMLock(VMDHL_LONG, (ULONG)linParm, 4, (LINEAR)-1L, lhParm, (UCHAR*)&pages);
+            }
+            else
             {
-                rc = DevVMLock(VMDHL_LONG,
-                           (ULONG)linParm,
-                           rp->ParmLength,
-                           (LINEAR)-1L,
-                               lhParm,
-                               (UCHAR*)&pages);
+                rc = DevVMLock(VMDHL_LONG, (ULONG)linParm, rp->ioctl.usParmLen, (LINEAR)-1L, lhParm, (UCHAR*)&pages);
             }
 
             if (rc != 0)
@@ -153,20 +143,16 @@ ULONG StratIOCtl(RP __far* _rp)
     }
 
     // work with Data Packet
-    if ((rp->DataLength != 0) &&
-        ((rp->DataPacket & 0xfffcffff) != 0))
+    if ((rp->ioctl.usDataLen != 0) &&
+        ((rp->ioctl.pvData & 0xfffcffff) != 0))
     {
         // got Data Packet
-        rc = DevVirtToLin((USHORT)((ULONG)(rp->DataPacket) >> 16),
-                          (ULONG)((USHORT)(rp->DataPacket)),
+        rc = DevVirtToLin((USHORT)((ULONG)(rp->ioctl.pvData) >> 16),
+                          (ULONG)((USHORT)(rp->ioctl.pvData)),
                           (UCHAR * __far *)&linData);
         if (rc == 0)
         {
-            rc = DevVMLock(VMDHL_LONG,
-                           (ULONG)linData,
-                           rp->DataLength,
-                           (LINEAR)-1L,
-                           lhData,
+            rc = DevVMLock(VMDHL_LONG, (ULONG)linData, rp->ioctl.usDataLen, (LINEAR)-1L, lhData,
                            (UCHAR*)&pages);
         } else
             printk("error in VirtToLin rc = %i\n",rc);
@@ -192,14 +178,13 @@ ULONG StratIOCtl(RP __far* _rp)
     // functions handling
     rc = RPDONE; // ok by default
 
-    switch(rp->Function)
+    switch(rp->ioctl.bFunction)
     {
     case IOCTL_OSS32_ATTACH:
         {
             card_id = (ULONG) *linParm;
             // Check if audio init was successful
-            if (OSS32_QueryNames(card_id, NULL, 0,
-                                 NULL, 0, FALSE) != OSSERR_SUCCESS)
+            if (OSS32_QueryNames(card_id, NULL, 0, NULL, 0, FALSE) != OSSERR_SUCCESS)
             {
                 rc = RPERR_GENERAL | RPDONE;
             }
@@ -207,7 +192,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_VERSION:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -220,7 +205,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_GET_PCM_NUM:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -233,7 +218,7 @@ ULONG StratIOCtl(RP __far* _rp)
         } break;
 
     case IOCTL_OSS32_CARDS_NUM:
-        if (rp->DataLength < sizeof(ULONG))
+        if (rp->ioctl.usDataLen < sizeof(ULONG))
         {
             // invalid Data Pkt
             rc = RPERR_PARAMETER | RPDONE;
@@ -245,7 +230,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_PCM_CAPS:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -258,7 +243,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_CARD_INFO:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -271,7 +256,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_GET_POWER_STATE:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -284,7 +269,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_SET_POWER_STATE:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -297,7 +282,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_GET_CNTRLS_NUM:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -312,7 +297,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_GET_CNTRLS:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -326,14 +311,14 @@ ULONG StratIOCtl(RP __far* _rp)
     case IOCTL_OSS32_CNTRL_INFO:
         {
 
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
                 break;
             }
 
-            if (rp->ParmLength < sizeof(ULONG))
+            if (rp->ioctl.usParmLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -350,14 +335,14 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_CNTRL_GET:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
                 break;
             }
 
-            if (rp->ParmLength < sizeof(ULONG))
+            if (rp->ioctl.usParmLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -375,13 +360,13 @@ ULONG StratIOCtl(RP __far* _rp)
     case IOCTL_OSS32_CNTRL_PUT:
         {
 
-            if (rp->DataLength < sizeof(ULONG)) {
+            if (rp->ioctl.usDataLen < sizeof(ULONG)) {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
                 break;
             }
 
-            if (rp->ParmLength < sizeof(ULONG)) {
+            if (rp->ioctl.usParmLen < sizeof(ULONG)) {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
                 break;
@@ -398,7 +383,7 @@ ULONG StratIOCtl(RP __far* _rp)
     case IOCTL_OSS32_SET_PCM:
         {
 
-            if (rp->ParmLength < sizeof(ULONG))
+            if (rp->ioctl.usParmLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -413,7 +398,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     case IOCTL_OSS32_CNTRL_WAIT:
         {
-            if (rp->DataLength < sizeof(ULONG))
+            if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
                 rc = RPERR_PARAMETER | RPDONE;
@@ -429,7 +414,7 @@ ULONG StratIOCtl(RP __far* _rp)
             pData = (ULONG *)linData;
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
             // close all pcms from uniaud16 first
-            pcm->ret = OSS32_WaveOpen(pcm->deviceid, pcm->streamtype, pData,  pcm->pcm, rp->FileID);
+            pcm->ret = OSS32_WaveOpen(pcm->deviceid, pcm->streamtype, pData,  pcm->pcm, rp->ioctl.usSysFileNum);
         }
         break;
 
@@ -535,7 +520,7 @@ ULONG StratIOCtl(RP __far* _rp)
 
     default:
         {
-            printk("invalid function code %i\n",rp->Function);
+            printk("invalid function code %i\n",rp->ioctl.bFunction);
             // invalid function code
             rc = RPERR_PARAMETER | RPDONE;
         } break;
@@ -560,20 +545,17 @@ ULONG StratIOCtl(RP __far* _rp)
 //******************************************************************************
 // Dispatch Close requests received from the strategy routine
 //******************************************************************************
-ULONG StratClose(RP __far* _rp)
+ULONG StratClose(REQPACKET __far* rp)
 {
-  RPOpenClose __far* rp = (RPOpenClose __far*)_rp;
-
   // only called if device successfully opened
-//  printk("strat close\n");
+  //  printk("strat close\n");
   numOS2Opens--;
 
-  UniaudCloseAll(rp->FileID);
+  UniaudCloseAll(rp->open_close.usSysFileNum);
 
   if (numOS2Opens == 0) {
-	deviceOwner = DEV_NO_OWNER;
+	  deviceOwner = DEV_NO_OWNER;
   }
   return(RPDONE);
 }
-//******************************************************************************
-//******************************************************************************
+

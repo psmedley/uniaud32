@@ -11,9 +11,9 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = rme9652.obj hdsp.obj hdspm.obj
 
-TARGET = ac97
+TARGET = rme9652
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 

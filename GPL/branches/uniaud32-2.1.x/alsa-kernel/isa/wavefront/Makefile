@@ -11,9 +11,9 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = wavefront_fx.obj wavefront_synth.obj wavefront_midi.obj wavefront.obj
 
-TARGET = ac97
+TARGET = ad1816a
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 

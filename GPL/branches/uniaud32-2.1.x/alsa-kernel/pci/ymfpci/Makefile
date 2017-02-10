@@ -11,9 +11,9 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = ymfpci.obj ymfpci_main.obj
 
-TARGET = ac97
+TARGET = ymfpci
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 

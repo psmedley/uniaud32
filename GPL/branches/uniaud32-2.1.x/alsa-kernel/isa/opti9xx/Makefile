@@ -11,9 +11,9 @@ ROOT=$(%ROOT)
 #   List of source files
 #
 #===================================================================
-FILES = ac97_codec.obj ac97_pcm.obj ac97_proc.obj
+FILES = opti92x-ad1848.obj opti92x-cs4231.obj opti93x.obj
 
-TARGET = ac97
+TARGET = opti9xx
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk
 

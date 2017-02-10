@@ -7,7 +7,7 @@
 typedef int  (*initcall_t)(void);
 typedef void (*exitcall_t)(void);
 
-extern "C" int use_internal_drums;
+extern int use_internal_drums;
 
 #define __initcall(fn)								\
 	initcall_t __initcall_##fn  = fn
@@ -18,8 +18,8 @@ extern "C" int use_internal_drums;
 #define module_init(x)	__initcall(x);
 #define module_exit(x)	__exitcall(x);
 
-#define extern_module_init(x)	extern "C" initcall_t __initcall_##x;
-#define extern_module_exit(x)   extern "C" exitcall_t __exitcall_##x;
+#define extern_module_init(x)	extern initcall_t __initcall_##x;
+#define extern_module_exit(x)   extern exitcall_t __exitcall_##x;
 
 #define call_module_init(x)     __initcall_##x()
 #define call_module_exit(x)     __exitcall_##x()
@@ -107,10 +107,8 @@ extern_module_init(alsa_card_azx_init)
 extern_module_exit(alsa_card_azx_exit)
 extern_module_init(patch_analog_init)
 extern_module_exit(patch_analog_exit)
-#if 0
-extern_module_init(patch_hdmi_init)
-extern_module_exit(patch_hdmi_init)
-#endif
+extern_module_init(patch_atihdmi_init)
+extern_module_exit(patch_atihdmi_init)
 extern_module_init(patch_cmedia_init)
 extern_module_exit(patch_cmedia_exit)
 extern_module_init(patch_conexant_init)
