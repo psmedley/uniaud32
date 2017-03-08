@@ -121,7 +121,7 @@ int WaitForPCMInterrupt(void *handle, int timeout)
 		(runtime->status->state != SNDRV_PCM_STATE_RUNNING))
 		return -EBADFD;
 
-	//printk("wait for %x. tout %i\n",substream, timeout);
+	//dprintf(("wait for %x. tout %i\n",substream, timeout));
 
 	while (1)
 	{

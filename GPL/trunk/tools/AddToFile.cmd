@@ -1,31 +1,87 @@
-/* Add specified line to file */
-/* Adds the specified line to the end of the specified file.
- * Usage:
- *  AddToFile.cmd FileName,PrefixString,Function[,Parameters...]
+/** AddToFile.cmd
+ * Adds the specified line to the end of the specified file.
+ * Written by and Copyright (c) 2010-2016 David Azarewicz http://88watts.net
  *
- * Examples:
- *  AddToFile.cmd FileName,#define DDATE,DATEL
- *    Adds today's date to Filename: #define DDATE 20130312L
+ * @#D Azarewicz:1.01#@##1## 16 Sep 2016              DAZAR1    ::::::@@AddToFile.cmd (c) David Azarewicz 2016
+ * V1.01 16-Sep-2016 First official release
  *
- *  AddToFile.cmd FileName,#define BLDLEVEL,BLDLEVEL2,D Azarewicz,1.2.3,Description,Fixpack
- *    Adds a formatted BLDLEVEL string to Filename using double quotes: #define BLDLEVEL "<bldlevel string>"
- *
- *  AddToFile.cmd FileName,option description,BLDLEVEL,D Azarewicz,1.2.3,Description,Fixpack
- *    Adds a formatted BLDLEVEL string to Filename using single quotes: option description '<bldlevel string>'
- *
- *  AddToFile.cmd FileName,InFileName,FILE
-*/
+ * The following line is for the help sample code for the VAR function:
+EXAMPLEVAR=Example String
+ */
+call RxFuncAdd 'SysLoadFuncs', 'RexxUtil', 'SysLoadFuncs'
+call SysLoadFuncs
+parse arg OutFile','String','Function','Parm1','Parm2','Parm3','Parm4;
 
-parse arg OutFile','String','What','ProjVendor','BuildVersion','ProductName','FixPack;
+if (OutFile='') then do
+  Say 'Usage:';
+  Say '  AddToFile.cmd FileName,String,Function[,Parameters...]';
+  Say 'Functions:';
+  Say '  DATEL - Adds the date as a long number.';
+  Say '  BLDLEVEL - Adds a formatted BLDLEVEL string.';
+  Say '  DATEYEAR - Adds the current year.';
+  Say '  DATEMONTH - Adds the current month.';
+  Say '  DATEDAY - Adds the current day.';
+  Say '  VERSIONMAJOR - Adds the major portion of the provided version number.';
+  Say '  VERSIONMINOR - Adds the minor portion of the provided version number.';
+  Say '  VERSIONREVISION - Adds the revision portion of the provided version number.';
+  Say '  VAR - Adds the value of the specified variable from a specified file.';
+  Say '  FILE - Adds the contents of a file.';
+  Say 'Examples:';
+  MyFile='AddToFile.tmp';
+  rc=SysFileDelete(MyFile);
+  MyCmd=MyFile||',#define DDATE,DATEL';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',option description,BLDLEVEL,Vendor,1.2.3,Description,Fixpack';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',char *bl = "%A";,BLDLEVEL,Vendor,1.2.3,Description,Fixpack';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define DYEAR,DATEYEAR';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define DMONTH,DATEMONTH';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define DDAY,DATEDAY';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define DVMAJ,VERSIONMAJOR,1.2.3';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define DVMIN,VERSIONMINOR,1.2.3';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define DVREV,VERSIONREVISION,1.2.3';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define XYZ "%A",VAR,EXAMPLEVAR=,AddToFile.cmd';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',InFileName,FILE';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  do while LINES(MyFile) <> 0;
+    Say LINEIN(MyFile);
+  end;
+  rc=stream(MyFile,'c','close');
+  rc=SysFileDelete(MyFile);
+  exit;
+end
 
 select
-  when (What='DATEL') then do
-    rc=lineout(OutFile, String||' '||DATE('S')||'L');
+  when (Function='DATEL') then do
+    NewStr=DATE('S')||'L'
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 
-  when (LEFT(What,8)='BLDLEVEL') then do
-    Type=SUBSTR(What,9,1);
+  when (LEFT(Function,8)='BLDLEVEL') then do
+    Type=SUBSTR(Function,9,1);
 
     /* get hostname for build system */
     ProjHost = VALUE('HOSTNAME',,'OS2ENVIRONMENT');
@@ -34,53 +90,87 @@ select
     ProjString = left(Date()||' '||TIME(),25)||left(ProjHost,10);
 
     /* get fixpack from SVN version */
-    if (FixPack='SVN') then FixPack='SVN'||SvnVersion();
+    if (Parm4='SVN') then Parm4='SVN'||SvnVersion();
 
-    parse var BuildVersion major'.'minor'.'ProjVersion;
+    parse var Parm2 major'.'minor'.'ProjVersion;
 
+    RepLoc=Pos('%Y', Parm3);
+    if (RepLoc>0) then do
+      Parm3=Substr(Parm3,1,RepLoc-1)||FORMAT(SUBSTR(DATE('S'), 1, 4))||Substr(Parm3,RepLoc+2);
+    end
+
+    NewStr='@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||'::::'||ProjVersion||'::'||Parm4||'@@'||Parm3;
     if (Type='2') then do
-      rc=lineout(OutFile, String||' "@#'||ProjVendor||':'||BuildVersion||'#@##1## '||ProjString||'::::'||ProjVersion||'::'||FixPack||'@@'||ProductName||'"');
+      /*OutStr=String||' "@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||'::::'||ProjVersion||'::'||Parm4||'@@'||Parm3||'"';*/
+      OutStr=String||' "'||NewStr||'"';
     end
     else do
-      rc=lineout(OutFile, String||" '@#"||ProjVendor||":"||BuildVersion||"#@##1## "||ProjString||"::::"||ProjVersion||"::"||FixPack||"@@"||ProductName||"'");
+      RepLoc=Pos('%A', String);
+      if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+      else OutStr=String||" '"||NewStr||"'";
     end
+    rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 
-  when (What='DATEYEAR') then do
-    rc=lineout(OutFile, String||' '||FORMAT(SUBSTR(DATE('S'), 1, 4)));
+  when (Function='DATEYEAR') then do
+    NewStr=FORMAT(SUBSTR(DATE('S'), 1, 4));
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 
-  when (What='DATEMONTH') then do
-    rc=lineout(OutFile, String||' '||FORMAT(SUBSTR(DATE('S'), 5, 2)));
+  when (Function='DATEMONTH') then do
+    NewStr=FORMAT(SUBSTR(DATE('S'), 5, 2));
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 
-  when (What='DATEDAY') then do
-    rc=lineout(OutFile, String||' '||FORMAT(SUBSTR(DATE('S'), 7, 2)));
+  when (Function='DATEDAY') then do
+    NewStr=FORMAT(SUBSTR(DATE('S'), 7, 2));
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 
-  when (What="VERSIONMAJOR") then do
-    parse var ProjVendor Major'.'Minor'.'Revision;
-    rc=lineout(OutFile, String||' '||FORMAT(Major));
+  when (Function="VERSIONMAJOR") then do
+    parse var Parm1 Major'.'Minor'.'Revision;
+    NewStr=FORMAT(Major);
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 
-  when (What="VERSIONMINOR") then do
-    parse var ProjVendor Major'.'Minor'.'Revision;
-    rc=lineout(OutFile, String||' '||FORMAT(Minor));
+  when (Function="VERSIONMINOR") then do
+    parse var Parm1 Major'.'Minor'.'Revision;
+    NewStr=FORMAT(Minor);
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 
-  when (What="VERSIONREVISION") then do
-    parse var ProjVendor Major'.'Minor'.'Revision;
-    rc=lineout(OutFile, String||' '||FORMAT(Revision));
+  when (Function="VERSIONREVISION") then do
+    parse var Parm1 Major'.'Minor'.'Revision;
+    NewStr=FORMAT(Revision);
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 
-  when (What="FILE") then do
+  when (Function="FILE") then do
     do while LINES(String) <> 0;
       rc=LINEOUT(OutFile, LINEIN(String));
     end;
@@ -88,23 +178,28 @@ select
     rc=lineout(OutFile);
   end
 
-  when (What="VAR") then do
-    Line2 = '';
-    Len=LENGTH(ProjVendor);
-    do while LINES(BuildVersion) <> 0;
-      Line1=LINEIN(BuildVersion);
-      if (LEFT(Line1, Len) = ProjVendor) then do
-        Line2=SUBSTR(Line1, Len+1);
+  when (Function="VAR") then do
+    Type=SUBSTR(Function,4,1);
+    NewStr = '';
+    Len=LENGTH(Parm1);
+    do while LINES(Parm2) <> 0;
+      Line1=LINEIN(Parm2);
+      if (LEFT(Line1, Len) = Parm1) then do
+        NewStr=SUBSTR(Line1, Len+1);
         LEAVE;
       end
     end;
-    rc=stream(BuildVersion,'c','close');
-    rc=LINEOUT(OutFile, String||' '||Line2);
+    rc=stream(Parm2,'c','close');
+
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=LINEOUT(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 
   otherwise do
-    say "AddToFile: Unrecognized command: "||What;
+    say "AddToFile: Unrecognized command: "||Function;
     exit 1;
   end
 end

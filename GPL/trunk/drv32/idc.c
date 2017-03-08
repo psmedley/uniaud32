@@ -39,7 +39,6 @@
 IDC16_HANDLER idc16_PddHandler = 0;
 extern int pcm_device;
 WORD32 OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket);
-extern BOOL fRewired; //pci.c
 
 //packet pointer must reference a structure on the stack
 
@@ -49,13 +48,6 @@ OSSRET AlsaIDC(ULONG cmd, ULONG packet)
     PIDC32_PACKET pPacket = (PIDC32_PACKET)__Stack16ToFlat(packet);
     ULONG  oldfileid;
     OSSRET rc;
-
-	if (fRewired) {
-		fRewired = FALSE;
-		rprintf(("AlsaIDC: Resuming"));
-		OSS32_APMResume();
-		DbgPrintIrq();
-	}
 
     //Sets file id in current task structure
     oldfileid = OSS32_SetFileId(pPacket->fileid);
