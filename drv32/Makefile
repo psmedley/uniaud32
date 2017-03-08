@@ -66,7 +66,7 @@ FILES += impkee.lib
 !endif
 FILES += end.obj
 
-LIBS     = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\ac97.lib $(ALSA_LIB)\pci.lib  $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\hda.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib $(ALSA_LIB)\mpu401.lib $(ALSA_LIB)\synth.lib $(ALSA_LIB)\cs46xx.lib $(ALSA_LIB)\cs5535audio.lib $(ALSA_LIB)\emu10k1.lib $(ALSA_LIB)\ymfpci.lib $(ALSA_LIB)\ali5451.lib $(ALSA_LIB)\trident.lib $(ALSA_LIB)\nm256.lib $(ALSA_LIB)\sb.lib $(ALSA_LIB)\core_oss.lib
+LIBS     = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\ac97.lib $(ALSA_LIB)\pci.lib $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\hda.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib $(ALSA_LIB)\mpu401.lib $(ALSA_LIB)\synth.lib $(ALSA_LIB)\cs46xx.lib $(ALSA_LIB)\cs5535audio.lib $(ALSA_LIB)\emu10k1.lib $(ALSA_LIB)\ymfpci.lib $(ALSA_LIB)\ali5451.lib $(ALSA_LIB)\trident.lib $(ALSA_LIB)\nm256.lib $(ALSA_LIB)\sb.lib $(ALSA_LIB)\core_oss.lib
 WMAPNAME = $(OBJDIR)\$(TARGET).wmap
 
 # $(ALSA_LIB)\au88xx.lib
@@ -85,7 +85,7 @@ $(LNKFILE): $(MAKEFILE)
   @%write $^@ option cache
   @%write $^@ option alignment=16
   @%write $^@ option map=$(WMAPNAME)
-  @$(ROOT)\tools\AddToFile.cmd $^@,$option description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) 2016 $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
+  @$(ROOT)\tools\AddToFile.cmd $^@,$option description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
   @%write $^@ name $(OBJDIR)\$(TARGET).sys
   @for %f in ($(FILES)) do @%append $^@ file $(OBJDIR)\%f
   @for %f in ($(LIBS)) do @%append $^@ library %f
@@ -104,7 +104,7 @@ $(LNKFILE): $(MAKEFILE)
 
 $(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
   @%create $(DEFFILE)
-  $(ROOT)\tools\AddToFile.cmd $(DEFFILE),description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 and eCS (c) 2014 $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
+  $(ROOT)\tools\AddToFile.cmd $(DEFFILE),description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
   $(LINK) @$(LNKFILE)
   copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)
 

@@ -46,7 +46,6 @@
 struct pci_dev pci_devices[MAX_PCI_DEVICES] = {0};
 //struct pci_bus pci_busses[MAX_PCI_BUSSES] = {0};
 
-BOOL	fRewired = FALSE;
 extern int nrCardsDetected;
 
 

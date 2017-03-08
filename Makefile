@@ -1,4 +1,6 @@
-%ROOT=$+$(%cwd)$-
+!ifndef %ROOT
+!error ROOT is not defined in the environment
+!endif
 ROOT=$(%ROOT)
 
 NOOBJ=1
