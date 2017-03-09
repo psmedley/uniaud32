@@ -42,7 +42,6 @@ ULONG StratClose(REQPACKET __far *_rp);
 ULONG DiscardableInit(REQPACKET __far*);
 ULONG deviceOwner = DEV_NO_OWNER;
 ULONG numOS2Opens = 0;
-extern BOOL fRewired; //pci.c
 
 extern DBGINT DbgInt;
 
@@ -169,14 +168,6 @@ RPHandler StratDispatch[] =
 #pragma aux (STRATEGY) Strategy "ALSA_STRATEGY";
 ULONG Strategy(REQPACKET __far* rp)
 {
-  if (fRewired)
-  {
-    fRewired = FALSE;
-    rprintf(("Strategy: Resuming"));
-    OSS32_APMResume();
-    DbgPrintIrq();
-  }
-
   if (rp->bCommand < sizeof(StratDispatch)/sizeof(StratDispatch[0])) return(StratDispatch[rp->bCommand](rp));
   else return(RPERR_BADCOMMAND | RPDONE);
 }

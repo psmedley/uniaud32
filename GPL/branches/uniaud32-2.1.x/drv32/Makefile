@@ -104,7 +104,7 @@ $(LNKFILE): $(MAKEFILE)
 
 $(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
   @%create $(DEFFILE)
-  $(ROOT)\tools\AddToFile.cmd $(DEFFILE),description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 and eCS (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
+  $(ROOT)\tools\AddToFile.cmd $(DEFFILE),description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
   $(LINK) @$(LNKFILE)
   copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)
 

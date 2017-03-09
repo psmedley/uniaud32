@@ -494,8 +494,8 @@ static char *driver_short_names[] __devinitdata = {
 	[AZX_DRIVER_SIS] = "HDA SIS966",
 	[AZX_DRIVER_ULI] = "HDA ULI M5461",
 	[AZX_DRIVER_NVIDIA] = "HDA NVidia",
-	[AZX_DRIVER_TERA] = "HDA Teradici", 
-	[AZX_DRIVER_CTX] = "HDA Creative", 
+	[AZX_DRIVER_TERA] = "HDA Teradici",
+	[AZX_DRIVER_CTX] = "HDA Creative",
 	[AZX_DRIVER_GENERIC] = "HD-Audio Generic",
 };
 
@@ -1970,8 +1970,8 @@ static int azx_position_ok(struct azx *chip, struct azx_dev *azx_dev)
 #ifndef TARGET_OS2
 	if (WARN_ONCE(!azx_dev->period_bytes,
 		      "hda-intel: zero azx_dev->period_bytes"))
-#endif
 		return -1; /* this shouldn't happen! */
+#endif
 	if (wallclk < (azx_dev->period_wallclk * 5) / 4 &&
 	    pos % azx_dev->period_bytes > azx_dev->period_bytes / 2)
 		/* NG - it's below the first next period boundary */

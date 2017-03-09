@@ -1727,7 +1727,7 @@ void snd_pcm_period_elapsed(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime;
 	unsigned long flags;
-
+	
 	if (PCM_RUNTIME_CHECK(substream))
 		return;
 	runtime = substream->runtime;
