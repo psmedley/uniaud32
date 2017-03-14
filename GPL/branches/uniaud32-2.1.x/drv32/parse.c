@@ -43,6 +43,7 @@ extern "C" {
 int fVerbose  = FALSE;
 int fDebug    = FALSE;
 int ForceCard = CARD_NONE;
+int iAdapterNumber = 0;
 
 extern short int midi_port;
 
@@ -208,6 +209,9 @@ void CheckCardName(char FAR48 *psz)
 int DoParm(char cParm, char FAR48 *pszOption)
 {
     switch (cParm) {
+    case 'A':
+        iAdapterNumber = *pszOption & 0x07;
+        break;
     case 'V':                     // Verbose option
         fVerbose = TRUE;
         break;

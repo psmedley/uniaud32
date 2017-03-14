@@ -734,6 +734,7 @@ struct snd_timer_tread {
 
 #define SNDRV_CTL_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 6)
 
+/******************** This section used in uniaud.dll interface *********************/
 struct snd_ctl_card_info {
 	int card;			/* card number */
 	int pad;			/* reserved for future (was type) */

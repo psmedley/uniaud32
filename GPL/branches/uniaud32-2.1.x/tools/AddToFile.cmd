@@ -10,7 +10,7 @@ EXAMPLEVAR=Example String
  */
 call RxFuncAdd 'SysLoadFuncs', 'RexxUtil', 'SysLoadFuncs'
 call SysLoadFuncs
-parse arg OutFile','String','Function','Parm1','Parm2','Parm3','Parm4;
+parse arg OutFile','String','Function','Parm1','Parm2','Parm3','Parm4','Parm5;
 
 if (OutFile='') then do
   Say 'Usage:';
@@ -32,7 +32,7 @@ if (OutFile='') then do
   MyCmd=MyFile||',#define DDATE,DATEL';
   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
   call 'AddToFile.cmd' MyCmd;
-  MyCmd=MyFile||',option description,BLDLEVEL,Vendor,1.2.3,Description,Fixpack';
+  MyCmd=MyFile||',option description,BLDLEVEL,Vendor,1.2.3,Description,Fixpack,Asd';
   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
   call 'AddToFile.cmd' MyCmd;
   MyCmd=MyFile||',char *bl = "%A";,BLDLEVEL,Vendor,1.2.3,Description,Fixpack';
@@ -99,7 +99,7 @@ select
       Parm3=Substr(Parm3,1,RepLoc-1)||FORMAT(SUBSTR(DATE('S'), 1, 4))||Substr(Parm3,RepLoc+2);
     end
 
-    NewStr='@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||'::::'||ProjVersion||'::'||Parm4||'@@'||Parm3;
+    NewStr='@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||':'||Parm5||':::'||ProjVersion||'::'||Parm4||'@@'||Parm3;
     if (Type='2') then do
       /*OutStr=String||' "@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||'::::'||ProjVersion||'::'||Parm4||'@@'||Parm3||'"';*/
       OutStr=String||' "'||NewStr||'"';

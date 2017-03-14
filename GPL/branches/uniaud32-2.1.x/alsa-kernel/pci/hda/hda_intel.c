@@ -2771,7 +2771,7 @@ static int __devinit azx_probe(struct pci_dev *pci,
 	err = snd_hda_build_pcms(chip->bus);
 	if (err < 0)
 		goto out_free;
-
+		
 	/* create mixer controls */
 	err = azx_mixer_create(chip);
 	if (err < 0)
