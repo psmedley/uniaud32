@@ -85,7 +85,7 @@ $(LNKFILE): $(MAKEFILE)
   @%write $^@ option cache
   @%write $^@ option alignment=16
   @%write $^@ option map=$(WMAPNAME)
-  @$(ROOT)\tools\AddToFile.cmd $^@,$option description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
+  @$(ROOT)\tools\AddToFile.cmd $^@,$option description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK),$(BLDLVL_ALSA)
   @%write $^@ name $(OBJDIR)\$(TARGET).sys
   @for %f in ($(FILES)) do @%append $^@ file $(OBJDIR)\%f
   @for %f in ($(LIBS)) do @%append $^@ library %f
@@ -104,7 +104,7 @@ $(LNKFILE): $(MAKEFILE)
 
 $(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
   @%create $(DEFFILE)
-  $(ROOT)\tools\AddToFile.cmd $(DEFFILE),description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
+  $(ROOT)\tools\AddToFile.cmd $(DEFFILE),description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK),$(BLDLVL_ALSA)
   $(LINK) @$(LNKFILE)
   copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)
 
