@@ -17,6 +17,7 @@
 #define O_NONBLOCK	  04000
 #define O_NDELAY	O_NONBLOCK
 #define O_SYNC		 010000
+#define O_DSYNC O_SYNC /* for compatability with newer ALSA versions */
 #define FASYNC		 020000	/* fcntl, for BSD compatibility */
 #define O_DIRECT	 040000	/* direct disk access hint - currently ignored */
 #define O_LARGEFILE	0100000

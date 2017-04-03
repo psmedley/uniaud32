@@ -56,7 +56,6 @@ struct snd_kcontrol_new {
 
 struct snd_kcontrol_volatile {
 	struct snd_ctl_file *owner;	/* locked */
-	pid_t owner_pid;
 	unsigned int access;	/* access rights */
 };
 
@@ -94,10 +93,12 @@ struct snd_kctl_event {
 
 #define snd_kctl_event(n) list_entry(n, struct snd_kctl_event, list)
 
+struct pid;
+
 struct snd_ctl_file {
 	struct list_head list;		/* list of all control files */
 	struct snd_card *card;
-	pid_t pid;
+	struct pid *pid;
 	int prefer_pcm_subdevice;
 	int prefer_rawmidi_subdevice;
 	wait_queue_head_t change_sleep;
@@ -166,12 +167,14 @@ static inline struct snd_ctl_elem_id *snd_ctl_build_ioff(struct snd_ctl_elem_id 
 }
 
 /*
- * Frequently used control callbacks
+ * Frequently used control callbacks/helpers
  */
 int snd_ctl_boolean_mono_info(struct snd_kcontrol *kcontrol,
 			      struct snd_ctl_elem_info *uinfo);
 int snd_ctl_boolean_stereo_info(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_info *uinfo);
+int snd_ctl_enum_info(struct snd_ctl_elem_info *info, unsigned int channels,
+		      unsigned int items, const char *const names[]);
 
 /*
  * virtual master control

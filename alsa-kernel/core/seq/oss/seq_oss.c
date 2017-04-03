@@ -235,6 +235,7 @@ static const struct file_operations seq_oss_f_ops =
 #else
 	.ioctl =	odev_ioctl_old,
 #endif
+	.llseek =	noop_llseek,
 };
 
 static int __init

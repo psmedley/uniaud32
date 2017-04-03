@@ -61,7 +61,6 @@ struct hda_gspec {
 	struct hda_gnode *cap_vol_node;	/* Node for capture volume */
 	unsigned int cur_cap_src;	/* current capture source */
 	struct hda_input_mux input_mux;
-	char cap_labels[HDA_MAX_NUM_INPUTS][16];
 
 	unsigned int def_amp_in_caps;
 	unsigned int def_amp_out_caps;
@@ -506,11 +505,10 @@ static const char *get_input_type(struct hda_gnode *node, unsigned int *pinctl)
  * returns 0 if not found, 1 if found, or a negative error code.
  */
 static int parse_adc_sub_nodes(struct hda_codec *codec, struct hda_gspec *spec,
-			       struct hda_gnode *node)
+			       struct hda_gnode *node, int idx)
 {
 	int i, err;
 	unsigned int pinctl;
-	char *label;
 	const char *type;
 
 	if (node->checked)
@@ -523,7 +521,7 @@ static int parse_adc_sub_nodes(struct hda_codec *codec, struct hda_gspec *spec,
 			child = hda_get_node(spec, node->conn_list[i]);
 			if (! child)
 				continue;
-			err = parse_adc_sub_nodes(codec, spec, child);
+			err = parse_adc_sub_nodes(codec, spec, child, idx);
 			if (err < 0)
 				return err;
 			if (err > 0) {
@@ -564,9 +562,7 @@ static int parse_adc_sub_nodes(struct hda_codec *codec, struct hda_gspec *spec,
 			return 0;
 		type = "Input";
 	}
-	label = spec->cap_labels[spec->input_mux.num_items];
-	strcpy(label, type);
-	spec->input_mux.items[spec->input_mux.num_items].label = label;
+	snd_hda_add_imux_item(&spec->input_mux, type, idx, NULL);
 
 	/* unmute the PIN external input */
 	unmute_input(codec, node, 0); /* index = 0? */
@@ -575,29 +571,6 @@ static int parse_adc_sub_nodes(struct hda_codec *codec, struct hda_gspec *spec,
 				  AC_VERB_SET_PIN_WIDGET_CONTROL, pinctl);
 
 	return 1; /* found */
-}
-
-/* add a capture source element */
-static void add_cap_src(struct hda_gspec *spec, int idx)
-{
-	struct hda_input_mux_item *csrc;
-	char *buf;
-	int num, ocap;
-
-	num = spec->input_mux.num_items;
-	csrc = &spec->input_mux.items[num];
-	buf = spec->cap_labels[num];
-	for (ocap = 0; ocap < num; ocap++) {
-		if (! strcmp(buf, spec->cap_labels[ocap])) {
-			/* same label already exists,
-			 * put the index number to be unique
-			 */
-			sprintf(buf, "%s %d", spec->cap_labels[ocap], num);
-			break;
-		}
-	}
-	csrc->index = idx;
-	spec->input_mux.num_items++;
 }
 
 /*
@@ -624,22 +597,18 @@ static int parse_input_path(struct hda_codec *codec, struct hda_gnode *adc_node)
 	for (i = 0; i < adc_node->nconns; i++) {
 		node = hda_get_node(spec, adc_node->conn_list[i]);
 		if (node && node->type == AC_WID_PIN) {
-			err = parse_adc_sub_nodes(codec, spec, node);
+			err = parse_adc_sub_nodes(codec, spec, node, i);
 			if (err < 0)
 				return err;
-			else if (err > 0)
-				add_cap_src(spec, i);
 		}
 	}
 	/* ... then check the rests, more complicated connections */
 	for (i = 0; i < adc_node->nconns; i++) {
 		node = hda_get_node(spec, adc_node->conn_list[i]);
 		if (node && node->type != AC_WID_PIN) {
-			err = parse_adc_sub_nodes(codec, spec, node);
+			err = parse_adc_sub_nodes(codec, spec, node, i);
 			if (err < 0)
 				return err;
-			else if (err > 0)
-				add_cap_src(spec, i);
 		}
 	}
 
@@ -737,7 +706,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		if (is_loopback)
 			add_input_loopback(codec, node->nid, HDA_INPUT, index);
 		snd_printdd("[%s] NID=0x%x, DIR=IN, IDX=0x%x\n", name, node->nid, index);
-		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		err = snd_hda_ctl_add(codec, node->nid,
+					snd_ctl_new1(&knew, codec));
 		if (err < 0)
 			return err;
 		created = 1;
@@ -757,7 +727,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		if (is_loopback)
 			add_input_loopback(codec, node->nid, HDA_OUTPUT, 0);
 		snd_printdd("[%s] NID=0x%x, DIR=OUT\n", name, node->nid);
-		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		err = snd_hda_ctl_add(codec, node->nid,
+					snd_ctl_new1(&knew, codec));
 		if (err < 0)
 			return err;
 		created = 1;
@@ -780,7 +751,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 		knew.put = snd_hda_mixer_amp_volume_put;
 		knew.private_value = ( node->nid | ( 3 << 16) | (HDA_INPUT << 18) | (index << 19));
 		snd_printdd("[%s] NID=0x%x, DIR=IN, IDX=0x%x\n", name, node->nid, index);
-		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		err = snd_hda_ctl_add(codec, node->nid,
+					snd_ctl_new1(&knew, codec));
 		if (err < 0)
 			return err;
 		created = 1;
@@ -797,7 +769,8 @@ static int create_mixer(struct hda_codec *codec, struct hda_gnode *node,
 	        knew.put = snd_hda_mixer_amp_volume_put;
 	        knew.private_value = (node->nid | (3 << 16) | (HDA_OUTPUT << 18) | (0 << 19));
 		snd_printdd("[%s] NID=0x%x, DIR=OUT\n", name, node->nid);
-		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		err = snd_hda_ctl_add(codec, node->nid,
+					snd_ctl_new1(&knew, codec));
 		if (err < 0)
 			return err;
 		created = 1;
@@ -827,7 +800,8 @@ static int check_existing_control(struct hda_codec *codec, const char *type, con
 /*
  * build output mixer controls
  */
-static int create_output_mixers(struct hda_codec *codec, const char **names)
+static int create_output_mixers(struct hda_codec *codec,
+				const char * const *names)
 {
 	struct hda_gspec *spec = codec->spec;
 	int i, err;
@@ -845,8 +819,8 @@ static int create_output_mixers(struct hda_codec *codec, const char **names)
 static int build_output_controls(struct hda_codec *codec)
 {
 	struct hda_gspec *spec = codec->spec;
-	static const char *types_speaker[] = { "Speaker", "Headphone" };
-	static const char *types_line[] = { "Front", "Headphone" };
+	static const char * const types_speaker[] = { "Speaker", "Headphone" };
+	static const char * const types_line[] = { "Front", "Headphone" };
 
 	switch (spec->pcm_vol_nodes) {
 	case 1:
@@ -895,7 +869,8 @@ static int build_input_controls(struct hda_codec *codec)
 	}
 
 	/* create input MUX if multiple sources are available */
-	err = snd_hda_ctl_add(codec, snd_ctl_new1(&cap_sel, codec));
+	err = snd_hda_ctl_add(codec, spec->adc_node->nid,
+			      snd_ctl_new1(&cap_sel, codec));
 	if (err < 0)
 		return err;
 
@@ -909,7 +884,7 @@ static int build_input_controls(struct hda_codec *codec)
 		char name[32];
 		sprintf(name, "%s Capture Volume",
 			spec->input_mux.items[i].label);
-/*		knew = (struct snd_kcontrol_new)
+		/*knew = (struct snd_kcontrol_new)
 			HDA_CODEC_VOLUME(name, adc_node->nid,
 					 spec->input_mux.items[i].index,
 					 HDA_INPUT);*/
@@ -926,7 +901,8 @@ static int build_input_controls(struct hda_codec *codec)
                 knew.put = snd_hda_mixer_amp_volume_put;
                 knew.tlv.c = snd_hda_mixer_amp_tlv,
                 knew.private_value = (adc_node->nid | (3 << 16) | (HDA_INPUT << 18) | (spec->input_mux.items[i].index << 19));
-		err = snd_hda_ctl_add(codec, snd_ctl_new1(&knew, codec));
+		err = snd_hda_ctl_add(codec, adc_node->nid,
+					snd_ctl_new1(&knew, codec));
 		if (err < 0)
 			return err;
 	}

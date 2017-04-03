@@ -19,7 +19,7 @@
  *
  */
 #ifdef TARGET_OS2
-#include <config.h>
+#include <sound/config.h>
 #endif
 
 #ifdef CONFIG_SND_OSSEMUL
@@ -95,7 +95,7 @@ static int snd_oss_kernel_minor(int type, struct snd_card *card, int dev)
 	default:
 		return -EINVAL;
 	}
-	if (snd_BUG_ON(minor < 0 || minor >= SNDRV_OSS_MINORS))
+	if (minor < 0 || minor >= SNDRV_OSS_MINORS)
 		return -EINVAL;
 	return minor;
 }
@@ -113,8 +113,8 @@ int snd_register_oss_device(int type, struct snd_card *card, int dev,
 	struct snd_minor *preg;
 	int cidx = SNDRV_MINOR_OSS_CARD(minor);
 	int track2 = -1;
-	int register1 = -1, register2 = -1;
-	struct device *carddev = snd_card_get_device_link(card);
+//	int register1 = -1, register2 = -1;
+//	struct device *carddev = snd_card_get_device_link(card);
 
 	if (card && card->number >= 8)
 		return 0; /* ignore silently */

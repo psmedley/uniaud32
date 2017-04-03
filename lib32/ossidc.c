@@ -128,7 +128,7 @@ OSSRET OSS32_Initialize(void)
 
 	/* Init functions for HDA audio */
 	call_module_init(patch_analog_init);
-	call_module_init(patch_atihdmi_init);
+	//call_module_init(patch_atihdmi_init);
 	call_module_init(patch_cmedia_init);
 	call_module_init(patch_conexant_init);
 	call_module_init(patch_realtek_init);

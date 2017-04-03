@@ -1,7 +1,7 @@
 #ifndef _LINUX_TYPES_H
 #define _LINUX_TYPES_H
 
-#pragma off (unreferenced)
+//#pragma off (unreferenced)
 
 #include <linux/posix_types.h>
 #include <linux/compiler.h>
@@ -110,7 +110,7 @@ struct ustat {
 	char			f_fpack[6];
 };
 
-#define __inline__ __inline 
+#define __inline__ __inline
 
 #ifdef FLATSTACK
 #define kstrcpy strcpy
@@ -136,5 +136,8 @@ typedef unsigned __nocast gfp_t;
 #include <string.h>
 typedef __u32 __le32;
 typedef unsigned int fmode_t;
+
+//typedef int _Bool;
+typedef _Bool bool;
 
 #endif /* _LINUX_TYPES_H */

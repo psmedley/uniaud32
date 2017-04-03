@@ -22,7 +22,7 @@
  *
  */
 #ifdef TARGET_OS2
-#include <config.h>
+#include <sound\config.h>
 #endif
 
 #include <linux/module.h>
@@ -96,19 +96,6 @@ struct snd_device {
 
 #define snd_device(n) list_entry(n, struct snd_device, list)
 
-/* monitor files for graceful shutdown (hotplug) */
-
-struct snd_monitor_file {
-	struct file *file;
-#ifndef TARGET_OS2	
-	const struct file_operations *disconnected_f_op;
-#else
-	struct file_operations *disconnected_f_op;
-#endif	
-	struct list_head shutdown_list;	/* still need to shutdown */
-	struct list_head list;	/* link of monitor files */
-};
-
 /* main structure for soundcard */
 
 struct snd_card {
@@ -149,9 +136,7 @@ struct snd_card {
 	int free_on_last_close;		/* free in context of file_release */
 	wait_queue_head_t shutdown_sleep;
 	struct device *dev;		/* device assigned to this card */
-#ifndef CONFIG_SYSFS_DEPRECATED
 	struct device *card_dev;	/* cardX object for sysfs */
-#endif
 
 #ifdef CONFIG_PM
 	unsigned int power_state;	/* power state */
@@ -195,7 +180,7 @@ int snd_power_wait(struct snd_card *card, unsigned int power_state);
 #define snd_power_lock(card)		do { (void)(card); } while (0)
 #define snd_power_unlock(card)		do { (void)(card); } while (0)
 static inline int snd_power_wait(struct snd_card *card, unsigned int state) { return 0; }
-#define snd_power_get_state(card)	SNDRV_CTL_POWER_D0
+#define snd_power_get_state(card)	({ (void)(card); SNDRV_CTL_POWER_D0; })
 #define snd_power_change_state(card, state)	do { (void)(card); } while (0)
 
 #endif /* CONFIG_PM */
@@ -204,11 +189,11 @@ struct snd_minor {
 	int type;			/* SNDRV_DEVICE_TYPE_XXX */
 	int card;			/* card number */
 	int device;			/* device number */
-#ifndef TARGET_OS2	
+#ifndef TARGET_OS2
 	const struct file_operations *f_ops;	/* file operations */
 #else
 	struct file_operations *f_ops;	/* file operations */
-#endif	
+#endif
 	void *private_data;		/* private data for f_ops->open */
 	struct device *dev;		/* device for sysfs */
 };
@@ -216,11 +201,7 @@ struct snd_minor {
 /* return a device pointer linked to each sound device as a parent */
 static inline struct device *snd_card_get_device_link(struct snd_card *card)
 {
-#ifdef CONFIG_SYSFS_DEPRECATED
-	return card ? card->dev : NULL;
-#else
 	return card ? card->card_dev : NULL;
-#endif
 }
 
 /* sound.c */
@@ -233,11 +214,11 @@ void snd_request_card(int card);
 
 int snd_register_device_for_dev(int type, struct snd_card *card,
 				int dev,
-#ifndef TARGET_OS2				
+#ifndef TARGET_OS2
 				const struct file_operations *f_ops,
 #else
 				struct file_operations *f_ops,
-#endif				
+#endif
 				void *private_data,
 				const char *name,
 				struct device *device);
@@ -262,9 +243,9 @@ int snd_register_device_for_dev(int type, struct snd_card *card,
 static inline int snd_register_device(int type, struct snd_card *card, int dev,
 #ifndef TARGET_OS2
 				      const struct file_operations *f_ops,
-#else				
+#else
 				      struct file_operations *f_ops,
-#endif				
+#endif
 				      void *private_data,
 				      const char *name)
 {
@@ -284,7 +265,7 @@ int snd_register_oss_device(int type, struct snd_card *card, int dev,
 			    const struct file_operations *f_ops, void *private_data,
 #else
 			    struct file_operations *f_ops, void *private_data,
-#endif			
+#endif
 			    const char *name);
 int snd_unregister_oss_device(int type, struct snd_card *card, int dev);
 void *snd_lookup_oss_minor_data(unsigned int minor, int type);
@@ -334,9 +315,7 @@ int snd_component_add(struct snd_card *card, const char *component);
 int snd_card_file_add(struct snd_card *card, struct file *file);
 int snd_card_file_remove(struct snd_card *card, struct file *file);
 
-#ifndef snd_card_set_dev
 #define snd_card_set_dev(card, devptr) ((card)->dev = (devptr))
-#endif
 
 /* device.c */
 
@@ -375,7 +354,7 @@ void __snd_printk(unsigned int level, const char *file, int line,
 	printk(format, ##args)
 #else
 #define __snd_printk printk
-#endif	
+#endif /* nothing */
 #endif
 
 /**
@@ -417,7 +396,7 @@ void __snd_printk(unsigned int level, const char *file, int line,
  *
  * When CONFIG_SND_DEBUG is set, this macro evaluates the given condition,
  * and call WARN() and returns the value if it's non-zero.
- *
+ * 
  * When CONFIG_SND_DEBUG is not set, this just returns zero, and the given
  * condition is ignored.
  *
@@ -426,6 +405,7 @@ void __snd_printk(unsigned int level, const char *file, int line,
  * such as pre/post increment, to the argument of this macro.
  * If you want to evaluate and give a warning, use standard WARN_ON().
  */
+
 #define snd_BUG_ON(cond)	WARN((cond), "BUG? (%s)\n", __stringify(cond))
 
 #else /* !CONFIG_SND_DEBUG */
@@ -447,6 +427,7 @@ static inline int __snd_bug_on(int cond)
 }
 #define snd_BUG_ON(cond)	__snd_bug_on(0 && (cond))  /* always false */
 #endif
+
 
 #endif /* CONFIG_SND_DEBUG */
 
@@ -477,11 +458,9 @@ static inline int __snd_bug_on(int cond)
 
 /* for easier backward-porting */
 #if defined(CONFIG_GAMEPORT) || defined(CONFIG_GAMEPORT_MODULE)
-#ifndef gameport_set_dev_parent
 #define gameport_set_dev_parent(gp,xdev) ((gp)->dev.parent = (xdev))
 #define gameport_set_port_data(gp,r) ((gp)->port_data = (r))
 #define gameport_get_port_data(gp) (gp)->port_data
-#endif
 #endif
 
 /* PCI quirk list helper */
@@ -520,5 +499,8 @@ struct snd_pci_quirk {
 const struct snd_pci_quirk *
 snd_pci_quirk_lookup(struct pci_dev *pci, const struct snd_pci_quirk *list);
 
+const struct snd_pci_quirk *
+snd_pci_quirk_lookup_id(u16 vendor, u16 device,
+			const struct snd_pci_quirk *list);
 
 #endif /* __SOUND_CORE_H */

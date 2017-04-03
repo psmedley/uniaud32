@@ -83,6 +83,7 @@ static const struct ac97_codec_id snd_ac97_codec_id_vendors[] = {
 { 0x4e534300, 0xffffff00, "National Semiconductor", NULL, NULL },
 { 0x50534300, 0xffffff00, "Philips",		NULL,	NULL },
 { 0x53494c00, 0xffffff00, "Silicon Laboratory",	NULL,	NULL },
+{ 0x53544d00, 0xffffff00, "STMicroelectronics",	NULL,	NULL },
 { 0x54524100, 0xffffff00, "TriTech",		NULL,	NULL },
 { 0x54584e00, 0xffffff00, "Texas Instruments",	NULL,	NULL },
 { 0x56494100, 0xffffff00, "VIA Technologies",   NULL,	NULL },
@@ -161,6 +162,7 @@ static const struct ac97_codec_id snd_ac97_codec_ids[] = {
 { 0x4e534350, 0xffffffff, "LM4550",		patch_lm4550,  	NULL }, // volume wrap fix
 { 0x50534304, 0xffffffff, "UCB1400",		patch_ucb1400,	NULL },
 { 0x53494c20, 0xffffffe0, "Si3036,8",		mpatch_si3036,	mpatch_si3036, AC97_MODEM_PATCH },
+{ 0x53544d02, 0xffffffff, "ST7597",		NULL,		NULL },
 { 0x54524102, 0xffffffff, "TR28022",		NULL,		NULL },
 { 0x54524103, 0xffffffff, "TR28023",		NULL,		NULL },
 { 0x54524106, 0xffffffff, "TR28026",		NULL,		NULL },
@@ -213,6 +215,14 @@ static int snd_ac97_valid_reg(struct snd_ac97 *ac97, unsigned short reg)
 {
 	/* filter some registers for buggy codecs */
 	switch (ac97->id) {
+	case AC97_ID_ST_AC97_ID4:
+		if (reg == 0x08)
+			return 0;
+		/* fall through */
+	case AC97_ID_ST7597:
+		if (reg == 0x22 || reg == 0x7a)
+			return 1;
+		/* fall through */
 	case AC97_ID_AK4540:
 	case AC97_ID_AK4542:
 		if (reg <= 0x1c || reg == 0x20 || reg == 0x26 || reg >= 0x7c)
@@ -592,10 +602,12 @@ static int snd_ac97_put_volsw(struct snd_kcontrol *kcontrol,
 	return err;
 }
 
+#ifdef NOT_USED
 static const struct snd_kcontrol_new snd_ac97_controls_master_mono[2] = {
 AC97_SINGLE("Master Mono Playback Switch", AC97_MASTER_MONO, 15, 1, 1),
 AC97_SINGLE("Master Mono Playback Volume", AC97_MASTER_MONO, 0, 31, 1)
 };
+#endif
 
 static const struct snd_kcontrol_new snd_ac97_controls_tone[2] = {
 AC97_SINGLE("Tone Control - Bass", AC97_MASTER_TONE, 8, 15, 1),
@@ -603,8 +615,8 @@ AC97_SINGLE("Tone Control - Treble", AC97_MASTER_TONE, 0, 15, 1)
 };
 
 static const struct snd_kcontrol_new snd_ac97_controls_pc_beep[2] = {
-AC97_SINGLE("PC Speaker Playback Switch", AC97_PC_BEEP, 15, 1, 1),
-AC97_SINGLE("PC Speaker Playback Volume", AC97_PC_BEEP, 1, 15, 1)
+AC97_SINGLE("Beep Playback Switch", AC97_PC_BEEP, 15, 1, 1),
+AC97_SINGLE("Beep Playback Volume", AC97_PC_BEEP, 1, 15, 1)
 };
 
 static const struct snd_kcontrol_new snd_ac97_controls_mic_boost =
@@ -1004,8 +1016,7 @@ static int snd_ac97_free(struct snd_ac97 *ac97)
 {
 	if (ac97) {
 #ifdef CONFIG_SND_AC97_POWER_SAVE
-		cancel_delayed_work(&ac97->power_work);
-		flush_scheduled_work();
+		cancel_delayed_work_sync(&ac97->power_work);
 #endif
 		snd_ac97_proc_done(ac97);
 		if (ac97->bus)
@@ -1431,7 +1442,7 @@ static int snd_ac97_mixer_build(struct snd_ac97 * ac97)
 		}
 	}
 	
-	/* build PC Speaker controls */
+	/* build Beep controls */
 	if (!(ac97->flags & AC97_HAS_NO_PC_BEEP) &&
 		((ac97->flags & AC97_HAS_PC_BEEP) ||
 	    snd_ac97_try_volume_mix(ac97, AC97_PC_BEEP))) {
@@ -1995,7 +2006,7 @@ static int snd_ac97_dev_disconnect(struct snd_device *device)
 #endif
 
 /* build_ops to do nothing */
-static struct snd_ac97_build_ops null_build_ops;
+static const struct snd_ac97_build_ops null_build_ops;
 
 #ifdef CONFIG_SND_AC97_POWER_SAVE
 static void do_update_power(struct work_struct *work)
@@ -2165,7 +2176,7 @@ int snd_ac97_mixer(struct snd_ac97_bus *bus, struct snd_ac97_template *template,
 		}
 		/* nothing should be in powerdown mode */
 		snd_ac97_write_cache(ac97, AC97_GENERAL_PURPOSE, 0);
-		end_time = jiffies + msecs_to_jiffies(120);
+		end_time = jiffies + msecs_to_jiffies(5000);
 		do {
 			if ((snd_ac97_read(ac97, AC97_POWERDOWN) & 0x0f) == 0x0f)
 				goto __ready_ok;
@@ -2491,8 +2502,7 @@ void snd_ac97_suspend(struct snd_ac97 *ac97)
 	if (ac97->build_ops->suspend)
 		ac97->build_ops->suspend(ac97);
 #ifdef CONFIG_SND_AC97_POWER_SAVE
-	cancel_delayed_work(&ac97->power_work);
-	flush_scheduled_work();
+	cancel_delayed_work_sync(&ac97->power_work);
 #endif
 	snd_ac97_powerdown(ac97);
 }
@@ -2905,16 +2915,16 @@ int snd_ac97_tune_hardware(struct snd_ac97 *ac97, struct ac97_quirk *quirk, cons
 {
 	int result;
 
-	snd_printdd("ac97_tune_hardware quirk=%lx override=%s pci=(%04x:%04x %04x:%04x) ac97=(%04x:%04x)\n",
+	dprintf(("ac97_tune_hardware: quirk=%lx override=%s pci=(%04x:%04x %04x:%04x) ac97=(%04x:%04x)",
 		quirk, override,
 		ac97->pci->vendor, ac97->pci->device, ac97->pci->subsystem_vendor, ac97->pci->subsystem_device,		
-		ac97->subsystem_vendor, ac97->subsystem_device);
+		ac97->subsystem_vendor, ac97->subsystem_device));
 	/* quirk overriden? */
 	if (override && strcmp(override, "-1") && strcmp(override, "default")) {
-		snd_printdd("ac97 quirk for %s (%04x:%04x)\n", override, ac97->subsystem_vendor, ac97->subsystem_device);
+		rprintf(("ac97 quirk for %s (%04x:%04x)", override, ac97->subsystem_vendor, ac97->subsystem_device));
 		result = apply_quirk_str(ac97, override);
 		if (result < 0)
-			snd_printk(KERN_ERR "applying quirk type %s failed (%d)\n", override, result);
+			rprintf(("applying quirk type %s failed (%d)", override, result));
 		return result;
 	}
 
@@ -2934,9 +2944,9 @@ int snd_ac97_tune_hardware(struct snd_ac97 *ac97, struct ac97_quirk *quirk, cons
 			if (quirk->subdevice != ac97->subsystem_device) continue;
 		}
 		if ( quirk->codec_id && (quirk->codec_id != ac97->id) ) continue;
-		snd_printdd("ac97 quirk for %s (%04x:%04x)\n", quirk->name, ac97->subsystem_vendor, ac97->subsystem_device);
+		rprintf(("ac97 quirk for %s (%04x:%04x)", quirk->name, ac97->subsystem_vendor, ac97->subsystem_device));
 		result = apply_quirk(ac97, quirk->type);
-		if (result < 0) snd_printk(KERN_ERR "applying quirk type %d for %s failed (%d)\n", quirk->type, quirk->name, result);
+		if (result < 0) rprintf(("applying quirk type %d for %s failed (%d)", quirk->type, quirk->name, result));
 		return result;
 	}
 	return 0;

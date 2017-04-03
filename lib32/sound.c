@@ -328,7 +328,7 @@ OSSRET OSS32_QueryDevCaps(ULONG deviceid, POSS32_DEVCAPS pDevCaps)
 	int 				 ret, fmt, i;
 	ULONG				 format_mask;
 	struct snd_mask 		  *mask;
-	int max_ch;
+	//int max_ch;
 
 	dprintf(("OSS32_QueryDevCaps"));
 //	  max_ch = GetMaxChannels(deviceid, OSS32_CAPS_WAVE_PLAYBACK);
@@ -772,7 +772,7 @@ OSSRET OSS32_WaveSetHwParams(OSSSTREAMID streamid, OSS32_HWPARAMS *pHwParams)
 	ULONG				bufsize, periodsize, minperiodsize, maxperiodsize;
 	ULONG				periodbytes, minperiodbytes, maxperiodbytes;
 	BOOL				fTryAgain = FALSE;
-	ULONG ulMinRate, ulMaxRate;
+	//ULONG ulMinRate, ulMaxRate;
 
 	if(pHandle == NULL || pHandle->magic != MAGIC_WAVE_ALSA32) {
 
@@ -1062,10 +1062,12 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 {
 	soundhandle 	   *pHandle = (soundhandle *)streamid;
 	struct snd_pcm_status	 status;
-	int 				iRet, align, iRet1;
+	int 				iRet;
+	//int align, iRet1;
 	LONG				ulTransferred;
-	ULONG				ulPosition, ulI, ulJ, ulSize;
-	char				*buf;
+	//ULONG				ulPosition, ulI, ulJ;
+	ULONG ulSize;
+	//char				*buf;
 
 //	  return OSSERR_SUCCESS;
 
@@ -1108,6 +1110,8 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 			*pulTransferred = 0;
 			return OSSERR_BUFFER_FULL;
 		}
+		
+		//dprintf(("WaveAddBuffer: ReqSize=%x Size=%x", ulReqSize, ulSize));
 
 		//rprintf(("AddBuffer: state=%x avail=%x ReqSize=%x", status.state, status.avail, ulReqSize));
 		if (status.state == SNDRV_PCM_STATE_XRUN) {

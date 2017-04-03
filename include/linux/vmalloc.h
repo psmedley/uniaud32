@@ -4,7 +4,8 @@
 //#include <linux/sched.h>
 //#include <linux/mm.h>
 
-//#include <asm/pgtable.h>
+#include <asm/page.h>
+
 
 struct vm_struct {
 	unsigned long flags;

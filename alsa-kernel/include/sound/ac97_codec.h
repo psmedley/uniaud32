@@ -477,7 +477,7 @@ struct snd_ac97_template {
 
 struct snd_ac97 {
 	/* -- lowlevel (hardware) driver specific -- */
-	struct snd_ac97_build_ops * build_ops;
+	const struct snd_ac97_build_ops *build_ops;
 	void *private_data;
 	void (*private_free) (struct snd_ac97 *ac97);
 	/* --- */
@@ -593,7 +593,7 @@ enum {
 
 struct ac97_quirk {
 	unsigned short subvendor; /* PCI subsystem vendor id */
-	unsigned short subdevice; /* PCI sybsystem device id */
+	unsigned short subdevice; /* PCI subsystem device id */
 	unsigned short mask;	/* device id bit mask, 0 = accept all */
 	unsigned int codec_id;	/* codec id (if any), 0 = accept all */
 	const char *name;	/* name shown as info */

@@ -60,7 +60,7 @@ module_param(spdif_aclink, bool, 0444);
 MODULE_PARM_DESC(spdif_aclink, "S/PDIF over AC-link.");
 
 /* just for backward compatibility */
-static int enable;
+//static int enable;
 module_param(enable, bool, 0444);
 
 
@@ -286,7 +286,7 @@ struct atiixp {
 
 /*
  */
-static struct pci_device_id snd_atiixp_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(snd_atiixp_ids) = {
 	{ PCI_VDEVICE(ATI, 0x4341), 0 }, /* SB200 */
 	{ PCI_VDEVICE(ATI, 0x4361), 0 }, /* SB300 */
 	{ PCI_VDEVICE(ATI, 0x4370), 0 }, /* SB400 */
@@ -297,6 +297,7 @@ static struct pci_device_id snd_atiixp_ids[] = {
 MODULE_DEVICE_TABLE(pci, snd_atiixp_ids);
 
 static struct snd_pci_quirk atiixp_quirks[] __devinitdata = {
+	SND_PCI_QUIRK(0x105b, 0x0c81, "Foxconn RC4107MA-RS2", 0),
 	SND_PCI_QUIRK(0x15bd, 0x3100, "DFI RS482", 0),
 	{0} /* terminator */
 };
@@ -373,7 +374,7 @@ static int atiixp_build_dma_packets(struct atiixp *chip, struct atiixp_dma *dma,
 		dma->period_bytes = dma->periods = 0; /* clear */
 	}
 
-	if (dma->periods == periods && dma->period_bytes == period_bytes) {
+        if (dma->periods == periods && dma->period_bytes == period_bytes) {
 		writel((u32)dma->desc_buf.addr | ATI_REG_LINKPTR_EN,
 			(char*)chip->remap_addr + dma->ops->llp_offset);
 		return 0;

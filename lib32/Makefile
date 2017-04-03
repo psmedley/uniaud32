@@ -21,8 +21,7 @@ FILES = spinlock.obj malloc.obj pci.obj irq.obj ioctl.obj &
   ossidc.obj semaphore.obj waitqueue.obj misc.obj &
   strncpy.obj task.obj &
   strncmp.obj timer.obj &
-  instropl2.obj instropl3.obj vsprintf.obj &
-  pci_iomap_compat.obj
+  instropl2.obj instropl3.obj vsprintf.obj
 # ossidc.obj semaphore.obj waitqueue.obj misc.obj fminstrload.obj
 !if $(KEE) == 0
 FILES += stack.obj

@@ -35,15 +35,15 @@
 #include <linux/kmod.h>
 #include <proto.h>
 
-#if defined(CONFIG_SND_HPET) || defined(CONFIG_SND_HPET_MODULE)
-#define DEFAULT_TIMER_LIMIT 3
+#if defined(CONFIG_SND_HRTIMER) || defined(CONFIG_SND_HRTIMER_MODULE)
+#define DEFAULT_TIMER_LIMIT 4
 #elif defined(CONFIG_SND_RTCTIMER) || defined(CONFIG_SND_RTCTIMER_MODULE)
 #define DEFAULT_TIMER_LIMIT 2
 #else
 #define DEFAULT_TIMER_LIMIT 1
 #endif
 
-static int timer_limit = DEFAULT_TIMER_LIMIT;
+//static int timer_limit = DEFAULT_TIMER_LIMIT;
 static int timer_tstamp_monotonic = 1;
 MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("ALSA timer interface");
@@ -52,6 +52,9 @@ module_param(timer_limit, int, 0444);
 MODULE_PARM_DESC(timer_limit, "Maximum global timers in system.");
 module_param(timer_tstamp_monotonic, int, 0444);
 MODULE_PARM_DESC(timer_tstamp_monotonic, "Use posix monotonic clock source for timestamps (default).");
+
+MODULE_ALIAS_CHARDEV(CONFIG_SND_MAJOR);
+MODULE_ALIAS("devname:snd/timer");
 
 struct snd_timer_user {
 	struct snd_timer_instance *timeri;
@@ -394,7 +397,7 @@ static void snd_timer_notify1(struct snd_timer_instance *ti, int event)
 	    event == SNDRV_TIMER_EVENT_CONTINUE)
 		resolution = snd_timer_resolution(ti);
 	if (ti->ccallback)
-		ti->ccallback(ti, SNDRV_TIMER_EVENT_START, &tstamp, resolution);
+		ti->ccallback(ti, event, &tstamp, resolution);
 	if (ti->flags & SNDRV_TIMER_IFLG_SLAVE)
 		return;
 	timer = ti->timer;
@@ -1165,6 +1168,7 @@ static void snd_timer_user_ccallback(struct snd_timer_instance *timeri,
 {
 	struct snd_timer_user *tu = timeri->callback_data;
 	struct snd_timer_tread r1;
+	unsigned long flags;
 
 	if (event >= SNDRV_TIMER_EVENT_START &&
 	    event <= SNDRV_TIMER_EVENT_PAUSE)
@@ -1174,9 +1178,9 @@ static void snd_timer_user_ccallback(struct snd_timer_instance *timeri,
 	r1.event = event;
 	r1.tstamp = *tstamp;
 	r1.val = resolution;
-	spin_lock(&tu->qlock);
+	spin_lock_irqsave(&tu->qlock, flags);
 	snd_timer_user_append_to_tqueue(tu, &r1);
-	spin_unlock(&tu->qlock);
+	spin_unlock_irqrestore(&tu->qlock, flags);
 #ifndef TARGET_OS2
 	kill_fasync(&tu->fasync, SIGIO, POLL_IN);
 #else
@@ -1250,6 +1254,11 @@ static void snd_timer_user_tinterrupt(struct snd_timer_instance *timeri,
 static int snd_timer_user_open(struct inode *inode, struct file *file)
 {
 	struct snd_timer_user *tu;
+	int err;
+
+	err = nonseekable_open(inode, file);
+	if (err < 0)
+		return err;
 
 	tu = kzalloc(sizeof(*tu), GFP_KERNEL);
 	if (tu == NULL)
@@ -1940,7 +1949,7 @@ static int snd_timer_user_ioctl_old(struct inode *inode, struct file * file,
 #endif
 
 #ifndef TARGET_OS2
-static const struct file_operations snd_timer_f_ops =
+ static const struct file_operations snd_timer_f_ops =
 #else
 static struct file_operations snd_timer_f_ops =
 #endif
@@ -1949,6 +1958,7 @@ static struct file_operations snd_timer_f_ops =
 	.read =		snd_timer_user_read,
 	.open =		snd_timer_user_open,
 	.release =	snd_timer_user_release,
+	.llseek =	no_llseek,
 	.poll =		snd_timer_user_poll,
 #ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	snd_timer_user_ioctl,

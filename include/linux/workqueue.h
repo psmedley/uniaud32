@@ -2,7 +2,7 @@
 #define __LINUX_WORKQUEUE_H
 
 #include <linux/timer.h>
-#include <compat_22.h>
+#include <sound/compat_22.h>
 /* we know this is used below exactly once for at most one waiter */
 
 struct work_struct {
@@ -32,6 +32,8 @@ struct workqueue_struct *create_workqueue(const char *name);
 void destroy_workqueue(struct workqueue_struct *wq);
 int queue_work(struct workqueue_struct *wq, struct work_struct *work);
 void flush_workqueue(struct workqueue_struct *wq);
+int queue_delayed_work(struct workqueue_struct *wq, struct delayed_work *dwork, unsigned long delay);
+int cancel_delayed_work(struct delayed_work *dwork);
 
 #define INIT_WORK(_work, _func, _data)			\
 	do {						\
@@ -53,6 +55,11 @@ static inline void snd_INIT_WORK(struct work_struct *w, void (*f)(struct work_st
 }
 #undef INIT_WORK
 #define INIT_WORK(w,f) snd_INIT_WORK(w,f)
-#define create_singlethread_workqueue(name) create_workqueue(name)
+#define INIT_DELAYED_WORK(_work, _func)	INIT_WORK(&(_work)->work, _func)
+#define work_pending(work) test_bit(0, &(work)->pending)
+#define delayed_work_pending(w) work_pending(&(w)->work)
+#define schedule_delayed_work(work, delay) queue_delayed_work(NULL, (work), (delay))
 
+#define create_singlethread_workqueue(name) create_workqueue(name)
+#define cancel_delayed_work_sync flush_delayed_work_sync
 #endif /* __LINUX_WORKQUEUE_H */
