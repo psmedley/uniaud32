@@ -230,7 +230,7 @@ EXPORT_SYMBOL_GPL(snd_pcm_format_name);
 #define TSTAMP(v) [SNDRV_PCM_TSTAMP_##v] = #v
 #define ACCESS(v) [SNDRV_PCM_ACCESS_##v] = #v
 #define START(v) [SNDRV_PCM_START_##v] = #v
-#define SUBFORMAT(v) [SNDRV_PCM_SUBFORMAT_##v] = #v 
+#define SUBFORMAT(v) [SNDRV_PCM_SUBFORMAT_##v] = #v
 
 static char *snd_pcm_stream_names[] = {
 	STREAM(PLAYBACK),
@@ -1183,7 +1183,7 @@ void pcm_info(void)
 /* get number of pcm instance s for given card */
 int pcm_instances(int card_id)
 {
-    int idx;
+    //int idx;
     int pcms = 0;
     struct snd_pcm *pcm;
 

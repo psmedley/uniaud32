@@ -1,7 +1,7 @@
 #ifndef _LINUX_TYPES_H
 #define _LINUX_TYPES_H
 
-#pragma off (unreferenced)
+//#pragma off (unreferenced)
 
 #include <linux/posix_types.h>
 #include <linux/compiler.h>

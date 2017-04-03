@@ -345,7 +345,7 @@ OSSRET OSS32_MixClose(OSSSTREAMID streamid)
 OSSRET OSS32_MixGetVolume(OSSSTREAMID streamid, ULONG line, ULONG *pVolume)
 {
 	mixerhandle *pHandle = (mixerhandle *)streamid;
-	int 		 ret;
+	//int 		 ret;
 
 	if(pHandle == NULL || pHandle->magic != MAGIC_MIXER_ALSA32) {
 		DebugInt3();
@@ -363,7 +363,8 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
 	mixerhandle 		 *pHandle = (mixerhandle *)streamid;
 	struct snd_ctl_elem_value *pElem = NULL;
 	struct snd_ctl_elem_info  *pElemInfo;
-	int 				  ret, idx, lVol, rVol = 0, idxMute, cnt;
+	int 				  ret, idx, lVol, rVol = 0, idxMute;
+	//int cnt;
 
 	//dprintf(("OSS32_MixSetVolume line=%d\n", line));
 	if(pHandle == NULL || pHandle->magic != MAGIC_MIXER_ALSA32) {
@@ -717,7 +718,7 @@ fail:
 OSSRET OSS32_MixGetProperty(OSSSTREAMID streamid, ULONG line, ULONG *pValue)
 {
 	mixerhandle *pHandle = (mixerhandle *)streamid;
-	int 		 ret;
+	//int 		 ret;
 
 	if(pHandle == NULL || pHandle->magic != MAGIC_MIXER_ALSA32) {
 		DebugInt3();
@@ -812,7 +813,8 @@ OSSRET OSS32_MixQueryCaps(OSSSTREAMID streamid, POSS32_MIXCAPS pCaps)
 OSSRET OSS32_MixQueryName(ULONG deviceid, char *pszMixerName, ULONG cbMixerName)
 {
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j;
+	int 		 ret;
+	//int i, j;
 
 	if(alsa_fops == NULL)
 		return OSSERR_NO_DEVICE_AVAILABLE;
@@ -869,7 +871,8 @@ OSSRET OSS32_QueryNames(ULONG deviceid, char *pszDeviceName, ULONG cbDeviceName,
 						char *pszMixerName, ULONG cbMixerName, BOOL fLongName)
 {
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j;
+	int 		 ret;
+	//int i, j;
 
 	if(alsa_fops == NULL) {
 		ret = OSSERR_NO_DEVICE_AVAILABLE;

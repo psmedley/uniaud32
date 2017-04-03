@@ -492,7 +492,7 @@ static void print_power_state(struct snd_info_buffer *buffer,
 	};
 #endif
 
-	int sup = snd_hda_param_read(codec, nid, AC_PAR_POWER_STATE);
+	//int sup = snd_hda_param_read(codec, nid, AC_PAR_POWER_STATE);
 	int pwr = snd_hda_codec_read(codec, nid, 0,
 				     AC_VERB_GET_POWER_STATE, 0);
 #ifndef TARGET_OS2

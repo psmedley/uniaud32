@@ -240,6 +240,9 @@ int DoParm(char cParm, char FAR48 *pszOption)
         if(*pszOption == '2') {
             MAGIC_COMM_PORT = 0x2f8;
         }
+        if(*pszOption == '4') {
+            MAGIC_COMM_PORT = 0x4000;
+        }
         break;
 #endif
 

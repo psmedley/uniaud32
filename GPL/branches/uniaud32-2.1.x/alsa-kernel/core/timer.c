@@ -43,7 +43,7 @@
 #define DEFAULT_TIMER_LIMIT 1
 #endif
 
-static int timer_limit = DEFAULT_TIMER_LIMIT;
+//static int timer_limit = DEFAULT_TIMER_LIMIT;
 static int timer_tstamp_monotonic = 1;
 MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("ALSA timer interface");

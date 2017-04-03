@@ -204,7 +204,7 @@ void disable_dma(unsigned int dmanr)
     DebugInt3();
 }
 //******************************************************************************
-static struct notifier_block *reboot_notify_list = NULL;
+//static struct notifier_block *reboot_notify_list = NULL;
 // No need to implement this right now. The ESS Maestro 3 driver uses it
 // to call pci_unregister_driver, which is always called from the shutdown
 // notification sent by OS2.

@@ -225,7 +225,7 @@ int GetMaxChannels(ULONG deviceid, int type)
 	POSS32_DEVCAPS pcaps = NULL;
 	WAVE_CAPS *wc;
 	int i;
-	int sel_pcm = -1;
+	//int sel_pcm = -1;
 	int max_ch = 0;
 
 	if (!pcmcaps[deviceid])
@@ -438,7 +438,8 @@ int GetUniaudPcmCaps(ULONG deviceid, void *caps)
 int UniaudCtlGetPowerState(ULONG deviceid, void *state)
 {
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j;
+	int ret;
+	//int i, j;
 
 	if(alsa_fops == NULL) {
 		ret = OSSERR_NO_DEVICE_AVAILABLE;
@@ -491,7 +492,8 @@ failure:
 int UniaudCtlSetPowerState(ULONG deviceid, void *state)
 {
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j;
+	int 		 ret;
+	//int i, j;
 
 	if(alsa_fops == NULL) {
 		ret = OSSERR_NO_DEVICE_AVAILABLE;
@@ -544,7 +546,8 @@ failure:
 int GetUniaudCardInfo(ULONG deviceid, void *info)
 {
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j;
+	int 		 ret;
+	//int i, j;
 
 	//dprintf(("GetUniaudCardInfo"));
 
@@ -599,7 +602,8 @@ failure:
 int GetUniaudControlNum(ULONG deviceid)
 {
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j, sz;
+	int 		 ret, sz;
+	//int i, j;
 
 	//dprintf(("GetUniaudControlNum"));
 
@@ -666,7 +670,8 @@ failure:
 int GetUniaudControls(ULONG deviceid, void *pids)
 {
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j, sz;
+	int 		 ret, sz;
+	//int i, j;
 
 	//dprintf(("GetUniaudControls"));
 
@@ -755,10 +760,11 @@ failure:
 
 int GetUniaudControlInfo(ULONG deviceid, ULONG id, void *info)
 {
-	struct snd_ctl_elem_value *pElem = NULL;
+	//struct snd_ctl_elem_value *pElem = NULL;
 	struct snd_ctl_elem_info  *pElemInfo = NULL;
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j, sz;
+	int 		 ret, sz;
+	//int i, j;
 
 	//dprintf(("GetUniaudControlInfo"));
 
@@ -819,7 +825,8 @@ int GetUniaudControlValueGet(ULONG deviceid, ULONG id, void *value)
 	struct snd_ctl_elem_value *pElem = NULL;
 	//struct snd_ctl_elem_info  *pElemInfo = NULL;
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j, sz;
+	int 		 ret, sz;
+	//int i, j;
 
 	if(alsa_fops == NULL) {
 		ret = OSSERR_NO_DEVICE_AVAILABLE;
@@ -877,7 +884,8 @@ int GetUniaudControlValuePut(ULONG deviceid, ULONG id, void *value)
 	struct snd_ctl_elem_value *pElem = NULL;
 	//struct snd_ctl_elem_info  *pElemInfo = NULL;
 	mixerhandle *pHandle = NULL;
-	int 		 ret, i, j, sz;
+	int 		 ret, sz;
+	//int i, j;
 
 	if(alsa_fops == NULL) {
 		ret = OSSERR_NO_DEVICE_AVAILABLE;

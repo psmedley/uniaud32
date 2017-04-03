@@ -96,9 +96,9 @@ module_param(spdif_aclink, int, 0444);
 MODULE_PARM_DESC(spdif_aclink, "S/PDIF over AC-link.");
 
 /* just for backward compatibility */
-static int enable;
+//static int enable;
 module_param(enable, bool, 0444);
-static int joystick;
+//static int joystick;
 module_param(joystick, int, 0444);
 
 /*
@@ -3163,10 +3163,12 @@ static struct shortname_table {
 	{ 0, NULL },
 };
 
+#ifdef NOT_USED
 static struct snd_pci_quirk spdif_aclink_defaults[] __devinitdata = {
 	SND_PCI_QUIRK(0x147b, 0x1c1a, "ASUS KN8", 1),
 	{0} /* end */
 };
+#endif
 
 /* look up white/black list for SPDIF over ac-link */
 static int __devinit check_default_spdif_aclink(struct pci_dev *pci)

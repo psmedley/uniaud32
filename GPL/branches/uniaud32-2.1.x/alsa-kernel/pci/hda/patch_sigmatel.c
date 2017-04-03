@@ -4849,7 +4849,7 @@ static void set_hp_led_gpio(struct hda_codec *codec)
 static int find_mute_led_gpio(struct hda_codec *codec, int default_polarity)
 {
 	struct sigmatel_spec *spec = codec->spec;
-	const struct dmi_device *dev = NULL;
+	//const struct dmi_device *dev = NULL;
 
 	if ((codec->subsystem_id >> 16) == PCI_VENDOR_ID_HP) {
 #if dmi_find_device != 0 /* DAZ to stop a compler warning */

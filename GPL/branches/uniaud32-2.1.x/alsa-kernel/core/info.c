@@ -80,7 +80,7 @@ static int snd_info_version_init(void);
 static int snd_info_version_done(void);
 static void snd_info_disconnect(struct snd_info_entry *entry);
 
-
+#ifdef NOT_USED
 /* resize the proc r/w buffer */
 static int resize_info_buffer(struct snd_info_buffer *buffer,
 			      unsigned int nsize)
@@ -105,6 +105,7 @@ static int resize_info_buffer(struct snd_info_buffer *buffer,
 	buffer->len = nsize;
 	return 0;
 }
+#endif
 
 #ifndef TARGET_OS2
 /**
@@ -170,6 +171,7 @@ static void snd_remove_proc_entry(struct proc_dir_entry *parent,
 		remove_proc_entry(de->name, parent);
 }
 
+#ifdef NOT_USED
 static loff_t snd_info_entry_llseek(struct file *file, loff_t offset, int orig)
 {
 	struct snd_info_private_data *data;
@@ -556,6 +558,7 @@ static const struct file_operations snd_info_entry_operations =
 	.open =			snd_info_entry_open,
 	.release =		snd_info_entry_release,
 };
+#endif
 
 int __init snd_info_init(void)
 {

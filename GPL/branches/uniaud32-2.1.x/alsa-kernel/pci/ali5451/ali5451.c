@@ -60,7 +60,7 @@ module_param(spdif, bool, 0444);
 MODULE_PARM_DESC(spdif, "Support SPDIF I/O");
 
 /* just for backward compatibility */
-static int enable;
+//static int enable;
 module_param(enable, bool, 0444);
 
 
@@ -301,7 +301,7 @@ static void snd_ali_codec_poke(struct snd_ali *, int, unsigned short,
 static inline unsigned int snd_ali_5451_peek(struct snd_ali *codec,
 					     unsigned int port)
 {
-	return (unsigned int)inl(ALI_REG(codec, port)); 
+	return (unsigned int)inl(ALI_REG(codec, port));
 }
 
 static inline void snd_ali_5451_poke(struct snd_ali *codec,
@@ -814,7 +814,7 @@ static void snd_ali_enable_spdif_out(struct snd_ali *codec)
 
 	bVal = inb(ALI_REG(codec, ALI_SPDIF_CTRL));
 	outb(bVal & ALI_SPDIF_OUT_CH_STATUS, ALI_REG(codec, ALI_SPDIF_CTRL));
-   
+
 	wVal = inw(ALI_REG(codec, ALI_GLOBAL_CONTROL));
 	wVal |= ALI_SPDIF_OUT_SEL_PCM;
 	outw(wVal, ALI_REG(codec, ALI_GLOBAL_CONTROL));
@@ -1075,7 +1075,7 @@ static unsigned int snd_ali_convert_rate(unsigned int rate, int rec)
 			delta = 0x2ab;
 		else if (rate == 48000)
 			delta = 0x1000;
-		else 
+		else
 			delta = (((rate << 12) + rate) / 48000) & 0x0000ffff;
 	}
 
@@ -1106,7 +1106,7 @@ static unsigned int snd_ali_control_mode(struct snd_pcm_substream *substream)
 
 static int snd_ali_trigger(struct snd_pcm_substream *substream,
 			       int cmd)
-				    
+				
 {
 	struct snd_ali *codec = snd_pcm_substream_chip(substream);
 	struct snd_pcm_substream *s;
@@ -1258,7 +1258,7 @@ static int snd_ali_playback_prepare(struct snd_pcm_substream *substream)
 	/* set Delta (rate) value */
 	Delta = snd_ali_convert_rate(runtime->rate, 0);
 
-	if (pvoice->number == ALI_SPDIF_IN_CHANNEL || 
+	if (pvoice->number == ALI_SPDIF_IN_CHANNEL ||
 	    pvoice->number == ALI_PCM_IN_CHANNEL)
 		snd_ali_disable_special_channel(codec, pvoice->number);
 	else if (codec->spdif_support &&
@@ -1276,7 +1276,7 @@ static int snd_ali_playback_prepare(struct snd_pcm_substream *substream)
 	pvoice->count = runtime->period_size;
 
 	/* set target ESO for channel */
-	pvoice->eso = runtime->buffer_size; 
+	pvoice->eso = runtime->buffer_size;
 
 	snd_ali_printk("playback_prepare: eso=%xh count=%xh\n",
 		       pvoice->eso, pvoice->count);
@@ -1349,7 +1349,7 @@ static int snd_ali_prepare(struct snd_pcm_substream *substream)
 	snd_ali_enable_special_channel(codec,pvoice->number);
 
 	Delta = (pvoice->number == ALI_MODEM_IN_CHANNEL ||
-		 pvoice->number == ALI_MODEM_OUT_CHANNEL) ? 
+		 pvoice->number == ALI_MODEM_OUT_CHANNEL) ?
 		0x1000 : snd_ali_convert_rate(runtime->rate, pvoice->mode);
 
 	/* Prepare capture intr channel */
@@ -1379,7 +1379,7 @@ static int snd_ali_prepare(struct snd_pcm_substream *substream)
 	}
 
 	/* set target ESO for channel  */
-	pvoice->eso = runtime->buffer_size; 
+	pvoice->eso = runtime->buffer_size;
 
 	/* set interrupt count size  */
 	pvoice->count = runtime->period_size;
@@ -1808,7 +1808,7 @@ static int snd_ali5451_spdif_put(struct snd_kcontrol *kcontrol,
 			}
 		}
 		break;
-	case 1: 
+	case 1:
 		change = (codec->spdif_mask & 0x04) ? 1 : 0;
 		change = change ^ spdif_enable;
 		if (change && (codec->spdif_mask & 0x02)) {
@@ -1928,7 +1928,7 @@ static int ali_suspend(struct pci_dev *pci, pm_message_t state)
 	
 	for (i = 0; i < ALI_CHANNELS; i++) {
 		outb(i, ALI_REG(chip, ALI_GC_CIR));
-		for (j = 0; j < ALI_CHANNEL_REGS; j++) 
+		for (j = 0; j < ALI_CHANNEL_REGS; j++)
 			im->channel_regs[i][j] = inl(ALI_REG(chip, j*4 + 0xe0));
 	}
 
@@ -1968,7 +1968,7 @@ static int ali_resume(struct pci_dev *pci)
 	
 	for (i = 0; i < ALI_CHANNELS; i++) {
 		outb(i, ALI_REG(chip, ALI_GC_CIR));
-		for (j = 0; j < ALI_CHANNEL_REGS; j++) 
+		for (j = 0; j < ALI_CHANNEL_REGS; j++)
 			outl(im->channel_regs[i][j], ALI_REG(chip, j*4 + 0xe0));
 	}
 	
@@ -2317,7 +2317,7 @@ static struct pci_driver driver = {
 	.suspend = ali_suspend,
 	.resume = ali_resume,
 #endif
-};                                
+};
 
 static int __init alsa_card_ali_init(void)
 {

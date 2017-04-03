@@ -108,8 +108,9 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 			     size_t *res_size)
 {
 	struct snd_sg_buf *sgbuf;
-	unsigned int i, pages, chunk, maxpages;
-	struct snd_dma_buffer tmpb;
+	unsigned int pages;
+//	unsigned int i, chunk, maxpages;
+//	struct snd_dma_buffer tmpb;
 #ifdef TARGET_OS2
 	void *ptr;
 	dma_addr_t addr;

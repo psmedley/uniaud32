@@ -286,7 +286,7 @@ OSSRET OSS32_MidiQueryCaps(OSSSTREAMID streamid, POSS32_MIDICAPS pCaps)
 OSSRET OSS32_MidiCommand(OSSSTREAMID streamid, ULONG Cmd, BYTE channel, BYTE param1, BYTE param2)
 {
     midihandle  *pHandle = (midihandle *)streamid;
-    int          ret;
+    //int          ret;
     LONG         transferred;
     struct snd_seq_event fmevent;
 

@@ -656,10 +656,10 @@ __ok:
 }
 #endif
 
+#ifdef NOT_USED
 static struct device_attribute card_id_attrs =
 	__ATTR(id, S_IRUGO | S_IWUSR, card_id_show_attr, card_id_store_attr);
 
-#ifdef NOT_USED
 static ssize_t
 card_number_show_attr(struct device *dev,
 		     struct device_attribute *attr, char *buf)
@@ -667,10 +667,10 @@ card_number_show_attr(struct device *dev,
 	struct snd_card *card = dev_get_drvdata(dev);
 	return snprintf(buf, PAGE_SIZE, "%i\n", card ? card->number : -1);
 }
-#endif
 
 static struct device_attribute card_number_attrs =
 	__ATTR(number, S_IRUGO, card_number_show_attr, NULL);
+#endif
 
 /**
  *  snd_card_register - register the soundcard

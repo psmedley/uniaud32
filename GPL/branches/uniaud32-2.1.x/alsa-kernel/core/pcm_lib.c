@@ -45,6 +45,14 @@ void snd_pcm_playback_silence(struct snd_pcm_substream *substream, snd_pcm_ufram
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	snd_pcm_uframes_t frames, ofs, transfer;
 
+  /* DAZ: This is a hack to prevent extra noise after every sound.
+   * runtime->boundary is always *much* bigger than runtime->silence_size
+   * so the ring buffer never gets filled with silence. This hack forces
+   * the ring buffer to always get filled with silence.
+   * I am guessing that the OS2 code is not providing a big enough buffer
+   * of silence.
+   */
+  #ifndef TARGET_OS2
 	if (runtime->silence_size < runtime->boundary) {
 		snd_pcm_sframes_t noise_dist, n;
 		if (runtime->silence_start != runtime->control->appl_ptr) {
@@ -66,6 +74,7 @@ void snd_pcm_playback_silence(struct snd_pcm_substream *substream, snd_pcm_ufram
 		if (frames > runtime->silence_size)
 			frames = runtime->silence_size;
 	} else {
+	#endif
 		if (new_hw_ptr == ULONG_MAX) {	/* initialization */
 			snd_pcm_sframes_t avail = snd_pcm_playback_hw_avail(runtime);
 			if (avail > runtime->buffer_size)
@@ -88,7 +97,9 @@ void snd_pcm_playback_silence(struct snd_pcm_substream *substream, snd_pcm_ufram
 			}
 		}
 		frames = runtime->buffer_size - runtime->silence_filled;
+  #ifndef TARGET_OS2		
 	}
+	#endif
 	if (snd_BUG_ON(frames > runtime->buffer_size))
 		return;
 	if (frames == 0)
