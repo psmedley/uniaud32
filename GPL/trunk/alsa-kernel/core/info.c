@@ -22,7 +22,7 @@
 #include <linux/init.h>
 #include <linux/time.h>
 #include <linux/mm.h>
-#include <linux/smp_lock.h>
+#include <linux/slab.h>
 #include <linux/string.h>
 #include <sound/core.h>
 #include <sound/minors.h>
@@ -80,7 +80,7 @@ static int snd_info_version_init(void);
 static int snd_info_version_done(void);
 static void snd_info_disconnect(struct snd_info_entry *entry);
 
-
+#ifdef NOT_USED
 /* resize the proc r/w buffer */
 static int resize_info_buffer(struct snd_info_buffer *buffer,
 			      unsigned int nsize)
@@ -105,6 +105,7 @@ static int resize_info_buffer(struct snd_info_buffer *buffer,
 	buffer->len = nsize;
 	return 0;
 }
+#endif
 
 #ifndef TARGET_OS2
 /**
@@ -116,7 +117,7 @@ static int resize_info_buffer(struct snd_info_buffer *buffer,
  *
  * Returns the size of output string.
  */
-int snd_iprintf(struct snd_info_buffer *buffer, char *fmt,...)
+int snd_iprintf(struct snd_info_buffer *buffer, const char *fmt, ...)
 {
 	va_list args;
 	int len, res;
@@ -170,44 +171,49 @@ static void snd_remove_proc_entry(struct proc_dir_entry *parent,
 		remove_proc_entry(de->name, parent);
 }
 
+#ifdef NOT_USED
 static loff_t snd_info_entry_llseek(struct file *file, loff_t offset, int orig)
 {
 	struct snd_info_private_data *data;
 	struct snd_info_entry *entry;
-	loff_t ret;
+	loff_t ret = -EINVAL, size;
 
 	data = file->private_data;
 	entry = data->entry;
-	lock_kernel();
-	switch (entry->content) {
-	case SNDRV_INFO_CONTENT_TEXT:
-		switch (orig) {
-		case SEEK_SET:
-			file->f_pos = offset;
-			ret = file->f_pos;
-			goto out;
-		case SEEK_CUR:
-			file->f_pos += offset;
-			ret = file->f_pos;
-			goto out;
-		case SEEK_END:
-		default:
-			ret = -EINVAL;
-			goto out;
-		}
-		break;
-	case SNDRV_INFO_CONTENT_DATA:
-		if (entry->c.ops->llseek) {
-			ret = entry->c.ops->llseek(entry,
-						    data->file_private_data,
-						    file, offset, orig);
-			goto out;
-		}
-		break;
+	mutex_lock(&entry->access);
+	if (entry->content == SNDRV_INFO_CONTENT_DATA &&
+	    entry->c.ops->llseek) {
+		offset = entry->c.ops->llseek(entry,
+					      data->file_private_data,
+					      file, offset, orig);
+		goto out;
 	}
-	ret = -ENXIO;
-out:
-	unlock_kernel();
+	if (entry->content == SNDRV_INFO_CONTENT_DATA)
+		size = entry->size;
+	else
+		size = 0;
+	switch (orig) {
+	case SEEK_SET:
+		break;
+	case SEEK_CUR:
+		offset += file->f_pos;
+		break;
+	case SEEK_END:
+		if (!size)
+			goto out;
+		offset += size;
+		break;
+	default:
+		goto out;
+	}
+	if (offset < 0)
+		goto out;
+	if (size && offset > size)
+		offset = size;
+	file->f_pos = offset;
+	ret = offset;
+ out:
+	mutex_unlock(&entry->access);
 	return ret;
 }
 
@@ -242,10 +248,15 @@ static ssize_t snd_info_entry_read(struct file *file, char __user *buffer,
 			return -EFAULT;
 		break;
 	case SNDRV_INFO_CONTENT_DATA:
-		if (entry->c.ops->read)
+		if (pos >= entry->size)
+			return 0;
+		if (entry->c.ops->read) {
+			size = entry->size - pos;
+			size = min(count, size);
 			size = entry->c.ops->read(entry,
 						  data->file_private_data,
-						  file, buffer, count, pos);
+						  file, buffer, size, pos);
+		}
 		break;
 	}
 	if ((ssize_t) size > 0)
@@ -292,10 +303,13 @@ static ssize_t snd_info_entry_write(struct file *file, const char __user *buffer
 		size = count;
 		break;
 	case SNDRV_INFO_CONTENT_DATA:
-		if (entry->c.ops->write)
+		if (entry->c.ops->write && count > 0) {
+			size_t maxsize = entry->size - pos;
+			count = min(count, maxsize);
 			size = entry->c.ops->write(entry,
 						   data->file_private_data,
 						   file, buffer, count, pos);
+		}
 		break;
 	}
 	if ((ssize_t) size > 0)
@@ -544,6 +558,7 @@ static const struct file_operations snd_info_entry_operations =
 	.open =			snd_info_entry_open,
 	.release =		snd_info_entry_release,
 };
+#endif
 
 int __init snd_info_init(void)
 {
@@ -648,7 +663,6 @@ int snd_info_card_register(struct snd_card *card)
 
 	if (!strcmp(card->id, card->proc_root->name))
 		return 0;
-		
 #ifndef TARGET_OS2
 	p = proc_symlink(card->id, snd_proc_root, card->proc_root->name);
 	if (p == NULL)
@@ -761,7 +775,7 @@ EXPORT_SYMBOL(snd_info_get_line);
  * Returns the updated pointer of the original string so that
  * it can be used for the next call.
  */
-char *snd_info_get_str(char *dest, char *src, int len)
+const char *snd_info_get_str(char *dest, const char *src, int len)
 {
 	int c;
 

@@ -21,7 +21,6 @@
  *
  */
 
-#ifdef TARGET_OS2
 #ifndef MODULE_GENERIC_STRING
 #ifdef MODULE
 #define MODULE_GENERIC_STRING(name, string) \
@@ -32,9 +31,10 @@ static const char __module_generic_string_##name [] \
 #endif
 #endif
 
-#define MODULE_CLASSES(val)
-#define MODULE_DEVICES(val)
-#define MODULE_PARM_SYNTAX(id, val)
+#ifdef TARGET_OS2
+#define MODULE_CLASSES(val) 
+#define MODULE_DEVICES(val) 
+#define MODULE_PARM_SYNTAX(id, val) 
 #define module_param_array(name, type, nump, perm)
 #define module_param(name, type, perm)
 #else
@@ -51,13 +51,10 @@ static const char __module_generic_string_##name [] \
         MODULE_PARM(name, "1-" __MODULE_STRING(SNDRV_CARDS) SNDRV_MODULE_TYPE_##type)
 #define module_param(name, type, perm) \
         MODULE_PARM(name, SNDRV_MODULE_TYPE_##type)
+
 #endif
 
-#ifndef TARGET_OS2
-#define SNDRV_AUTO_PORT		1
-#else
 #define SNDRV_AUTO_PORT		0xffff
-#endif
 #define SNDRV_AUTO_IRQ		0xffff
 #define SNDRV_AUTO_DMA		0xffff
 #define SNDRV_AUTO_DMA_SIZE	(0x7fffffff)
@@ -77,11 +74,6 @@ static const char __module_generic_string_##name [] \
 #define SNDRV_DEFAULT_STR	{ REPEAT_SNDRV(NULL) }
 #define SNDRV_DEFAULT_ENABLE	{ 1,1,1,1,1,1,1,1 }
 #define SNDRV_DEFAULT_ENABLE_PNP	SNDRV_DEFAULT_ENABLE
-#ifdef CONFIG_PNP
-#define SNDRV_DEFAULT_ENABLE_ISAPNP SNDRV_DEFAULT_ENABLE_PNP
-#else
-#define SNDRV_DEFAULT_ENABLE_ISAPNP SNDRV_DEFAULT_ENABLE
-#endif
 #define SNDRV_DEFAULT_PORT	{ REPEAT_SNDRV(-1) }
 #define SNDRV_DEFAULT_IRQ	{ REPEAT_SNDRV(SNDRV_AUTO_IRQ) }
 #define SNDRV_DEFAULT_DMA	{ REPEAT_SNDRV(SNDRV_AUTO_DMA) }
@@ -90,6 +82,23 @@ static const char __module_generic_string_##name [] \
 #define SNDDRV_DEFAULT_PCM_DEVS       {REPEAT_SNDRV(1)};
 #define SNDDRV_DEFAULT_PCM_SUBSTREAMS {REPEAT_SNDRV(8)};
 #define SNDDRV_DEFAULT_MIDI_DEVS      {REPEAT_SNDRV(4)};
+#else
+#define SNDRV_DEFAULT_IDX	{ [0 ... (SNDRV_CARDS-1)] = -1 }
+#define SNDRV_DEFAULT_STR	{ [0 ... (SNDRV_CARDS-1)] = NULL }
+#define SNDRV_DEFAULT_ENABLE	{ 1, [1 ... (SNDRV_CARDS-1)] = 0 }
+#define SNDRV_DEFAULT_ENABLE_PNP { [0 ... (SNDRV_CARDS-1)] = 1 }
+#define SNDRV_DEFAULT_PORT	{ SNDRV_AUTO_PORT, [1 ... (SNDRV_CARDS-1)] = -1 }
+#define SNDRV_DEFAULT_IRQ	{ [0 ... (SNDRV_CARDS-1)] = SNDRV_AUTO_IRQ }
+#define SNDRV_DEFAULT_DMA	{ [0 ... (SNDRV_CARDS-1)] = SNDRV_AUTO_DMA }
+#define SNDRV_DEFAULT_DMA_SIZE	{ [0 ... (SNDRV_CARDS-1)] = SNDRV_AUTO_DMA_SIZE }
+#define SNDRV_DEFAULT_PTR	SNDRV_DEFAULT_STR
+#endif
+
+#ifdef CONFIG_PNP
+#define SNDRV_DEFAULT_ENABLE_ISAPNP SNDRV_DEFAULT_ENABLE_PNP
+#else
+#define SNDRV_DEFAULT_ENABLE_ISAPNP SNDRV_DEFAULT_ENABLE
+#endif
 
 #define SNDRV_BOOLEAN_TRUE_DESC	"allows:{{0,Disabled},{1,Enabled}},default:1,dialog:check"
 #define SNDRV_BOOLEAN_FALSE_DESC "allows:{{0,Disabled},{1,Enabled}},default:0,dialog:check"
@@ -109,22 +118,6 @@ static const char __module_generic_string_##name [] \
 #define SNDRV_DMA16_SIZE_DESC	SNDRV_ENABLED ",allows:{{4,128}},default:64,skill:advanced"
 #define SNDRV_PORT12_DESC	SNDRV_ENABLED ",allows:{{0,0x3fff}},base:16"
 #define SNDRV_PORT_DESC		SNDRV_ENABLED ",allows:{{0,0xffff}},base:16"
-#else
-#define SNDRV_DEFAULT_IDX	{ [0 ... (SNDRV_CARDS-1)] = -1 }
-#define SNDRV_DEFAULT_STR	{ [0 ... (SNDRV_CARDS-1)] = NULL }
-#define SNDRV_DEFAULT_ENABLE	{ 1, [1 ... (SNDRV_CARDS-1)] = 0 }
-#define SNDRV_DEFAULT_ENABLE_PNP { [0 ... (SNDRV_CARDS-1)] = 1 }
-#ifdef CONFIG_PNP
-#define SNDRV_DEFAULT_ENABLE_ISAPNP SNDRV_DEFAULT_ENABLE_PNP
-#else
-#define SNDRV_DEFAULT_ENABLE_ISAPNP SNDRV_DEFAULT_ENABLE
-#endif
-#define SNDRV_DEFAULT_PORT	{ [0 ... (SNDRV_CARDS-1)] = SNDRV_AUTO_PORT }
-#define SNDRV_DEFAULT_IRQ	{ [0 ... (SNDRV_CARDS-1)] = SNDRV_AUTO_IRQ }
-#define SNDRV_DEFAULT_DMA	{ [0 ... (SNDRV_CARDS-1)] = SNDRV_AUTO_DMA }
-#define SNDRV_DEFAULT_DMA_SIZE	{ [0 ... (SNDRV_CARDS-1)] = SNDRV_AUTO_DMA_SIZE }
-#define SNDRV_DEFAULT_PTR	SNDRV_DEFAULT_STR
-#endif
 
 #ifdef SNDRV_LEGACY_FIND_FREE_IRQ
 #include <linux/interrupt.h>
@@ -163,7 +156,6 @@ static int snd_legacy_find_free_dma(int *dma_table)
 }
 #endif
 
-#ifdef TARGET_OS2
 #if defined(SNDRV_GET_ID) && !defined(MODULE)
 #include <linux/ctype.h>
 static int __init get_id(char **str, char **dst)
@@ -189,7 +181,5 @@ static int __init get_id(char **str, char **dst)
 	return 1;
 }
 #endif
-#endif
 
-#endif /* __SOUND_INITVAL_H */
-
+#endif				/* __INITVAL_H */

@@ -104,7 +104,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
     #ifdef DEBUG
     //printk("StratIOCtl 0x%x\n", rp->Function);
     #endif
-    //    printk("cmd: %x, len: %i, pack: %x\n",rp->Function, rp->ioctl.usParmLen, rp->ParmPacket);
+    //    printk("cmd: %x, len: %i, pack: %x\n",rp->ioctl.bFunction, rp->ioctl.usParmLen, rp->ioctl.pvParm);
     // work with Parm Packet
     if ((rp->ioctl.usParmLen != 0 ||
          rp->ioctl.bFunction == IOCTL_OSS32_ATTACH /*16 bit ioctl*/) &&
@@ -182,6 +182,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
     {
     case IOCTL_OSS32_ATTACH:
         {
+          dprintf(("OSS32_ATTACH\n"));
             card_id = (ULONG) *linParm;
             // Check if audio init was successful
             if (OSS32_QueryNames(card_id, NULL, 0, NULL, 0, FALSE) != OSSERR_SUCCESS)
@@ -192,6 +193,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_VERSION:
         {
+          dprintf(("OSS32_VERSION\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -205,6 +207,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_GET_PCM_NUM:
         {
+          dprintf(("GET_PCM_NUM\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -218,6 +221,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         } break;
 
     case IOCTL_OSS32_CARDS_NUM:
+        dprintf(("OSS32_CARDS_NUM\n"));
         if (rp->ioctl.usDataLen < sizeof(ULONG))
         {
             // invalid Data Pkt
@@ -230,6 +234,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_PCM_CAPS:
         {
+          dprintf(("OSS32_PCM_CAPS\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -243,6 +248,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_CARD_INFO:
         {
+          dprintf(("OSS32_CARD_INFO\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -256,6 +262,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_GET_POWER_STATE:
         {
+          dprintf(("OSS32_GET_POWER_STATE\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -269,6 +276,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_SET_POWER_STATE:
         {
+          dprintf(("OSS32_SET_POWER_STATE\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -282,6 +290,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_GET_CNTRLS_NUM:
         {
+          dprintf(("OSS32_GET_CNTRLS_NUM\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -297,6 +306,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_GET_CNTRLS:
         {
+          dprintf(("OSS32_GET_CNTRLS\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -310,6 +320,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_CNTRL_INFO:
         {
+          dprintf(("OSS32_CNTRL_INFO\n"));
 
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
@@ -335,6 +346,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_CNTRL_GET:
         {
+          dprintf(("OSS32_CNTRL_GET\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -359,6 +371,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_CNTRL_PUT:
         {
+          dprintf(("OSS32_CNTRL_PUT\n"));
 
             if (rp->ioctl.usDataLen < sizeof(ULONG)) {
                 // invalid Data Pkt
@@ -382,6 +395,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_SET_PCM:
         {
+          dprintf(("OSS32_SET_PCM\n"));
 
             if (rp->ioctl.usParmLen < sizeof(ULONG))
             {
@@ -398,6 +412,7 @@ ULONG StratIOCtl(REQPACKET __far* rp)
 
     case IOCTL_OSS32_CNTRL_WAIT:
         {
+          dprintf(("OSS32_CNTRL_WAIT\n"));
             if (rp->ioctl.usDataLen < sizeof(ULONG))
             {
                 // invalid Data Pkt
@@ -413,6 +428,8 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         {
             pData = (ULONG *)linData;
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_OPEN\n"));
             // close all pcms from uniaud16 first
             pcm->ret = OSS32_WaveOpen(pcm->deviceid, pcm->streamtype, pData,  pcm->pcm, rp->ioctl.usSysFileNum);
         }
@@ -421,6 +438,8 @@ ULONG StratIOCtl(REQPACKET __far* rp)
     case IOCTL_OSS32_PCM_CLOSE:
         {
             ULONG alsa_id = *((ULONG *)linParm);
+
+          dprintf(("OSS32_PCM_CLOSE\n"));
             OSS32_WaveClose(alsa_id);
         }
         break;
@@ -428,6 +447,8 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         {
             char *pData1 = (char *)linData;
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_READ\n"));
             pcm->ret = UniaudIoctlPCMRead(pcm->deviceid, pData1, pcm->size);
         }
         break;
@@ -435,30 +456,40 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         {
             char *pData1 = (char *)linData;
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_WRITE\n"));
             pcm->ret = UniaudIoctlPCMWrite(pcm->deviceid, pData1, pcm->size);
         }
         break;
     case IOCTL_OSS32_PCM_PAUSE:
         {
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_PAUSE\n"));
             pcm->ret = UniaudIoctlPCMResume(pcm->deviceid, 0);
         }
         break;
     case IOCTL_OSS32_PCM_RESUME:
         {
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_RESUME\n"));
             pcm->ret = UniaudIoctlPCMResume(pcm->deviceid, 1);
         }
         break;
     case IOCTL_OSS32_PCM_START:
         {
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_START\n"));
             pcm->ret = UniaudIoctlPCMStart(pcm->deviceid);
         }
         break;
     case IOCTL_OSS32_PCM_DROP:
         {
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_DROP\n"));
             pcm->ret = UniaudIoctlPCMDrop(pcm->deviceid);
         }
         break;
@@ -468,6 +499,8 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         {
             void *pData1 = (void *)linData;
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_STATUS\n"));
             pcm->ret = UniaudIoctlPCMStatus(pcm->deviceid, pData1);
         }
         break;
@@ -475,6 +508,8 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         {
             void *pData1 = (void *)linData;
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_REFINEHWPARAMS\n"));
             pcm->ret = UniaudIoctlHWRefine(pcm->deviceid, pData1);
         }
         break;
@@ -482,6 +517,8 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         {
             void *pData1 = (void *)linData;
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_SETHWPARAMS\n"));
             pcm->ret = UniaudIoctlHWParamSet(pcm->deviceid, pData1);
         }
         break;
@@ -489,12 +526,16 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         {
             void *pData1 = (void *)linData;
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_SETSWPARAMS\n"));
             pcm->ret = UniaudIoctlSWParamSet(pcm->deviceid, pData1);
         }
         break;
     case IOCTL_OSS32_PCM_PREPARE:
         {
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_PREPARE\n"));
             pcm->ret = UniaudIoctlPCMPrepare(pcm->deviceid);
         }
         break;
@@ -502,6 +543,8 @@ ULONG StratIOCtl(REQPACKET __far* rp)
     case IOCTL_OSS32_PCM_CLOSE_ALL:
         {
             int unlock  = (int)*linParm;
+
+          dprintf(("OSS32_PCM_CLOSE_ALL\n"));
             if (unlock)
                 unlock_all = 1;
             else
@@ -509,11 +552,14 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         }
         break;
     case IOCTL_OSS32_PCM_CLOSE_16:
+          dprintf(("OSS32_PCM_CLOSE_16\n"));
         OSS32_CloseUNI16();
         break;
     case IOCTL_OSS32_PCM_WAIT_INT:
         {
             ioctl_pcm *pcm = (ioctl_pcm *)linParm;
+
+          dprintf(("OSS32_PCM_WAIT_INT\n"));
             pcm->ret =  WaitForPCMInterrupt((void*)pcm->deviceid, pcm->streamtype);
         }
         break;

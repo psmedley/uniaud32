@@ -22,6 +22,7 @@
 
 #include <linux/compat.h>
 #include <proto.h>
+#include <linux/slab.h>
 
 struct snd_seq_port_info32 {
 	struct snd_seq_addr addr;	/* client/port numbers */

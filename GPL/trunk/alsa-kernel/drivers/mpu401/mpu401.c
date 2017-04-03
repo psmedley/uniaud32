@@ -21,7 +21,7 @@
  */
 
 #ifdef TARGET_OS2
-#include <config.h>
+#include <sound/config.h>
 #endif
 #include <linux/init.h>
 #include <linux/pnp.h>

@@ -7,8 +7,8 @@
  * nr_file rlimit, so it's safe to set up a ridiculously high absolute
  * upper limit on files-per-process.
  *
- * Some programs (notably those using select()) may have to be
- * recompiled to take full advantage of the new limits..
+ * Some programs (notably those using select()) may have to be 
+ * recompiled to take full advantage of the new limits..  
  */
 
 #include <linux/types.h>
@@ -62,7 +62,7 @@
 #define SEL_EX		4
 
 /* public flags for file_system_type */
-#define FS_REQUIRES_DEV 1
+#define FS_REQUIRES_DEV 1 
 #define FS_NO_DCACHE	2 /* Only dcache the necessary things. */
 #define FS_NO_PRELIM	4 /* prevent preloading of dentries, even if
 			   * FS_NO_DCACHE is not set.
@@ -264,12 +264,15 @@ extern int unregister_chrdev(unsigned int, const char *);
 extern int fasync_helper(int, struct file *, int, struct fasync_struct **);
 extern void kill_fasync(struct fasync_struct *, int, int);
 
-#define fops_get(x) ((struct file_operations *)x)
+#define fops_get(x) (x)
 #define fops_put(x) do { ; } while (0)
 
 #define minor(a) MINOR(a)
 #define major(a) MAJOR(a)
 #define iminor(x) minor((x)->i_rdev)
 #define imajor(x) major((x)->i_rdev)
+
+#define no_llseek	NULL
+#define nonseekable_open(i,f) 0
 
 #endif /* _LINUX_FS_H */

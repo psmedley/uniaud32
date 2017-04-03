@@ -13,7 +13,7 @@ ROOT=$(%ROOT)
 #===================================================================
 FILES = hda_intel.obj hda_codec.obj hda_proc.obj hda_generic.obj hda_hwdep.obj &
   patch_realtek.obj patch_cmedia.obj patch_analog.obj patch_sigmatel.obj &
-  patch_si3054.obj patch_atihdmi.obj patch_conexant.obj patch_via.obj
+  patch_si3054.obj patch_conexant.obj patch_via.obj
 
 TARGET = hda
 

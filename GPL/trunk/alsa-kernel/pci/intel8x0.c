@@ -96,9 +96,9 @@ module_param(spdif_aclink, int, 0444);
 MODULE_PARM_DESC(spdif_aclink, "S/PDIF over AC-link.");
 
 /* just for backward compatibility */
-static int enable;
+//static int enable;
 module_param(enable, bool, 0444);
-static int joystick;
+//static int joystick;
 module_param(joystick, int, 0444);
 
 /*
@@ -420,7 +420,7 @@ struct intel8x0 {
 	u32 int_sta_mask;		/* interrupt status mask */
 };
 
-static struct pci_device_id snd_intel8x0_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(snd_intel8x0_ids) = {
 	{ PCI_VDEVICE(INTEL, 0x2415), DEVICE_INTEL },	/* 82801AA */
 	{ PCI_VDEVICE(INTEL, 0x2425), DEVICE_INTEL },	/* 82901AB */
 	{ PCI_VDEVICE(INTEL, 0x2445), DEVICE_INTEL },	/* 82801BA */
@@ -716,7 +716,7 @@ static void snd_intel8x0_setup_periods(struct intel8x0 *chip, struct ichdev *ich
  * Intel 82443MX running a 100MHz processor system bus has a hardware bug,
  * which aborts PCI busmaster for audio transfer.  A workaround is to set
  * the pages as non-cached.  For details, see the errata in
- *	http://www.intel.com/design/chipsets/specupdt/245051.htm
+ *	http://download.intel.com/design/chipsets/specupdt/24505108.pdf
  */
 static void fill_nocache(void *buf, int size, int nocache)
 {
@@ -1778,6 +1778,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
     },
 	{
 		.subvendor = 0x1014,
+		.subdevice = 0x0534,
+		.name = "ThinkPad X31",
+		.type = AC97_TUNE_INV_EAPD
+	},
+	{
+		.subvendor = 0x1014,
 		.subdevice = 0x1f00,
 		.name = "MS-9128",
 		.type = AC97_TUNE_ALC_JACK
@@ -1838,14 +1844,14 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x1028,
-		.subdevice = 0x014e,
-		.name = "Dell D800", /* STAC9750/51 */
+		.subdevice = 0x0151,
+		.name = "Dell Optiplex GX270",  /* AD1981B */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
 		.subvendor = 0x1028,
-		.subdevice = 0x0151,
-		.name = "Dell Optiplex GX270",  /* AD1981B */
+		.subdevice = 0x014e,
+		.name = "Dell D800", /* STAC9750/51 */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
@@ -1858,6 +1864,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subvendor = 0x1028,
 		.subdevice = 0x016a,
 		.name = "Dell Inspiron 8600",	/* STAC9750/51 */
+		.type = AC97_TUNE_HP_ONLY
+	},
+	{
+		.subvendor = 0x1028,
+		.subdevice = 0x0182,
+		.name = "Dell Latitude D610",	/* STAC9750/51 */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
@@ -1904,20 +1916,14 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x103c,
-		.subdevice = 0x0934,
-		.name = "HP nc8220",
-		.type = AC97_TUNE_HP_MUTE_LED
+		.subdevice = 0x129d,
+		.name = "HP xw8000",
+		.type = AC97_TUNE_HP_ONLY
 	},
 	{
 		.subvendor = 0x103c,
 		.subdevice = 0x0938,
 		.name = "HP nc4200",
-		.type = AC97_TUNE_HP_MUTE_LED
-	},
-	{
-		.subvendor = 0x103c,
-		.subdevice = 0x0944,
-		.name = "HP nc6220",
 		.type = AC97_TUNE_HP_MUTE_LED
 	},
 	{
@@ -1928,9 +1934,15 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x103c,
-		.subdevice = 0x129d,
-		.name = "HP xw8000",
-		.type = AC97_TUNE_HP_ONLY
+		.subdevice = 0x0944,
+		.name = "HP nc6220",
+		.type = AC97_TUNE_HP_MUTE_LED
+	},
+	{
+		.subvendor = 0x103c,
+		.subdevice = 0x0934,
+		.name = "HP nc8220",
+		.type = AC97_TUNE_HP_MUTE_LED
 	},
 	{
 		.subvendor = 0x103c,
@@ -1952,8 +1964,26 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x104d,
+		.subdevice = 0x8144,
+		.name = "Sony",
+		.type = AC97_TUNE_INV_EAPD
+	},
+	{
+		.subvendor = 0x104d,
 		.subdevice = 0x8197,
 		.name = "Sony S1XP",
+		.type = AC97_TUNE_INV_EAPD
+	},
+	{
+		.subvendor = 0x104d,
+		.subdevice = 0x81c0,
+		.name = "Sony VAIO VGN-T350P", /*AD1981B*/
+		.type = AC97_TUNE_INV_EAPD
+	},
+	{
+		.subvendor = 0x104d,
+		.subdevice = 0x81c5,
+		.name = "Sony VAIO VGN-B1VP", /*AD1981B*/
 		.type = AC97_TUNE_INV_EAPD
 	},
  	{
@@ -2047,6 +2077,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
+		.subvendor = 0x161f,
+		.subdevice = 0x203a,
+		.name = "Gateway 4525GZ",		/* AD1981B */
+		.type = AC97_TUNE_INV_EAPD
+	},
+	{
 		.subvendor = 0x1734,
 		.subdevice = 0x0088,
 		.name = "Fujitsu-Siemens D1522",	/* AD1981 */
@@ -2056,12 +2092,6 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subvendor = 0x107B,
 		.subdevice = 0x0111,
 		.name = "Gateway 2000 ICH2/AD1885",
-		.type = AC97_TUNE_HP_ONLY
-	},
-	{
-		.subvendor = 0x8086,
-		.subdevice = 0x0104,
-		.name = "Intel D845GEBV2",              /* AD1981B */
 		.type = AC97_TUNE_HP_ONLY
 	},
 	{
@@ -2779,7 +2809,7 @@ static void __devinit intel8x0_measure_ac97_clock(struct intel8x0 *chip)
 	t = stop_time.tv_sec - start_time.tv_sec;
 	t *= 1000000;
 	t += (stop_time.tv_nsec - start_time.tv_nsec) / 1000;
-	printk(KERN_INFO "%s: measured %lu usecs (%lu samples)\n", __func__, t, pos);
+	dprintf(("%s: measured %lu usecs (%lu samples)\n", __func__, t, pos));
 	if (t == 0) {
 		snd_printk(KERN_ERR "intel8x0: ?? calculation error..\n");
 		goto __retry;
@@ -2800,7 +2830,7 @@ static void __devinit intel8x0_measure_ac97_clock(struct intel8x0 *chip)
 		/* not 48000Hz, tuning the clock.. */
 		chip->ac97_bus->clock = (chip->ac97_bus->clock * 48000) / pos;
       __end:
-	printk(KERN_INFO "intel8x0: clocking to %d\n", chip->ac97_bus->clock);
+	dprintf(("intel8x0: clocking to %d\n", chip->ac97_bus->clock));
 	snd_ac97_update_power(chip->ac97[0], AC97_PCM_FRONT_DAC_RATE, 0);
 }
 
@@ -3133,10 +3163,12 @@ static struct shortname_table {
 	{ 0, NULL },
 };
 
+#ifdef NOT_USED
 static struct snd_pci_quirk spdif_aclink_defaults[] __devinitdata = {
 	SND_PCI_QUIRK(0x147b, 0x1c1a, "ASUS KN8", 1),
 	{0} /* end */
 };
+#endif
 
 /* look up white/black list for SPDIF over ac-link */
 static int __devinit check_default_spdif_aclink(struct pci_dev *pci)

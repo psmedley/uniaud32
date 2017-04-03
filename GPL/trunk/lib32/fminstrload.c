@@ -102,7 +102,7 @@ OSSRET OSS32_FMMidiLoadInstruments(OSSSTREAMID streamid)
     midihandle  *pHandle = (midihandle *)streamid;
 
     if(pHandle == NULL || pHandle->magic != MAGIC_MIDI_ALSA32) {
-        DebugInt3();
+        //DebugInt3();
         return OSSERR_INVALID_STREAMID;
     }
     if(fInstumentsLoaded) return OSSERR_SUCCESS;

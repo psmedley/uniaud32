@@ -137,4 +137,7 @@ typedef void (*exitcall_t)(void);
 
 #define __devexit_p(x) x
 
+/* subsys_initcall() wrapper */
+#define subsys_initcall(x) module_init(x)
+
 #endif /* _LINUX_INIT_H */

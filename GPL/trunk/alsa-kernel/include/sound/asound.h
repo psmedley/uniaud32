@@ -41,7 +41,6 @@
 
 #endif /* __KERNEL__ **/
 
-#ifdef TARGET_OS2
 #ifndef __force
 #define __force
 #endif
@@ -50,6 +49,7 @@
 #define __bitwise
 #endif
 
+#ifdef TARGET_OS2
 #define SNDRV_PCM_VOL_FRONT_LEFT        0
 #define SNDRV_PCM_VOL_FRONT_RIGHT       1
 #define SNDRV_PCM_VOL_REAR_LEFT         2
@@ -235,7 +235,11 @@ typedef int __bitwise snd_pcm_format_t;
 #define	SNDRV_PCM_FORMAT_S18_3BE	((__force snd_pcm_format_t) 41)	/* in three bytes */
 #define	SNDRV_PCM_FORMAT_U18_3LE	((__force snd_pcm_format_t) 42)	/* in three bytes */
 #define	SNDRV_PCM_FORMAT_U18_3BE	((__force snd_pcm_format_t) 43)	/* in three bytes */
-#define	SNDRV_PCM_FORMAT_LAST		SNDRV_PCM_FORMAT_U18_3BE
+#define	SNDRV_PCM_FORMAT_G723_24	((__force snd_pcm_format_t) 44) /* 8 samples in 3 bytes */
+#define	SNDRV_PCM_FORMAT_G723_24_1B	((__force snd_pcm_format_t) 45) /* 1 sample in 1 byte */
+#define	SNDRV_PCM_FORMAT_G723_40	((__force snd_pcm_format_t) 46) /* 8 Samples in 5 bytes */
+#define	SNDRV_PCM_FORMAT_G723_40_1B	((__force snd_pcm_format_t) 47) /* 1 sample in 1 byte */
+#define	SNDRV_PCM_FORMAT_LAST		SNDRV_PCM_FORMAT_G723_40_1B
 
 #ifdef SNDRV_LITTLE_ENDIAN
 #define	SNDRV_PCM_FORMAT_S16		SNDRV_PCM_FORMAT_S16_LE
@@ -278,6 +282,7 @@ typedef int __bitwise snd_pcm_subformat_t;
 #define SNDRV_PCM_INFO_HALF_DUPLEX	0x00100000	/* only half duplex */
 #define SNDRV_PCM_INFO_JOINT_DUPLEX	0x00200000	/* playback and capture stream are somewhat correlated */
 #define SNDRV_PCM_INFO_SYNC_START	0x00400000	/* pcm support some kind of sync go */
+#define SNDRV_PCM_INFO_NO_PERIOD_WAKEUP	0x00800000	/* period wakeup can be disabled */
 #define SNDRV_PCM_INFO_FIFO_IN_FRAMES	0x80000000	/* internal kernel flag - FIFO size is in frames */
 
 typedef int __bitwise snd_pcm_state_t;
@@ -322,14 +327,11 @@ struct snd_pcm_info {
 
 typedef int snd_pcm_hw_param_t;
 #define	SNDRV_PCM_HW_PARAM_ACCESS	0	/* Access type */
-#ifndef TARGET_OS2
-#define	SNDRV_PCM_HW_PARAM_FORMAT	1	/* Format */
-#define	SNDRV_PCM_HW_PARAM_SUBFORMAT	2	/* Subformat */
-#else
+#ifdef TARGET_OS2
 #define	SNDRV_PCM_HW_PARAM_RATE_MASK    1 /* Format */
+#endif
 #define	SNDRV_PCM_HW_PARAM_FORMAT	2	/* Format */
 #define	SNDRV_PCM_HW_PARAM_SUBFORMAT	3	/* Subformat */
-#endif
 #define	SNDRV_PCM_HW_PARAM_FIRST_MASK	SNDRV_PCM_HW_PARAM_ACCESS
 #define	SNDRV_PCM_HW_PARAM_LAST_MASK	SNDRV_PCM_HW_PARAM_SUBFORMAT
 
@@ -359,6 +361,8 @@ typedef int snd_pcm_hw_param_t;
 #define	SNDRV_PCM_HW_PARAM_LAST_INTERVAL	SNDRV_PCM_HW_PARAM_TICK_TIME
 
 #define SNDRV_PCM_HW_PARAMS_NORESAMPLE	(1<<0)	/* avoid rate resampling */
+#define SNDRV_PCM_HW_PARAMS_EXPORT_BUFFER	(1<<1)	/* export buffer */
+#define SNDRV_PCM_HW_PARAMS_NO_PERIOD_WAKEUP	(1<<2)	/* disable period wakeups */
 
 struct snd_interval {
 	unsigned int min, max;
@@ -573,7 +577,7 @@ struct snd_rawmidi_status {
  *  Timer section - /dev/snd/timer
  */
 
-#define SNDRV_TIMER_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 5)
+#define SNDRV_TIMER_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 6)
 
 enum {
 	SNDRV_TIMER_CLASS_NONE = -1,
@@ -603,7 +607,7 @@ enum {
 #define SNDRV_TIMER_FLG_SLAVE		(1<<0)	/* cannot be controlled */
 
 struct snd_timer_id {
-	int dev_class;	
+	int dev_class;
 	int dev_sclass;
 	int card;
 	int device;
@@ -730,6 +734,7 @@ struct snd_timer_tread {
 
 #define SNDRV_CTL_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 6)
 
+/******************** This section used in uniaud.dll interface *********************/
 struct snd_ctl_card_info {
 	int card;			/* card number */
 	int pad;			/* reserved for future (was type) */
@@ -791,7 +796,7 @@ struct snd_ctl_elem_id {
 	snd_ctl_elem_iface_t iface;	/* interface identifier */
 	unsigned int device;		/* device/client number */
 	unsigned int subdevice;		/* subdevice (substream) number */
-        unsigned char name[44];		/* ASCII name of item */
+	unsigned char name[44];		/* ASCII name of item */
 	unsigned int index;		/* index of item */
 };
 
@@ -838,7 +843,7 @@ struct snd_ctl_elem_info {
 struct snd_ctl_elem_value {
 	struct snd_ctl_elem_id id;	/* W: element ID */
 	unsigned int indirect: 1;	/* W: indirect access - obsoleted */
-        union {
+	union {
 		union {
 			long value[128];
 			long *value_ptr;	/* obsoleted */
@@ -856,18 +861,18 @@ struct snd_ctl_elem_value {
 			unsigned char *data_ptr;	/* obsoleted */
 		} bytes;
 		struct snd_aes_iec958 iec958;
-        } value;                /* RO */
+	} value;		/* RO */
 	struct timespec tstamp;
-        unsigned char reserved[128-sizeof(struct timespec)];
+	unsigned char reserved[128-sizeof(struct timespec)];
 };
 
 struct snd_ctl_tlv {
-        unsigned int numid;	/* control element numeric identification */
-        unsigned int length;	/* in bytes aligned to 4 */
+	unsigned int numid;	/* control element numeric identification */
+	unsigned int length;	/* in bytes aligned to 4 */
 #ifndef TARGET_OS2
-        unsigned int tlv[0];	/* first TLV */
+	unsigned int tlv[0];	/* first TLV */
 #else
-        unsigned int tlv[1];	/* first TLV */
+	unsigned int tlv[1];	/* first TLV */
 #endif
 };
 
@@ -923,8 +928,8 @@ struct snd_ctl_event {
 			unsigned int mask;
 			struct snd_ctl_elem_id id;
 		} elem;
-                unsigned char data8[60];
-        } data;
+		unsigned char data8[60];
+	} data;
 };
 
 /*

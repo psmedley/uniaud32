@@ -1,0 +1,53 @@
+Index: drv32/Makefile
+===================================================================
+--- drv32/Makefile	(revision 593)
++++ drv32/Makefile	(working copy)
+@@ -85,7 +85,7 @@
+   @%write $^@ option cache
+   @%write $^@ option alignment=16
+   @%write $^@ option map=$(WMAPNAME)
+-  @$(ROOT)\tools\AddToFile.cmd $^@,$option description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
++  @$(ROOT)\tools\AddToFile.cmd $^@,$option description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK),$(BLDLVL_ALSA)
+   @%write $^@ name $(OBJDIR)\$(TARGET).sys
+   @for %f in ($(FILES)) do @%append $^@ file $(OBJDIR)\%f
+   @for %f in ($(LIBS)) do @%append $^@ library %f
+@@ -104,7 +104,7 @@
+ 
+ $(OBJDIR)\$(TARGET).sys: $(LNKFILE) $(FILES) $(LIBS)
+   @%create $(DEFFILE)
+-  $(ROOT)\tools\AddToFile.cmd $(DEFFILE),description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK)
++  $(ROOT)\tools\AddToFile.cmd $(DEFFILE),description,BLDLEVEL,$(BLDLVL_VENDOR),$(BLDLVL_VERSION),Universal Audio Driver for OS/2 (c) %Y $(BLDLVL_VENDOR),$(BLDLVL_FIXPACK),$(BLDLVL_ALSA)
+   $(LINK) @$(LNKFILE)
+   copy $(OBJDIR)\$(TARGET).sys $(ALSA_BIN)
+ 
+Index: tools/AddToFile.cmd
+===================================================================
+--- tools/AddToFile.cmd	(revision 593)
++++ tools/AddToFile.cmd	(working copy)
+@@ -10,7 +10,7 @@
+  */
+ call RxFuncAdd 'SysLoadFuncs', 'RexxUtil', 'SysLoadFuncs'
+ call SysLoadFuncs
+-parse arg OutFile','String','Function','Parm1','Parm2','Parm3','Parm4;
++parse arg OutFile','String','Function','Parm1','Parm2','Parm3','Parm4','Parm5;
+ 
+ if (OutFile='') then do
+   Say 'Usage:';
+@@ -32,7 +32,7 @@
+   MyCmd=MyFile||',#define DDATE,DATEL';
+   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+   call 'AddToFile.cmd' MyCmd;
+-  MyCmd=MyFile||',option description,BLDLEVEL,Vendor,1.2.3,Description,Fixpack';
++  MyCmd=MyFile||',option description,BLDLEVEL,Vendor,1.2.3,Description,Fixpack,Asd';
+   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+   call 'AddToFile.cmd' MyCmd;
+   MyCmd=MyFile||',char *bl = "%A";,BLDLEVEL,Vendor,1.2.3,Description,Fixpack';
+@@ -99,7 +99,7 @@
+       Parm3=Substr(Parm3,1,RepLoc-1)||FORMAT(SUBSTR(DATE('S'), 1, 4))||Substr(Parm3,RepLoc+2);
+     end
+ 
+-    NewStr='@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||'::::'||ProjVersion||'::'||Parm4||'@@'||Parm3;
++    NewStr='@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||':'||Parm5||':::'||ProjVersion||'::'||Parm4||'@@'||Parm3;
+     if (Type='2') then do
+       /*OutStr=String||' "@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||'::::'||ProjVersion||'::'||Parm4||'@@'||Parm3||'"';*/
+       OutStr=String||' "'||NewStr||'"';

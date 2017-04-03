@@ -67,7 +67,7 @@
 #define SNDRV_SEQ_EVENT_QFRAME		22	/* midi time code quarter frame */
 #define SNDRV_SEQ_EVENT_TIMESIGN	23	/* SMF Time Signature event */
 #define SNDRV_SEQ_EVENT_KEYSIGN		24	/* SMF Key Signature event */
-	
+	        
 /** timer messages
  * event data type = snd_seq_ev_queue_control
  */
@@ -221,7 +221,7 @@ struct snd_seq_ev_raw32 {
 };
 
 	/* external stored data */
-#ifndef TARGET_OS2	
+#ifndef TARGET_OS2
 struct snd_seq_ev_ext {
 	unsigned int len;	/* length of data */
 	void *ptr;		/* pointer to data (note: maybe 64-bit) */
@@ -234,7 +234,6 @@ struct snd_seq_ev_ext {
 };
 #pragma pack()
 #endif
-
 struct snd_seq_result {
 	int event;		/* processed event type */
 	int result;
@@ -273,7 +272,7 @@ struct snd_seq_ev_queue_control {
 };
 
 	/* quoted event - inside the kernel only */
-#ifndef TARGET_OS2	
+#ifndef TARGET_OS2
 struct snd_seq_ev_quote {
 	struct snd_seq_addr origin;		/* original sender */
 	unsigned short value;		/* optional data */
@@ -422,7 +421,7 @@ typedef int __bitwise snd_seq_client_type_t;
 #define	NO_CLIENT	((__force snd_seq_client_type_t) 0)
 #define	USER_CLIENT	((__force snd_seq_client_type_t) 1)
 #define	KERNEL_CLIENT	((__force snd_seq_client_type_t) 2)
-
+                        
 	/* event filter flags */
 #define SNDRV_SEQ_FILTER_BROADCAST	(1<<0)	/* accept broadcast messages */
 #define SNDRV_SEQ_FILTER_MULTICAST	(1<<1)	/* accept multicast messages */

@@ -204,7 +204,7 @@ void disable_dma(unsigned int dmanr)
     DebugInt3();
 }
 //******************************************************************************
-static struct notifier_block *reboot_notify_list = NULL;
+//static struct notifier_block *reboot_notify_list = NULL;
 // No need to implement this right now. The ESS Maestro 3 driver uses it
 // to call pci_unregister_driver, which is always called from the shutdown
 // notification sent by OS2.
@@ -411,4 +411,108 @@ void *memdup_user(void __user *src, size_t len)
 }
 //******************************************************************************
 //******************************************************************************
+#define del_timer_sync(t) del_timer(t) /* FIXME: not quite correct on SMP */
+int cancel_delayed_work(struct delayed_work *dwork)
+{
+	struct work_struct *work = &dwork->work;
+	int ret;
 
+	ret = del_timer_sync(&work->timer);
+	if (ret)
+		clear_bit(0, &work->pending);
+	return ret;
+}
+//******************************************************************************
+//******************************************************************************
+int schedule_work(struct work_struct *works)
+{
+#ifndef TARGET_OS2
+	return kernel_thread(work_caller, works, 0) >= 0;
+#else
+	return 1;
+#endif
+}
+//******************************************************************************
+//******************************************************************************
+bool flush_delayed_work_sync(struct delayed_work *dwork)
+{
+	bool ret;
+	ret = cancel_delayed_work(dwork);
+	if (ret) {
+		schedule_delayed_work(dwork, 0);
+		flush_scheduled_work();
+	}
+	return ret;
+}
+//******************************************************************************
+//******************************************************************************
+static void delayed_work_timer_fn(unsigned long __data)
+{
+	struct work_struct *work = (struct work_struct *)__data;
+	struct workqueue_struct *wq = work->wq_data;
+	
+	if (wq)
+		__x_queue_work(wq, work);
+	else
+		schedule_work(work);
+}
+//******************************************************************************
+//******************************************************************************
+int queue_delayed_work(struct workqueue_struct *wq, struct delayed_work *dwork, unsigned long delay)
+{
+	struct work_struct *work = &dwork->work;
+	struct timer_list *timer = &work->timer;
+
+	if (!test_and_set_bit(0, &work->pending)) {
+		work->wq_data = wq;
+		timer->expires = jiffies + delay;
+		timer->data = (unsigned long)work;
+		timer->function = delayed_work_timer_fn;
+		add_timer(timer);
+		return 1;
+	}
+	return 0;
+}
+//******************************************************************************
+//******************************************************************************
+/* Greatest common divisor */
+unsigned long gcd(unsigned long a, unsigned long b)
+{
+	unsigned long r;
+	if (a < b) {
+		r = a;
+		a = b;
+		b = r;
+	}
+	while ((r = a % b) != 0) {
+		a = b;
+		b = r;
+	}
+	return b;
+}
+
+//******************************************************************************
+//******************************************************************************
+int strict_strtoul(const char *cp, unsigned int base, unsigned long *res)
+{
+        char *tail;
+        unsigned long val;
+        size_t len;
+
+        *res = 0;
+        len = strlen(cp);
+        if (len == 0)
+                return -EINVAL;
+
+        val = simple_strtoul(cp, &tail, base);
+        if (tail == cp)
+                return -EINVAL;
+
+        if ((*tail == '\0') ||
+                ((len == (size_t)(tail - cp) + 1) && (*tail == '\n'))) {
+                *res = val;
+                return 0;
+        }
+
+        return -EINVAL;
+}

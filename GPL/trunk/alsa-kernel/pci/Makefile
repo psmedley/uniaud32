@@ -12,7 +12,7 @@ WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
 #   List of source files
 #
 #===================================================================
-FILES = ens1370.obj ens1371.obj cs4281.obj  es1938.obj &
+FILES = pci_iomap_compat.obj ens1370.obj ens1371.obj cs4281.obj  es1938.obj &
   es1968.obj intel8x0.obj maestro3.obj via82xx.obj &
   fm801.obj atiixp.obj cmipci.obj als4000.obj bt87x.obj &
   ak4531_codec.obj cs5530.obj
