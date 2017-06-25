@@ -91,6 +91,7 @@ select
 
     /* get fixpack from SVN version */
     if (Parm4='SVN') then Parm4='SVN'||SvnVersion();
+    if (Parm2='DATE') then Parm2=SUBSTR(DATE('S'), 1, 4)||'.'||SUBSTR(DATE('S'), 5, 2)||'.'||SUBSTR(DATE('S'), 7, 2);
 
     parse var Parm2 major'.'minor'.'ProjVersion;
 
@@ -133,6 +134,16 @@ select
 
   when (Function='DATEDAY') then do
     NewStr=FORMAT(SUBSTR(DATE('S'), 7, 2));
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
+    rc=lineout(OutFile);
+  end
+
+  when (Function='DATE1') then do
+    parse value Date('N') with MyDay MyMonth MyYear;
+    NewStr=MyYear||'-'||MyMonth||'-'||Right(MyDay, 2, 0);
     RepLoc=Pos('%A', String);
     if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
     else OutStr=String||' '||NewStr;

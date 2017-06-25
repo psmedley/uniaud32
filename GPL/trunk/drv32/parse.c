@@ -43,7 +43,7 @@ extern "C" {
 int fVerbose  = FALSE;
 int fDebug    = FALSE;
 int ForceCard = CARD_NONE;
-int iAdapterNumber = 0;
+int iAdapterNumber = -1;
 
 extern short int midi_port;
 

@@ -512,7 +512,7 @@ int pci_register_driver(struct pci_driver *driver)
         pcidev->vendor, pcidev->device, pcidev->_class,
         pDriverId->vendor, pDriverId->device, pDriverId->class, pDriverId->class_mask, driver->name));
 
-      if (iAdapter < iAdapterNumber)
+      if ((iAdapterNumber >= 0) && (iAdapter < iAdapterNumber))
       {
         iAdapter++;
         continue;
@@ -532,6 +532,7 @@ int pci_register_driver(struct pci_driver *driver)
       }
       RMDone(0, 0, 0);
     } /* for id_table loop */
+
     if (pcidev)
     {
       kfree(pcidev->bus);
@@ -539,6 +540,7 @@ int pci_register_driver(struct pci_driver *driver)
     }
     else
     {
+      if (iAdapterNumber >= 0) break;
       /* find another empty slot */
       for (iTmp=0; iTmp<MAX_PCI_DEVICES; iTmp++)
       {
