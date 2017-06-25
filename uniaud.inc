@@ -6,13 +6,13 @@ PRODUCTNAME = Universal Audio Driver for OS/2 and eComStation
 # Full UNIAUD build version
 # BUILDVERSION must be 3 parts, and only numbers like 5.44.108
 # The second and third numbers must be 2 digits
-BUILDVERSION = 2.02.02
+BUILDVERSION = 2.02.03
 
 # Fixpack version
 # Use this if you want to add extra chars (comments) to bldlevel
 # ex RC3  GA  FIXPACK2 beta_47
 # Comment out to avoid a fixpack line in bldlevel
-FIXPACK = BETA
+FIXPACK = SVN
 
 # ALSA BUILD VERSION
 # Use this to to include the ALSA revision
