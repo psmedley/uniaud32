@@ -244,6 +244,7 @@ int pcidev_deactivate(struct pci_dev *dev)
           pcidev->irq_resource[0].flags = IORESOURCE_IRQ;
           pcidev->irq_resource[0].start = pcidev->irq_resource[0].end   = ulTmp1 & 0xffff;
           pcidev->irq = (u8)ulTmp1; // This is the interrupt used for init time processing
+          pcidev->irq_pin = ulTmp1>>8;
         }
 
         return ((busNr << 8) | PCI_DEVFN(devNr, funcNr));
@@ -1013,4 +1014,28 @@ OSSRET OSS32_APMSuspend()
   dprintf(("OSS32_APMSuspend 2"));
   return OSSERR_SUCCESS;
 }
+
+#ifdef USE_MSI
+extern int __syscall UniMsiAlloc(USHORT usBusDevFunc, ULONG *pulCount, UCHAR *pucIrq);
+int snd_pci_enable_msi(struct pci_dev *dev)
+{
+  ULONG p;
+  UCHAR irq;
+
+  if (dev->irq_pin)
+  {
+    p = 1; /* int count */
+    if (UniMsiAlloc((dev->bus->number<<8) | dev->devfn, &p, &irq)) return -1;
+    /* we have an msi interrupt */
+    dev->irq = irq;
+    dev->irq_pin = 0;
+  }
+  return 0;
+}
+#else
+int snd_pci_enable_msi(struct pci_dev *dev)
+{
+  return -1;
+}
+#endif
 

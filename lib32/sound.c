@@ -975,6 +975,13 @@ tryagain:
 						   pHwParams->ulNumChannels, 0);
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
 						   pHwParams->ulSampleRate, 0);
+						
+  /* Change from Andy. If statement added around 5 statements.
+   * Andy says: TODO:  determine why small buffers are a problem for this code
+   * DAZ: This change is questionable.
+   */
+  if (periodsize > 6 * minperiodsize)
+  {
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
 						   periodsize, 0);
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
@@ -985,7 +992,7 @@ tryagain:
 						   periodsize*nrperiods, 0);
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_BYTES,
 						   periodbytes*nrperiods, 0);
-
+  }
 
 	dprintf(("HWP: SR rate %ld, BPS %ld, CH %ld, PRSZ %lx, periods %lx",
 			 pHwParams->ulSampleRate, pHwParams->ulBitsPerSample, pHwParams->ulNumChannels, periodsize, nrperiods));

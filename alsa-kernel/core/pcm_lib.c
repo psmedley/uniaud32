@@ -432,10 +432,10 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 	}
 
 	/* Do jiffies check only in xrun_debug mode */
-#ifdef CONFIG_SND_PCM_XRUN_DEBUG
+//#ifdef CONFIG_SND_PCM_XRUN_DEBUG
 	if (!xrun_debug(substream, XRUN_DEBUG_JIFFIESCHECK))
 		goto no_jiffies_check;
-#endif
+//#endif
 	/* Skip the jiffies check for hardwares with BATCH flag.
 	 * Such hardware usually just increases the position at each IRQ,
 	 * thus it can't give any strange position.

@@ -47,7 +47,6 @@ MAKEFILE  = Makefile
 CDEFINES = -DIBM_BUILD
 !endif
 
-
 #===================================================================
 #
 #   List of source files
@@ -66,7 +65,11 @@ FILES += impkee.lib
 !endif
 FILES += end.obj
 
-LIBS     = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\ac97.lib $(ALSA_LIB)\pci.lib $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\hda.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib $(ALSA_LIB)\mpu401.lib $(ALSA_LIB)\synth.lib $(ALSA_LIB)\cs46xx.lib $(ALSA_LIB)\cs5535audio.lib $(ALSA_LIB)\emu10k1.lib $(ALSA_LIB)\ymfpci.lib $(ALSA_LIB)\ali5451.lib $(ALSA_LIB)\trident.lib $(ALSA_LIB)\nm256.lib $(ALSA_LIB)\sb.lib $(ALSA_LIB)\core_oss.lib
+LIBS = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\ac97.lib $(ALSA_LIB)\pci.lib &
+ $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\hda.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib &
+ $(ALSA_LIB)\mpu401.lib $(ALSA_LIB)\synth.lib $(ALSA_LIB)\cs46xx.lib $(ALSA_LIB)\cs5535audio.lib &
+ $(ALSA_LIB)\emu10k1.lib $(ALSA_LIB)\ymfpci.lib $(ALSA_LIB)\ali5451.lib $(ALSA_LIB)\trident.lib &
+ $(ALSA_LIB)\nm256.lib $(ALSA_LIB)\sb.lib $(ALSA_LIB)\core_oss.lib
 WMAPNAME = $(OBJDIR)\$(TARGET).wmap
 
 # $(ALSA_LIB)\au88xx.lib
@@ -99,6 +102,9 @@ $(LNKFILE): $(MAKEFILE)
   @for %f in ($(LIBS)) do @%append $^@ %f
   @%write $^@ $(WATCOM)\lib386\os2\clib3r.lib
   @%write $^@ $(WATCOM)\lib386\os2\os2386.lib
+!ifdef %DRV32KIT
+  @%write $^@ $(%DRV32KIT)\drv32.lib
+!endif
   @%write $^@ $(DEFFILE)
 !endif
 
