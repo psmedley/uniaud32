@@ -11,6 +11,10 @@ AINCLUDES = $(DDK)\base\H
 CDEFINES += -DIBM_BUILD
 !endif
 
+!ifdef %DRV32KIT
+CDEFINES+= -DUSE_MSI
+!endif
+
 #===================================================================
 #
 #   List of source files

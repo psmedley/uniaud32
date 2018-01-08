@@ -50,65 +50,65 @@ extern DBGINT DbgInt;
 //******************************************************************************
 BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared)
 {
-    USHORT rc = 1;
+  USHORT rc = 1;
 
-    if( ulSlotNo >= MAX_IRQ_SLOTS ) {
-        DebugInt3();
-        return FALSE;
-    }
+  if( ulSlotNo >= MAX_IRQ_SLOTS )
+  {
+    DebugInt3();
+    return FALSE;
+  }
 
-    if(fShared)
-    {
-	rc = DevIRQSet((WORD16) *pISR[ulSlotNo],
-                       (WORD16)ulIrq,
-                       1 );   // first try shared shared
-    }
+  if(fShared)
+  {
+    rc = DevIRQSet((WORD16) *pISR[ulSlotNo], (WORD16)ulIrq, 1 );   // first try shared shared
+  }
 
-    if (rc != 0) {                    // If error ...
-       rprintf(("ERROR: RMSetIrq %d %d %x - failed to set shared - trying exclusive!!", ulIrq, fShared, ulSlotNo));
-	rc = DevIRQSet((WORD16) *pISR[ulSlotNo],
-                       (WORD16)ulIrq,
-                       0);   // failed, so try exclusive instead
-    }
+  if (rc != 0)
+  {                    // If error ...
+    rprintf(("ERROR: RMSetIrq %d %d %x - failed to set shared - trying exclusive!!", ulIrq, fShared, ulSlotNo));
+    rc = DevIRQSet((WORD16) *pISR[ulSlotNo], (WORD16)ulIrq, 0);   // failed, so try exclusive instead
+  }
 
-    if (rc != 0) {                    // If error ...
-        rprintf(("ERROR: RMSetIrq %d %d %x FAILED shared and exclusive mode!!", ulIrq, fShared, ulSlotNo));
-        DebugInt3();
-        return FALSE;
-    }
+  if (rc != 0)
+  {                    // If error ...
+    rprintf(("ERROR: RMSetIrq %d %d %x FAILED shared and exclusive mode!!", ulIrq, fShared, ulSlotNo));
+    DebugInt3();
+    return FALSE;
+  }
 
-    return TRUE;
+  return TRUE;
 }
 
 //******************************************************************************
 BOOL ALSA_FreeIrq(ULONG ulIrq)
 {
-    return (DevIRQClear((WORD16)ulIrq) == 0);
+  return (DevIRQClear((WORD16)ulIrq) == 0);
 }
 
 //******************************************************************************
 #pragma aux ALSA_Interrupt "ALSA_Interrupt" parm [ebx]
 ULONG ALSA_Interrupt(ULONG ulSlotNo)
 {
-    ULONG	ulIrqNo;
+  ULONG ulIrqNo;
 
-   // enable interrupts that have higher priority we should
-   // allow higher priority interrupts
-   sti();
-   if( process_interrupt(ulSlotNo, &ulIrqNo) ) {
-		DbgInt.ulIntServiced[DbgInt.ulState]++;
-       // We've cleared all service requests.
-       // Clear (disable) Interrupts, Send EOI
-       // and clear the carry flag (tells OS/2 kernel that Int was handled).
-       // Note carry flag is handled in setup.asm
-       cli();
-       DevEOI( (WORD16)ulIrqNo );
-       return TRUE;
-   }
-	DbgInt.ulIntUnserviced[DbgInt.ulState]++;
-   // Indicate Interrupt not serviced by setting carry flag before
-   // returning to OS/2 kernel.  OS/2 will then shut down the interrupt!
-   // NOTE: Make sure interrupts are not turned on again when this irq isn't ours!
-   return FALSE;
+  // enable interrupts that have higher priority we should
+  // allow higher priority interrupts
+  sti();
+  if( process_interrupt(ulSlotNo, &ulIrqNo) )
+  {
+    DbgInt.ulIntServiced[DbgInt.ulState]++;
+    // We've cleared all service requests.
+    // Clear (disable) Interrupts, Send EOI
+    // and clear the carry flag (tells OS/2 kernel that Int was handled).
+    // Note carry flag is handled in setup.asm
+    cli();
+    DevEOI( (WORD16)ulIrqNo );
+    return TRUE;
+  }
+  DbgInt.ulIntUnserviced[DbgInt.ulState]++;
+  // Indicate Interrupt not serviced by setting carry flag before
+  // returning to OS/2 kernel.  OS/2 will then shut down the interrupt!
+  // NOTE: Make sure interrupts are not turned on again when this irq isn't ours!
+  return FALSE;
 }
 
