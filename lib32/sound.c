@@ -978,10 +978,12 @@ tryagain:
 						
   /* Change from Andy. If statement added around 5 statements.
    * Andy says: TODO:  determine why small buffers are a problem for this code
-   * DAZ: This change is questionable.
+   * 20100107: DAZ: This change is questionable.
+   * 20180109: DAZ: This changes causes problems for many systems including intermittent
+   * sound and unexpected hangs. Reverted by commenting out the if statement.
    */
-  if (periodsize > 6 * minperiodsize)
-  {
+//  if (periodsize > 6 * minperiodsize)
+//  {
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
 						   periodsize, 0);
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
@@ -992,7 +994,7 @@ tryagain:
 						   periodsize*nrperiods, 0);
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_BUFFER_BYTES,
 						   periodbytes*nrperiods, 0);
-  }
+//  }
 
 	dprintf(("HWP: SR rate %ld, BPS %ld, CH %ld, PRSZ %lx, periods %lx",
 			 pHwParams->ulSampleRate, pHwParams->ulBitsPerSample, pHwParams->ulNumChannels, periodsize, nrperiods));
