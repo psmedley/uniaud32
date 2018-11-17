@@ -1,9 +1,10 @@
 /** AddToFile.cmd
  * Adds the specified line to the end of the specified file.
- * Written by and Copyright (c) 2010-2016 David Azarewicz http://88watts.net
+ * Written by and Copyright (c) 2010-2018 David Azarewicz http://88watts.net
  *
- * @#D Azarewicz:1.01#@##1## 16 Sep 2016              DAZAR1    ::::::@@AddToFile.cmd (c) David Azarewicz 2016
+ * @#D Azarewicz:1.02#@##1## 15 Nov 2018              DAZAR1    ::::::@@AddToFile.cmd (c) David Azarewicz 2018
  * V1.01 16-Sep-2016 First official release
+ * V1.02 02-Jun-2017 Added Asd to bldlevel, added DATE1
  *
  * The following line is for the help sample code for the VAR function:
 EXAMPLEVAR=Example String
@@ -17,7 +18,8 @@ if (OutFile='') then do
   Say '  AddToFile.cmd FileName,String,Function[,Parameters...]';
   Say 'Functions:';
   Say '  DATEL - Adds the date as a long number.';
-  Say '  BLDLEVEL - Adds a formatted BLDLEVEL string.';
+  Say '  DATE1 - Adds the date in 2017-Jul-01 format.';
+  Say '  BLDLEVEL - Adds a standardized formatted BLDLEVEL string.';
   Say '  DATEYEAR - Adds the current year.';
   Say '  DATEMONTH - Adds the current month.';
   Say '  DATEDAY - Adds the current day.';
@@ -30,6 +32,9 @@ if (OutFile='') then do
   MyFile='AddToFile.tmp';
   rc=SysFileDelete(MyFile);
   MyCmd=MyFile||',#define DDATE,DATEL';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define DDATE,DATE1';
   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
   call 'AddToFile.cmd' MyCmd;
   MyCmd=MyFile||',option description,BLDLEVEL,Vendor,1.2.3,Description,Fixpack,Asd';
@@ -222,6 +227,7 @@ SvnVersion:
   '@svn info 2>&1 | rxqueue'
   do while (QUEUED() > 0)
     PARSE PULL Line1':'Line2
+    if (Line1 = "Revision") then leave;
     if (Line1 = "Last Changed Rev") then leave;
     Line2 = "";
   end

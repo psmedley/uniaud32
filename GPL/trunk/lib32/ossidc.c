@@ -74,7 +74,8 @@ cardcalls_t cardcalls[CARDS_NUM] = {
 	{ CARD_CS46XX,	 &name_module_init(alsa_card_cs46xx_init),		&name_module_exit(alsa_card_cs46xx_exit)	  },
 	{ CARD_CS5535,	 &name_module_init(alsa_card_cs5535audio_init),	&name_module_exit(alsa_card_cs5535audio_exit) },
 	{ CARD_ESS1938,	 &name_module_init(alsa_card_es1938_init),		&name_module_exit(alsa_card_es1938_exit)	  },
-	{ CARD_ENSONIQ,	 &name_module_init(alsa_card_ens137x_init),		&name_module_exit(alsa_card_ens137x_exit)	  },
+	{ CARD_ENSONIQ0, &name_module_init(alsa_card_ens1370_init),		&name_module_exit(alsa_card_ens1370_exit)	  },
+	{ CARD_ENSONIQ1, &name_module_init(alsa_card_ens1371_init),		&name_module_exit(alsa_card_ens1371_exit)	  },
 	{ CARD_YAMAHA,	 &name_module_init(alsa_card_ymfpci_init),		&name_module_exit(alsa_card_ymfpci_exit)	  },
 	{ CARD_MAESTRO,	 &name_module_init(alsa_card_es1968_init),		&name_module_exit(alsa_card_es1968_exit)	  },
 	{ CARD_MAESTRO3, &name_module_init(alsa_card_m3_init),			&name_module_exit(alsa_card_m3_exit)		  },
@@ -135,10 +136,10 @@ OSSRET OSS32_Initialize(void)
 	call_module_init(patch_sigmatel_init);
 	call_module_init(patch_via_init);
 
-	dprintf(("OSS32_Initialize: ForceCard=%d", ForceCard));
+	//dprintf(("OSS32_Initialize: ForceCard=%d", ForceCard));
 
 	for (sI=0; sI<CARDS_NUM; sI++) {
-		if ((ForceCard != CARD_NONE) && (ForceCard != cardcalls[sI].card_id)) continue;
+		//if ((ForceCard != CARD_NONE) && (ForceCard != cardcalls[sI].card_id)) continue;
 		//dprintf(("calling: %x at %x", cardcalls[sI].card_id, cardcalls[sI].cinitcall));
 		if (cardcalls[sI].cinitcall == NULL) continue;
 		if (*cardcalls[sI].cinitcall == NULL) continue;

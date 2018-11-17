@@ -42,7 +42,7 @@ extern "C" {
 // True if the /V parameter was specified
 int fVerbose  = FALSE;
 int fDebug    = FALSE;
-int ForceCard = CARD_NONE;
+//int ForceCard = CARD_NONE;
 int iAdapterNumber = -1;
 
 extern short int midi_port;
@@ -120,6 +120,8 @@ char FAR48 *SkipWhite(char FAR48 *psz)
    return NULL;
 }
 //*****************************************************************************
+
+#if 0
 //*****************************************************************************
 void CheckCardName(char FAR48 *psz)
 {
@@ -205,6 +207,8 @@ void CheckCardName(char FAR48 *psz)
 
 }
 //*****************************************************************************
+#endif
+
 //*****************************************************************************
 int DoParm(char cParm, char FAR48 *pszOption)
 {
@@ -218,9 +222,9 @@ int DoParm(char cParm, char FAR48 *pszOption)
     case 'D':
         fDebug = TRUE;
         break;
-    case 'C':
-        CheckCardName(pszOption);
-        break;
+    //case 'C':
+        //CheckCardName(pszOption);
+        //break;
 #if 1
     case 'M':
         midi_port = 0x300;
