@@ -22,7 +22,7 @@
 /* Power-Management-Code ( CONFIG_PM )
  * for ens1371 only ( FIXME )
  * derived from cs4281.c, atiixp.c and via82xx.c
- * using http://www.alsa-project.org/~tiwai/writing-an-alsa-driver/ 
+ * using http://www.alsa-project.org/~tiwai/writing-an-alsa-driver/
  * by Kurt J. Bosch
  */
 
@@ -467,13 +467,13 @@ MODULE_DEVICE_TABLE(pci, snd_audiopci_ids);
 static unsigned int snd_es1370_fixed_rates[] =
 	{5512, 11025, 22050, 44100};
 static struct snd_pcm_hw_constraint_list snd_es1370_hw_constraints_rates = {
-	.count = 4, 
+	.count = 4,
 	.list = snd_es1370_fixed_rates,
 	.mask = 0,
 };
 static struct snd_ratnum es1370_clock = {
 	.num = ES_1370_SRCLOCK,
-	.den_min = 29, 
+	.den_min = 29,
 	.den_max = 353,
 	.den_step = 1,
 };
@@ -494,7 +494,7 @@ static struct snd_pcm_hw_constraint_ratdens snd_es1371_hw_constraints_dac_clock 
 };
 static struct snd_ratnum es1371_adc_clock = {
 	.num = 48000 << 15,
-	.den_min = 32768, 
+	.den_min = 32768,
 	.den_max = 393216,
 	.den_step = 1,
 };
@@ -1054,7 +1054,7 @@ static struct snd_pcm_hardware snd_ensoniq_playback1 =
 				SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
 #else
 				(SNDRV_PCM_RATE_KNOT | 	/* 5512Hz rate */
-				 SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_22050 | 
+				 SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_22050 |
 				 SNDRV_PCM_RATE_44100),
 #endif
 	.rate_min =		4000,
@@ -1073,7 +1073,7 @@ static struct snd_pcm_hardware snd_ensoniq_playback2 =
 {
 	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
-				 SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_PAUSE | 
+				 SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_PAUSE |
 				 SNDRV_PCM_INFO_SYNC_START),
 	.formats =		SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
 	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
@@ -1865,7 +1865,7 @@ static inline void snd_ensoniq_free_gameport(struct ensoniq *ensoniq) { }
 
  */
 
-static void snd_ensoniq_proc_read(struct snd_info_entry *entry, 
+static void snd_ensoniq_proc_read(struct snd_info_entry *entry,
 				  struct snd_info_buffer *buffer)
 {
 	struct ensoniq *ensoniq = entry->private_data;
@@ -2488,15 +2488,32 @@ static struct pci_driver driver = {
 #endif
 };
 	
-static int __init alsa_card_ens137x_init(void)
+#ifdef CHIP1370
+static int __init alsa_card_ens1370_init(void)
 {
 	return pci_register_driver(&driver);
 }
 
-static void __exit alsa_card_ens137x_exit(void)
+static void __exit alsa_card_ens1370_exit(void)
 {
 	pci_unregister_driver(&driver);
 }
+module_init(alsa_card_ens1370_init)
+module_exit(alsa_card_ens1370_exit)
+#endif
 
-module_init(alsa_card_ens137x_init)
-module_exit(alsa_card_ens137x_exit)
+#ifdef CHIP1371
+static int __init alsa_card_ens1371_init(void)
+{
+	return pci_register_driver(&driver);
+}
+
+static void __exit alsa_card_ens1371_exit(void)
+{
+	pci_unregister_driver(&driver);
+}
+module_init(alsa_card_ens1371_init)
+module_exit(alsa_card_ens1371_exit)
+#endif
+
+

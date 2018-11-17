@@ -35,7 +35,7 @@
 #define CARD_CS46XX     5
 #define CARD_VIA82XX    6
 #define CARD_ESS1938    7
-#define CARD_ENSONIQ    8
+#define CARD_ENSONIQ0   8
 #define CARD_YAMAHA     9
 #define CARD_MAESTRO    10
 #define CARD_MAESTRO3   11
@@ -49,8 +49,9 @@
 #define CARD_AZX        19
 #define CARD_VORTEX     20 // unsupported
 #define CARD_CS5535	21
+#define CARD_ENSONIQ1   22
 
-#define CARDS_NUM       22
+#define CARDS_NUM       23
 
 #define CARD_STRING_SBLIVE	"SBLIVE"
 #define CARD_STRING_CMEDIA	"CMEDIA"
@@ -77,6 +78,6 @@
 
 #define CARD_MAX_LEN            16
 
-extern int ForceCard;
+//extern int ForceCard;
 
 #endif //__UNICARD_H__
