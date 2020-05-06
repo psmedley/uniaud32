@@ -1326,13 +1326,15 @@ static void alc_auto_init_amp(struct hda_codec *codec, int type)
 	case ALC_INIT_DEFAULT:
 		switch (codec->vendor_id) {
 		case 0x10ec0260:
+		case 0x10ec0269:
 			set_eapd(codec, 0x0f, 1);
 			set_eapd(codec, 0x10, 1);
 			break;
 		case 0x10ec0262:
 		case 0x10ec0267:
 		case 0x10ec0268:
-		case 0x10ec0269:
+/*		case 0x10ec0269: It would seem it should be here with 268 but actually works above with 260 */
+		case 0x10ec0292:
 		case 0x10ec0270:
 		case 0x10ec0272:
 		case 0x10ec0660:
@@ -1345,7 +1347,8 @@ static void alc_auto_init_amp(struct hda_codec *codec, int type)
 			break;
 		}
 		switch (codec->vendor_id) {
-		case 0x10ec0260:
+    case 0x10ec0260:
+		case 0x10ec0269:
 			snd_hda_codec_write(codec, 0x1a, 0,
 					    AC_VERB_SET_COEF_INDEX, 7);
 			tmp = snd_hda_codec_read(codec, 0x1a, 0,
@@ -1357,6 +1360,7 @@ static void alc_auto_init_amp(struct hda_codec *codec, int type)
 					    tmp | 0x2010);
 			break;
 		case 0x10ec0262:
+    case 0x10ec0292:
 		case 0x10ec0880:
 		case 0x10ec0882:
 		case 0x10ec0883:
@@ -15069,6 +15073,9 @@ static struct snd_pci_quirk alc269_fixup_tbl[] = {
 	SND_PCI_QUIRK(0x17aa, 0x21b8, "Thinkpad Edge 14", ALC269_FIXUP_SKU_IGNORE),
 	SND_PCI_QUIRK(0x17aa, 0x21ca, "Thinkpad L412", ALC269_FIXUP_SKU_IGNORE),
 	SND_PCI_QUIRK(0x17aa, 0x21e9, "Thinkpad Edge 15", ALC269_FIXUP_SKU_IGNORE),
+	SND_PCI_QUIRK(0x17aa, 0x21f6, "Thinkpad W530", ALC269_FIXUP_SKU_IGNORE),
+	SND_PCI_QUIRK(0x17aa, 0x2226, "Thinkpad X250", ALC269_FIXUP_SKU_IGNORE),
+	SND_PCI_QUIRK(0x17aa, 0x2210, "Thinkpad T540", ALC269_FIXUP_SKU_IGNORE),
 	SND_PCI_QUIRK(0x1043, 0x1a13, "Asus G73Jw", ALC269_FIXUP_ASUS_G73JW),
 	SND_PCI_QUIRK(0x17aa, 0x9e54, "LENOVO NB", ALC269_FIXUP_LENOVO_EAPD),
 	{0}
