@@ -2,9 +2,10 @@
  * Adds the specified line to the end of the specified file.
  * Written by and Copyright (c) 2010-2018 David Azarewicz http://88watts.net
  *
- * @#D Azarewicz:1.02#@##1## 15 Nov 2018              DAZAR1    ::::::@@AddToFile.cmd (c) David Azarewicz 2018
+ * @#D Azarewicz:1.03#@##1## 02 Mar 2020              DAZAR1    ::::::@@AddToFile.cmd (c) David Azarewicz 2020
  * V1.01 16-Sep-2016 First official release
  * V1.02 02-Jun-2017 Added Asd to bldlevel, added DATE1
+ * V1.03 02-Mar-2020 Added STRING function
  *
  * The following line is for the help sample code for the VAR function:
 EXAMPLEVAR=Example String
@@ -26,6 +27,7 @@ if (OutFile='') then do
   Say '  VERSIONMAJOR - Adds the major portion of the provided version number.';
   Say '  VERSIONMINOR - Adds the minor portion of the provided version number.';
   Say '  VERSIONREVISION - Adds the revision portion of the provided version number.';
+  Say '  STRING - Adds the string with %Y substitution.';
   Say '  VAR - Adds the value of the specified variable from a specified file.';
   Say '  FILE - Adds the contents of a file.';
   Say 'Examples:';
@@ -52,13 +54,16 @@ if (OutFile='') then do
   MyCmd=MyFile||',#define DDAY,DATEDAY';
   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
   call 'AddToFile.cmd' MyCmd;
-  MyCmd=MyFile||',#define DVMAJ,VERSIONMAJOR,1.2.3';
+  MyCmd=MyFile||',#define DVMAJ,VERSIONMAJOR,1.02.03';
   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
   call 'AddToFile.cmd' MyCmd;
-  MyCmd=MyFile||',#define DVMIN,VERSIONMINOR,1.2.3';
+  MyCmd=MyFile||',#define DVMIN,VERSIONMINOR,1.02.03';
   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
   call 'AddToFile.cmd' MyCmd;
-  MyCmd=MyFile||',#define DVREV,VERSIONREVISION,1.2.3';
+  MyCmd=MyFile||',#define DVREV,VERSIONREVISION,1.02.03';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define DSTRING,STRING,The year is %Y';
   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
   call 'AddToFile.cmd' MyCmd;
   MyCmd=MyFile||',#define XYZ "%A",VAR,EXAMPLEVAR=,AddToFile.cmd';
@@ -182,6 +187,18 @@ select
     RepLoc=Pos('%A', String);
     if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
     else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
+    rc=lineout(OutFile);
+  end
+
+  when (Function="STRING") then do
+    RepLoc=Pos('%Y', Parm1);
+    if (RepLoc>0) then do
+      Parm1=Substr(Parm1,1,RepLoc-1)||FORMAT(SUBSTR(DATE('S'), 1, 4))||Substr(Parm1,RepLoc+2);
+    end
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||Parm1||Substr(String,RepLoc+2);
+    else OutStr=String||' '||Parm1;
     rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
