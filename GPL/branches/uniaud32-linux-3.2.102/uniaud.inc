@@ -19,5 +19,5 @@ FIXPACK = SVN
 # ex 0.9.2  1.0.14RC3
 # Leave empty or use MIXED
 # STRING must be max X chars
-ALSAVERSION = 1.0.24
+ALSAVERSION = 3.2.102
 
