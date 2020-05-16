@@ -458,7 +458,7 @@ EXPORT_SYMBOL(snd_ctl_replace);
  * Removes the control from the card and then releases the instance.
  * You don't need to call snd_ctl_free_one(). You must be in
  * the write lock - down_write(&card->controls_rwsem).
- *
+ * 
  * Returns 0 if successful, or a negative error code on failure.
  */
 int snd_ctl_remove(struct snd_card *card, struct snd_kcontrol *kcontrol)
@@ -483,7 +483,7 @@ EXPORT_SYMBOL(snd_ctl_remove);
  * snd_ctl_remove_id - remove the control of the given id and release it
  * @card: the card instance
  * @id: the control id to remove
- *
+ * 
  * Finds the control instance with the given id, removes it from the
  * card list and releases it.
  * 

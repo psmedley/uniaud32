@@ -58,6 +58,7 @@ static inline void snd_INIT_WORK(struct work_struct *w, void (*f)(struct work_st
 #define INIT_WORK(w,f) snd_INIT_WORK(w,f)
 #define INIT_DELAYED_WORK(_work, _func)	INIT_WORK(&(_work)->work, _func)
 #define work_pending(work) test_bit(0, &(work)->pending)
+int schedule_work(struct work_struct *works);
 #define delayed_work_pending(w) work_pending(&(w)->work)
 #define schedule_delayed_work(work, delay) queue_delayed_work(NULL, (work), (delay))
 

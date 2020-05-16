@@ -66,7 +66,7 @@ int cdecl printk(const char * fmt, ...);
 #define pr_info(fmt,arg) \
 	printk(KERN_INFO fmt,##arg)
 
-#define pr_warn(fmt, arg) \
+#define pr_warn(fmt, arg, ...) \
 	printk(KERN_WARNING fmt, ##arg)
 
 /*

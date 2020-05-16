@@ -398,7 +398,7 @@ void release_firmware(const struct firmware *fw)
 }
 //******************************************************************************
 //******************************************************************************
-void *memdup_user(void __user *src, size_t len)
+void *memdup_user(const void __user *src, size_t len)
 {
 	void *p = kmalloc(len, GFP_KERNEL);
 	if (!p)
