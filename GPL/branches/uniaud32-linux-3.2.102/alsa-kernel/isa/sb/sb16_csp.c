@@ -5,9 +5,9 @@
  *  SB16ASP/AWE32 CSP control
  *
  *  CSP microcode loader:
- *   alsa-tools/sb16_csp/
+ *   alsa-tools/sb16_csp/ 
  *
- *   This program is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify 
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
  *   (at your option) any later version.
@@ -26,12 +26,12 @@
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
 #include <sound/sb16_csp.h>
 #include <sound/initval.h>
-#include <proto.h>
 
 MODULE_AUTHOR("Uros Bizjak <uros@kss-loka.si>");
 MODULE_DESCRIPTION("ALSA driver for SB16 Creative Signal Processor");
@@ -300,7 +300,7 @@ static int snd_sb_csp_unuse(struct snd_sb_csp * p)
 }
 
 /*
- * load microcode via ioctl:
+ * load microcode via ioctl: 
  * code is user-space pointer
  */
 static int snd_sb_csp_riff_load(struct snd_sb_csp * p,
@@ -682,7 +682,7 @@ static int snd_sb_csp_load(struct snd_sb_csp * p, const unsigned char *buf, int 
 	spin_unlock_irqrestore(&p->chip->reg_lock, flags);
 	return result;
 }
-
+ 
 static int snd_sb_csp_load_user(struct snd_sb_csp * p, const unsigned char __user *buf, int size, int load_flags)
 {
 	int err;
@@ -731,7 +731,7 @@ static int snd_sb_csp_autoload(struct snd_sb_csp * p, int pcm_sfmt, int play_rec
 	int err = 0;
 
 	/* if CSP is running or manually loaded then exit */
-	if (p->running & (SNDRV_SB_CSP_ST_RUNNING | SNDRV_SB_CSP_ST_LOADED))
+	if (p->running & (SNDRV_SB_CSP_ST_RUNNING | SNDRV_SB_CSP_ST_LOADED)) 
 		return -EBUSY;
 
 	/* autoload microcode only if requested hardware codec is not already loaded */
@@ -764,7 +764,7 @@ static int snd_sb_csp_autoload(struct snd_sb_csp * p, int pcm_sfmt, int play_rec
 				p->mode = SNDRV_SB_CSP_MODE_DSP_READ;
 			}
 			p->acc_format = SNDRV_PCM_FMTBIT_IMA_ADPCM;
-			break;				
+			break;				  
 		default:
 			/* Decouple CSP from IRQ and DMAREQ lines */
 			if (p->running & SNDRV_SB_CSP_ST_AUTO) {
@@ -788,7 +788,7 @@ static int snd_sb_csp_autoload(struct snd_sb_csp * p, int pcm_sfmt, int play_rec
 			p->acc_width = SNDRV_SB_CSP_SAMPLE_16BIT;	/* only 16 bit data */
 			p->acc_channels = SNDRV_SB_CSP_MONO | SNDRV_SB_CSP_STEREO;
 			p->acc_rates = SNDRV_SB_CSP_RATE_ALL;	/* HW codecs accept all rates */
-		}
+		}   
 
 	}
 	return (p->running & SNDRV_SB_CSP_ST_AUTO) ? 0 : -ENXIO;

@@ -21,6 +21,7 @@
 
 #include <linux/init.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 #include <linux/time.h>
 #include <linux/mutex.h>
 #include <sound/core.h>
@@ -147,7 +148,9 @@ static int snd_pcm_control_ioctl(struct snd_card *card,
 				err = -ENXIO;
 				goto _error;
 			}
+			mutex_lock(&pcm->open_mutex);
 			err = snd_pcm_info_user(substream, info);
+			mutex_unlock(&pcm->open_mutex);
 		_error:
 			mutex_unlock(&register_mutex);
 			return err;
@@ -155,7 +158,7 @@ static int snd_pcm_control_ioctl(struct snd_card *card,
 	case SNDRV_CTL_IOCTL_PCM_PREFER_SUBDEVICE:
 		{
 			int val;
-
+			
 			if (get_user(val, (int __user *)arg))
 				return -EFAULT;
 			control->prefer_pcm_subdevice = val;
@@ -214,9 +217,9 @@ static char *snd_pcm_format_names[] = {
 
 const char *snd_pcm_format_name(snd_pcm_format_t format)
 {
-	if (format >= ARRAY_SIZE(snd_pcm_format_names))
+	if ((__force unsigned int)format >= ARRAY_SIZE(snd_pcm_format_names))
 		return "Unknown";
-	return snd_pcm_format_names[format];
+	return snd_pcm_format_names[(__force unsigned int)format];
 }
 EXPORT_SYMBOL_GPL(snd_pcm_format_name);
 
@@ -230,7 +233,7 @@ EXPORT_SYMBOL_GPL(snd_pcm_format_name);
 #define TSTAMP(v) [SNDRV_PCM_TSTAMP_##v] = #v
 #define ACCESS(v) [SNDRV_PCM_ACCESS_##v] = #v
 #define START(v) [SNDRV_PCM_START_##v] = #v
-#define SUBFORMAT(v) [SNDRV_PCM_SUBFORMAT_##v] = #v
+#define SUBFORMAT(v) [SNDRV_PCM_SUBFORMAT_##v] = #v 
 
 static char *snd_pcm_stream_names[] = {
 	STREAM(PLAYBACK),
@@ -249,7 +252,7 @@ static char *snd_pcm_state_names[] = {
 };
 
 static char *snd_pcm_access_names[] = {
-	ACCESS(MMAP_INTERLEAVED),
+	ACCESS(MMAP_INTERLEAVED), 
 	ACCESS(MMAP_NONINTERLEAVED),
 	ACCESS(MMAP_COMPLEX),
 	ACCESS(RW_INTERLEAVED),
@@ -257,7 +260,7 @@ static char *snd_pcm_access_names[] = {
 };
 
 static char *snd_pcm_subformat_names[] = {
-	SUBFORMAT(STD),
+	SUBFORMAT(STD), 
 };
 
 static char *snd_pcm_tstamp_mode_names[] = {
@@ -272,12 +275,12 @@ static const char *snd_pcm_stream_name(int stream)
 
 static const char *snd_pcm_access_name(snd_pcm_access_t access)
 {
-	return snd_pcm_access_names[access];
+	return snd_pcm_access_names[(__force int)access];
 }
 
 static const char *snd_pcm_subformat_name(snd_pcm_subformat_t subformat)
 {
-	return snd_pcm_subformat_names[subformat];
+	return snd_pcm_subformat_names[(__force int)subformat];
 }
 
 static const char *snd_pcm_tstamp_mode_name(int mode)
@@ -287,7 +290,7 @@ static const char *snd_pcm_tstamp_mode_name(int mode)
 
 static const char *snd_pcm_state_name(snd_pcm_state_t state)
 {
-	return snd_pcm_state_names[state];
+	return snd_pcm_state_names[(__force int)state];
 }
 
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
@@ -389,10 +392,10 @@ static void snd_pcm_substream_proc_hw_params_read(struct snd_info_entry *entry,
 	snd_iprintf(buffer, "access: %s\n", snd_pcm_access_name(runtime->access));
 	snd_iprintf(buffer, "format: %s\n", snd_pcm_format_name(runtime->format));
 	snd_iprintf(buffer, "subformat: %s\n", snd_pcm_subformat_name(runtime->subformat));
-	snd_iprintf(buffer, "channels: %u\n", runtime->channels);
-	snd_iprintf(buffer, "rate: %u (%u/%u)\n", runtime->rate, runtime->rate_num, runtime->rate_den);
-	snd_iprintf(buffer, "period_size: %lu\n", runtime->period_size);
-	snd_iprintf(buffer, "buffer_size: %lu\n", runtime->buffer_size);
+	snd_iprintf(buffer, "channels: %u\n", runtime->channels);	
+	snd_iprintf(buffer, "rate: %u (%u/%u)\n", runtime->rate, runtime->rate_num, runtime->rate_den);	
+	snd_iprintf(buffer, "period_size: %lu\n", runtime->period_size);	
+	snd_iprintf(buffer, "buffer_size: %lu\n", runtime->buffer_size);	
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
 	if (substream->oss.oss) {
 		snd_iprintf(buffer, "OSS format: %s\n", snd_pcm_oss_format_name(runtime->oss.format));
@@ -495,7 +498,7 @@ static int snd_pcm_stream_proc_init(struct snd_pcm_str *pstr)
 	struct snd_info_entry *entry;
 	char name[16];
 
-	sprintf(name, "pcm%i%c", pcm->device,
+	sprintf(name, "pcm%i%c", pcm->device, 
 		pstr->stream == SNDRV_PCM_STREAM_PLAYBACK ? 'p' : 'c');
 	if ((entry = snd_info_create_card_entry(pcm->card, name, pcm->card->proc_root)) == NULL)
 		return -ENOMEM;
@@ -694,7 +697,7 @@ int snd_pcm_new_stream(struct snd_pcm *pcm, int stream, int substream_count)
 		prev = substream;
 	}
 	return 0;
-}
+}				
 
 EXPORT_SYMBOL(snd_pcm_new_stream);
 
@@ -1058,11 +1061,19 @@ static int snd_pcm_dev_disconnect(struct snd_device *device)
 	if (list_empty(&pcm->list))
 		goto unlock;
 
+	mutex_lock(&pcm->open_mutex);
+	wake_up(&pcm->open_wait);
 	list_del_init(&pcm->list);
 	for (cidx = 0; cidx < 2; cidx++)
-		for (substream = pcm->streams[cidx].substream; substream; substream = substream->next)
-			if (substream->runtime)
+		for (substream = pcm->streams[cidx].substream; substream; substream = substream->next) {
+			snd_pcm_stream_lock_irq(substream);
+			if (substream->runtime) {
 				substream->runtime->status->state = SNDRV_PCM_STATE_DISCONNECTED;
+				wake_up(&substream->runtime->sleep);
+				wake_up(&substream->runtime->tsleep);
+			}
+			snd_pcm_stream_unlock_irq(substream);
+		}
 	list_for_each_entry(notify, &snd_pcm_notify_list, list, struct snd_pcm_notify) {
 		notify->n_disconnect(pcm);
 	}
@@ -1078,6 +1089,7 @@ static int snd_pcm_dev_disconnect(struct snd_device *device)
 		}
 		snd_unregister_device(devtype, pcm->card, pcm->device);
 	}
+	mutex_unlock(&pcm->open_mutex);
  unlock:
 	mutex_unlock(&register_mutex);
 	return 0;

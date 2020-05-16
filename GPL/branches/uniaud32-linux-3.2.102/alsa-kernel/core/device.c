@@ -21,6 +21,7 @@
 
 #include <linux/slab.h>
 #include <linux/time.h>
+#include <linux/export.h>
 #include <linux/errno.h>
 #include <sound/core.h>
 
@@ -86,10 +87,11 @@ int snd_device_free(struct snd_card *card, void *device_data)
 			continue;
 		/* unlink */
 		list_del(&dev->list);
-		if (dev->state == SNDRV_DEV_REGISTERED && dev->ops->dev_disconnect) {
+		if (dev->state == SNDRV_DEV_REGISTERED &&
+		    dev->ops->dev_disconnect)
 			if (dev->ops->dev_disconnect(dev))
-				snd_printk(KERN_ERR "device disconnect failure\n");
-		}
+				snd_printk(KERN_ERR
+					   "device disconnect failure\n");
 		if (dev->ops->dev_free) {
 			if (dev->ops->dev_free(dev))
 				snd_printk(KERN_ERR "device free failure\n");
@@ -224,15 +226,16 @@ int snd_device_free_all(struct snd_card *card, snd_device_cmd_t cmd)
 {
 	struct snd_device *dev;
 	int err;
-	unsigned int range_low, range_high;
+	unsigned int range_low, range_high, type;
 
 	if (snd_BUG_ON(!card))
 		return -ENXIO;
-	range_low = cmd * SNDRV_DEV_TYPE_RANGE_SIZE;
+	range_low = (__force unsigned int)cmd * SNDRV_DEV_TYPE_RANGE_SIZE;
 	range_high = range_low + SNDRV_DEV_TYPE_RANGE_SIZE - 1;
       __again:
 	list_for_each_entry(dev, &card->devices, list, struct snd_device) {
-		if (dev->type >= range_low && dev->type <= range_high) {
+		type = (__force unsigned int)dev->type;
+		if (type >= range_low && type <= range_high) {
 			if ((err = snd_device_free(card, dev->device_data)) < 0)
 				return err;
 			goto __again;

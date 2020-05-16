@@ -21,6 +21,7 @@
 #include <linux/time.h>
 #include <linux/wait.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 #include <linux/firmware.h>
 #include <sound/core.h>
 #include <sound/snd_wavefront.h>
@@ -153,7 +154,7 @@ snd_wavefront_fx_open (struct snd_hwdep *hw, struct file *file)
 	return 0;
 }
 
-int
+int 
 snd_wavefront_fx_release (struct snd_hwdep *hw, struct file *file)
 
 {

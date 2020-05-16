@@ -21,11 +21,15 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "bt87x"
+#endif
+
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
 #include <linux/bitops.h>
 #include <asm/io.h>
 #include <sound/core.h>
@@ -765,7 +769,7 @@ static int __devinit snd_bt87x_create(struct snd_card *card,
 	snd_bt87x_writel(chip, REG_INT_STAT, MY_INTERRUPTS);
 
 	err = request_irq(pci->irq, snd_bt87x_interrupt, IRQF_SHARED,
-			  "Bt87x audio", chip);
+			  KBUILD_MODNAME, chip);
 	if (err < 0) {
 		snd_printk(KERN_ERR "cannot grab irq %d\n", pci->irq);
 		goto fail;
@@ -997,7 +1001,7 @@ static DEFINE_PCI_DEVICE_TABLE(snd_bt87x_default_ids) = {
 };
 
 static struct pci_driver driver = {
-	.name = "Bt87x",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_bt87x_ids,
 	.probe = snd_bt87x_probe,
 	.remove = __devexit_p(snd_bt87x_remove),

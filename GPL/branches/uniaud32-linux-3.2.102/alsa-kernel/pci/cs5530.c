@@ -36,8 +36,12 @@
  *	same manner.
  */
 
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "cs5530"
+#endif
+
 #include <linux/delay.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <sound/core.h>
@@ -285,7 +289,7 @@ static int __devinit snd_cs5530_probe(struct pci_dev *pci,
 }
 
 static struct pci_driver driver = {
-	.name = "CS5530_Audio",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_cs5530_ids,
 	.probe = snd_cs5530_probe,
 	.remove = __devexit_p(snd_cs5530_remove),

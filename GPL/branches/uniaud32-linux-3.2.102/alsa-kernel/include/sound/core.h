@@ -25,7 +25,6 @@
 #include <sound\config.h>
 #endif
 
-#include <linux/module.h>
 #include <linux/sched.h>		/* wake_up() */
 #include <linux/mutex.h>		/* struct mutex */
 #include <linux/rwsem.h>		/* struct rw_semaphore */
@@ -46,6 +45,7 @@
 #ifdef CONFIG_PCI
 struct pci_dev;
 #endif
+struct module;
 
 /* device allocation stuff */
 
@@ -123,6 +123,8 @@ struct snd_card {
 	int user_ctl_count;		/* count of all user controls */
 	struct list_head controls;	/* all controls for this card */
 	struct list_head ctl_files;	/* active control files */
+	struct mutex user_ctl_lock;	/* protects user controls against
+					   concurrent access */
 
 	struct snd_info_entry *proc_root;	/* root for soundcard specific files */
 	struct snd_info_entry *proc_id;	/* the card id */
@@ -135,6 +137,7 @@ struct snd_card {
 	int shutdown;			/* this card is going down */
 	int free_on_last_close;		/* free in context of file_release */
 	wait_queue_head_t shutdown_sleep;
+	atomic_t refcount;		/* refcount for disconnection */
 	struct device *dev;		/* device assigned to this card */
 	struct device *card_dev;	/* cardX object for sysfs */
 
@@ -196,6 +199,7 @@ struct snd_minor {
 #endif
 	void *private_data;		/* private data for f_ops->open */
 	struct device *dev;		/* device for sysfs */
+	struct snd_card *card_ptr;	/* assigned card instance */
 };
 
 /* return a device pointer linked to each sound device as a parent */
@@ -314,6 +318,7 @@ int snd_card_info_done(void);
 int snd_component_add(struct snd_card *card, const char *component);
 int snd_card_file_add(struct snd_card *card, struct file *file);
 int snd_card_file_remove(struct snd_card *card, struct file *file);
+void snd_card_unref(struct snd_card *card);
 
 #define snd_card_set_dev(card, devptr) ((card)->dev = (devptr))
 
@@ -345,9 +350,9 @@ void release_and_free_resource(struct resource *res);
 /* --- */
 
 #if defined(CONFIG_SND_DEBUG) || defined(CONFIG_SND_VERBOSE_PRINTK)
+__printf(4, 5)
 void __snd_printk(unsigned int level, const char *file, int line,
-		  const char *format, ...)
-     __attribute__ ((format (printf, 4, 5)));
+		  const char *format, ...);
 #else
 #ifndef TARGET_OS2
 #define __snd_printk(level, file, line, format, args...) \
@@ -405,7 +410,6 @@ void __snd_printk(unsigned int level, const char *file, int line,
  * such as pre/post increment, to the argument of this macro.
  * If you want to evaluate and give a warning, use standard WARN_ON().
  */
-
 #define snd_BUG_ON(cond)	WARN((cond), "BUG? (%s)\n", __stringify(cond))
 
 #else /* !CONFIG_SND_DEBUG */

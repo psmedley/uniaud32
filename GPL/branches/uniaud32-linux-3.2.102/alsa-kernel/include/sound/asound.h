@@ -29,6 +29,7 @@
 #include <linux/ioctl.h>
 #include <linux/time.h>
 #include <asm/byteorder.h>
+
 #ifdef  __LITTLE_ENDIAN
 #define SNDRV_LITTLE_ENDIAN
 #else
@@ -380,7 +381,7 @@ struct snd_mask {
 
 struct snd_pcm_hw_params {
 	unsigned int flags;
-	struct snd_mask masks[SNDRV_PCM_HW_PARAM_LAST_MASK -
+	struct snd_mask masks[SNDRV_PCM_HW_PARAM_LAST_MASK - 
 			       SNDRV_PCM_HW_PARAM_FIRST_MASK + 1];
 	struct snd_mask mres[5];	/* reserved masks */
 	struct snd_interval intervals[SNDRV_PCM_HW_PARAM_LAST_INTERVAL -
@@ -732,7 +733,7 @@ struct snd_timer_tread {
  *                                                                          *
  ****************************************************************************/
 
-#define SNDRV_CTL_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 6)
+#define SNDRV_CTL_VERSION		SNDRV_PROTOCOL_VERSION(2, 0, 7)
 
 /******************** This section used in uniaud.dll interface *********************/
 struct snd_ctl_card_info {
@@ -779,7 +780,7 @@ typedef int __bitwise snd_ctl_elem_iface_t;
 #define SNDRV_CTL_ELEM_ACCESS_INACTIVE		(1<<8)	/* control does actually nothing, but may be updated */
 #define SNDRV_CTL_ELEM_ACCESS_LOCK		(1<<9)	/* write lock */
 #define SNDRV_CTL_ELEM_ACCESS_OWNER		(1<<10)	/* write lock owner */
-#define SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK	(1<<28)	/* kernel use a TLV callback */
+#define SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK	(1<<28)	/* kernel use a TLV callback */ 
 #define SNDRV_CTL_ELEM_ACCESS_USER		(1<<29) /* user space element */
 /* bits 30 and 31 are obsoleted (for indirect access) */
 
@@ -830,6 +831,8 @@ struct snd_ctl_elem_info {
 			unsigned int items;	/* R: number of items */
 			unsigned int item;	/* W: item number */
 			char name[64];		/* R: value name */
+			__u64 names_ptr;	/* W: names list (ELEM_ADD only) */
+			unsigned int names_length;
 		} enumerated;
 		unsigned char reserved[128];
 	} value;

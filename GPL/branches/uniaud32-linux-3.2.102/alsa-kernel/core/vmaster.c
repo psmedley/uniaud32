@@ -10,6 +10,7 @@
  */
 
 #include <linux/slab.h>
+#include <linux/export.h>
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/tlv.h>
@@ -18,7 +19,7 @@
  * a subset of information returned via ctl info callback
  */
 struct link_ctl_info {
-	int type;		/* value type */
+	snd_ctl_elem_type_t type; /* value type */
 	int count;		/* item count */
 	int min_val, max_val;	/* min, max values */
 };
@@ -207,7 +208,10 @@ static int slave_put(struct snd_kcontrol *kcontrol,
 	}
 	if (!changed)
 		return 0;
-	return slave_put_val(slave, ucontrol);
+	err = slave_put_val(slave, ucontrol);
+	if (err < 0)
+		return err;
+	return 1;
 }
 
 static int slave_tlv_cmd(struct snd_kcontrol *kcontrol,
@@ -233,7 +237,7 @@ static void slave_free(struct snd_kcontrol *kcontrol)
  * Add a slave control to the group with the given master control
  *
  * All slaves must be the same type (returning the same information
- * via info callback).  The fucntion doesn't check it, so it's your
+ * via info callback).  The function doesn't check it, so it's your
  * responsibility.
  *
  * Also, some additional limitations:

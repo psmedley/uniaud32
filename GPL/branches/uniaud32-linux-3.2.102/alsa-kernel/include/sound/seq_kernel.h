@@ -55,7 +55,8 @@ typedef union snd_seq_timestamp snd_seq_timestamp_t;
 #define SNDRV_SEQ_DEFAULT_CLIENT_EVENTS	200
 
 /* max delivery path length */
-#define SNDRV_SEQ_MAX_HOPS		10
+/* NOTE: this shouldn't be greater than MAX_LOCKDEP_SUBCLASSES */
+#define SNDRV_SEQ_MAX_HOPS		8
 
 /* max size of event size */
 #define SNDRV_SEQ_MAX_EVENT_LEN		0x3fffffff
@@ -76,13 +77,10 @@ struct snd_seq_port_callback {
 
 /* interface for kernel client */
 #ifndef TARGET_OS2
-int snd_seq_create_kernel_client(struct snd_card *card, int client_index,
-				 const char *name_fmt, ...)
-	__attribute__ ((format (printf, 3, 4)));
-#else
+__printf(3, 4)
+#endif
 int snd_seq_create_kernel_client(struct snd_card *card, int client_index,
 				 const char *name_fmt, ...);
-#endif
 int snd_seq_delete_kernel_client(int client);
 int snd_seq_kernel_client_enqueue(int client, struct snd_seq_event *ev, int atomic, int hop);
 int snd_seq_kernel_client_dispatch(int client, struct snd_seq_event *ev, int atomic, int hop);

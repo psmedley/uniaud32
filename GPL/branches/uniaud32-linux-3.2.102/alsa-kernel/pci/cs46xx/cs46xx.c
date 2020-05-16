@@ -25,10 +25,13 @@
     reloading the module may solve this.
 */
 
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "cs46xx"
+#endif
 #include <linux/pci.h>
 #include <linux/time.h>
 #include <linux/init.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/cs46xx.h>
 #include <sound/initval.h>
@@ -165,7 +168,7 @@ static void __devexit snd_card_cs46xx_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-	.name = "Sound Fusion CS46xx",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_cs46xx_ids,
 	.probe = snd_card_cs46xx_probe,
 	.remove = __devexit_p(snd_card_cs46xx_remove),

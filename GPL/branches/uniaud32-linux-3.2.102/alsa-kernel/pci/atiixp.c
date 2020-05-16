@@ -25,7 +25,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
 #include <linux/mutex.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -33,6 +33,10 @@
 #include <sound/info.h>
 #include <sound/ac97_codec.h>
 #include <sound/initval.h>
+
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "atiixp"
+#endif
 
 MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("ATI IXP AC97 controller");
@@ -351,7 +355,7 @@ static int snd_atiixp_update_bits(struct atiixp *chip, unsigned int reg,
  * list.  although we can change the list dynamically, in this version,
  * a static RING of buffer descriptors is used.
  *
- * the ring is built in this function, and is set up to the hardware.
+ * the ring is built in this function, and is set up to the hardware. 
  */
 static int atiixp_build_dma_packets(struct atiixp *chip, struct atiixp_dma *dma,
 				    struct snd_pcm_substream *substream,
@@ -475,7 +479,7 @@ static void snd_atiixp_codec_write(struct atiixp *chip, unsigned short codec,
 				   unsigned short reg, unsigned short val)
 {
 	unsigned int data;
-
+    
 	if (snd_atiixp_acquire_codec(chip) < 0)
 		return;
 	data = ((unsigned int)val << ATI_REG_PHYS_OUT_DATA_SHIFT) |
@@ -490,7 +494,7 @@ static unsigned short snd_atiixp_ac97_read(struct snd_ac97 *ac97,
 {
 	struct atiixp *chip = ac97->private_data;
 	return snd_atiixp_codec_read(chip, ac97->num, reg);
-
+    
 }
 
 static void snd_atiixp_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
@@ -517,7 +521,7 @@ static int snd_atiixp_aclink_reset(struct atiixp *chip)
 	atiixp_read(chip, CMD);
 	udelay(10);
 	atiixp_update(chip, CMD, ATI_REG_CMD_AC_SOFT_RESET, 0);
-
+    
 	timeout = 10;
 	while (! (atiixp_read(chip, CMD) & ATI_REG_CMD_ACLINK_ACTIVE)) {
 		/* do a hard reset */
@@ -526,7 +530,7 @@ static int snd_atiixp_aclink_reset(struct atiixp *chip)
 		atiixp_read(chip, CMD);
 		mdelay(1);
 		atiixp_update(chip, CMD, ATI_REG_CMD_AC_RESET, ATI_REG_CMD_AC_RESET);
-		if (--timeout) {
+		if (!--timeout) {
 			snd_printk(KERN_ERR "atiixp: codec reset timeout\n");
 			break;
 		}
@@ -695,7 +699,9 @@ static void snd_atiixp_xrun_dma(struct atiixp *chip, struct atiixp_dma *dma)
 	if (! dma->substream || ! dma->running)
 		return;
 	snd_printdd("atiixp: XRUN detected (DMA %d)\n", dma->ops->type);
+	snd_pcm_stream_lock(dma->substream);
 	snd_pcm_stop(dma->substream, SNDRV_PCM_STATE_XRUN);
+	snd_pcm_stream_unlock(dma->substream);
 }
 
 /*
@@ -938,7 +944,7 @@ static int snd_atiixp_playback_prepare(struct snd_pcm_substream *substream)
 	 */
 	atiixp_update(chip, 6CH_REORDER, ATI_REG_6CH_REORDER_EN,
 		      substream->runtime->channels >= 6 ? ATI_REG_6CH_REORDER_EN: 0);
-
+    
 	spin_unlock_irq(&chip->reg_lock);
 	return 0;
 }
@@ -1631,7 +1637,7 @@ static int __devinit snd_atiixp_create(struct snd_card *card,
 	}
 
 	if (request_irq(pci->irq, snd_atiixp_interrupt, IRQF_SHARED,
-			card->shortname, chip)) {
+			KBUILD_MODNAME, chip)) {
 		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_atiixp_free(chip);
 		return -EBUSY;
@@ -1712,7 +1718,7 @@ static void __devexit snd_atiixp_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-	.name = "ATI IXP AC97 controller",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_atiixp_ids,
 	.probe = snd_atiixp_probe,
 	.remove = __devexit_p(snd_atiixp_remove),

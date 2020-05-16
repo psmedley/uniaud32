@@ -6,6 +6,8 @@
 #include <asm/param.h>	/* for HZ */
 #include <asm/atomic.h>	
 
+#define MAX_SCHEDULE_TIMEOUT    INT_MAX
+
 #define TASK_RUNNING		0
 #define TASK_INTERRUPTIBLE	1
 #define TASK_UNINTERRUPTIBLE	2

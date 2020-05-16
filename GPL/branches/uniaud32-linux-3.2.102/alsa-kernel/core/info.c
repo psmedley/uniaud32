@@ -24,6 +24,7 @@
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/minors.h>
 #include <sound/info.h>
@@ -564,7 +565,11 @@ int __init snd_info_init(void)
 {
 	struct proc_dir_entry *p;
 
+#ifndef TARGET_OS2
+	p = proc_mkdir("asound", NULL);
+#else
 	p = create_proc_entry("asound", S_IFDIR | S_IRUGO | S_IXUGO, NULL);
+#endif
 	if (p == NULL)
 		return -ENOMEM;
 	snd_proc_root = p;
@@ -928,7 +933,7 @@ static int snd_info_dev_register_entry(struct snd_device *device)
  * The parent is assumed as card->proc_root.
  *
  * For releasing this entry, use snd_device_free() instead of
- * snd_info_free_entry().
+ * snd_info_free_entry(). 
  *
  * Returns zero if successful, or a negative error code on failure.
  */

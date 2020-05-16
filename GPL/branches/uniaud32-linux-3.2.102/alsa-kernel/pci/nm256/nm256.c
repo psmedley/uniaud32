@@ -1,4 +1,4 @@
-/*
+/* 
  * Driver for NeoMagic 256AV and 256ZX chipsets.
  * Copyright (c) 2000 by Takashi Iwai <tiwai@suse.de>
  *
@@ -23,14 +23,17 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
-
+  
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "nm256"
+#endif
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
 #include <linux/mutex.h>
 
 #include <sound/core.h>
@@ -400,7 +403,7 @@ static unsigned int samplerates[8] = {
 	8000, 11025, 16000, 22050, 24000, 32000, 44100, 48000,
 };
 static struct snd_pcm_hw_constraint_list constraints_rates = {
-	.count = ARRAY_SIZE(samplerates),
+	.count = ARRAY_SIZE(samplerates), 
 	.list = samplerates,
 	.mask = 0,
 };
@@ -465,7 +468,7 @@ static int snd_nm256_acquire_irq(struct nm256 *chip)
 	mutex_lock(&chip->irq_mutex);
 	if (chip->irq < 0) {
 		if (request_irq(chip->pci->irq, chip->interrupt, IRQF_SHARED,
-				chip->card->driver, chip)) {
+				KBUILD_MODNAME, chip)) {
 			snd_printk(KERN_ERR "unable to grab IRQ %d\n", chip->pci->irq);
 			mutex_unlock(&chip->irq_mutex);
 			return -EBUSY;
@@ -956,8 +959,8 @@ snd_nm256_pcm(struct nm256 *chip, int device)
 }
 
 
-/*
- * Initialize the hardware.
+/* 
+ * Initialize the hardware. 
  */
 static void
 snd_nm256_init_chip(struct nm256 *chip)
@@ -997,8 +1000,8 @@ snd_nm256_intr_check(struct nm256 *chip)
 	return IRQ_NONE;
 }
 
-/*
- * Handle a potential interrupt for the device referred to by DEV_ID.
+/* 
+ * Handle a potential interrupt for the device referred to by DEV_ID. 
  *
  * I don't like the cut-n-paste job here either between the two routines,
  * but there are sufficient differences between the two interrupt handlers
@@ -1147,8 +1150,8 @@ snd_nm256_ac97_ready(struct nm256 *chip)
 	testaddr = chip->mixer_status_offset;
 	testb = chip->mixer_status_mask;
 
-	/*
-	 * Loop around waiting for the mixer to become ready.
+	/* 
+	 * Loop around waiting for the mixer to become ready. 
 	 */
 	while (timeout-- > 0) {
 		if ((snd_nm256_readw(chip, testaddr) & testb) == 0)
@@ -1158,7 +1161,7 @@ snd_nm256_ac97_ready(struct nm256 *chip)
 	return 0;
 }
 
-/*
+/* 
  * Initial register values to be written to the AC97 mixer.
  * While most of these are identical to the reset values, we do this
  * so that we have most of the register contents cached--this avoids
@@ -1187,7 +1190,7 @@ static struct initialValues nm256_ac97_init_val[] =
 	{ AC97_REC_SEL,		0x0000 },
 	{ AC97_REC_GAIN,	0x0B0B },
 	{ AC97_GENERAL_PURPOSE,	0x0000 },
-	{ AC97_3D_CONTROL,	0x8000 },
+	{ AC97_3D_CONTROL,	0x8000 }, 
 	{ AC97_VENDOR_ID1, 	0x8384 },
 	{ AC97_VENDOR_ID2,	0x7609 },
 };
@@ -1217,7 +1220,7 @@ snd_nm256_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 	return chip->ac97_regs[idx];
 }
 
-/*
+/* 
  */
 static void
 snd_nm256_ac97_write(struct snd_ac97 *ac97,
@@ -1330,7 +1333,7 @@ snd_nm256_mixer(struct nm256 *chip)
 	return 0;
 }
 
-/*
+/* 
  * See if the signature left by the NM256 BIOS is intact; if so, we use
  * the associated address as the end of our audio buffer in the video
  * RAM.
@@ -1498,7 +1501,7 @@ snd_nm256_create(struct snd_card *card, struct pci_dev *pci,
 	chip->streams[SNDRV_PCM_STREAM_PLAYBACK].bufsize = playback_bufsize * 1024;
 	chip->streams[SNDRV_PCM_STREAM_CAPTURE].bufsize = capture_bufsize * 1024;
 
-	/*
+	/* 
 	 * The NM256 has two memory ports.  The first port is nothing
 	 * more than a chunk of video RAM, which is used as the I/O ring
 	 * buffer.  The second port has the actual juicy stuff (like the
@@ -1745,7 +1748,7 @@ static void __devexit snd_nm256_remove(struct pci_dev *pci)
 
 
 static struct pci_driver driver = {
-	.name = "NeoMagic 256",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_nm256_ids,
 	.probe = snd_nm256_probe,
 	.remove = __devexit_p(snd_nm256_remove),

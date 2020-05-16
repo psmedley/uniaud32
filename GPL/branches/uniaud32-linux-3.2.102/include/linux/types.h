@@ -140,4 +140,6 @@ typedef unsigned int fmode_t;
 //typedef int _Bool;
 typedef _Bool bool;
 
+typedef	unsigned int		__uintptr_t;
+typedef	__uintptr_t		uintptr_t;
 #endif /* _LINUX_TYPES_H */

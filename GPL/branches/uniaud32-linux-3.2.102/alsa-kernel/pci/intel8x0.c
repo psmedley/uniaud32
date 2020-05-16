@@ -24,7 +24,11 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 
  *
- */
+ */      
+
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "intel8x0"
+#endif
 
 #include <asm/io.h>
 #include <linux/delay.h>
@@ -32,7 +36,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/ac97_codec.h>
@@ -41,6 +45,12 @@
 /* for 440MX workaround */
 #include <asm/pgtable.h>
 #include <asm/cacheflush.h>
+
+#ifdef CONFIG_KVM_GUEST
+#include <linux/kvm_para.h>
+#else
+#define kvm_para_available() (0)
+#endif
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Intel 82801AA,82901AB,i810,i820,i830,i840,i845,MX440; SiS 7012; Ali 5455");
@@ -77,6 +87,7 @@ static int buggy_semaphore;
 static int buggy_irq = -1; /* auto-check */
 static int xbox;
 static int spdif_aclink = -1;
+static int inside_vm = -1;
 
 module_param(index, int, 0444);
 MODULE_PARM_DESC(index, "Index value for Intel i8x0 soundcard.");
@@ -94,6 +105,8 @@ module_param(xbox, bool, 0444);
 MODULE_PARM_DESC(xbox, "Set to 1 for Xbox, if you have problems with the AC'97 codec detection.");
 module_param(spdif_aclink, int, 0444);
 MODULE_PARM_DESC(spdif_aclink, "S/PDIF over AC-link.");
+module_param(inside_vm, bool, 0444);
+MODULE_PARM_DESC(inside_vm, "KVM/Parallels optimization.");
 
 /* just for backward compatibility */
 //static int enable;
@@ -268,7 +281,7 @@ enum {
 #define ALI_CSPSR_WRITE_OK	0x01
 
 /* interrupts for the whole chip by interrupt status register finish */
-
+ 
 #define ALI_INT_MICIN2		(1<<26)
 #define ALI_INT_PCMIN2		(1<<25)
 #define ALI_INT_I2SIN		(1<<24)
@@ -312,7 +325,7 @@ enum {
 #define ICH_ALI_IF_PO		(1<<1)
 
 /*
- *
+ *  
  */
 
 enum {
@@ -400,6 +413,7 @@ struct intel8x0 {
 	unsigned buggy_irq: 1;		/* workaround for buggy mobos */
 	unsigned xbox: 1;		/* workaround for Xbox AC'97 detection */
 	unsigned buggy_semaphore: 1;	/* workaround for buggy codec semaphore */
+	unsigned inside_vm: 1;		/* enable VM optimization */
 
 	int spdif_idx;	/* SPDIF BAR index; *_SPBAR or -1 if use PCMOUT */
 	unsigned int sdm_saved;	/* SDM reg value */
@@ -534,7 +548,7 @@ static int snd_intel8x0_codec_semaphore(struct intel8x0 *chip, unsigned int code
 		udelay(10);
 	} while (time--);
 
-	/* access to some forbidden (non existant) ac97 registers will not
+	/* access to some forbidden (non existent) ac97 registers will not
 	 * reset the semaphore. So even if you don't get the semaphore, still
 	 * continue the access. We don't need the semaphore anyway. */
 	snd_printk(KERN_ERR "codec_semaphore: semaphore is not ready [0x%x][0x%x]\n",
@@ -543,7 +557,7 @@ static int snd_intel8x0_codec_semaphore(struct intel8x0 *chip, unsigned int code
 	/* I don't care about the semaphore */
 	return -EBUSY;
 }
-
+ 
 static void snd_intel8x0_codec_write(struct snd_ac97 *ac97,
 				     unsigned short reg,
 				     unsigned short val)
@@ -661,7 +675,7 @@ static void snd_intel8x0_ali_codec_write(struct snd_ac97 *ac97, unsigned short r
 /*
  * DMA I/O
  */
-static void snd_intel8x0_setup_periods(struct intel8x0 *chip, struct ichdev *ichdev)
+static void snd_intel8x0_setup_periods(struct intel8x0 *chip, struct ichdev *ichdev) 
 {
 	int idx;
 	u32 *bdbar = ichdev->bdbar;
@@ -885,8 +899,8 @@ static int snd_intel8x0_ali_trigger(struct snd_pcm_substream *substream, int cmd
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			/* clear FIFO for synchronization of channels */
 			fifo = igetdword(chip, fiforeg[ichdev->ali_slot / 4]);
-			fifo &= ~(0xff << (ichdev->ali_slot % 4));
-			fifo |= 0x83 << (ichdev->ali_slot % 4);
+			fifo &= ~(0xff << (ichdev->ali_slot % 4));  
+			fifo |= 0x83 << (ichdev->ali_slot % 4); 
 			iputdword(chip, fiforeg[ichdev->ali_slot / 4], fifo);
 		}
 		iputbyte(chip, port + ICH_REG_OFF_CR, ICH_IOCE);
@@ -1065,8 +1079,18 @@ static snd_pcm_uframes_t snd_intel8x0_pcm_pointer(struct snd_pcm_substream *subs
 			udelay(10);
 			continue;
 		}
-		if (civ == igetbyte(chip, ichdev->reg_offset + ICH_REG_OFF_CIV) &&
-		    ptr1 == igetword(chip, ichdev->reg_offset + ichdev->roff_picb))
+		if (civ != igetbyte(chip, ichdev->reg_offset + ICH_REG_OFF_CIV))
+			continue;
+
+		/* IO read operation is very expensive inside virtual machine
+		 * as it is emulated. The probability that subsequent PICB read
+		 * will return different result is high enough to loop till
+		 * timeout here.
+		 * Same CIV is strict enough condition to be sure that PICB
+		 * is valid inside VM on emulated card. */
+		if (chip->inside_vm)
+			break;
+		if (ptr1 == igetword(chip, ichdev->reg_offset + ichdev->roff_picb))
 			break;
 	} while (timeout--);
 	ptr = ichdev->last_pos;
@@ -1683,9 +1707,7 @@ static struct ac97_pcm ac97_pcm_defs[] __devinitdata = {
 	/* front PCM */
 	{
 		.exclusive = 1,
-		.r =
-		 {	
-			{
+		.r = {	{
 				.slots = (1 << AC97_SLOT_PCM_LEFT) |
 					 (1 << AC97_SLOT_PCM_RIGHT) |
 					 (1 << AC97_SLOT_PCM_CENTER) |
@@ -1752,12 +1774,12 @@ static struct ac97_pcm ac97_pcm_defs[] __devinitdata = {
 };
 
 static struct ac97_quirk ac97_quirks[] __devinitdata = {
-    {
+        {
 		.subvendor = 0x0e11,
 		.subdevice = 0x000e,
 		.name = "Compaq Deskpro EN",	/* AD1885 */
 		.type = AC97_TUNE_HP_ONLY
-    },
+        },
 	{
 		.subvendor = 0x0e11,
 		.subdevice = 0x008a,
@@ -1769,13 +1791,13 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subdevice = 0x00b8,
 		.name = "Compaq Evo D510C",
 		.type = AC97_TUNE_HP_ONLY
-	},
-    {
+        },
+	{
 		.subvendor = 0x0e11,
 		.subdevice = 0x0860,
 		.name = "HP/Compaq nx7010",
 		.type = AC97_TUNE_MUTE_LED
-    },
+        },
 	{
 		.subvendor = 0x1014,
 		.subdevice = 0x0534,
@@ -1883,6 +1905,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subdevice = 0x0188,
 		.name = "Dell Inspiron 6000",
 		.type = AC97_TUNE_HP_MUTE_LED /* cf. Malone #41015 */
+	},
+	{
+		.subvendor = 0x1028,
+		.subdevice = 0x0189,
+		.name = "Dell Inspiron 9300",
+		.type = AC97_TUNE_HP_MUTE_LED
 	},
 	{
 		.subvendor = 0x1028,
@@ -2075,6 +2103,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 		.subdevice = 0x5470,
 		.name = "MSI P4 ATX 645 Ultra",
 		.type = AC97_TUNE_HP_ONLY
+	},
+	{
+		.subvendor = 0x161f,
+		.subdevice = 0x202f,
+		.name = "Gateway M520",
+		.type = AC97_TUNE_INV_EAPD
 	},
 	{
 		.subvendor = 0x161f,
@@ -2657,7 +2691,7 @@ static int intel8x0_resume(struct pci_dev *pci)
 	pci_set_master(pci);
 	snd_intel8x0_chip_init(chip, 0);
 	if (request_irq(pci->irq, snd_intel8x0_interrupt,
-			IRQF_SHARED, card->shortname, chip)) {
+			IRQF_SHARED, KBUILD_MODNAME, chip)) {
 		printk(KERN_ERR "intel8x0: unable to grab IRQ %d, "
 		       "disabling device\n", pci->irq);
 		snd_card_disconnect(card);
@@ -2809,7 +2843,7 @@ static void __devinit intel8x0_measure_ac97_clock(struct intel8x0 *chip)
 	t = stop_time.tv_sec - start_time.tv_sec;
 	t *= 1000000;
 	t += (stop_time.tv_nsec - start_time.tv_nsec) / 1000;
-	dprintf(("%s: measured %lu usecs (%lu samples)\n", __func__, t, pos));
+	printk(KERN_INFO "%s: measured %lu usecs (%lu samples)\n", __func__, t, pos);
 	if (t == 0) {
 		snd_printk(KERN_ERR "intel8x0: ?? calculation error..\n");
 		goto __retry;
@@ -2830,12 +2864,13 @@ static void __devinit intel8x0_measure_ac97_clock(struct intel8x0 *chip)
 		/* not 48000Hz, tuning the clock.. */
 		chip->ac97_bus->clock = (chip->ac97_bus->clock * 48000) / pos;
       __end:
-	dprintf(("intel8x0: clocking to %d\n", chip->ac97_bus->clock));
+	printk(KERN_INFO "intel8x0: clocking to %d\n", chip->ac97_bus->clock);
 	snd_ac97_update_power(chip->ac97[0], AC97_PCM_FRONT_DAC_RATE, 0);
 }
 
 static struct snd_pci_quirk intel8x0_clock_list[] __devinitdata = {
 	SND_PCI_QUIRK(0x0e11, 0x008a, "AD1885", 41000),
+	SND_PCI_QUIRK(0x1014, 0x0581, "AD1981B", 48000),
 	SND_PCI_QUIRK(0x1028, 0x00be, "AD1885", 44100),
 	SND_PCI_QUIRK(0x1028, 0x0177, "AD1980", 48000),
 	SND_PCI_QUIRK(0x1028, 0x01ad, "AD1981B", 48000),
@@ -2921,6 +2956,45 @@ static unsigned int sis_codec_bits[3] = {
 	ICH_PCR, ICH_SCR, ICH_SIS_TCR
 };
 
+static int __devinit snd_intel8x0_inside_vm(struct pci_dev *pci)
+{
+	int result  = inside_vm;
+	char *msg   = NULL;
+
+	/* check module parameter first (override detection) */
+	if (result >= 0) {
+		msg = result ? "enable (forced) VM" : "disable (forced) VM";
+		goto fini;
+	}
+
+	/* detect KVM and Parallels virtual environments */
+	result = kvm_para_available();
+#ifdef X86_FEATURE_HYPERVISOR
+	result = result || boot_cpu_has(X86_FEATURE_HYPERVISOR);
+#endif
+	if (!result)
+		goto fini;
+
+	/* check for known (emulated) devices */
+	if (pci->subsystem_vendor == 0x1af4 &&
+	    pci->subsystem_device == 0x1100) {
+		/* KVM emulated sound, PCI SSID: 1af4:1100 */
+		msg = "enable KVM";
+	} else if (pci->subsystem_vendor == 0x1ab8) {
+		/* Parallels VM emulated sound, PCI SSID: 1ab8:xxxx */
+		msg = "enable Parallels VM";
+	} else {
+		msg = "disable (unknown or VT-d) VM";
+		result = 0;
+	}
+
+fini:
+	if (msg != NULL)
+		printk(KERN_INFO "intel8x0: %s optimization\n", msg);
+
+	return result;
+}
+
 static int __devinit snd_intel8x0_create(struct snd_card *card,
 					 struct pci_dev *pci,
 					 unsigned long device_type,
@@ -2987,6 +3061,8 @@ static int __devinit snd_intel8x0_create(struct snd_card *card,
 	chip->buggy_semaphore = buggy_semaphore;
 	if (xbox)
 		chip->xbox = 1;
+
+	chip->inside_vm = snd_intel8x0_inside_vm(pci);
 
 	if (pci->vendor == PCI_VENDOR_ID_INTEL &&
 	    pci->device == PCI_DEVICE_ID_INTEL_440MX)
@@ -3116,7 +3192,7 @@ static int __devinit snd_intel8x0_create(struct snd_card *card,
 
 	/* request irq after initializaing int_sta_mask, etc */
 	if (request_irq(pci->irq, snd_intel8x0_interrupt,
-			IRQF_SHARED, card->shortname, chip)) {
+			IRQF_SHARED, KBUILD_MODNAME, chip)) {
 		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_intel8x0_free(chip);
 		return -EBUSY;
@@ -3280,7 +3356,7 @@ static void __devexit snd_intel8x0_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-	.name = "Intel ICH",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_intel8x0_ids,
 	.probe = snd_intel8x0_probe,
 	.remove = __devexit_p(snd_intel8x0_remove),
