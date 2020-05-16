@@ -1,0 +1,8 @@
+NOTE! Use OpenWatcom 1.9 or later. Also you need IBM's ILINK for driver
+      linking. Possible, you can try wlink, but I never did that.
+
+
+1. Setup WATCOM and DDK in your environment.
+
+2. type wmake or wmake -a
+
