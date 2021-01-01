@@ -84,12 +84,11 @@ struct regcache_rbtree_ctx {
 	struct rb_node *node;
 	struct regcache_rbtree_node *rbnode;
 	unsigned int base_reg, top_reg;
-//pr_warn("regcache_rbtree_lookup");
+
 	rbnode = rbtree_ctx->cached_rbnode;
 	if (rbnode) {
 		regcache_rbtree_get_base_top_reg(map, rbnode, &base_reg,
 						 &top_reg);
-//pr_warn("regcache_rbtree_lookup reg = %u, base_reg = %u, top_reg = %u", reg, base_reg, top_reg);
 		if (reg >= base_reg && reg <= top_reg)
 			return rbnode;
 	}
@@ -99,7 +98,6 @@ struct regcache_rbtree_ctx {
 		rbnode = rb_entry(node, struct regcache_rbtree_node, node);
 		regcache_rbtree_get_base_top_reg(map, rbnode, &base_reg,
 						 &top_reg);
-//pr_warn("regcache_rbtree_lookup2 reg = %x, base_reg = %x, top_reg = %x", reg, base_reg, top_reg);
 		if (reg >= base_reg && reg <= top_reg) {
 			rbtree_ctx->cached_rbnode = rbnode;
 			return rbnode;
@@ -109,7 +107,6 @@ struct regcache_rbtree_ctx {
 			node = node->rb_left;
 		}
 	}
-//pr_warn("regcache_rbtree_lookup - NULL");
 	return NULL;
 }
 
@@ -120,12 +117,11 @@ struct regcache_rbtree_ctx {
 	struct regcache_rbtree_node *rbnode_tmp;
 	unsigned int base_reg_tmp, top_reg_tmp;
 	unsigned int base_reg;
-//pr_warn("regcache_rbtree_insert");
+
 	parent = NULL;
 	new = &root->rb_node;
-//pr_warn("regcache_rbtree_insert - new = %x",new);
+
 	while (*new) {
-//pr_warn("regcache_rbtree_insert2");
 		rbnode_tmp = rb_entry(*new, struct regcache_rbtree_node, node);
 		/* base and top registers of the current rbnode */
 		regcache_rbtree_get_base_top_reg(map, rbnode_tmp, &base_reg_tmp,
@@ -134,7 +130,6 @@ struct regcache_rbtree_ctx {
 		base_reg = rbnode->base_reg;
 		parent = *new;
 		/* if this register has already been inserted, just return */
-//pr_warn("regcache_rbtree_insert - base_reg = %u, base_reg_tmp = %u, top_reg_tmp = %u", base_reg, base_reg_tmp, top_reg_tmp);
 		if (base_reg >= base_reg_tmp &&
 		    base_reg <= top_reg_tmp)
 			return 0;
@@ -219,7 +214,6 @@ struct regcache_rbtree_ctx {
 	struct regcache_rbtree_ctx *rbtree_ctx;
 	int i;
 	int ret;
-//pr_warn("regcache_rbtree_init");
 #ifdef TARGET_OS2
 	// 2020-11-17 SHL FIXME patched struct rb_root
 	struct rb_root _RB_ROOT = { NULL, };
@@ -238,7 +232,6 @@ struct regcache_rbtree_ctx {
 	memset(&rbtree_ctx->root, 0, sizeof(struct rb_root));
 #endif
 	rbtree_ctx->cached_rbnode = NULL;
-//pr_warn("regcache_rbtree_init - num_reg_defaults = %x",map->num_reg_defaults);
 	for (i = 0; i < map->num_reg_defaults; i++) {
 		ret = regcache_rbtree_write(map,
 					    map->reg_defaults[i].reg,
@@ -288,19 +281,16 @@ err:
 {
 	struct regcache_rbtree_node *rbnode;
 	unsigned int reg_tmp;
-//pr_warn("regcache_rbtree_read");
+
 	rbnode = regcache_rbtree_lookup(map, reg);
 	if (rbnode) {
 		reg_tmp = (reg - rbnode->base_reg) / map->reg_stride;
-		if (!test_bit(reg_tmp, rbnode->cache_present)){
-//pr_warn("regcache_rbtree_read - -ENOENT");
-			return -ENOENT;}
+		if (!test_bit(reg_tmp, rbnode->cache_present))
+			return -ENOENT;
 		*value = regcache_rbtree_get_register(map, rbnode, reg_tmp);
 	} else {
-//pr_warn("regcache_rbtree_read2 - -ENOENT");
 		return -ENOENT;
 	}
-//pr_warn("regcache_rbtree_read - success");
 	return 0;
 }
 
@@ -316,7 +306,7 @@ err:
 	unsigned int pos, offset;
 	unsigned long *present;
 	u8 *blk;
-//pr_warn("regcache_rbtree_insert_to_block");
+
 	blklen = (top_reg - base_reg) / map->reg_stride + 1;
 	pos = (reg - base_reg) / map->reg_stride;
 	offset = (rbnode->base_reg - base_reg) / map->reg_stride;
@@ -366,20 +356,18 @@ regcache_rbtree_node_alloc(struct regmap *map, unsigned int reg)
 	struct regcache_rbtree_node *rbnode;
 	const struct regmap_range *range;
 	int i;
-//pr_warn("regcache_rbtree_node_alloc");
+
 	rbnode = kzalloc(sizeof(*rbnode), GFP_KERNEL);
 	if (!rbnode)
 		return NULL;
-//pr_warn("regcache_rbtree_node_alloc2");
+
 	/* If there is a read table then use it to guess at an allocation */
 	if (map->rd_table) {
-//pr_warn("regcache_rbtree_node_alloc3");
 		for (i = 0; i < map->rd_table->n_yes_ranges; i++) {
 			if (regmap_reg_in_range(reg,
 						&map->rd_table->yes_ranges[i]))
 				break;
 		}
-//pr_warn("regcache_rbtree_node_alloc4");
 		if (i != map->rd_table->n_yes_ranges) {
 			range = &map->rd_table->yes_ranges[i];
 			rbnode->blklen = (range->range_max - range->range_min) /
@@ -388,7 +376,6 @@ regcache_rbtree_node_alloc(struct regmap *map, unsigned int reg)
 		}
 	}
 	if (!rbnode->blklen) {
-//pr_warn("regcache_rbtree_node_alloc5");
 		rbnode->blklen = 1;
 		rbnode->base_reg = reg;
 	}
@@ -421,20 +408,17 @@ err_free:
 	struct rb_node *node;
 	unsigned int reg_tmp;
 	int ret;
-//pr_warn("regcache_rbtree_write, reg = %u, value = %u", reg, value);
+
 	rbtree_ctx = map->cache;
 
 	/* if we can't locate it in the cached rbnode we'll have
 	 * to traverse the rbtree looking for it.
 	 */
 	rbnode = regcache_rbtree_lookup(map, reg);
-//pr_warn("regcache_rbtree_write - rbnode = %x",rbnode);
 	if (rbnode) {
-//pr_warn("regcache_rbtree_write - got rbnode");
 		reg_tmp = (reg - rbnode->base_reg) / map->reg_stride;
 		regcache_rbtree_set_register(map, rbnode, reg_tmp, value);
 	} else {
-//pr_warn("regcache_rbtree_write - no rbnode");
 		unsigned int base_reg, top_reg;
 		unsigned int new_base_reg, new_top_reg;
 		unsigned int min, max;
@@ -452,7 +436,6 @@ err_free:
 		/* look for an adjacent register to the one we are about to add */
 		node = rbtree_ctx->root.rb_node;
 		while (node) {
-//pr_warn("regcache_rbtree_write - no rbnode2");
 			rbnode_tmp = rb_entry(node, struct regcache_rbtree_node,
 					      node);
 
@@ -493,10 +476,8 @@ err_free:
 							      new_top_reg, reg,
 							      value);
 			if (ret){
-//pr_warn("regcache_write - ret from regcache_rbtree_insert_to_block = %d",ret);
 				return ret;}
 			rbtree_ctx->cached_rbnode = rbnode;
-//pr_warn("regcache_write - rbtree_ctx->cached_rbnode = %x",rbtree_ctx->cached_rbnode);
 			return 0;
 		}
 
@@ -505,14 +486,12 @@ err_free:
 		 */
 		rbnode = regcache_rbtree_node_alloc(map, reg);
 		if (!rbnode){
-//pr_warn("regcache_write - ENOMEM");
 			return -ENOMEM;}
 		regcache_rbtree_set_register(map, rbnode,
 					     reg - rbnode->base_reg, value);
 		regcache_rbtree_insert(map, &rbtree_ctx->root, rbnode);
 		rbtree_ctx->cached_rbnode = rbnode;
 	}
-//pr_warn("regcache_write - rbtree_ctx->cached_rbnode2 = %x",rbtree_ctx->cached_rbnode);
 	return 0;
 }
 

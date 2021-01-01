@@ -397,9 +397,7 @@ retry:
 				old_interval = *hw_param_interval(params, r->var);
 		}
 
-pr_warn("constrain_params_by_rules");
 		changed = r->func(params, r);
-pr_warn("constrain_params_by_rules2");
 		if (changed < 0) {
 			err = changed;
 			goto out;
@@ -3592,7 +3590,6 @@ static int snd_pcm_fasync(int fd, struct file * file, int on)
 static int snd_pcm_playback_ioctl_old(struct inode *inode, struct file * file,
 				      unsigned int cmd, unsigned long arg)
 {
-pr_warn("snd_pcm_playback_ioctl_old");
 	int err;
 	err = snd_pcm_ioctl(file, cmd, arg);
 	return err;
@@ -3600,7 +3597,6 @@ pr_warn("snd_pcm_playback_ioctl_old");
 static int snd_pcm_capture_ioctl_old(struct inode *inode, struct file * file,
 				      unsigned int cmd, unsigned long arg)
 {
-pr_warn("snd_pcm_capture_ioctl_old");
 	int err;
 	err = snd_pcm_ioctl(file, cmd, arg);
 	return err;

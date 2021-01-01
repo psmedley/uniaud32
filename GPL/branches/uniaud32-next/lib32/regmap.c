@@ -622,7 +622,6 @@ struct regmap *__regmap_init(struct device *dev,
 	// 2020-11-17 SHL FIXME patched struct rb_root
 	struct rb_root _RB_ROOT = { NULL, };
 #endif
-////pr_warn("__regmap_init");
 
 	if (!config)
 		goto err;
@@ -950,10 +949,9 @@ skip_format_initialization:
 	map->range_tree.rb_node = NULL;
 	memset(&map->range_tree, 0, sizeof(struct rb_root));
 #endif
-//pr_warn("config->num_ranges = %u",config->num_ranges);
+
 	for (i = 0; i < config->num_ranges; i++) {
 		const struct regmap_range_cfg *range_cfg = &config->ranges[i];
-//pr_warn("config->num_ranges = %u, range_cfg->range_max = %u, range_cfg->range_min = %u",config->num_ranges, range_cfg->range_max, range_cfg->range_min);
 		struct regmap_range_node *new;
 
 		/* Sanity check */

@@ -642,7 +642,7 @@ int regcache_lookup_reg(struct regmap *map, unsigned int reg)
 
 	key.reg = reg;
 	key.def = 0;
-//pr_warn("regcache_lookup_reg - map->num_reg_defaults = %x",map->num_reg_defaults);
+
 	r = bsearch(&key, map->reg_defaults, map->num_reg_defaults,
 		    sizeof(struct reg_default), regcache_default_cmp);
 

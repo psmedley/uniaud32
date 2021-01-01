@@ -199,8 +199,6 @@ int snd_hdac_device_set_chip_name(struct hdac_device *codec, const char *name)
 		return -ENOMEM;
 	kfree(codec->chip_name);
 	codec->chip_name = newname;
-if (codec->chip_name && *codec->chip_name == 0x49)
-    pr_warn("codec->chip_name corrupted2");
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_hdac_device_set_chip_name);

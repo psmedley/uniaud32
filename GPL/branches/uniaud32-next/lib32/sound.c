@@ -488,7 +488,7 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 {
 	soundhandle *pHandle;
 	int 		 ret,i;
-pr_warn("OSS32_WaveOpen");
+
 	if (pStreamId)
 		*pStreamId = 0;
 	else
@@ -523,12 +523,10 @@ pr_warn("OSS32_WaveOpen");
 
 	switch(streamtype) {
 	case OSS32_STREAM_WAVEOUT:
-pr_warn("OSS32_WaveOpen - OSS32_STREAM_WAVEOUT");
 		pHandle->file.f_mode  = FMODE_WRITE;
 		pHandle->inode.i_rdev = SNDRV_MINOR(deviceid, SNDRV_MINOR_PCM_PLAYBACK) + pcm;
 		break;
 	case OSS32_STREAM_WAVEIN:
-pr_warn("OSS32_WaveOpen - OSS32_STREAM_WAVEIN");
 		pHandle->file.f_mode  = FMODE_READ;
 		pHandle->inode.i_rdev = SNDRV_MINOR(deviceid, SNDRV_MINOR_PCM_CAPTURE) + pcm;
 		break;
@@ -540,7 +538,7 @@ pr_warn("OSS32_WaveOpen - OSS32_STREAM_WAVEIN");
 	}
 
 	ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
-pr_warn("OSS32_WaveOpen. ret: %i\n", ret);
+
 	//dprintf(("OSS32_WaveOpen. ret: %i\n", ret));
 	/* check if PCM already opened (stupid uniaud16.sys doesnt closes it) */
 	if (ret == -16)
@@ -623,7 +621,6 @@ OSSRET OSS32_WaveClose(OSSSTREAMID streamid)
 #if 0 //2020-12-27
 			if (!opened_handles[i].reuse)
 			{
-pr_warn("here");
 				ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
 				opened_handles[i].handle = 0;
 				kfree(pHandle);   //free handle data
@@ -631,7 +628,6 @@ pr_warn("here");
 			} else
 #endif
 			{
-pr_warn("here2");
 				/* prepare for reuse */
 				pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_RESET, 0);
 				pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
