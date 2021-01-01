@@ -137,21 +137,18 @@ static struct snd_minor *autoload_device(unsigned int minor)
 static int snd_open(struct inode *inode, struct file *file)
 {
 	unsigned int minor = iminor(inode);
-pr_warn("snd_open - minor = %d",minor);
 	struct snd_minor *mptr = NULL;
 	const struct file_operations *new_fops;
 	int err = 0;
 
-	if (minor >= ARRAY_SIZE(snd_minors)){
-pr_warn("snd_open - ENODEV");
-		return -ENODEV;}
+	if (minor >= ARRAY_SIZE(snd_minors))
+		return -ENODEV;
 	mutex_lock(&sound_mutex);
 	mptr = snd_minors[minor];
 	if (mptr == NULL) {
 		mptr = autoload_device(minor);
 		if (!mptr) {
 			mutex_unlock(&sound_mutex);
-pr_warn("snd_open - ENODEV2");
 			return -ENODEV;
 		}
 	}
@@ -179,7 +176,6 @@ pr_warn("snd_open - ENODEV2");
 	if (file->f_op->open) {
 		err = file->f_op->open(inode, file);
 		if (err) {
-pr_warn("snd_open - file->f_op->open, err = %d",err);
 			fops_put(file->f_op);
 			file->f_op = fops_get(new_fops);
 		}

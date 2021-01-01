@@ -290,14 +290,12 @@ dprintf(("PSDebug: pcms= %d",pcms));
 
 	for (i=0; i<pcms;i++)
 	{
-pr_warn("pcm=%i",i);
 		pcaps->nrDevices  = nrCardsDetected;
 		pcaps->ulCaps	  = OSS32_CAPS_WAVE_PLAYBACK | OSS32_CAPS_WAVE_CAPTURE;
 
 		//query wave in & out caps
 		for(j=0;j<2;j++)
 		{
-pr_warn("j=%i",j);
 			PWAVE_CAPS pWaveCaps = (j == 0) ? &pcaps->waveOutCaps : &pcaps->waveInCaps;
 
 			ret = OSS32_WaveOpen(deviceid, (j == 0) ? OSS32_STREAM_WAVEOUT : OSS32_STREAM_WAVEIN, &streamid, i, 0);

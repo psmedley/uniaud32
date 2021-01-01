@@ -4351,7 +4351,6 @@ static const struct hda_model_fixup stac92hd95_models[] = {
 
 static int stac_parse_auto_config(struct hda_codec *codec)
 {
-pr_warn("stac_parse_auto_config");
 	struct sigmatel_spec *spec = codec->spec;
 	int err;
 	int flags = 0;
@@ -4436,7 +4435,6 @@ pr_warn("stac_parse_auto_config");
 
 static int stac_init(struct hda_codec *codec)
 {
-pr_warn("stac_init");
 	struct sigmatel_spec *spec = codec->spec;
 	int i;
 
@@ -4469,7 +4467,6 @@ pr_warn("stac_init");
 					    AC_PWRST_D3);
 		}
 	}
-pr_warn("stac_init - end");
 	return 0;
 }
 

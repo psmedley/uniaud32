@@ -1302,7 +1302,6 @@ EXPORT_SYMBOL_GPL(snd_hda_override_amp_caps);
 static unsigned int encode_amp(struct hda_codec *codec, hda_nid_t nid,
 			       int ch, int dir, int idx)
 {
-//pr_warn("snd_hda_codec_amp_update");
 	unsigned int cmd = snd_hdac_regmap_encode_amp(nid, ch, dir, idx);
 
 	/* enable fake mute if no h/w mute but min=mute */
@@ -2317,7 +2316,6 @@ static void set_dig_out(struct hda_codec *codec, hda_nid_t nid,
 			int mask, int val)
 {
 	const hda_nid_t *d;
-//pr_warn("set_dig_out");
 	snd_hdac_regmap_update(&codec->core, nid, AC_VERB_SET_DIGI_CONVERT_1,
 			       mask, val);
 	d = codec->slave_dig_outs;
@@ -2485,7 +2483,6 @@ int snd_hda_create_dig_out_ctls(struct hda_codec *codec,
 	const int spdif_index = 16;
 	struct hda_spdif_out *spdif;
 	struct hda_bus *bus = codec->bus;
-//pr_warn("snd_hda_create_dig_out_ctls");
 	if (bus->primary_dig_out_type == HDA_PCM_TYPE_HDMI &&
 	    type == HDA_PCM_TYPE_SPDIF) {
 		idx = spdif_index;

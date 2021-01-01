@@ -204,7 +204,6 @@ int pcidev_deactivate(struct pci_dev *dev)
         pcidev->dma_mask = 0xffffffff;
 	pcidev->dev.dma_mask = &pcidev->dma_mask;
 	pcidev->dev.coherent_dma_mask = 0xffffffffull;
-pr_warn("params set");
 
         // Subsystem ID
         pci_read_config_word(pcidev, PCI_SUBSYSTEM_VENDOR_ID, &pcidev->subsystem_vendor);
@@ -651,42 +650,28 @@ void *pci_alloc_consistent(struct pci_dev *hwdev,
   int order;
   dprintf(("pci_alloc_consistent %d mask %x", size, (hwdev) ? hwdev->dma_mask : 0));
   if (hwdev == NULL || hwdev->dma_mask != 0xffffffff) {
-  dprintf(("pci_alloc_consistent"));
-pr_warn("dma_mask = %x",hwdev->dma_mask);
     //try not to exhaust low memory (< 16mb) so allocate from the high region first
     //if that doesn't satisfy the dma mask requirement, then get it from the low
     //region anyway
     if(hwdev->dma_mask > 0x00ffffff) {
-  dprintf(("pci_alloc_consistent2"));
       order = __compat_get_order(size);
-  dprintf(("pci_alloc_consistent3"));
       ret = (void *)__get_free_pages(gfp|GFP_DMAHIGHMEM, order);
-  dprintf(("pci_alloc_consistent4"));
       *dma_handle = virt_to_bus(ret);
       if(*dma_handle > hwdev->dma_mask) {
-  dprintf(("pci_alloc_consistent5"));
         free_pages((unsigned long)ret, __compat_get_order(size));
-  dprintf(("pci_alloc_consistent6"));
         //be sure and allocate below 16 mb
         gfp |= GFP_DMA;
         ret = NULL;
       }
-  dprintf(("pci_alloc_consistent6a"));
     }
     else { //must always allocate below 16 mb
-  dprintf(("pci_alloc_consistent7"));
       gfp |= GFP_DMA;
     }
-  dprintf(("pci_alloc_consistent7a"));
   }
-  dprintf(("pci_alloc_consistent8"));
   if(ret == NULL) {
-  dprintf(("pci_alloc_consistent9"));
     ret = (void *)__get_free_pages(gfp, __compat_get_order(size));
   }
-  dprintf(("pci_alloc_consistent10"));
   if (ret != NULL) {
-  dprintf(("pci_alloc_consistent11"));
     memset(ret, 0, size);
     *dma_handle = virt_to_bus(ret);
   }
@@ -748,13 +733,11 @@ void *dma_alloc_coherent(struct device *dev, size_t size,
 
 int dma_supported(struct device *dev, u64 mask)
 {
-pr_warn("dma_supported");
   return 1;
 }
 
 int dma_set_coherent_mask(struct device *dev, u64 mask)
 {
-pr_warn("dma_set_coherent_mask");
 	/*
 	 * Truncate the mask to the actually supported dma_addr_t width to
 	 * avoid generating unsupportable addresses.
@@ -770,7 +753,6 @@ pr_warn("dma_set_coherent_mask");
 
 int dma_set_mask(struct device *dev, u64 mask)
 {
-pr_warn("dma_set_mask");
 	/*
 	 * Truncate the mask to the actually supported dma_addr_t width to
 	 * avoid generating unsupportable addresses.

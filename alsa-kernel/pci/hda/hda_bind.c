@@ -77,8 +77,6 @@ int snd_hda_codec_set_name(struct hda_codec *codec, const char *name)
 			 codec->core.vendor_name, codec->core.chip_name);
 		codec->bus->mixer_assigned = codec->core.addr;
 	}
-if (codec->core.chip_name && *codec->core.chip_name == 0x49)
-    pr_warn("codec->chip_name corrupted");
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_hda_codec_set_name);
