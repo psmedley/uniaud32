@@ -350,12 +350,7 @@ static ssize_t snd_info_text_entry_write(struct file *file,
 		}
 	}
 	if (next > buf->len) {
-#ifndef TARGET_OS2
 		char *nbuf = kvzalloc(PAGE_ALIGN(next), GFP_KERNEL);
-#else
-		char *nbuf = krealloc(buf->buffer, PAGE_ALIGN(next),
-				      GFP_KERNEL | __GFP_ZERO);
-#endif
 		if (!nbuf) {
 			err = -ENOMEM;
 			goto error;

@@ -649,123 +649,42 @@ void *kcalloc(size_t n, size_t size, unsigned int flags)
 }
 //******************************************************************************
 //******************************************************************************
-#if 0
-/* krealloc() wrapper */
-void *krealloc(const void *p, size_t new_size, unsigned int flags)
-{
-	void *n;
 
-	if (!p)
-		return _kmalloc(new_size, flags);
-pr_warn("krealloc2");
-	if (!new_size) {
-		_kfree(p);
-		return NULL;
-	}
-pr_warn("krealloc3");
-	n = _kmalloc(new_size, flags);
-	if (!n)
-		return NULL;
-pr_warn("krealloc4");
-	memcpy(n, p, new_size);
-pr_warn("krealloc5");
-	_kfree(p);
-	return n;
-}
-#else
-typedef s16 slobidx_t;
-struct slob_block {
-	slobidx_t units;
-};
-typedef struct slob_block slob_t;
-struct slob_page {
-	union {
-		struct {
-			unsigned long flags;	/* mandatory */
-			atomic_t _count;	/* mandatory */
-			slobidx_t units;	/* free units left in page */
-			unsigned long pad[2];
-			slob_t *free;		/* first free slob_t in page */
-			struct list_head list;	/* linked list of free pages */
-		};
-		struct page page;
-	};
-};
-
-#define SLOB_UNIT sizeof(slob_t)
-#define SLOB_UNITS(size) (((size) + SLOB_UNIT - 1)/SLOB_UNIT)
-/* can't use ksize for kmem_cache_alloc memory, only kmalloc */
-/*
- * We use struct page fields to manage some slob allocation aspects,
- * however to avoid the horrible mess in include/linux/mm_types.h, we'll
- * just define our own struct page type variant here.
- */
-#if 0
 size_t ksize(const void *block)
 {
-	struct slob_page *sp;
+	size_t size;
 
-//	BUG_ON(!block);
 	if (block == ZERO_SIZE_PTR)
 		return 0;
 
-	sp = slob_page(block);
-	if (is_slob_page(sp)) {
-		int align = max(ARCH_KMALLOC_MINALIGN, ARCH_SLAB_MINALIGN);
-		unsigned int *m = (unsigned int *)(block - align);
-		return SLOB_UNITS(*m) * SLOB_UNIT;
-	} else
-		return sp->page.private;
+	GetBaseAddress((ULONG)block, (ULONG NEAR *)__Stack32ToFlat(&size));
+
+	return size;
 }
-#endif
-
-static inline void *__do_krealloc(const void *p, size_t new_size,
-					   gfp_t flags)
-{
-	void *ret;
-	size_t ks = 0;
-
-#if 0 //fixme ksize
-	if (p)
-		ks = ksize(p);
-
-	if (ks >= new_size)
-		return (void *)p;
-#endif
-	ret = __kmalloc(new_size, flags);
-	if (ret && p)
-		memcpy(ret, p, ks);
-
-	return ret;
-}
-
-/**
- * krealloc - reallocate memory. The contents will remain unchanged.
- * @p: object to reallocate memory for.
- * @new_size: how many bytes of memory are required.
- * @flags: the type of memory to allocate.
- *
- * The contents of the object pointed to are preserved up to the
- * lesser of the new and old sizes.  If @p is %NULL, krealloc()
- * behaves exactly like kmalloc().  If @new_size is 0 and @p is not a
- * %NULL pointer, the object pointed to is freed.
- */
+//******************************************************************************
+//******************************************************************************
+/* krealloc() wrapper */
+//from linux 2.6
 void *krealloc(const void *p, size_t new_size, gfp_t flags)
 {
 	void *ret;
 
+	if (!p)
+		return __kmalloc(new_size, flags);
+
 	if (!new_size) {
 		kfree(p);
-		return ZERO_SIZE_PTR;
+		return NULL;
 	}
 
-	ret = __do_krealloc(p, new_size, flags);
-	if (ret && p != ret)
-		kfree(p);
+	ret = __kmalloc(new_size, flags);
+	if (!ret)
+		return NULL;
 
+	memcpy(ret, p, min(new_size, ksize(p)));
+	kfree(p);
 	return ret;
 }
-#endif
 
 //******************************************************************************
 //******************************************************************************
