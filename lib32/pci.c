@@ -24,10 +24,11 @@
  * USA.
  *
  */
-
+#define CONFIG_PM
 #include "linux.h"
 #include <linux/init.h>
 #include <linux/poll.h>
+#include <linux/dma-mapping.h>
 #include <asm/uaccess.h>
 #include <asm/hardirq.h>
 #include <asm/io.h>
@@ -182,7 +183,7 @@ int pcidev_deactivate(struct pci_dev *dev)
 
         memset((void near *)pcidev, 0, sizeof(struct pci_dev));
 
-        pcidev->_class = ulTmp2;
+        pcidev->class = ulTmp2;
         pcidev->vendor = detectedId & 0xffff;
         pcidev->device = detectedId >> 16;
         //pcidev->bus = &pci_busses[busNr];
@@ -200,11 +201,17 @@ int pcidev_deactivate(struct pci_dev *dev)
         pcidev->ro = 0;
         pcidev->sibling = NULL;
         pcidev->next = NULL;
-        pcidev->dma_mask = 0xFFFFFFFF;
+        pcidev->dma_mask = 0xffffffff;
+	pcidev->dev.dma_mask = &pcidev->dma_mask;
+	pcidev->dev.coherent_dma_mask = 0xffffffffull;
+pr_warn("params set");
 
         // Subsystem ID
         pci_read_config_word(pcidev, PCI_SUBSYSTEM_VENDOR_ID, &pcidev->subsystem_vendor);
         pci_read_config_word(pcidev, PCI_SUBSYSTEM_ID, &pcidev->subsystem_device);
+
+	// revision
+	pci_read_config_byte(pcidev, PCI_REVISION_ID, &pcidev->revision);
 
         // I/O  and MEM
         resNo = 0;
@@ -499,18 +506,18 @@ int pci_register_driver(struct pci_driver *driver)
     int iTableIx;
 
     rprintf(("pci_register_driver: query_device found %x %x:%x class=%x checking %s",
-      ulLast, pcidev->vendor, pcidev->device, pcidev->_class, driver->name));
+      ulLast, pcidev->vendor, pcidev->device, pcidev->class, driver->name));
 
     for( iTableIx = 0; driver->id_table[iTableIx].vendor; iTableIx++)
     {
       struct pci_device_id const *pDriverId = &driver->id_table[iTableIx];
 
-      if ( (pDriverId->class) && ((pcidev->_class & pDriverId->class_mask) != pDriverId->class) ) continue;
+      if ( (pDriverId->class) && ((pcidev->class & pDriverId->class_mask) != pDriverId->class) ) continue;
       if (pDriverId->vendor != pcidev->vendor) continue;
       if ( (pDriverId->device != PCI_ANY_ID) && (pDriverId->device != pcidev->device) ) continue;
 
       rprintf(("pci_register_driver: matched %d %x:%x/%x with %x:%x/%x %x (%s)", iTableIx,
-        pcidev->vendor, pcidev->device, pcidev->_class,
+        pcidev->vendor, pcidev->device, pcidev->class,
         pDriverId->vendor, pDriverId->device, pDriverId->class, pDriverId->class_mask, driver->name));
 
       if ((iAdapterNumber >= 0) && (iAdapter < iAdapterNumber))
@@ -644,25 +651,89 @@ void *pci_alloc_consistent(struct pci_dev *hwdev,
   int order;
   dprintf(("pci_alloc_consistent %d mask %x", size, (hwdev) ? hwdev->dma_mask : 0));
   if (hwdev == NULL || hwdev->dma_mask != 0xffffffff) {
+  dprintf(("pci_alloc_consistent"));
+pr_warn("dma_mask = %x",hwdev->dma_mask);
     //try not to exhaust low memory (< 16mb) so allocate from the high region first
     //if that doesn't satisfy the dma mask requirement, then get it from the low
-    //regino anyway
+    //region anyway
     if(hwdev->dma_mask > 0x00ffffff) {
+  dprintf(("pci_alloc_consistent2"));
+      order = __compat_get_order(size);
+  dprintf(("pci_alloc_consistent3"));
+      ret = (void *)__get_free_pages(gfp|GFP_DMAHIGHMEM, order);
+  dprintf(("pci_alloc_consistent4"));
+      *dma_handle = virt_to_bus(ret);
+      if(*dma_handle > hwdev->dma_mask) {
+  dprintf(("pci_alloc_consistent5"));
+        free_pages((unsigned long)ret, __compat_get_order(size));
+  dprintf(("pci_alloc_consistent6"));
+        //be sure and allocate below 16 mb
+        gfp |= GFP_DMA;
+        ret = NULL;
+      }
+  dprintf(("pci_alloc_consistent6a"));
+    }
+    else { //must always allocate below 16 mb
+  dprintf(("pci_alloc_consistent7"));
+      gfp |= GFP_DMA;
+    }
+  dprintf(("pci_alloc_consistent7a"));
+  }
+  dprintf(("pci_alloc_consistent8"));
+  if(ret == NULL) {
+  dprintf(("pci_alloc_consistent9"));
+    ret = (void *)__get_free_pages(gfp, __compat_get_order(size));
+  }
+  dprintf(("pci_alloc_consistent10"));
+  if (ret != NULL) {
+  dprintf(("pci_alloc_consistent11"));
+    memset(ret, 0, size);
+    *dma_handle = virt_to_bus(ret);
+  }
+  return ret;
+}
+
+#if 0
+void *pci_alloc_consistent(struct pci_dev *hwdev, size_t size,
+                      dma_addr_t *dma_handle)
+ {
+         return dma_alloc_coherent(hwdev == NULL ? NULL : &hwdev->dev, size, dma_handle, GFP_ATOMIC);
+ }
+#endif
+#if 0
+void *dma_alloc_coherent(struct device *dev, size_t size,
+				dma_addr_t *dma_handle, gfp_t gfp)
+{
+  void *ret = NULL;
+  int order;
+
+  dprintf(("dma_alloc_coherent %d mask %x", size, (dev) ? dev->dma_mask : 0));
+  if (dev == NULL || *dev->dma_mask != 0xffffffff) {
+  dprintf(("dma_alloc_coherent"));
+    //try not to exhaust low memory (< 16mb) so allocate from the high region first
+    //if that doesn't satisfy the dma mask requirement, then get it from the low
+    //region anyway
+    if(*dev->dma_mask > 0x00ffffff) {
+  dprintf(("dma_alloc_coherent2"));
       order = __compat_get_order(size);
       ret = (void *)__get_free_pages(gfp|GFP_DMAHIGHMEM, order);
       *dma_handle = virt_to_bus(ret);
-      if(*dma_handle > hwdev->dma_mask) {
+      if(*dma_handle > *dev->dma_mask) {
+  dprintf(("dma_alloc_coherent3"));
         free_pages((unsigned long)ret, __compat_get_order(size));
         //be sure and allocate below 16 mb
         gfp |= GFP_DMA;
         ret = NULL;
       }
+  dprintf(("dma_alloc_coherent3a"));
     }
     else { //must always allocate below 16 mb
+  dprintf(("dma_alloc_coherent4"));
       gfp |= GFP_DMA;
     }
   }
   if(ret == NULL) {
+  dprintf(("dma_alloc_coherent5"));
     ret = (void *)__get_free_pages(gfp, __compat_get_order(size));
   }
 
@@ -671,6 +742,46 @@ void *pci_alloc_consistent(struct pci_dev *hwdev,
     *dma_handle = virt_to_bus(ret);
   }
   return ret;
+
+}
+#endif
+
+int dma_supported(struct device *dev, u64 mask)
+{
+pr_warn("dma_supported");
+  return 1;
+}
+
+int dma_set_coherent_mask(struct device *dev, u64 mask)
+{
+pr_warn("dma_set_coherent_mask");
+	/*
+	 * Truncate the mask to the actually supported dma_addr_t width to
+	 * avoid generating unsupportable addresses.
+	 */
+	mask = (dma_addr_t)mask;
+
+	if (!dma_supported(dev, mask))
+		return -EIO;
+
+	dev->coherent_dma_mask = mask;
+	return 0;
+}
+
+int dma_set_mask(struct device *dev, u64 mask)
+{
+pr_warn("dma_set_mask");
+	/*
+	 * Truncate the mask to the actually supported dma_addr_t width to
+	 * avoid generating unsupportable addresses.
+	 */
+	mask = (dma_addr_t)mask;
+
+	if (!dev->dma_mask || !dma_supported(dev, mask))
+		return -EIO;
+
+	*dev->dma_mask = mask;
+	return 0;
 }
 
 /**
@@ -887,7 +998,7 @@ void pci_release_regions(struct pci_dev *pdev)
     pci_release_region(pdev, i);
 }
 
-const struct pci_device_id * pci_match_device(const struct pci_device_id *ids, struct pci_dev *dev)
+const struct pci_device_id * pci_match_id(const struct pci_device_id *ids, struct pci_dev *dev)
 {
   u16 subsystem_vendor, subsystem_device;
 
@@ -899,7 +1010,7 @@ const struct pci_device_id * pci_match_device(const struct pci_device_id *ids, s
       (ids->device == PCI_ANY_ID || ids->device == dev->device) &&
       (ids->subvendor == PCI_ANY_ID || ids->subvendor == subsystem_vendor) &&
       (ids->subdevice == PCI_ANY_ID || ids->subdevice == subsystem_device) &&
-      !((ids->class ^ dev->_class) & ids->class_mask))
+      !((ids->class ^ dev->class) & ids->class_mask))
       return ids;
     ids++;
   }

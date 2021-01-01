@@ -5,6 +5,7 @@
  */
 
 #include <linux/types.h>
+#include <linux/list.h>
 
 #if	!defined(_LINUX_SLAB_H)
 #define	_LINUX_SLAB_H
@@ -45,13 +46,28 @@ typedef struct kmem_cache_s kmem_cache_t;
 
 #endif	/* __KERNEL__ */
 
+/*
+ * ZERO_SIZE_PTR will be returned for zero sized kmalloc requests.
+ *
+ * Dereferencing ZERO_SIZE_PTR will lead to a distinct access fault.
+ *
+ * ZERO_SIZE_PTR can be passed to kfree though in the same way that NULL can.
+ * Both make kfree a no-op.
+ */
+#define ZERO_SIZE_PTR ((void *)16)
+
 //NOTE: enabling this in the non-KEE driver causes problems (file name strings
 //      put in seperate private segments)
 #ifdef DEBUGHEAP
 extern void near *__kmalloc(int, int, const char *filename, int lineno);
 extern void  __kfree(const void near *, const char *filename, int lineno);
 
-#define kmalloc(a,b)            __kmalloc(a,b, __FILE__, __LINE__)
+static inline void *kmalloc(size_t size, gfp_t flags)
+{
+	return __kmalloc(size, flags, __FILE__, __LINE__);
+}
+
+
 #define kfree(a)                __kfree(a, __FILE__, __LINE__)
 #define kfree_s(a,b)            __kfree(a, __FILE__, __LINE__)
 #define kfree_nocheck(a)	__kfree(a, __FILE__, __LINE__)
@@ -69,5 +85,38 @@ extern void  __kfree(const void near *);
 
 void *kzalloc(size_t n, gfp_t gfp_flags);
 void *kcalloc(size_t n, size_t size, unsigned int __nocast gfp_flags);
+void *krealloc(const void *, size_t, gfp_t);
 
+#define SIZE_MAX	(~(size_t)0)
+
+/**
+ * kmalloc_array - allocate memory for an array.
+ * @n: number of elements.
+ * @size: element size.
+ * @flags: the type of memory to allocate (see kmalloc).
+ */
+static inline void *kmalloc_array(size_t n, size_t size, gfp_t flags)
+{
+	if (size != 0 && n > SIZE_MAX / size)
+		return NULL;
+	return __kmalloc(n * size, flags);
+}
+
+#define kmalloc_node_track_caller(size, flags, node) \
+	kmalloc_track_caller(size, flags)
+#define 	kmalloc_track_caller(size, flags)   __kmalloc(size, flags)
+#define kvfree(arg)                     kfree(arg)
+
+struct kmem_cache {
+	unsigned int object_size;/* The original size of the object */
+	unsigned int size;	/* The aligned/padded/added on size  */
+	unsigned int align;	/* Alignment as calculated */
+	unsigned long flags;	/* Active flags on the slab */
+	const char *name;	/* Slab name for sysfs */
+	int refcount;		/* Use counter */
+	void (*ctor)(void *);	/* Called on object slot creation */
+	struct list_head list;	/* List of all slab caches on the system */
+};
+
+#define kvzalloc kzalloc
 #endif	/* _LINUX_SLAB_H */

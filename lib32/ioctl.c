@@ -275,7 +275,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 	int pcms = 0;
 
 	pcms = pcm_instances(deviceid);
-
+dprintf(("PSDebug: pcms= %d",pcms));
 	if (!pcaps || !pcms) return -1;
 
 
@@ -290,18 +290,20 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 
 	for (i=0; i<pcms;i++)
 	{
+pr_warn("pcm=%i",i);
 		pcaps->nrDevices  = nrCardsDetected;
 		pcaps->ulCaps	  = OSS32_CAPS_WAVE_PLAYBACK | OSS32_CAPS_WAVE_CAPTURE;
 
 		//query wave in & out caps
 		for(j=0;j<2;j++)
 		{
+pr_warn("j=%i",j);
 			PWAVE_CAPS pWaveCaps = (j == 0) ? &pcaps->waveOutCaps : &pcaps->waveInCaps;
 
 			ret = OSS32_WaveOpen(deviceid, (j == 0) ? OSS32_STREAM_WAVEOUT : OSS32_STREAM_WAVEIN, &streamid, i, 0);
 			if(ret != OSSERR_SUCCESS)
 			{
-				dprintf(("GetUniaudPcmCaps: wave open error %i %s at pcm %i", ret, (j == 0) ?"PLAY":"REC", i));
+				dprintf(("GetUniaudPcmCaps1: wave open error %i %s at pcm %i", ret, (j == 0) ?"PLAY":"REC", i));
 				continue;
 				//goto fail;
 			}
@@ -315,7 +317,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 			//set operation to non-blocking
 			pHandle->file.f_flags = O_NONBLOCK;
 
-			dprintf(("GetUniaudPcmCaps: cp1. phandle %x", pHandle));
+			dprintf(("GetUniaudPcmCaps: cp1. pcm %i, phandle %x", i, pHandle));
 			ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_INFO, (ULONG)pcminfo);
 			if(ret != 0) {
 				rprintf(("GetUniaudPcmCaps: SNDRV_PCM_IOCTL_INFO error %i", ret));
@@ -333,7 +335,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 
 			pWaveCaps->nrStreams = pcminfo->subdevices_count;
 
-			dprintf(("GetUniaudPcmCaps: cp2. nr of streams: %i", pWaveCaps->nrStreams));
+			dprintf(("GetUniaudPcmCaps: pcm %i, cp2. nr of streams: %i", i, pWaveCaps->nrStreams));
 			//get all hardware parameters
 			_snd_pcm_hw_params_any(params);
 			ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)params);
@@ -361,7 +363,6 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 			if(pWaveCaps->ulMaxChannels >= 6) {
 				pWaveCaps->ulChanFlags |= OSS32_CAPS_PCM_CHAN_5_1;
 			}
-
 			pWaveCaps->ulMinRate	 = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->min;
 			pWaveCaps->ulMaxRate	 = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->max;
 

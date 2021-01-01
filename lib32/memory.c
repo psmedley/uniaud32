@@ -35,6 +35,18 @@
 #include <kee.h>
 #endif
 #include "malloc.h"
+#define _I386_PAGE_H
+typedef struct { unsigned long pgprot; } pgprot_t;
+#define MAP_NR(addr)		(__pa(addr) >> PAGE_SHIFT)
+#define PAGE_SHIFT	12
+#define __PAGE_OFFSET		(0xC0000000)
+
+#define PAGE_OFFSET		((unsigned long)__PAGE_OFFSET)
+#define __pa(x)			((unsigned long)(x)-PAGE_OFFSET)
+
+#include <linux/mm.h>
+#include <linux/slab.h>
+#include <linux/printk.h>
 
 #pragma off (unreferenced)
 
@@ -223,8 +235,6 @@ APIRET VMFree(LINEAR addr)
 //******************************************************************************
 ULONG ulget_free_pagesMemUsed = 0;
 
-#define GFP_DMA	        0x80
-#define GFP_DMAHIGHMEM	0x100
 //******************************************************************************
 //******************************************************************************
 void *__get_free_dma_pages(unsigned long size, unsigned long flags)
@@ -426,7 +436,7 @@ struct page * alloc_pages(int gfp_mask, unsigned long order)
 }
 //******************************************************************************
 //******************************************************************************
-int remap_page_range(unsigned long from, unsigned long to, unsigned long size, unsigned long prot)
+int remap_page_range(unsigned long from, unsigned long to, unsigned long size, pgprot_t prot)
 {
 	DebugInt3();
 	return 0;
@@ -637,4 +647,145 @@ void *kcalloc(size_t n, size_t size, unsigned int flags)
 		return NULL;
 	return kzalloc(n * size, flags);
 }
+//******************************************************************************
+//******************************************************************************
+#if 0
+/* krealloc() wrapper */
+void *krealloc(const void *p, size_t new_size, unsigned int flags)
+{
+	void *n;
 
+	if (!p)
+		return _kmalloc(new_size, flags);
+pr_warn("krealloc2");
+	if (!new_size) {
+		_kfree(p);
+		return NULL;
+	}
+pr_warn("krealloc3");
+	n = _kmalloc(new_size, flags);
+	if (!n)
+		return NULL;
+pr_warn("krealloc4");
+	memcpy(n, p, new_size);
+pr_warn("krealloc5");
+	_kfree(p);
+	return n;
+}
+#else
+typedef s16 slobidx_t;
+struct slob_block {
+	slobidx_t units;
+};
+typedef struct slob_block slob_t;
+struct slob_page {
+	union {
+		struct {
+			unsigned long flags;	/* mandatory */
+			atomic_t _count;	/* mandatory */
+			slobidx_t units;	/* free units left in page */
+			unsigned long pad[2];
+			slob_t *free;		/* first free slob_t in page */
+			struct list_head list;	/* linked list of free pages */
+		};
+		struct page page;
+	};
+};
+
+#define SLOB_UNIT sizeof(slob_t)
+#define SLOB_UNITS(size) (((size) + SLOB_UNIT - 1)/SLOB_UNIT)
+/* can't use ksize for kmem_cache_alloc memory, only kmalloc */
+/*
+ * We use struct page fields to manage some slob allocation aspects,
+ * however to avoid the horrible mess in include/linux/mm_types.h, we'll
+ * just define our own struct page type variant here.
+ */
+#if 0
+size_t ksize(const void *block)
+{
+	struct slob_page *sp;
+
+//	BUG_ON(!block);
+	if (block == ZERO_SIZE_PTR)
+		return 0;
+
+	sp = slob_page(block);
+	if (is_slob_page(sp)) {
+		int align = max(ARCH_KMALLOC_MINALIGN, ARCH_SLAB_MINALIGN);
+		unsigned int *m = (unsigned int *)(block - align);
+		return SLOB_UNITS(*m) * SLOB_UNIT;
+	} else
+		return sp->page.private;
+}
+#endif
+
+static inline void *__do_krealloc(const void *p, size_t new_size,
+					   gfp_t flags)
+{
+	void *ret;
+	size_t ks = 0;
+
+#if 0 //fixme ksize
+	if (p)
+		ks = ksize(p);
+
+	if (ks >= new_size)
+		return (void *)p;
+#endif
+	ret = __kmalloc(new_size, flags);
+	if (ret && p)
+		memcpy(ret, p, ks);
+
+	return ret;
+}
+
+/**
+ * krealloc - reallocate memory. The contents will remain unchanged.
+ * @p: object to reallocate memory for.
+ * @new_size: how many bytes of memory are required.
+ * @flags: the type of memory to allocate.
+ *
+ * The contents of the object pointed to are preserved up to the
+ * lesser of the new and old sizes.  If @p is %NULL, krealloc()
+ * behaves exactly like kmalloc().  If @new_size is 0 and @p is not a
+ * %NULL pointer, the object pointed to is freed.
+ */
+void *krealloc(const void *p, size_t new_size, gfp_t flags)
+{
+	void *ret;
+
+	if (!new_size) {
+		kfree(p);
+		return ZERO_SIZE_PTR;
+	}
+
+	ret = __do_krealloc(p, new_size, flags);
+	if (ret && p != ret)
+		kfree(p);
+
+	return ret;
+}
+#endif
+
+//******************************************************************************
+//******************************************************************************
+/**
+ *	vzalloc - allocate virtually contiguous memory with zero fill
+ *	@size:	allocation size
+ *	Allocate enough pages to cover @size from the page level
+ *	allocator and map them into contiguous kernel virtual space.
+ *	The memory allocated is set to zero.
+ *
+ *	For tight control over page level allocator and protection flags
+ *	use __vmalloc() instead.
+ */
+void *vzalloc(unsigned long size)
+{
+	void *buf;
+	buf = vmalloc(size);
+	if (buf)
+		memset(buf, 0, size);
+	return buf;
+}
+//******************************************************************************
+//******************************************************************************

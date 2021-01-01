@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  Soundfont generic routines.
  *	It is intended that these should be used by any driver that is willing
@@ -5,28 +6,15 @@
  *
  *  Copyright (C) 1999 Steve Ratcliffe
  *  Copyright (c) 1999-2000 Takashi Iwai <tiwai@suse.de>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 /*
  * Deal with reading in of a soundfont.  Code follows the OSS way
  * of doing things so that the old sfxload utility can be used.
  * Everything may change when there is an alsa way of doing things.
  */
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/slab.h>
+#include <linux/export.h>
 #include <sound/core.h>
 #include <sound/soundfont.h>
 #include <sound/seq_oss_legacy.h>
@@ -248,7 +236,7 @@ open_patch(struct snd_sf_list *sflist, const char __user *data,
 	if (is_special_type(parm.type)) {
 		parm.type |= SNDRV_SFNT_PAT_SHARED;
 		sf = newsf(sflist, parm.type, NULL);
-	} else
+	} else 
 		sf = newsf(sflist, parm.type, parm.name);
 	if (sf == NULL) {
 		return -ENOMEM;
@@ -857,6 +845,8 @@ calc_gus_envelope_time(int rate, int start, int end)
 	int r, p, t;
 	r = (3 - ((rate >> 6) & 3)) * 3;
 	p = rate & 0x3f;
+	if (!p)
+		p = 1;
 	t = end - start;
 	if (t < 0) t = -t;
 	if (13 > r)
@@ -1022,6 +1012,7 @@ load_guspatch(struct snd_sf_list *sflist, const char __user *data,
 			 data, count);
 		if (rc < 0) {
 			sf_sample_delete(sflist, sf, smp);
+			kfree(zone);
 			return rc;
 		}
 		/* memory offset is updated after */
@@ -1067,7 +1058,7 @@ load_guspatch(struct snd_sf_list *sflist, const char __user *data,
 		release += calc_gus_envelope_time
 			(patch.env_rate[5], patch.env_offset[4],
 			 patch.env_offset[5]);
-		zone->v.parm.volatkhld =
+		zone->v.parm.volatkhld = 
 			(snd_sf_calc_parm_hold(hold) << 8) |
 			snd_sf_calc_parm_attack(attack);
 		zone->v.parm.voldcysus = (calc_gus_sustain(patch.env_offset[2]) << 8) |

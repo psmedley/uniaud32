@@ -6,6 +6,8 @@
 #include <asm/param.h>	/* for HZ */
 #include <asm/atomic.h>	
 
+#define MAX_SCHEDULE_TIMEOUT    INT_MAX
+
 #define TASK_RUNNING		0
 #define TASK_INTERRUPTIBLE	1
 #define TASK_UNINTERRUPTIBLE	2
@@ -29,10 +31,6 @@ struct task_struct {
 
 #include <asm\current.h>
 #include <linux\wait.h>
-
-void add_wait_queue(wait_queue_head_t *q, wait_queue_t * wait);
-void add_wait_queue_exclusive(wait_queue_head_t *q);
-void remove_wait_queue(wait_queue_head_t *q, wait_queue_t * wait);
 
 extern void __wake_up(wait_queue_head_t *q, unsigned int mode);
 extern void sleep_on(wait_queue_head_t *q);
@@ -86,5 +84,6 @@ static inline int signal_pending(struct task_struct *p)
 #define schedule_timeout_uninterruptible(x) \
 	set_current_state(TASK_UNINTERRUPTIBLE); \
 	schedule_timeout(x);
+#define TASK_NORMAL		(TASK_INTERRUPTIBLE | TASK_UNINTERRUPTIBLE)
 
 #endif /* _LINUX_SCHED_H */

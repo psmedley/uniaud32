@@ -403,25 +403,6 @@ extern inline int pm_send(struct pm_dev *dev, pm_request_t rqst, void *data)
 #define __user
 #endif
 
-/**
- * list_for_each_safe	-	iterate over a list safe against removal of list entry
- * @pos:	the &struct list_head to use as a loop counter.
- * @n:		another &struct list_head to use as temporary storage
- * @head:	the head for your list.
- */
-#define list_for_each_safe(pos, n, head) \
-	for (pos = (head)->next, n = pos->next; pos != (head); \
-		pos = n, n = pos->next)
-
-/**
- * list_del_init - deletes entry from list and reinitialize it.
- * @entry: the element to delete from the list.
- */
-static __inline__ void list_del_init(struct list_head *entry)
-{
-	__list_del(entry->prev, entry->next);
-	INIT_LIST_HEAD(entry); 
-}
 
 #define local_irq_save(flags) \
     { save_flags(flags); cli(); }
@@ -432,26 +413,5 @@ static __inline__ void list_del_init(struct list_head *entry)
 #define pci_set_consistent_dma_mask(p,x) pci_set_dma_mask(p,x)
 #endif
 
-struct completion {
-        unsigned int done;
-        wait_queue_head_t wait;
-};
-
-#if 0
-struct workqueue_struct {
-	spinlock_t lock;
-	const char *name;
-	struct list_head worklist;
-	int task_pid;
-	wait_queue_head_t more_work;
-	wait_queue_head_t work_done;
-	struct completion thread_exited;
-};
-
-struct workqueue_struct *create_workqueue(const char *name);
-int queue_work(struct workqueue_struct *wq, struct work_struct *work);
-
-void destroy_workqueue(struct workqueue_struct *wq);
-#endif
 
 #endif //__COMPAT_22__

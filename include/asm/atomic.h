@@ -45,6 +45,51 @@ extern int atomic_add_negative(int i, volatile atomic_t *v);
 /* These are x86-specific, used by some header files */
 #define atomic_clear_mask(mask, addr) 
 
+/**
+ * atomic_add_return - add integer to atomic variable
+ * @i: integer value to add
+ * @v: pointer of type atomic_t
+ *
+ * Atomically adds @i to @v and returns the result
+ */
+static inline int atomic_add_return(int i, atomic_t *v)
+{
+	//unsigned long flags;
+	int temp;
+
+	//raw_local_irq_save(flags); /* Don't trace it in an irqsoff handler */
+	temp = v->counter;
+	temp += i;
+	v->counter = temp;
+	//raw_local_irq_restore(flags);
+
+	return temp;
+}
+
+/**
+ * atomic_sub_return - subtract integer from atomic variable
+ * @i: integer value to subtract
+ * @v: pointer of type atomic_t
+ *
+ * Atomically subtracts @i from @v and returns the result
+ */
+static inline int atomic_sub_return(int i, atomic_t *v)
+{
+	//unsigned long flags;
+	int temp;
+
+	//raw_local_irq_save(flags); /* Don't trace it in an irqsoff handler */
+	temp = v->counter;
+	temp -= i;
+	v->counter = temp;
+	//raw_local_irq_restore(flags);
+
+	return temp;
+}
+
 #define atomic_set_mask(mask, addr) 
+#define atomic_sub_and_test(i, v)	(atomic_sub_return((i), (v)) == 0)
+#define atomic_inc_return(v)		atomic_add_return(1, (v))
+
 
 #endif

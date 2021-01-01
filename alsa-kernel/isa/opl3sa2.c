@@ -1,22 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  Driver for Yamaha OPL3-SA[2,3] soundcards
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
- *
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
  */
 
 #include <linux/init.h>
@@ -25,15 +10,14 @@
 #include <linux/interrupt.h>
 #include <linux/pm.h>
 #include <linux/pnp.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
+#include <linux/io.h>
 #include <sound/core.h>
 #include <sound/wss.h>
 #include <sound/mpu401.h>
 #include <sound/opl3.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-
-#include <asm/io.h>
 
 MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>");
 MODULE_DESCRIPTION("Yamaha OPL3SA2+");
@@ -46,10 +30,10 @@ MODULE_SUPPORTED_DEVICE("{{Yamaha,YMF719E-S},"
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
+static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
 #ifdef CONFIG_PNP
 #ifndef TARGET_OS2
-static int isapnp[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 1};
+static bool isapnp[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 1};
 #else
 static int isapnp[SNDRV_CARDS] = {1,1,1,1,1,1,1,1};
 #endif
@@ -74,21 +58,21 @@ MODULE_PARM_DESC(enable, "Enable OPL3-SA soundcard.");
 module_param_array(isapnp, bool, NULL, 0444);
 MODULE_PARM_DESC(isapnp, "PnP detection for specified soundcard.");
 #endif
-module_param_array(port, long, NULL, 0444);
+module_param_hw_array(port, long, ioport, NULL, 0444);
 MODULE_PARM_DESC(port, "Port # for OPL3-SA driver.");
-module_param_array(sb_port, long, NULL, 0444);
+module_param_hw_array(sb_port, long, ioport, NULL, 0444);
 MODULE_PARM_DESC(sb_port, "SB port # for OPL3-SA driver.");
-module_param_array(wss_port, long, NULL, 0444);
+module_param_hw_array(wss_port, long, ioport, NULL, 0444);
 MODULE_PARM_DESC(wss_port, "WSS port # for OPL3-SA driver.");
-module_param_array(fm_port, long, NULL, 0444);
+module_param_hw_array(fm_port, long, ioport, NULL, 0444);
 MODULE_PARM_DESC(fm_port, "FM port # for OPL3-SA driver.");
-module_param_array(midi_port, long, NULL, 0444);
+module_param_hw_array(midi_port, long, ioport, NULL, 0444);
 MODULE_PARM_DESC(midi_port, "MIDI port # for OPL3-SA driver.");
-module_param_array(irq, int, NULL, 0444);
+module_param_hw_array(irq, int, irq, NULL, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for OPL3-SA driver.");
-module_param_array(dma1, int, NULL, 0444);
+module_param_hw_array(dma1, int, dma, NULL, 0444);
 MODULE_PARM_DESC(dma1, "DMA1 # for OPL3-SA driver.");
-module_param_array(dma2, int, NULL, 0444);
+module_param_hw_array(dma2, int, dma, NULL, 0444);
 MODULE_PARM_DESC(dma2, "DMA2 # for OPL3-SA driver.");
 module_param_array(opl3sa3_ymode, int, NULL, 0444);
 MODULE_PARM_DESC(opl3sa3_ymode, "Speaker size selection for 3D Enhancement mode: Desktop/Large Notebook/Small Notebook/HiFi.");
@@ -146,7 +130,7 @@ struct snd_opl3sa2 {
 
 #ifdef CONFIG_PNP
 
-static struct pnp_device_id snd_opl3sa2_pnpbiosids[] = {
+static const struct pnp_device_id snd_opl3sa2_pnpbiosids[] = {
 	{ .id = "YMH0021" },
 	{ .id = "NMX2210" },	/* Gateway Solo 2500 */
 	{ .id = "" }		/* end */
@@ -154,7 +138,7 @@ static struct pnp_device_id snd_opl3sa2_pnpbiosids[] = {
 
 MODULE_DEVICE_TABLE(pnp, snd_opl3sa2_pnpbiosids);
 
-static struct pnp_card_device_id snd_opl3sa2_pnpids[] = {
+static const struct pnp_card_device_id snd_opl3sa2_pnpids[] = {
 	/* Yamaha YMF719E-S (Genius Sound Maker 3DX) */
 	{ .id = "YMH0020", .devs = { { "YMH0021" } } },
 	/* Yamaha OPL3-SA3 (integrated on Intel's Pentium II AL440LX motherboard) */
@@ -225,7 +209,7 @@ static void snd_opl3sa2_write(struct snd_opl3sa2 *chip, unsigned char reg, unsig
 	spin_unlock_irqrestore(&chip->reg_lock, flags);
 }
 
-static int __devinit snd_opl3sa2_detect(struct snd_card *card)
+static int snd_opl3sa2_detect(struct snd_card *card)
 {
 	struct snd_opl3sa2 *chip = card->private_data;
 	unsigned long port;
@@ -500,7 +484,7 @@ static void snd_opl3sa2_master_free(struct snd_kcontrol *kcontrol)
 	chip->master_volume = NULL;
 }
 
-static int __devinit snd_opl3sa2_mixer(struct snd_card *card)
+static int snd_opl3sa2_mixer(struct snd_card *card)
 {
 	struct snd_opl3sa2 *chip = card->private_data;
 	struct snd_ctl_elem_id id1, id2;
@@ -600,8 +584,8 @@ static int snd_opl3sa2_resume(struct snd_card *card)
 #endif /* CONFIG_PM */
 
 #ifdef CONFIG_PNP
-static int __devinit snd_opl3sa2_pnp(int dev, struct snd_opl3sa2 *chip,
-				     struct pnp_dev *pdev)
+static int snd_opl3sa2_pnp(int dev, struct snd_opl3sa2 *chip,
+			   struct pnp_dev *pdev)
 {
 	if (pnp_activate_dev(pdev) < 0) {
 		snd_printk(KERN_ERR "PnP configure failure (out of resources?)\n");
@@ -631,14 +615,15 @@ static void snd_opl3sa2_free(struct snd_card *card)
 	release_and_free_resource(chip->res_port);
 }
 
-static int snd_opl3sa2_card_new(int dev, struct snd_card **cardp)
+static int snd_opl3sa2_card_new(struct device *pdev, int dev,
+				struct snd_card **cardp)
 {
 	struct snd_card *card;
 	struct snd_opl3sa2 *chip;
 	int err;
 
-	err = snd_card_create(index[dev], id[dev], THIS_MODULE,
-			      sizeof(struct snd_opl3sa2), &card);
+	err = snd_card_new(pdev, index[dev], id[dev], THIS_MODULE,
+			   sizeof(struct snd_opl3sa2), &card);
 	if (err < 0)
 		return err;
 	strcpy(card->driver, "OPL3SA2");
@@ -651,7 +636,7 @@ static int snd_opl3sa2_card_new(int dev, struct snd_card **cardp)
 	return 0;
 }
 
-static int __devinit snd_opl3sa2_probe(struct snd_card *card, int dev)
+static int snd_opl3sa2_probe(struct snd_card *card, int dev)
 {
 	int xirq, xdma1, xdma2;
 	struct snd_opl3sa2 *chip;
@@ -671,7 +656,7 @@ static int __devinit snd_opl3sa2_probe(struct snd_card *card, int dev)
 	err = snd_opl3sa2_detect(card);
 	if (err < 0)
 		return err;
-	err = request_irq(xirq, snd_opl3sa2_interrupt, IRQF_DISABLED,
+	err = request_irq(xirq, snd_opl3sa2_interrupt, 0,
 			  "OPL3-SA2", card);
 	if (err) {
 		snd_printk(KERN_ERR PFX "can't grab IRQ %d\n", xirq);
@@ -687,7 +672,7 @@ static int __devinit snd_opl3sa2_probe(struct snd_card *card, int dev)
 		return err;
 	}
 	chip->wss = wss;
-	err = snd_wss_pcm(wss, 0, NULL);
+	err = snd_wss_pcm(wss, 0);
 	if (err < 0)
 		return err;
 	err = snd_wss_mixer(wss);
@@ -696,7 +681,7 @@ static int __devinit snd_opl3sa2_probe(struct snd_card *card, int dev)
 	err = snd_opl3sa2_mixer(card);
 	if (err < 0)
 		return err;
-	err = snd_wss_timer(wss, 0, NULL);
+	err = snd_wss_timer(wss, 0);
 	if (err < 0)
 		return err;
 	if (fm_port[dev] >= 0x340 && fm_port[dev] < 0x400) {
@@ -711,8 +696,9 @@ static int __devinit snd_opl3sa2_probe(struct snd_card *card, int dev)
 	}
 	if (midi_port[dev] >= 0x300 && midi_port[dev] < 0x340) {
 		if ((err = snd_mpu401_uart_new(card, 0, MPU401_HW_OPL3SA2,
-					       midi_port[dev], 0,
-					       xirq, 0, &chip->rmidi)) < 0)
+					       midi_port[dev],
+					       MPU401_INFO_IRQ_HOOK, -1,
+					       &chip->rmidi)) < 0)
 			return err;
 	}
 	sprintf(card->longname, "%s at 0x%lx, irq %d, dma %d",
@@ -724,8 +710,8 @@ static int __devinit snd_opl3sa2_probe(struct snd_card *card, int dev)
 }
 
 #ifdef CONFIG_PNP
-static int __devinit snd_opl3sa2_pnp_detect(struct pnp_dev *pdev,
-					    const struct pnp_device_id *id)
+static int snd_opl3sa2_pnp_detect(struct pnp_dev *pdev,
+				  const struct pnp_device_id *id)
 {
 	static int dev;
 	int err;
@@ -740,14 +726,13 @@ static int __devinit snd_opl3sa2_pnp_detect(struct pnp_dev *pdev,
 	if (dev >= SNDRV_CARDS)
 		return -ENODEV;
 
-	err = snd_opl3sa2_card_new(dev, &card);
+	err = snd_opl3sa2_card_new(&pdev->dev, dev, &card);
 	if (err < 0)
 		return err;
 	if ((err = snd_opl3sa2_pnp(dev, card->private_data, pdev)) < 0) {
 		snd_card_free(card);
 		return err;
 	}
-	snd_card_set_dev(card, &pdev->dev);
 	if ((err = snd_opl3sa2_probe(card, dev)) < 0) {
 		snd_card_free(card);
 		return err;
@@ -757,10 +742,9 @@ static int __devinit snd_opl3sa2_pnp_detect(struct pnp_dev *pdev,
 	return 0;
 }
 
-static void __devexit snd_opl3sa2_pnp_remove(struct pnp_dev * pdev)
+static void snd_opl3sa2_pnp_remove(struct pnp_dev *pdev)
 {
 	snd_card_free(pnp_get_drvdata(pdev));
-	pnp_set_drvdata(pdev, NULL);
 }
 
 #ifdef CONFIG_PM
@@ -778,15 +762,15 @@ static struct pnp_driver opl3sa2_pnp_driver = {
 	.name = "snd-opl3sa2-pnpbios",
 	.id_table = snd_opl3sa2_pnpbiosids,
 	.probe = snd_opl3sa2_pnp_detect,
-	.remove = __devexit_p(snd_opl3sa2_pnp_remove),
+	.remove = snd_opl3sa2_pnp_remove,
 #ifdef CONFIG_PM
 	.suspend = snd_opl3sa2_pnp_suspend,
 	.resume = snd_opl3sa2_pnp_resume,
 #endif
 };
 
-static int __devinit snd_opl3sa2_pnp_cdetect(struct pnp_card_link *pcard,
-					     const struct pnp_card_device_id *id)
+static int snd_opl3sa2_pnp_cdetect(struct pnp_card_link *pcard,
+				   const struct pnp_card_device_id *id)
 {
 	static int dev;
 	struct pnp_dev *pdev;
@@ -806,14 +790,13 @@ static int __devinit snd_opl3sa2_pnp_cdetect(struct pnp_card_link *pcard,
 	if (dev >= SNDRV_CARDS)
 		return -ENODEV;
 
-	err = snd_opl3sa2_card_new(dev, &card);
+	err = snd_opl3sa2_card_new(&pdev->dev, dev, &card);
 	if (err < 0)
 		return err;
 	if ((err = snd_opl3sa2_pnp(dev, card->private_data, pdev)) < 0) {
 		snd_card_free(card);
 		return err;
 	}
-	snd_card_set_dev(card, &pdev->dev);
 	if ((err = snd_opl3sa2_probe(card, dev)) < 0) {
 		snd_card_free(card);
 		return err;
@@ -823,7 +806,7 @@ static int __devinit snd_opl3sa2_pnp_cdetect(struct pnp_card_link *pcard,
 	return 0;
 }
 
-static void __devexit snd_opl3sa2_pnp_cremove(struct pnp_card_link * pcard)
+static void snd_opl3sa2_pnp_cremove(struct pnp_card_link *pcard)
 {
 	snd_card_free(pnp_get_card_drvdata(pcard));
 	pnp_set_card_drvdata(pcard, NULL);
@@ -845,7 +828,7 @@ static struct pnp_card_driver opl3sa2_pnpc_driver = {
 	.name = "snd-opl3sa2-cpnp",
 	.id_table = snd_opl3sa2_pnpids,
 	.probe = snd_opl3sa2_pnp_cdetect,
-	.remove = __devexit_p(snd_opl3sa2_pnp_cremove),
+	.remove = snd_opl3sa2_pnp_cremove,
 #ifdef CONFIG_PM
 	.suspend = snd_opl3sa2_pnp_csuspend,
 	.resume = snd_opl3sa2_pnp_cresume,
@@ -853,8 +836,8 @@ static struct pnp_card_driver opl3sa2_pnpc_driver = {
 };
 #endif /* CONFIG_PNP */
 
-static int __devinit snd_opl3sa2_isa_match(struct device *pdev,
-					   unsigned int dev)
+static int snd_opl3sa2_isa_match(struct device *pdev,
+				 unsigned int dev)
 {
 	if (!enable[dev])
 		return 0;
@@ -881,16 +864,15 @@ static int __devinit snd_opl3sa2_isa_match(struct device *pdev,
 	return 1;
 }
 
-static int __devinit snd_opl3sa2_isa_probe(struct device *pdev,
-					   unsigned int dev)
+static int snd_opl3sa2_isa_probe(struct device *pdev,
+				 unsigned int dev)
 {
 	struct snd_card *card;
 	int err;
 
-	err = snd_opl3sa2_card_new(dev, &card);
+	err = snd_opl3sa2_card_new(pdev, dev, &card);
 	if (err < 0)
 		return err;
-	snd_card_set_dev(card, pdev);
 	if ((err = snd_opl3sa2_probe(card, dev)) < 0) {
 		snd_card_free(card);
 		return err;
@@ -899,11 +881,10 @@ static int __devinit snd_opl3sa2_isa_probe(struct device *pdev,
 	return 0;
 }
 
-static int __devexit snd_opl3sa2_isa_remove(struct device *devptr,
-					    unsigned int dev)
+static int snd_opl3sa2_isa_remove(struct device *devptr,
+				  unsigned int dev)
 {
 	snd_card_free(dev_get_drvdata(devptr));
-	dev_set_drvdata(devptr, NULL);
 	return 0;
 }
 
@@ -925,7 +906,7 @@ static int snd_opl3sa2_isa_resume(struct device *dev, unsigned int n)
 static struct isa_driver snd_opl3sa2_isa_driver = {
 	.match		= snd_opl3sa2_isa_match,
 	.probe		= snd_opl3sa2_isa_probe,
-	.remove		= __devexit_p(snd_opl3sa2_isa_remove),
+	.remove		= snd_opl3sa2_isa_remove,
 #ifdef CONFIG_PM
 	.suspend	= snd_opl3sa2_isa_suspend,
 	.resume		= snd_opl3sa2_isa_resume,

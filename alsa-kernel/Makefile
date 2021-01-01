@@ -20,6 +20,10 @@ subdirs: .SYMBOLIC
   @cd isa
   @wmake $(WMAKEOPTS)
   @cd ..
+  @echo BUILDING hda
+  @cd hda
+  @wmake $(WMAKEOPTS)
+  @cd ..
   @echo BUILDING pci
   @cd pci
   @wmake $(WMAKEOPTS)
@@ -40,6 +44,10 @@ clean: .SYMBOLIC
   @cd ..
   @echo CLEANING isa
   @cd isa
+  @wmake $(WMAKEOPTS) clean
+  @cd ..
+  @echo CLEANING hda
+  @cd hda
   @wmake $(WMAKEOPTS) clean
   @cd ..
   @echo CLEANING pci

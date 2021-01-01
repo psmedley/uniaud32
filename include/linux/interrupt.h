@@ -150,4 +150,5 @@ typedef irqreturn_t (*snd_irq_handler_t)(int, void *);
 int request_irq(unsigned int, irq_handler_t handler,
 		    unsigned long, const char *, void *);
 
+static inline void devm_free_irq(struct device *dev, unsigned int irq, void *dev_id) {}
 #endif

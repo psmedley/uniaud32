@@ -83,7 +83,6 @@ struct proc_dir_entry {
 	    && (inode->i_ino < PROC_OPENPROM_FIRST + PROC_NOPENPROM))
 
 #ifdef CONFIG_PROC_FS
-
 extern struct proc_dir_entry proc_root;
 extern struct proc_dir_entry *proc_root_fs;
 extern struct proc_dir_entry *proc_net;
@@ -207,7 +206,7 @@ struct proc_dir_entry *create_proc_info_entry(const char *name,
 	mode_t mode, struct proc_dir_entry *base, get_info_t *get_info);
 struct proc_dir_entry *proc_net_create(const char *name);
 void proc_net_remove(const char *name);
-
+static inline void proc_remove(struct proc_dir_entry *de) {}
 #else
 
 extern inline int proc_register(struct proc_dir_entry *a, struct proc_dir_entry *b) { return 0; }
@@ -232,12 +231,13 @@ struct proc_dir_entry *create_proc_info_entry(const char *name,
 void proc_net_remove(const char *name);
 
 extern struct proc_dir_entry proc_root;
-
+static inline void proc_remove(struct proc_dir_entry *de) {}
+static inline void *PDE_DATA(const struct inode *inode) {return NULL;}
 #endif /* CONFIG_PROC_FS */
 
 static inline struct proc_dir_entry *PDE(const struct inode *inode)
 {
 	return (struct proc_dir_entry *) inode->u.generic_ip;
 }
-
+static inline void *PDE_DATA(const struct inode *inode) {return NULL;}
 #endif /* _LINUX_PROC_FS_H */

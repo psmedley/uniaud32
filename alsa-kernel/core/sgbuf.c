@@ -1,32 +1,23 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Scatter-Gather buffer
  *
  *  Copyright (c) by Takashi Iwai <tiwai@suse.de>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
  */
+
 #ifdef TARGET_OS2
 #include <sound/core.h>
-#endif
+void snd_free_dev_pages(struct device *dev, size_t size, void *ptr, dma_addr_t dma);
+void *snd_malloc_dev_pages(struct device *dev, size_t size, dma_addr_t *dma);
 #include <sound/config.h>
+#endif
 #include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
+#include <linux/export.h>
+#include <asm/pgtable.h>
 #include <sound/memalloc.h>
-#include <proto.h>
+
 
 #ifdef CONFIG_SND_DMA_SGBUF
 
@@ -44,11 +35,12 @@ int snd_free_sgbuf_pages(struct snd_dma_buffer *dmab)
 	if (! sgbuf)
 		return -EINVAL;
 
-	if (dmab->area)
-		vunmap(dmab->area);
+	vunmap(dmab->area);
 	dmab->area = NULL;
 
 	tmpb.dev.type = SNDRV_DMA_TYPE_DEV;
+	if (dmab->dev.type == SNDRV_DMA_TYPE_DEV_UC_SG)
+		tmpb.dev.type = SNDRV_DMA_TYPE_DEV_UC;
 	tmpb.dev.dev = sgbuf->dev;
 	for (i = 0; i < sgbuf->pages; i++) {
 		if (!(sgbuf->table[i].addr & ~PAGE_MASK))
@@ -109,7 +101,7 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 {
 	struct snd_sg_buf *sgbuf;
 	unsigned int pages;
-//	unsigned int i, chunk, maxpages;
+//	unsigned int i, pages, chunk, maxpages;
 //	struct snd_dma_buffer tmpb;
 #ifdef TARGET_OS2
 	void *ptr;
@@ -117,7 +109,10 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 #endif
 	struct snd_sg_page *table;
 	struct page **pgtable;
-
+	int type = SNDRV_DMA_TYPE_DEV;
+#ifndef TARGET_OS2
+	pgprot_t prot = PAGE_KERNEL;
+#endif
 	dprintf(("snd_malloc_sgbuf_pages. size %x", size));
 
 	dmab->area = NULL;
@@ -125,6 +120,12 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 	dmab->private_data = sgbuf = kzalloc(sizeof(*sgbuf), GFP_KERNEL);
 	if (! sgbuf)
 		return NULL;
+	if (dmab->dev.type == SNDRV_DMA_TYPE_DEV_UC_SG) {
+		type = SNDRV_DMA_TYPE_DEV_UC;
+#ifdef pgprot_noncached
+		prot = pgprot_noncached(PAGE_KERNEL);
+#endif
+	}
 	sgbuf->dev = device;
 	pages = snd_sgbuf_aligned_pages(size);
 	sgbuf->tblsize = sgbuf_align_table(pages);
@@ -146,10 +147,10 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 		if (chunk > maxpages)
 			chunk = maxpages;
 		chunk <<= PAGE_SHIFT;
-		if (snd_dma_alloc_pages_fallback(SNDRV_DMA_TYPE_DEV, device,
+		if (snd_dma_alloc_pages_fallback(type, device,
 						 chunk, &tmpb) < 0) {
 			if (!sgbuf->pages)
-				return NULL;
+				goto _failed;
 			if (!res_size)
 				goto _failed;
 			size = sgbuf->pages * PAGE_SIZE;
@@ -173,7 +174,7 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 	}
 
 	sgbuf->size = size;
-	dmab->area = vmap(sgbuf->page_table, sgbuf->pages, VM_MAP, PAGE_KERNEL);
+	dmab->area = vmap(sgbuf->page_table, sgbuf->pages, VM_MAP, prot);
 	if (! dmab->area)
 		goto _failed;
 	if (res_size)
@@ -207,3 +208,29 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 	return NULL;
 }
 #endif
+
+/*
+ * compute the max chunk size with continuous pages on sg-buffer
+ */
+unsigned int snd_sgbuf_get_chunk_size(struct snd_dma_buffer *dmab,
+				      unsigned int ofs, unsigned int size)
+{
+	struct snd_sg_buf *sg = dmab->private_data;
+	unsigned int start, end, pg;
+
+	start = ofs >> PAGE_SHIFT;
+	end = (ofs + size - 1) >> PAGE_SHIFT;
+	/* check page continuity */
+	pg = sg->table[start].addr >> PAGE_SHIFT;
+	for (;;) {
+		start++;
+		if (start > end)
+			break;
+		pg++;
+		if ((sg->table[start].addr >> PAGE_SHIFT) != pg)
+			return (start << PAGE_SHIFT) - ofs;
+	}
+	/* ok, all on continuous pages */
+	return size;
+}
+EXPORT_SYMBOL(snd_sgbuf_get_chunk_size);

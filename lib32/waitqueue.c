@@ -37,19 +37,19 @@ void init_waitqueue_head(wait_queue_head_t *q)
 }
 //******************************************************************************
 //******************************************************************************
-void add_wait_queue(wait_queue_head_t *q, wait_queue_t * wait)
+void add_wait_queue(struct wait_queue_head *q, struct wait_queue_entry * wait)
 {
 //    dprintf3(("WARNING: add_wait_queue STUB"));
 }
 //******************************************************************************
 //******************************************************************************
-void add_wait_queue_exclusive(wait_queue_head_t *q)
+void add_wait_queue_exclusive(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry)
 {
 //    dprintf3(("WARNING: add_wait_queue_exclusive STUB"));
 }
 //******************************************************************************
 //******************************************************************************
-void remove_wait_queue(wait_queue_head_t *q, wait_queue_t * wait)
+void remove_wait_queue(struct wait_queue_head *q, struct wait_queue_entry * wait)
 {
 //    dprintf(("WARNING: remove_wait_queue STUB"));
 }
@@ -74,7 +74,7 @@ void __wake_up(wait_queue_head_t *q, unsigned int mode)
 }
 //******************************************************************************
 //******************************************************************************
-void init_waitqueue_entry(wait_queue_t *q, struct task_struct *p)
+void init_waitqueue_entry(struct wait_queue_entry *wq_entry, struct task_struct *p)
 {
 //    dprintf(("WARNING: init_waitqueue_entry STUB"));
 }
@@ -87,3 +87,30 @@ int waitqueue_active(wait_queue_head_t *q)
 }
 //******************************************************************************
 //******************************************************************************
+/**
+ * complete: - signals a single thread waiting on this completion
+ * @x:  holds the state of this particular completion
+ *
+ * This will wake up a single thread waiting on this completion. Threads will be
+ * awakened in the same order in which they were queued.
+ *
+ * See also complete_all(), wait_for_completion() and related routines.
+ *
+ * It may be assumed that this function implies a write memory barrier before
+ * changing the task state if and only if any tasks are woken up.
+ */
+void complete(struct completion *x)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&x->wait.lock, flags);
+	x->done++;
+	__wake_up_locked(&x->wait, TASK_NORMAL, 1);
+	spin_unlock_irqrestore(&x->wait.lock, flags);
+}
+//******************************************************************************
+//******************************************************************************
+void __wake_up_locked(wait_queue_head_t *q, unsigned int mode, int nr)
+{
+    dprintf3(("WARNING: __wake_up_locked STUB"));
+}

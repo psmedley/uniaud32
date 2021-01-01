@@ -101,8 +101,8 @@ extern int param_set_ushort(const char *val, struct kernel_param *kp);
 extern int param_get_ushort(char *buffer, struct kernel_param *kp);
 #define param_check_ushort(name, p) __param_check(name, p, unsigned short)
 
-extern int param_set_int(const char *val, struct kernel_param *kp);
-extern int param_get_int(char *buffer, struct kernel_param *kp);
+static inline int param_set_int(const char *val, const struct kernel_param *kp) {return 0;};
+static inline int param_get_int(char *buffer, const struct kernel_param *kp) {return 0;};
 #define param_check_int(name, p) __param_check(name, p, int)
 
 extern int param_set_uint(const char *val, struct kernel_param *kp);
@@ -164,4 +164,15 @@ extern int module_param_sysfs_setup(struct module *mod,
 
 extern void module_param_sysfs_remove(struct module *mod);
 
+struct kernel_param_ops {
+	/* Returns 0, or -errno.  arg is in kp->arg. */
+	int (*set)(const char *val, const struct kernel_param *kp);
+	/* Returns length written or -errno.  Buffer is 4k (ie. be short!) */
+	int (*get)(char *buffer, const struct kernel_param *kp);
+	/* Optional function to free kp->arg when module unloaded. */
+	void (*free)(void *arg);
+};
+
+#define module_param_hw_array(name, type, hwtype, nump, perm)
+#define module_param_hw(name, type, hwtype, perm)		
 #endif /* _LINUX_MODULE_PARAMS_H */

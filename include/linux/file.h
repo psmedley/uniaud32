@@ -5,6 +5,11 @@
 #ifndef __LINUX_FILE_H
 #define __LINUX_FILE_H
 
+struct fd {
+	struct file *file;
+	int need_put;
+};
+
 extern void _fput(struct file *);
 
 /*

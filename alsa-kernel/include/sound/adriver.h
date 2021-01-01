@@ -1067,16 +1067,6 @@ void *snd_compat_kzalloc(size_t n, gfp_t gfp_flags);
 #endif
 #endif
 
-/* pm_message_t type */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11)
-#include <linux/pm.h>
-#ifndef PMSG_FREEZE
-typedef u32 __bitwise pm_message_t;
-#define PMSG_FREEZE	3
-#define PMSG_SUSPEND	3
-#define PMSG_ON		0
-#endif
-#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11)
 #ifdef CONFIG_PCI

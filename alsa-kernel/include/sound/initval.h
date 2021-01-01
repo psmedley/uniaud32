@@ -1,24 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 #ifndef __SOUND_INITVAL_H
 #define __SOUND_INITVAL_H
 
 /*
  *  Init values for soundcard modules
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
  */
 
 #ifndef MODULE_GENERIC_STRING
@@ -119,6 +105,20 @@ static const char __module_generic_string_##name [] \
 #define SNDRV_PORT12_DESC	SNDRV_ENABLED ",allows:{{0,0x3fff}},base:16"
 #define SNDRV_PORT_DESC		SNDRV_ENABLED ",allows:{{0,0xffff}},base:16"
 
+#ifdef SNDRV_LEGACY_FIND_FREE_IOPORT
+static long snd_legacy_find_free_ioport(long *port_table, long size)
+{
+	while (*port_table != -1) {
+		if (request_region(*port_table, size, "ALSA test")) {
+			release_region(*port_table, size);
+			return *port_table;
+		}
+		port_table++;
+	}
+	return -1;
+}
+#endif
+
 #ifdef SNDRV_LEGACY_FIND_FREE_IRQ
 #include <linux/interrupt.h>
 
@@ -131,7 +131,7 @@ static int snd_legacy_find_free_irq(int *irq_table)
 {
 	while (*irq_table != -1) {
 		if (!request_irq(*irq_table, snd_legacy_empty_irq_handler,
-				 IRQF_DISABLED | IRQF_PROBE_SHARED, "ALSA Test IRQ",
+				 IRQF_PROBE_SHARED, "ALSA Test IRQ",
 				 (void *) irq_table)) {
 			free_irq(*irq_table, (void *) irq_table);
 			return *irq_table;

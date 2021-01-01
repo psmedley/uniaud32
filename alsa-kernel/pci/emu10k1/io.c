@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *                   Creative Labs, Inc.
@@ -8,27 +9,13 @@
  *
  *  TODO:
  *    --
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
  */
 
 #include <linux/time.h>
 #include <sound/core.h>
 #include <sound/emu10k1.h>
 #include <linux/delay.h>
+#include <linux/export.h>
 #include "p17v.h"
 
 unsigned int snd_emu10k1_ptr_read(struct snd_emu10k1 * emu, unsigned int reg, unsigned int chn)
@@ -70,11 +57,8 @@ void snd_emu10k1_ptr_write(struct snd_emu10k1 *emu, unsigned int reg, unsigned i
 	unsigned long flags;
 	unsigned int mask;
 
-	if (!emu) {
-		snd_printk(KERN_ERR "ptr_write: emu is null!\n");
-		dump_stack();
+	if (snd_BUG_ON(!emu))
 		return;
-	}
 	mask = emu->audigy ? A_PTR_ADDRESS_MASK : PTR_ADDRESS_MASK;
 	regptr = ((reg << 16) & mask) | (chn & PTR_CHANNELNUM_MASK);
 
@@ -101,13 +85,13 @@ void snd_emu10k1_ptr_write(struct snd_emu10k1 *emu, unsigned int reg, unsigned i
 
 EXPORT_SYMBOL(snd_emu10k1_ptr_write);
 
-unsigned int snd_emu10k1_ptr20_read(struct snd_emu10k1 * emu,
-					  unsigned int reg,
+unsigned int snd_emu10k1_ptr20_read(struct snd_emu10k1 * emu, 
+					  unsigned int reg, 
 					  unsigned int chn)
 {
 	unsigned long flags;
 	unsigned int regptr, val;
-
+  
 	regptr = (reg << 16) | chn;
 
 	spin_lock_irqsave(&emu->emu_lock, flags);
@@ -117,9 +101,9 @@ unsigned int snd_emu10k1_ptr20_read(struct snd_emu10k1 * emu,
 	return val;
 }
 
-void snd_emu10k1_ptr20_write(struct snd_emu10k1 *emu,
-				   unsigned int reg,
-				   unsigned int chn,
+void snd_emu10k1_ptr20_write(struct snd_emu10k1 *emu, 
+				   unsigned int reg, 
+				   unsigned int chn, 
 				   unsigned int data)
 {
 	unsigned int regptr;
@@ -198,7 +182,7 @@ int snd_emu10k1_i2c_write(struct snd_emu10k1 *emu,
 	int err = 0;
 
 	if ((reg > 0x7f) || (value > 0x1ff)) {
-		snd_printk(KERN_ERR "i2c_write: invalid values.\n");
+		dev_err(emu->card->dev, "i2c_write: invalid values.\n");
 		return -EINVAL;
 	}
 
@@ -226,7 +210,7 @@ int snd_emu10k1_i2c_write(struct snd_emu10k1 *emu,
 				break;
 
 			if (timeout > 1000) {
-                		snd_printk(KERN_WARNING
+				dev_warn(emu->card->dev,
 					   "emu10k1:I2C:timeout status=0x%x\n",
 					   status);
 				break;
@@ -238,13 +222,13 @@ int snd_emu10k1_i2c_write(struct snd_emu10k1 *emu,
 	}
 
 	if (retry == 10) {
-		snd_printk(KERN_ERR "Writing to ADC failed!\n");
-		snd_printk(KERN_ERR "status=0x%x, reg=%d, value=%d\n",
+		dev_err(emu->card->dev, "Writing to ADC failed!\n");
+		dev_err(emu->card->dev, "status=0x%x, reg=%d, value=%d\n",
 			status, reg, value);
 		/* dump_stack(); */
 		err = -EINVAL;
 	}
-
+    
 	spin_unlock(&emu->i2c_lock);
 	return err;
 }

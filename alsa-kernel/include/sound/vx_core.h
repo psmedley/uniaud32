@@ -1,23 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * Driver for Digigram VX soundcards
  *
  * Hardware core part
  *
  * Copyright (c) 2002 by Takashi Iwai <tiwai@suse.de>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
 #ifndef __SOUND_VX_COMMON_H
@@ -26,12 +13,6 @@
 #include <sound/pcm.h>
 #include <sound/hwdep.h>
 #include <linux/interrupt.h>
-
-#if defined(CONFIG_FW_LOADER) || defined(CONFIG_FW_LOADER_MODULE)
-#if !defined(CONFIG_USE_VXLOADER) && !defined(CONFIG_SND_VX_LIB) /* built-in kernel */
-#define SND_VX_FW_LOADER	/* use the standard firmware loader */
-#endif
-#endif
 
 struct firmware;
 struct device;
@@ -86,8 +67,6 @@ struct vx_pipe {
 
 	unsigned int references;     /* an output pipe may be used for monitoring and/or playback */
 	struct vx_pipe *monitoring_pipe;  /* pointer to the monitoring pipe (capture pipe only)*/
-
-	struct tasklet_struct start_tq;
 };
 
 struct vx_core;
@@ -171,9 +150,7 @@ struct vx_core {
 	struct snd_vx_hardware *hw;
 	struct snd_vx_ops *ops;
 
-	spinlock_t lock;
-	spinlock_t irq_lock;
-	struct tasklet_struct tq;
+	struct mutex lock;
 
 	unsigned int chip_status;
 	unsigned int pcm_running;
@@ -229,6 +206,7 @@ void snd_vx_free_firmware(struct vx_core *chip);
  * interrupt handler; exported for pcmcia
  */
 irqreturn_t snd_vx_irq_handler(int irq, void *dev);
+irqreturn_t snd_vx_threaded_irq_handler(int irq, void *dev);
 
 /*
  * lowlevel functions
@@ -341,7 +319,7 @@ int vx_change_frequency(struct vx_core *chip);
 /*
  * PM
  */
-int snd_vx_suspend(struct vx_core *card, pm_message_t state);
+int snd_vx_suspend(struct vx_core *card);
 int snd_vx_resume(struct vx_core *card);
 
 /*

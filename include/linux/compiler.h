@@ -113,5 +113,13 @@
 #ifndef noinline
 #define noinline
 #endif
+#define WARN(condition, format,...) { }
 
+#define __must_check
+#define __maybe_unused
+#define __acquires(x)
+#define __releases(x)
+#define BUG() do {} while (1)
+#define WRITE_ONCE(x, val) x=(val)
+#define __force
 #endif /* __LINUX_COMPILER_H */

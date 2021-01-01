@@ -46,7 +46,7 @@
 int GetMaxChannels(ULONG deviceid, int type);
 
 struct file_operations oss_devices[OSS32_MAX_DEVICES] = {0};
-struct file_operations *alsa_fops = NULL;
+const struct file_operations *alsa_fops = NULL;
 int per_bytes = 0;
 int prev_size = 0;
 int pcm_device = 0;
@@ -79,7 +79,7 @@ static int OSSToALSADataType[OSS32_PCM_MAX_FORMATS] = {
 
 //******************************************************************************
 //******************************************************************************
-int register_chrdev(unsigned int version, const char *name, struct file_operations *fsop)
+int register_chrdev(unsigned int version, const char *name, const struct file_operations *fsop)
 {
    if(!strcmp(name, "alsa")) {
 	   alsa_fops = fsop;
@@ -488,7 +488,7 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 {
 	soundhandle *pHandle;
 	int 		 ret,i;
-
+pr_warn("OSS32_WaveOpen");
 	if (pStreamId)
 		*pStreamId = 0;
 	else
@@ -523,10 +523,12 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 
 	switch(streamtype) {
 	case OSS32_STREAM_WAVEOUT:
+pr_warn("OSS32_WaveOpen - OSS32_STREAM_WAVEOUT");
 		pHandle->file.f_mode  = FMODE_WRITE;
 		pHandle->inode.i_rdev = SNDRV_MINOR(deviceid, SNDRV_MINOR_PCM_PLAYBACK) + pcm;
 		break;
 	case OSS32_STREAM_WAVEIN:
+pr_warn("OSS32_WaveOpen - OSS32_STREAM_WAVEIN");
 		pHandle->file.f_mode  = FMODE_READ;
 		pHandle->inode.i_rdev = SNDRV_MINOR(deviceid, SNDRV_MINOR_PCM_CAPTURE) + pcm;
 		break;
@@ -538,6 +540,7 @@ OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, 
 	}
 
 	ret = alsa_fops->open(&pHandle->inode, &pHandle->file);
+pr_warn("OSS32_WaveOpen. ret: %i\n", ret);
 	//dprintf(("OSS32_WaveOpen. ret: %i\n", ret));
 	/* check if PCM already opened (stupid uniaud16.sys doesnt closes it) */
 	if (ret == -16)
@@ -617,14 +620,18 @@ OSSRET OSS32_WaveClose(OSSSTREAMID streamid)
 		if (opened_handles[i].handle == pHandle)
 		{
 			dprintf(("Found phandle for closing: %x reuse flag: %i\n", pHandle, opened_handles[i].reuse));
+#if 0 //2020-12-27
 			if (!opened_handles[i].reuse)
 			{
+pr_warn("here");
 				ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
 				opened_handles[i].handle = 0;
 				kfree(pHandle);   //free handle data
 				OSS32_CloseUNI16(); /* say to UNIAUD16 that we closing now */
 			} else
+#endif
 			{
+pr_warn("here2");
 				/* prepare for reuse */
 				pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_RESET, 0);
 				pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);

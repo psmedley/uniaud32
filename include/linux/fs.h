@@ -43,9 +43,6 @@
 #define MAY_WRITE 2
 #define MAY_READ 4
 
-#define FMODE_READ 1
-#define FMODE_WRITE 2
-
 #define READ 0
 #define WRITE 1
 #define READA 2		/* read-ahead  - don't block if no resources */
@@ -166,7 +163,8 @@ struct fown_struct {
 struct file {
 	 void *	f_list;
 	struct dentry		*f_dentry;
-	struct file_operations	*f_op;
+	const struct file_operations	*f_op;
+	spinlock_t		f_lock;
 	atomic_t		f_count;
 	unsigned int 		f_flags;
 	mode_t			f_mode;
@@ -236,6 +234,8 @@ struct file_operations {
 	loff_t (*llseek) (struct file *, loff_t, int);
 	int (*read) (struct file *, char *, size_t, loff_t *);
 	int (*write) (struct file *, const char *, size_t, loff_t *);
+	ssize_t (*read_iter) (struct kiocb *, struct iov_iter *);
+	ssize_t (*write_iter) (struct kiocb *, struct iov_iter *);
 	int (*readdir) (struct file *, void *, filldir_t);
 	unsigned int (*poll) (struct file *, struct poll_table_struct *);
 	int (*ioctl) (struct inode *, struct file *, unsigned int, unsigned long);
@@ -258,14 +258,28 @@ struct file_operations {
 #include <linux/poll.h>
 
 
-extern int register_chrdev(unsigned int, const char *, struct file_operations *);
+extern int register_chrdev(unsigned int, const char *, const struct file_operations *);
 extern int unregister_chrdev(unsigned int, const char *);
 
 extern int fasync_helper(int, struct file *, int, struct fasync_struct **);
-extern void kill_fasync(struct fasync_struct *, int, int);
+extern void kill_fasync(struct fasync_struct **, int, int);
 
-#define fops_get(x) (x)
-#define fops_put(x) do { ; } while (0)
+
+/* Alas, no aliases. Too much hassle with bringing module.h everywhere */
+#define fops_get(fops) \
+	(((fops) && try_module_get((fops)->owner) ? (fops) : NULL))
+#define fops_put(fops) \
+	do { if (fops) module_put((fops)->owner); } while(0)
+/*
+ * This one is to be used *ONLY* from ->open() instances.
+ * fops must be non-NULL, pinned down *and* module dependencies
+ * should be sufficient to pin the caller down as well.
+ */
+#define replace_fops(f, fops) \
+	do {	\
+		struct file *__file = (f); \
+		fops_put(__file->f_op); \
+	} while(0)
 
 #define minor(a) MINOR(a)
 #define major(a) MAJOR(a)
@@ -274,5 +288,50 @@ extern void kill_fasync(struct fasync_struct *, int, int);
 
 #define no_llseek	NULL
 #define nonseekable_open(i,f) 0
+
+struct kiocb {
+	struct file		*ki_filp;
+	loff_t			ki_pos;
+	void (*ki_complete)(struct kiocb *iocb, long ret, long ret2);
+	void			*private;
+	int			ki_flags;
+};
+
+extern int stream_open(struct inode * inode, struct file * filp);
+
+/*
+ * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+ * to O_WRONLY and O_RDWR via the strange trick in do_dentry_open()
+ */
+
+/* file is open for reading */
+#define FMODE_READ		(( fmode_t)0x1)
+/* file is open for writing */
+#define FMODE_WRITE		(( fmode_t)0x2)
+/* file is seekable */
+#define FMODE_LSEEK		(( fmode_t)0x4)
+/* file can be accessed using pread */
+#define FMODE_PREAD		(( fmode_t)0x8)
+/* file can be accessed using pwrite */
+#define FMODE_PWRITE		(( fmode_t)0x10)
+/* File is opened for execution with sys_execve / sys_uselib */
+#define FMODE_EXEC		(( fmode_t)0x20)
+/* File is opened with O_NDELAY (only set for block devices) */
+#define FMODE_NDELAY		(( fmode_t)0x40)
+/* File is opened with O_EXCL (only set for block devices) */
+#define FMODE_EXCL		(( fmode_t)0x80)
+/* File is opened using open(.., 3, ..) and is writeable only for ioctls
+   (specialy hack for floppy.c) */
+#define FMODE_WRITE_IOCTL	(( fmode_t)0x100)
+/* 32bit hashes as llseek() offset (for directories) */
+#define FMODE_32BITHASH         (( fmode_t)0x200)
+/* 64bit hashes as llseek() offset (for directories) */
+#define FMODE_64BITHASH         (( fmode_t)0x400)
+
+/* File needs atomic accesses to f_pos */
+#define FMODE_ATOMIC_POS	(( fmode_t)0x8000)
+
+/* File is stream-like */
+#define FMODE_STREAM		(( fmode_t)0x200000)
 
 #endif /* _LINUX_FS_H */

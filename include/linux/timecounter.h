@@ -1,0 +1,4 @@
+#ifndef _LINUX_TIMECOUNTER_H
+#define _LINUX_TIMECOUNTER_H
+
+#endif /* _LINUX_TIMECOUNTER_H */

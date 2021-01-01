@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  Midi synth routines for the Emu8k/Emu10k1
  *
@@ -5,23 +6,9 @@
  *  Copyright (c) 1999-2000 Takashi Iwai <tiwai@suse.de>
  *
  *  Contains code based on awe_wave.c by Takashi Iwai
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
  */
 
+#include <linux/export.h>
 #include "emux_voice.h"
 #include <sound/asoundef.h>
 
@@ -185,8 +172,7 @@ snd_emux_note_off(void *p, int note, int vel, struct snd_midi_channel *chan)
 				 */
 				vp->state = SNDRV_EMUX_ST_PENDING;
 				if (! emu->timer_active) {
-					emu->tlist.expires = jiffies + 1;
-					add_timer(&emu->tlist);
+					mod_timer(&emu->tlist, jiffies + 1);
 					emu->timer_active = 1;
 				}
 			} else
@@ -197,14 +183,17 @@ snd_emux_note_off(void *p, int note, int vel, struct snd_midi_channel *chan)
 	spin_unlock_irqrestore(&emu->voice_lock, flags);
 }
 
+#define from_timer(var, callback_timer, timer_fieldname) \
+	container_of(callback_timer, struct snd_emux, timer_fieldname)
+
 /*
  * timer callback
  *
  * release the pending note-offs
  */
-void snd_emux_timer_callback(unsigned long data)
+void snd_emux_timer_callback(struct timer_list *t)
 {
-	struct snd_emux *emu = (struct snd_emux *) data;
+	struct snd_emux *emu = from_timer(emu, t, tlist);
 	struct snd_emux_voice *vp;
 	unsigned long flags;
 	int ch, do_again = 0;
@@ -222,8 +211,7 @@ void snd_emux_timer_callback(unsigned long data)
 		}
 	}
 	if (do_again) {
-		emu->tlist.expires = jiffies + 1;
-		add_timer(&emu->tlist);
+		mod_timer(&emu->tlist, jiffies + 1);
 		emu->timer_active = 1;
 	} else
 		emu->timer_active = 0;

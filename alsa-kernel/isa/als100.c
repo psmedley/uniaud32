@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 /*
     card-als100.c - driver for Avance Logic ALS100 based soundcards.
@@ -7,28 +8,15 @@
     Thanks to Pierfrancesco 'qM2' Passerini.
 
     Generalised for soundcards based on DT-0196 and ALS-007 chips
-    by Jonathan Woithe <jwoithe@physics.adelaide.edu.au>: June 2002.
+    by Jonathan Woithe <jwoithe@just42.net>: June 2002.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 */
 
 #include <linux/init.h>
 #include <linux/wait.h>
 #include <linux/time.h>
 #include <linux/pnp.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/initval.h>
 #include <sound/mpu401.h>
@@ -54,7 +42,7 @@ MODULE_LICENSE("GPL");
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
 static long port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
 static long mpu_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
 static long fm_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
@@ -79,7 +67,7 @@ struct snd_card_als100 {
 	struct snd_sb *chip;
 };
 
-static struct pnp_card_device_id snd_als100_pnpids[] = {
+static const struct pnp_card_device_id snd_als100_pnpids[] = {
 	/* DT197A30 */
 	{ .id = "RWB1688",
 	  .devs = { { "@@@0001" }, { "@X@0001" }, { "@H@0001" } },
@@ -117,9 +105,9 @@ static struct pnp_card_device_id snd_als100_pnpids[] = {
 
 MODULE_DEVICE_TABLE(pnp_card, snd_als100_pnpids);
 
-static int __devinit snd_card_als100_pnp(int dev, struct snd_card_als100 *acard,
-					 struct pnp_card_link *card,
-					 const struct pnp_card_device_id *id)
+static int snd_card_als100_pnp(int dev, struct snd_card_als100 *acard,
+			       struct pnp_card_link *card,
+			       const struct pnp_card_device_id *id)
 {
 	struct pnp_dev *pdev;
 	int err;
@@ -183,9 +171,9 @@ static int __devinit snd_card_als100_pnp(int dev, struct snd_card_als100 *acard,
 	return 0;
 }
 
-static int __devinit snd_card_als100_probe(int dev,
-					struct pnp_card_link *pcard,
-					const struct pnp_card_device_id *pid)
+static int snd_card_als100_probe(int dev,
+				 struct pnp_card_link *pcard,
+				 const struct pnp_card_device_id *pid)
 {
 	int error;
 	struct snd_sb *chip;
@@ -193,8 +181,9 @@ static int __devinit snd_card_als100_probe(int dev,
 	struct snd_card_als100 *acard;
 	struct snd_opl3 *opl3;
 
-	error = snd_card_create(index[dev], id[dev], THIS_MODULE,
-				sizeof(struct snd_card_als100), &card);
+	error = snd_card_new(&pcard->card->dev,
+			     index[dev], id[dev], THIS_MODULE,
+			     sizeof(struct snd_card_als100), &card);
 	if (error < 0)
 		return error;
 	acard = card->private_data;
@@ -203,7 +192,6 @@ static int __devinit snd_card_als100_probe(int dev,
 		snd_card_free(card);
 		return error;
 	}
-	snd_card_set_dev(card, &pcard->card->dev);
 
 	if (pid->driver_data == SB_HW_DT019X)
 		dma16[dev] = -1;
@@ -222,18 +210,19 @@ static int __devinit snd_card_als100_probe(int dev,
 	if (pid->driver_data == SB_HW_DT019X) {
 		strcpy(card->driver, "DT-019X");
 		strcpy(card->shortname, "Diamond Tech. DT-019X");
-		sprintf(card->longname, "%s, %s at 0x%lx, irq %d, dma %d",
-			card->shortname, chip->name, chip->port,
-			irq[dev], dma8[dev]);
+		snprintf(card->longname, sizeof(card->longname),
+			 "Diamond Tech. DT-019X, %s at 0x%lx, irq %d, dma %d",
+			 chip->name, chip->port, irq[dev], dma8[dev]);
 	} else {
 		strcpy(card->driver, "ALS100");
 		strcpy(card->shortname, "Avance Logic ALS100");
-		sprintf(card->longname, "%s, %s at 0x%lx, irq %d, dma %d&%d",
-			card->shortname, chip->name, chip->port,
-			irq[dev], dma8[dev], dma16[dev]);
+		snprintf(card->longname, sizeof(card->longname),
+			 "Avance Logic ALS100, %s at 0x%lx, irq %d, dma %d&%d",
+			 chip->name, chip->port, irq[dev], dma8[dev],
+			 dma16[dev]);
 	}
 
-	if ((error = snd_sb16dsp_pcm(chip, 0, NULL)) < 0) {
+	if ((error = snd_sb16dsp_pcm(chip, 0)) < 0) {
 		snd_card_free(card);
 		return error;
 	}
@@ -256,7 +245,6 @@ static int __devinit snd_card_als100_probe(int dev,
 					mpu_type,
 					mpu_port[dev], 0, 
 					mpu_irq[dev],
-					mpu_irq[dev] >= 0 ? IRQF_DISABLED : 0,
 					NULL) < 0)
 			snd_printk(KERN_ERR PFX "no MPU-401 device at 0x%lx\n", mpu_port[dev]);
 	}
@@ -287,10 +275,10 @@ static int __devinit snd_card_als100_probe(int dev,
 	return 0;
 }
 
-static unsigned int __devinitdata als100_devices;
+static unsigned int als100_devices;
 
-static int __devinit snd_als100_pnp_detect(struct pnp_card_link *card,
-					   const struct pnp_card_device_id *id)
+static int snd_als100_pnp_detect(struct pnp_card_link *card,
+				 const struct pnp_card_device_id *id)
 {
 	static int dev;
 	int res;
@@ -308,7 +296,7 @@ static int __devinit snd_als100_pnp_detect(struct pnp_card_link *card,
 	return -ENODEV;
 }
 
-static void __devexit snd_als100_pnp_remove(struct pnp_card_link * pcard)
+static void snd_als100_pnp_remove(struct pnp_card_link *pcard)
 {
 	snd_card_free(pnp_get_card_drvdata(pcard));
 	pnp_set_card_drvdata(pcard, NULL);
@@ -322,7 +310,6 @@ static int snd_als100_pnp_suspend(struct pnp_card_link *pcard, pm_message_t stat
 	struct snd_sb *chip = acard->chip;
 
 	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
-	snd_pcm_suspend_all(chip->pcm);
 	snd_sbmixer_suspend(chip);
 	return 0;
 }
@@ -345,7 +332,7 @@ static struct pnp_card_driver als100_pnpc_driver = {
 	.name		= "als100",
         .id_table       = snd_als100_pnpids,
         .probe          = snd_als100_pnp_detect,
-        .remove         = __devexit_p(snd_als100_pnp_remove),
+	.remove		= snd_als100_pnp_remove,
 #ifdef CONFIG_PM
 	.suspend	= snd_als100_pnp_suspend,
 	.resume		= snd_als100_pnp_resume,

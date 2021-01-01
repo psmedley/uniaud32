@@ -139,5 +139,5 @@ typedef void (*exitcall_t)(void);
 
 /* subsys_initcall() wrapper */
 #define subsys_initcall(x) module_init(x)
-
+#define __init
 #endif /* _LINUX_INIT_H */

@@ -63,7 +63,6 @@
 #include <linux/init.h>
 #include <linux/lockdep.h>
 #include <linux/smp_lock.h>
-#include <linux/dma-mapping.h>
 #include "compat_22.h"
 
 #include <sound/asound.h>
@@ -82,11 +81,11 @@
 #define CONFIG_HAVE_PCI_DEV_PRESENT
 #define CONFIG_PCI
 #define CONFIG_PM
-#define CONFIG_PROC_FS
+#define CONFIG_PM_SLEEP
 #ifdef DEBUG
 #define CONFIG_SND_DEBUG_DETECT
-#define CONFIG_SND_DEBUG_VERBOSE
 #endif
+#define CONFIG_SND_DEBUG_VERBOSE
 #define CONFIG_SND_DMA_SGBUF
 #define CONFIG_SND_HDA_CODEC_ANALOG
 #define CONFIG_SND_HDA_CODEC_CONEXANT
@@ -97,25 +96,30 @@
 #define CONFIG_SND_HDA_CODEC_VIA
 #define CONFIG_SND_HDA_GENERIC
 #define CONFIG_SND_HDA_HWDEP
+#define CONFIG_SND_HDA_PREALLOC_SIZE  64
 #define CONFIG_SND_OSSEMUL
-#define CONFIG_SND_PCM_OSS
 #define CONFIG_SND_SEQUENCER
 #define CONFIG_SOUND
 #define CONFIG_SYSFS_DEPRECATED
+#define CONFIG_SND_PROC_FS
+#define CONFIG_SND_JACK
+//#define CONFIG_SND_DYNAMIC_MINORS //new 2020-12-26
+//#define CONFIG_SND_MAX_CARDS 8 //new 2020-12-26
 #define PCI_NEW_SUSPEND
 #define SNDRV_LITTLE_ENDIAN
-
+#define CONFIG_SND_HDA_POWER_SAVE_DEFAULT 1
+#define CONFIG_SND_PCM_TIMER 1
+#define CONFIG_PROC_FS 1 /* new oct 2020 */
+#define CONFIG_SND_PCM_OSS 1
 
 /* Still need to work out where the following really belong */
 #undef interrupt
 #define __builtin_return_address(a)	0
 #define __builtin_expect(x, expected_value) (x)
-#define BUG_ON(x) /* nothing */
 #define assert(a)
 #define no_llseek	NULL
 #define noop_llseek	NULL
 
-struct class;
 struct class_device;
 struct class_device_attribute {int x; }; /* dummy */
 #define __ATTR(cls,perm,read,write) {0 } /* dummy */

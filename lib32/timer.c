@@ -29,6 +29,8 @@
 #include <asm/hardirq.h>
 #include <asm/io.h>
 #include <linux/time.h>
+#include <linux/math64.h>
+#include <linux/clocksource.h>
 
 #define LINUX
 #include <ossidc.h>
@@ -139,3 +141,121 @@ void msleep(unsigned int msecs)
 
 //******************************************************************************
 //******************************************************************************
+
+/**
+ * ns_to_timespec - Convert nanoseconds to timespec
+ * @nsec:       the nanoseconds value to be converted
+ *
+ * Returns the timespec representation of the nsec parameter.
+ */
+struct timespec ns_to_timespec(const s64 nsec)
+{
+	struct timespec ts;
+	s32 rem;
+
+	if (!nsec) {
+		ts.tv_sec = 0;
+		ts.tv_nsec = 0;
+		return ts;
+	}
+
+	ts.tv_sec = div_s64_rem(nsec, NSEC_PER_SEC, &rem);
+	if (unlikely(rem < 0)) {
+		ts.tv_sec--;
+		rem += NSEC_PER_SEC;
+	}
+	ts.tv_nsec = rem;
+
+	return ts;
+}
+
+
+//******************************************************************************
+//******************************************************************************
+
+void timecounter_init(struct timecounter *tc,
+		      const struct cyclecounter *cc,
+		      u64 start_tstamp)
+{
+	tc->cc = cc;
+	tc->cycle_last = cc->read(cc);
+	tc->nsec = start_tstamp;
+}
+
+/**
+ * timecounter_read_delta - get nanoseconds since last call of this function
+ * @tc:         Pointer to time counter
+ *
+ * When the underlying cycle counter runs over, this will be handled
+ * correctly as long as it does not run over more than once between
+ * calls.
+ *
+ * The first call to this function for a new time counter initializes
+ * the time tracking and returns an undefined result.
+ */
+static u64 timecounter_read_delta(struct timecounter *tc)
+{
+	cycle_t cycle_now, cycle_delta;
+	u64 ns_offset;
+
+	/* read cycle counter: */
+	cycle_now = tc->cc->read(tc->cc);
+
+	/* calculate the delta since the last timecounter_read_delta(): */
+	cycle_delta = (cycle_now - tc->cycle_last) & tc->cc->mask;
+
+	/* convert to nanoseconds: */
+	ns_offset = cyclecounter_cyc2ns(tc->cc, cycle_delta);
+
+	/* update time stamp of timecounter_read_delta() call: */
+	tc->cycle_last = cycle_now;
+
+	return ns_offset;
+}
+
+u64 timecounter_read(struct timecounter *tc)
+{
+	u64 nsec;
+
+	/* increment time by nanoseconds since last call */
+	nsec = timecounter_read_delta(tc);
+	nsec += tc->nsec;
+	tc->nsec = nsec;
+
+	return nsec;
+}
+
+/**
+ * set_normalized_timespec - set timespec sec and nsec parts and normalize
+ *
+ * @ts:		pointer to timespec variable to be set
+ * @sec:	seconds to set
+ * @nsec:	nanoseconds to set
+ *
+ * Set seconds and nanoseconds field of a timespec variable and
+ * normalize to the timespec storage format
+ *
+ * Note: The tv_nsec part is always in the range of
+ *	0 <= tv_nsec < NSEC_PER_SEC
+ * For negative values only the tv_sec field is negative !
+ */
+void set_normalized_timespec64(struct timespec64 *ts, time64_t sec, s64 nsec)
+{
+	while (nsec >= NSEC_PER_SEC) {
+		/*
+		 * The following asm() prevents the compiler from
+		 * optimising this loop into a modulo operation. See
+		 * also __iter_div_u64_rem() in include/linux/time.h
+		 */
+//		asm("" : "+rm"(nsec));
+		nsec -= NSEC_PER_SEC;
+		++sec;
+	}
+	while (nsec < 0) {
+//		asm("" : "+rm"(nsec));
+		nsec += NSEC_PER_SEC;
+		--sec;
+	}
+	ts->tv_sec = sec;
+	ts->tv_nsec = nsec;
+}

@@ -135,9 +135,17 @@ typedef unsigned __nocast gfp_t;
 
 #include <string.h>
 typedef __u32 __le32;
+typedef __u16 __le16;
 typedef unsigned int fmode_t;
 
-//typedef int _Bool;
-typedef _Bool bool;
+typedef int bool;
+#define false	0
+#define true 1
+typedef	unsigned int		__uintptr_t;
+typedef	__uintptr_t		uintptr_t;
+typedef __u16 __be16;
+typedef __u32 __be32;
+typedef unsigned __poll_t;
+typedef u32 phys_addr_t;
 
 #endif /* _LINUX_TYPES_H */

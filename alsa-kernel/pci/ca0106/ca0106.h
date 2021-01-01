@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  *  Copyright (c) 2004 James Courtier-Dutton <James@superbug.demon.co.uk>
  *  Driver CA0106 chips. e.g. Sound Blaster Audigy LS and Live 24bit
@@ -50,24 +51,8 @@
  *  0.0.22
  *    Add support for mute control on SB Live 24bit (cards w/ SPI DAC)
  *
- *
- *  This code was initally based on code from ALSA's emu10k1x.c which is:
+ *  This code was initially based on code from ALSA's emu10k1x.c which is:
  *  Copyright (c) by Francisco Moraes <fmoraes@nc.rr.com>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
  */
 
 /************************************************************************************************/
@@ -175,7 +160,7 @@
 /* CA0106 pointer-offset register set, accessed through the PTR and DATA registers                     */
 /********************************************************************************************************/
                                                                                                                            
-/* Initally all registers from 0x00 to 0x3f have zero contents. */
+/* Initially all registers from 0x00 to 0x3f have zero contents. */
 #define PLAYBACK_LIST_ADDR	0x00		/* Base DMA address of a list of pointers to each period/size */
 						/* One list entry: 4 bytes for DMA address, 
 						 * 4 bytes for period_size << 16.
@@ -223,7 +208,7 @@
  * The jack has 4 poles. I will call 1 - Tip, 2 - Next to 1, 3 - Next to 2, 4 - Next to 3
  * For Analogue: 1 -> Center Speaker, 2 -> Sub Woofer, 3 -> Ground, 4 -> Ground
  * For Digital: 1 -> Front SPDIF, 2 -> Rear SPDIF, 3 -> Center/Subwoofer SPDIF, 4 -> Ground.
- * Standard 4 pole Video A/V cable with RCA outputs: 1 -> White, 2 -> Yellow, 3 -> Sheild on all three, 4 -> Red.
+ * Standard 4 pole Video A/V cable with RCA outputs: 1 -> White, 2 -> Yellow, 3 -> Shield on all three, 4 -> Red.
  * So, from this you can see that you cannot use a Standard 4 pole Video A/V cable with the SB Audigy LS card.
  */
 /* The Front SPDIF PCM gets mixed with samples from the AC97 codec, so can only work for Stereo PCM and not AC3/DTS
@@ -582,7 +567,7 @@
 #define SPI_PL_BIT_R_R		(2<<7)	/* right channel = right */
 #define SPI_PL_BIT_R_C		(3<<7)	/* right channel = (L+R)/2 */
 #define SPI_IZD_REG		2
-#define SPI_IZD_BIT		(1<<4)	/* infinite zero detect */
+#define SPI_IZD_BIT		(0<<4)	/* infinite zero detect */
 
 #define SPI_FMT_REG		3
 #define SPI_FMT_BIT_RJ		(0<<0)	/* right justified mode */
@@ -710,7 +695,7 @@ struct snd_ca0106 {
 
 	u16 spi_dac_reg[16];
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 #define NUM_SAVED_VOLUMES	9
 	unsigned int saved_vol[NUM_SAVED_VOLUMES];
 #endif
@@ -733,7 +718,7 @@ int snd_ca0106_i2c_write(struct snd_ca0106 *emu, u32 reg, u32 value);
 int snd_ca0106_spi_write(struct snd_ca0106 * emu,
 				   unsigned int data);
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 void snd_ca0106_mixer_suspend(struct snd_ca0106 *chip);
 void snd_ca0106_mixer_resume(struct snd_ca0106 *chip);
 #else

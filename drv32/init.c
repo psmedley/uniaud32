@@ -43,20 +43,21 @@
 #endif
 #include "parse.h"
 #include "malloc.h"
+#include "sound/version.h"
 
 const char ERR_ERROR[]   = "ERROR: ";
 const char ERR_LOCK[]    = "Unable to lock 32 bit data & code segments, exiting...\r\r\n";
 const char ERR_INIT[]    = "Initialization failed\r\r\n";
 const char ERR_NAMES[]    = "Query names failed\r\r\n";
 #ifdef DEBUG
-const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"-DEBUG\r\nBased on ALSA "ALSA_VERSION"\r\n";
+const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"-DEBUG\r\nBased on Linux "ALSA_VERSION"\r\n";
 #else
-const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"\r\nBased on ALSA "ALSA_VERSION"\r\n";
+const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"\r\nBased on Linux "ALSA_VERSION"\r\n";
 #endif
 
 //const char szCopyRight1[]= "Copyright 2000-2002 InnoTek Systemberatung GmbH\r\n";
-const char szCopyRight2[]= "Copyright 2000-2010 The ALSA Project\r\n\r\n";
-const char szCopyRight3[]= "Copyright 2005-2010 Netlabs http://www.netlabs.org\r\n";
+const char szCopyRight2[]= "Copyright 2000-2021 The ALSA Project\r\n\r\n";
+const char szCopyRight3[]= "Copyright 2005-2021 Netlabs http://www.netlabs.org\r\n";
 
 const char szCodeStartEnd[] = "Code 0x%0x - 0x%0x\r\n\r\n";
 const char szMixerFound[]= "Detected Mixer: ";
@@ -203,7 +204,7 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
 #ifdef KEE
   GetTKSSBase();
 #endif
-
+//_asm int 3;
   if(LockSegments())
   {
     WriteString(ERR_ERROR, sizeof(ERR_ERROR)-1);
@@ -237,6 +238,7 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
   #else
   rprintf(("Uniaud32 version %s",UNIAUD_VERSION));
   #endif
+  rprintf(("Based on linux %s",CONFIG_SND_VERSION));
 
   if(fVerbose)
   {

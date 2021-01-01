@@ -10,5 +10,6 @@
 #define mutex_lock(x)		down(x)
 #define mutex_lock_interruptible(x) down_interruptible(x)
 #define mutex_unlock(x)		up(x)
-
+#define mutex_lock_nested(lock, subclass) mutex_lock(lock)
+static inline int mutex_trylock(struct mutex *lock) {return -1; }
 #endif

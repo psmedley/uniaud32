@@ -69,7 +69,7 @@ LIBS = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\ac97.lib $(ALSA
  $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\hda.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib &
  $(ALSA_LIB)\mpu401.lib $(ALSA_LIB)\synth.lib $(ALSA_LIB)\cs46xx.lib $(ALSA_LIB)\cs5535audio.lib &
  $(ALSA_LIB)\emu10k1.lib $(ALSA_LIB)\ymfpci.lib $(ALSA_LIB)\ali5451.lib $(ALSA_LIB)\trident.lib &
- $(ALSA_LIB)\nm256.lib $(ALSA_LIB)\sb.lib $(ALSA_LIB)\core_oss.lib
+ $(ALSA_LIB)\nm256.lib $(ALSA_LIB)\sb.lib $(ALSA_LIB)\core_oss.lib $(ALSA_LIB)\hdac.lib
 WMAPNAME = $(OBJDIR)\$(TARGET).wmap
 
 # $(ALSA_LIB)\au88xx.lib
@@ -122,6 +122,7 @@ $(OBJDIR)\$(TARGET).sym: $(LIBS)
   mapsym $(TARGET).MAP
   cd ..\..
   copy $(OBJDIR)\$(TARGET).sym $(ALSA_BIN)
+  copy $(OBJDIR)\$(TARGET).map $(ALSA_BIN)
 
 clean: .SYMBOLIC
   -@rm *.err
