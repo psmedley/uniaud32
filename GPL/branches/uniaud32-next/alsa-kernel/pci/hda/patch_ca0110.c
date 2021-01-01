@@ -14,7 +14,9 @@
 #include "hda_auto_parser.h"
 #include "hda_jack.h"
 #include "hda_generic.h"
-
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "patch_ca0110"
+#endif
 
 static const struct hda_codec_ops ca0110_patch_ops = {
 	.build_controls = snd_hda_gen_build_controls,
@@ -74,7 +76,7 @@ static const struct hda_device_id snd_hda_id_ca0110[] = {
 	HDA_CODEC_ENTRY(0x1102000a, "CA0110-IBG", patch_ca0110),
 	HDA_CODEC_ENTRY(0x1102000b, "CA0110-IBG", patch_ca0110),
 	HDA_CODEC_ENTRY(0x1102000d, "SB0880 X-Fi", patch_ca0110),
-	{} /* terminator */
+	{0} /* terminator */
 };
 MODULE_DEVICE_TABLE(hdaudio, snd_hda_id_ca0110);
 
