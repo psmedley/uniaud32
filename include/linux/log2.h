@@ -12,24 +12,6 @@ bool is_power_of_2(unsigned long n)
 	return (n != 0 && ((n & (n - 1)) == 0));
 }
 
-/*
- * round up to nearest power of two
- */
-static inline 
-unsigned long __roundup_pow_of_two(unsigned long n)
-{
-	return 1UL << fls_long(n - 1);
-}
-
-/*
- * round down to nearest power of two
- */
-static inline 
-unsigned long __rounddown_pow_of_two(unsigned long n)
-{
-	return 1UL << (fls_long(n) - 1);
-}
-
 /***********************************************/
 /* Locate the position of the highest bit set. */
 /* A binary search is used.  The result is an  */
