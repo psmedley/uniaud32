@@ -294,11 +294,7 @@ struct hdac_bus {
 
 	/* h/w resources */
 	unsigned long addr;
-#ifdef TARGET_OS2
-	volatile void __iomem *remap_addr;
-#else
 	void __iomem *remap_addr;
-#endif
 	int irq;
 
 #ifndef TARGET_OS2
@@ -528,11 +524,7 @@ struct hdac_stream {
 	unsigned int frags;	/* number for period in the play buffer */
 	unsigned int fifo_size;	/* FIFO size */
 
-#ifndef TARGET_OS2
 	void __iomem *sd_addr;	/* stream descriptor pointer */
-#else
-	volatile void __iomem *sd_addr;	/* stream descriptor pointer */
-#endif
 
 	u32 sd_int_sta_mask;	/* stream int status mask */
 

@@ -6957,13 +6957,6 @@ static const struct hda_verb ALC269_FIXUP_SONY_VAIO_verbs[] = {
 			{0}
 };
 
-static const struct hda_verb ALC275_FIXUP_SONY_VAIO_GPIO2_verbs[] = {
-			{0x01, AC_VERB_SET_GPIO_MASK, 0x04},
-			{0x01, AC_VERB_SET_GPIO_DIRECTION, 0x04},
-			{0x01, AC_VERB_SET_GPIO_DATA, 0x00},
-			{0}
-};
-
 static const struct hda_verb ALC269_FIXUP_DELL_M101Z_verbs[] = {
 			/* Enables internal speaker */
 			{0x20, AC_VERB_SET_COEF_INDEX, 13},
@@ -7055,11 +7048,6 @@ static const struct hda_pintbl ALC269_FIXUP_DELL3_MIC_NO_PRESENCE_PINS[] = {
 			{0}
 };
 
-static const struct hda_pintbl ALC286_FIXUP_SONY_MIC_NO_PRESENCE_PINS[] = {
-			{ 0x18, 0x01a1913c }, /* use as headset mic, without its own jack detect */
-			{0}
-};
-
 static const struct hda_verb ALC269_FIXUP_ASUS_X101_VERB_VERBS[] = {
 			{0x18, AC_VERB_SET_PIN_WIDGET_CONTROL, 0},
 			{0x20, AC_VERB_SET_COEF_INDEX, 0x08},
@@ -7127,39 +7115,6 @@ static const struct hda_pintbl ALC255_FIXUP_DELL1_MIC_NO_PRESENCE_PINS[] = {
 
 static const struct hda_pintbl ALC255_FIXUP_DELL2_MIC_NO_PRESENCE_PINS[] = {
 			{ 0x19, 0x01a1913c }, /* use as headset mic, without its own jack detect */
-			{0}
-};
-
-static const struct hda_pintbl ALC293_FIXUP_DELL1_MIC_NO_PRESENCE_PINS[] = {
-			{ 0x18, 0x01a1913d }, /* use as headphone mic, without its own jack detect */
-			{ 0x1a, 0x01a1913c }, /* use as headset mic, without its own jack detect */
-			{0}
-};
-
-static const struct hda_pintbl ALC292_FIXUP_TPT440_DOCK2_PINS[] = {
-			{ 0x16, 0x21211010 }, /* dock headphone */
-			{ 0x19, 0x21a11010 }, /* dock mic */
-			{0}
-};
-
-static const struct hda_verb ALC275_FIXUP_DELL_XPS_VERBS[] = {
-			/* Enables internal speaker */
-			{0x20, AC_VERB_SET_COEF_INDEX, 0x1f},
-			{0x20, AC_VERB_SET_PROC_COEF, 0x00c0},
-			{0x20, AC_VERB_SET_COEF_INDEX, 0x30},
-			{0x20, AC_VERB_SET_PROC_COEF, 0x00b1},
-			{0}
-};
-
-static const struct hda_verb ALC256_FIXUP_DELL_XPS_13_HEADPHONE_NOISE_VERBS[] = {
-			/* Disable pass-through path for FRONT 14h */
-			{0x20, AC_VERB_SET_COEF_INDEX, 0x36},
-			{0x20, AC_VERB_SET_PROC_COEF, 0x1737},
-			{0}
-};
-
-static const struct hda_pintbl ALC221_FIXUP_HP_FRONT_MIC_PINS[] = {
-			{ 0x19, 0x02a19020 }, /* Front Mic */
 			{0}
 };
 #endif
@@ -10557,12 +10512,6 @@ static const struct hda_pintbl 	ALC662_FIXUP_ZOTAC_Z68_PINS[] = {
 			{0}
 };
 
-static const struct hda_pintbl 	ALC668_FIXUP_DELL_MIC_NO_PRESENCE_PINS[] = {
-			{ 0x19, 0x03a1913d }, /* use as headphone mic, without its own jack detect */
-			{ 0x1b, 0x03a1113c }, /* use as headset mic, without its own jack detect */
-			{0}
-};
-
 static const struct hda_pintbl 	ALC662_FIXUP_BASS_16_PINS[] = {
 			{0x16, 0x80106111}, /* bass speaker */
 			{0}
@@ -10570,22 +10519,6 @@ static const struct hda_pintbl 	ALC662_FIXUP_BASS_16_PINS[] = {
 
 static const struct hda_pintbl 	ALC662_FIXUP_BASS_1A_PINS[] = {
 			{0x1a, 0x80106111}, /* bass speaker */
-			{0}
-};
-
-static const struct hda_pintbl 	ALC668_FIXUP_ASUS_Nx51_PINS[] = {
-			{0x1a, 0x90170151}, /* bass speaker */
-			{0}
-};
-
-static const struct hda_pintbl 	ALC662_FIXUP_ACER_VERITON_PINS[] = {
-			{ 0x15, 0x50170120 }, /* no internal speaker */
-			{0}
-};
-
-static const struct hda_pintbl 	ALC892_FIXUP_ASROCK_MOBO_PINS[] = {
-			{ 0x15, 0x40f000f0 }, /* disabled */
-			{ 0x16, 0x40f000f0 }, /* disabled */
 			{0}
 };
 #endif

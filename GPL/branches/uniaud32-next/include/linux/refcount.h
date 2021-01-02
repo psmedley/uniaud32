@@ -36,19 +36,9 @@ static inline void refcount_set(refcount_t *r, unsigned int n)
 	atomic_set(&r->refs, n);
 }
 
-static inline __must_check bool refcount_add_not_zero(unsigned int i, refcount_t *r)
-{
-	return atomic_add_unless(&r->refs, i, 0);
-}
-
 static inline void refcount_add(unsigned int i, refcount_t *r)
 {
 	atomic_add(i, &r->refs);
-}
-
-static inline __must_check bool refcount_inc_not_zero(refcount_t *r)
-{
-	return atomic_add_unless(&r->refs, 1, 0);
 }
 
 static inline void refcount_inc(refcount_t *r)

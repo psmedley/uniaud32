@@ -107,7 +107,7 @@ static inline struct dma_map_ops *get_dma_ops(struct device *dev)
 }
 
 static inline void set_dma_ops(struct device *dev,
-			       const struct dma_map_ops *dma_ops)
+			       struct dma_map_ops *dma_ops)
 {
 	dev->dma_ops = dma_ops;
 }
