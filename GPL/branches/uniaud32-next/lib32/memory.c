@@ -654,6 +654,9 @@ size_t ksize(const void *block)
 {
 	size_t size;
 
+	if (!block)
+		return 0;
+
 	if (block == ZERO_SIZE_PTR)
 		return 0;
 

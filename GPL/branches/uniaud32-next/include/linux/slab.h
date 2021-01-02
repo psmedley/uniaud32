@@ -119,4 +119,5 @@ struct kmem_cache {
 };
 
 #define kvzalloc kzalloc
+size_t ksize(const void *);
 #endif	/* _LINUX_SLAB_H */
