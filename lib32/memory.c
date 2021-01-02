@@ -51,6 +51,7 @@ typedef struct { unsigned long pgprot; } pgprot_t;
 #pragma off (unreferenced)
 
 #define PAGE_SIZE 4096
+#define min(a,b)  (((a) < (b)) ? (a) : (b))
 
 int free_pages(unsigned long addr, unsigned long order);
 int __compat_get_order(unsigned long size);
@@ -688,7 +689,6 @@ void *krealloc(const void *p, size_t new_size, gfp_t flags)
 	kfree(p);
 	return ret;
 }
-
 //******************************************************************************
 //******************************************************************************
 /**
