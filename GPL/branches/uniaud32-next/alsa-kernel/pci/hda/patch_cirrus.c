@@ -16,6 +16,10 @@
 #include "hda_jack.h"
 #include "hda_generic.h"
 
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "patch_cirrus"
+#endif
+
 /*
  */
 
@@ -215,7 +219,7 @@ static const struct hda_verb cs_coef_init_verbs[] = {
 	{0x11, AC_VERB_SET_COEF_INDEX, IDX_BEEP_CFG},
 	{0x11, AC_VERB_SET_PROC_COEF, 0x0007}, /* Enable Beep thru DAC1/2/3 */
 
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 static const struct hda_verb cs4208_coef_init_verbs[] = {
@@ -225,7 +229,7 @@ static const struct hda_verb cs4208_coef_init_verbs[] = {
 	{0x24, AC_VERB_SET_PROC_COEF, 0x0001}, /* A1 ICS */
 	{0x24, AC_VERB_SET_COEF_INDEX, 0x0034},
 	{0x24, AC_VERB_SET_PROC_COEF, 0x1C01}, /* A1 Enable, A Thresh = 300mV */
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 /* Errata: CS4207 rev C0/C1/C2 Silicon
@@ -274,7 +278,7 @@ static const struct hda_verb cs_errata_init_verbs[] = {
 	/*{0x01, AC_VERB_SET_POWER_STATE, 0x03},*/ /* AFG: D3 This is already handled */
 #endif
 
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 /* SPDIF setup */
@@ -383,7 +387,7 @@ static const struct hda_model_fixup cs420x_models[] = {
 	{ .id = CS420X_MBP101, .name = "mbp101" },
 	{ .id = CS420X_MBP81, .name = "mbp81" },
 	{ .id = CS420X_MBA42, .name = "mba42" },
-	{}
+	{0}
 };
 
 static const struct snd_pci_quirk cs420x_fixup_tbl[] = {
@@ -402,7 +406,7 @@ static const struct snd_pci_quirk cs420x_fixup_tbl[] = {
 	SND_PCI_QUIRK(0x106b, 0x5600, "MacBookAir 5,2", CS420X_MBP81),
 	SND_PCI_QUIRK(0x106b, 0x5b00, "MacBookAir 4,2", CS420X_MBA42),
 	SND_PCI_QUIRK_VENDOR(0x106b, "Apple", CS420X_APPLE),
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 static const struct hda_pintbl mbp53_pincfgs[] = {
@@ -416,7 +420,7 @@ static const struct hda_pintbl mbp53_pincfgs[] = {
 	{ 0x10, 0x014be060 },
 	{ 0x12, 0x400000f0 },
 	{ 0x15, 0x400000f0 },
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 static const struct hda_pintbl mbp55_pincfgs[] = {
@@ -430,7 +434,7 @@ static const struct hda_pintbl mbp55_pincfgs[] = {
 	{ 0x10, 0x014be040 },
 	{ 0x12, 0x400000f0 },
 	{ 0x15, 0x400000f0 },
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 static const struct hda_pintbl imac27_pincfgs[] = {
@@ -444,14 +448,14 @@ static const struct hda_pintbl imac27_pincfgs[] = {
 	{ 0x10, 0x014be060 },
 	{ 0x12, 0x01ab9070 },
 	{ 0x15, 0x400000f0 },
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 static const struct hda_pintbl mbp101_pincfgs[] = {
 	{ 0x0d, 0x40ab90f0 },
 	{ 0x0e, 0x90a600f0 },
 	{ 0x12, 0x50a600f0 },
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 static const struct hda_pintbl mba42_pincfgs[] = {
@@ -465,7 +469,7 @@ static const struct hda_pintbl mba42_pincfgs[] = {
 	{ 0x10, 0x400000f0 },
 	{ 0x12, 0x400000f0 },
 	{ 0x15, 0x400000f0 },
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 static const struct hda_pintbl mba6_pincfgs[] = {
@@ -488,7 +492,7 @@ static const struct hda_pintbl mba6_pincfgs[] = {
 	{ 0x20, 0x500000f0 },
 	{ 0x21, 0x430000f0 },
 	{ 0x22, 0x430000f0 },
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 static void cs420x_fixup_gpio_13(struct hda_codec *codec,
@@ -548,17 +552,19 @@ static const struct hda_fixup cs420x_fixups[] = {
 		.chained = true,
 		.chain_id = CS420X_GPIO_13,
 	},
+#ifdef TARGET_OS2xxx
 	[CS420X_MBP81] = {
 		.type = HDA_FIXUP_VERBS,
 		.v.verbs = (const struct hda_verb[]) {
 			/* internal mic ADC2: right only, single ended */
 			{0x11, AC_VERB_SET_COEF_INDEX, IDX_ADC_CFG},
 			{0x11, AC_VERB_SET_PROC_COEF, 0x102a},
-			{}
+			{0}
 		},
 		.chained = true,
 		.chain_id = CS420X_GPIO_13,
 	},
+#endif
 	[CS420X_MBA42] = {
 		.type = HDA_FIXUP_PINS,
 		.v.pins = mba42_pincfgs,
@@ -629,12 +635,12 @@ static const struct hda_model_fixup cs4208_models[] = {
 	{ .id = CS4208_MBA6, .name = "mba6" },
 	{ .id = CS4208_MBP11, .name = "mbp11" },
 	{ .id = CS4208_MACMINI, .name = "macmini" },
-	{}
+	{0}
 };
 
 static const struct snd_pci_quirk cs4208_fixup_tbl[] = {
 	SND_PCI_QUIRK_VENDOR(0x106b, "Apple", CS4208_MAC_AUTO),
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 /* codec SSID matching */
@@ -644,7 +650,7 @@ static const struct snd_pci_quirk cs4208_mac_fixup_tbl[] = {
 	SND_PCI_QUIRK(0x106b, 0x7100, "MacBookAir 6,1", CS4208_MBA6),
 	SND_PCI_QUIRK(0x106b, 0x7200, "MacBookAir 6,2", CS4208_MBA6),
 	SND_PCI_QUIRK(0x106b, 0x7b00, "MacBookPro 12,1", CS4208_MBP11),
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 static void cs4208_fixup_gpio0(struct hda_codec *codec,
@@ -682,7 +688,7 @@ static void cs4208_fixup_macmini(struct hda_codec *codec,
 	static const struct hda_pintbl pincfgs[] = {
 		{ 0x18, 0x00ab9150 }, /* mic (audio-in) jack: disable detect */
 		{ 0x21, 0x004be140 }, /* SPDIF: disable detect */
-		{ }
+		{0}
 	};
 
 	if (action == HDA_FIXUP_ACT_PRE_PROBE) {
@@ -812,13 +818,13 @@ static int patch_cs4208(struct hda_codec *codec)
 static const struct hda_model_fixup cs421x_models[] = {
 	{ .id = CS421X_CDB4210, .name = "cdb4210" },
 	{ .id = CS421X_STUMPY, .name = "stumpy" },
-	{}
+	{0}
 };
 
 static const struct snd_pci_quirk cs421x_fixup_tbl[] = {
 	/* Test Intel board + CDB2410  */
 	SND_PCI_QUIRK(0x8086, 0x5001, "DP45SG/CDB4210", CS421X_CDB4210),
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 /* CS4210 board pinconfigs */
@@ -830,7 +836,7 @@ static const struct hda_pintbl cdb4210_pincfgs[] = {
 	{ 0x08, 0xb7a70037 },
 	{ 0x09, 0xb7a6003e },
 	{ 0x0a, 0x034510f0 },
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 /* Stumpy ChromeBox */
@@ -841,7 +847,7 @@ static const struct hda_pintbl stumpy_pincfgs[] = {
 	{ 0x08, 0x77a70037 },
 	{ 0x09, 0x77a6003e },
 	{ 0x0a, 0x434510f0 },
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 /* Setup GPIO/SENSE for each board (if used) */
@@ -889,7 +895,7 @@ static const struct hda_verb cs421x_coef_init_verbs[] = {
 	  | 0x0004 /* Mute DAC on FIFO error */
 	  | 0x0008 /* Enable DAC High Pass Filter */
 	  )},
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 /* Errata: CS4210 rev A1 Silicon
@@ -925,7 +931,7 @@ static const struct hda_verb cs421x_coef_init_verbs_A1_silicon_fixes[] = {
 	{0x0B, AC_VERB_SET_COEF_INDEX, 0x001B},
 	{0x0B, AC_VERB_SET_PROC_COEF, 0X1006}, /* Remove noise */
 
-	{} /* terminator */
+	{0} /* terminator */
 };
 
 /* Speaker Amp Gain is controlled by the vendor widget's coef 4 */
@@ -1229,7 +1235,7 @@ static const struct hda_device_id snd_hda_id_cirrus[] = {
 	HDA_CODEC_ENTRY(0x10134208, "CS4208", patch_cs4208),
 	HDA_CODEC_ENTRY(0x10134210, "CS4210", patch_cs4210),
 	HDA_CODEC_ENTRY(0x10134213, "CS4213", patch_cs4213),
-	{} /* terminator */
+	{0} /* terminator */
 };
 MODULE_DEVICE_TABLE(hdaudio, snd_hda_id_cirrus);
 

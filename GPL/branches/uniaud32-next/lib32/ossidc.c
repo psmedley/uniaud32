@@ -133,10 +133,11 @@ OSSRET OSS32_Initialize(void)
 	call_module_init(hda_bus_init);
 	call_module_init(generic_driver_init);
 	call_module_init(analog_driver_init);
-	//call_module_init(atihdmi_driver_init);
 	call_module_init(ca0110_driver_init);
+	call_module_init(cirrus_driver_init);
 	call_module_init(cmedia_driver_init);
 	call_module_init(conexant_driver_init);
+//	call_module_init(hdmi_driver_init);
 	call_module_init(realtek_driver_init);
 	call_module_init(sigmatel_driver_init);
 	call_module_init(via_driver_init);
