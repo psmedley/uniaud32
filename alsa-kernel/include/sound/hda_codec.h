@@ -205,11 +205,7 @@ struct hda_codec {
 
 	struct list_head conn_list;	/* linked-list of connection-list */
 
-#ifndef TARGET_OS2
 	struct mutex spdif_mutex;
-#else
-	struct semaphore spdif_mutex;
-#endif
 	struct mutex control_mutex;
 	struct snd_array spdif_out;
 	unsigned int spdif_in_enable;	/* SPDIF input enable? */

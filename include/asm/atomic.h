@@ -91,5 +91,9 @@ static inline int atomic_sub_return(int i, atomic_t *v)
 #define atomic_sub_and_test(i, v)	(atomic_sub_return((i), (v)) == 0)
 #define atomic_inc_return(v)		atomic_add_return(1, (v))
 
+typedef struct {
+	long long counter;
+} atomic64_t;
 
+typedef atomic64_t atomic_long_t;
 #endif

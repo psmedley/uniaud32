@@ -231,11 +231,7 @@ static int snd_info_entry_ioctl_old(struct inode *inode, struct file * file,
 
 static int snd_info_entry_mmap(struct file *file, struct vm_area_struct *vma)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 20)
 	struct inode *inode = file_inode(file);
-#else
-	struct inode *inode = file->f_dentry->d_inode;
-#endif
 	struct snd_info_private_data *data;
 	struct snd_info_entry *entry;
 
@@ -478,11 +474,7 @@ int __init snd_info_init(void)
 	if (!snd_proc_root)
 		return -ENOMEM;
 	snd_proc_root->mode = S_IFDIR | 0555;
-#ifndef TARGET_OS2
 	snd_proc_root->p = proc_mkdir("asound", NULL);
-#else
-	snd_proc_root->p = create_proc_entry("asound", S_IFDIR | S_IRUGO | S_IXUGO, NULL);
-#endif
 	if (!snd_proc_root->p)
 		goto error;
 #ifdef CONFIG_SND_OSSEMUL
@@ -490,7 +482,7 @@ int __init snd_info_init(void)
 	if (!snd_oss_root)
 		goto error;
 #endif
-#if IS_ENABLED(CONFIG_SND_SEQUENCER) 
+#if IS_ENABLED(CONFIG_SND_SEQUENCER)
 	snd_seq_root = create_subdir(THIS_MODULE, "seq");
 	if (!snd_seq_root)
 		goto error;
@@ -550,9 +542,7 @@ int snd_info_card_create(struct snd_card *card)
  */
 int snd_info_card_register(struct snd_card *card)
 {
-#ifndef TARGET_OS2
 	struct proc_dir_entry *p;
-#endif
 	int err;
 
 	if (snd_BUG_ON(!card))
@@ -567,12 +557,10 @@ int snd_info_card_register(struct snd_card *card)
 
 	if (card->proc_root_link)
 		return 0;
-#ifndef TARGET_OS2
 	p = proc_symlink(card->id, snd_proc_root->p, card->proc_root->name);
 	if (!p)
 		return -ENOMEM;
 	card->proc_root_link = p;
-#endif
 	return 0;
 }
 
@@ -586,12 +574,10 @@ void snd_info_card_id_change(struct snd_card *card)
 		proc_remove(card->proc_root_link);
 		card->proc_root_link = NULL;
 	}
-#ifndef TARGET_OS2
 	if (strcmp(card->id, card->proc_root->name))
 		card->proc_root_link = proc_symlink(card->id,
 						    snd_proc_root->p,
 						    card->proc_root->name);
-#endif
 	mutex_unlock(&info_mutex);
 }
 

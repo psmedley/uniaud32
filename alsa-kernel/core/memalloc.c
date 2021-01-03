@@ -7,7 +7,7 @@
  */
 
 #ifdef TARGET_OS2
-#include <sound/core.h>
+#include <sound/config.h> //for CONFIG_HAS_DMA
 #endif
 #include <linux/slab.h>
 #include <linux/mm.h>

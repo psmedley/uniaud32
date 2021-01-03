@@ -1971,7 +1971,6 @@ static int snd_pcm_drop(struct snd_pcm_substream *substream)
 }
 
 
-#ifndef TARGET_OS2
 static bool is_pcm_file(struct file *file)
 {
 	struct inode *inode = file_inode(file);
@@ -1989,7 +1988,6 @@ static bool is_pcm_file(struct file *file)
 	snd_card_unref(pcm->card);
 	return true;
 }
-#endif
 
 /*
  * PCM link handling
@@ -2010,12 +2008,10 @@ static int snd_pcm_link(struct snd_pcm_substream *substream, int fd)
 
 	if (!f.file)
 		return -EBADFD;
-#ifndef TARGET_OS2
 	if (!is_pcm_file(f.file)) {
 		res = -EBADFD;
 		goto _badf;
 	}
-#endif
 	pcm_file = f.file->private_data;
 	substream1 = pcm_file->substream;
 

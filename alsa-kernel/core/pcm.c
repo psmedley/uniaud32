@@ -1029,9 +1029,7 @@ static ssize_t show_pcm_class(struct device *dev,
 		str = strs[pcm->dev_class];
         return snprintf(buf, PAGE_SIZE, "%s\n", str);
 }
-#endif
 
-#ifndef TARGET_OS2
 static DEVICE_ATTR(pcm_class, 0444, show_pcm_class, NULL);
 static struct attribute *pcm_dev_attrs[] = {
 	&dev_attr_pcm_class.attr,

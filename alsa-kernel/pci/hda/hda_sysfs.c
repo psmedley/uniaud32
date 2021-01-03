@@ -7,9 +7,6 @@
  * split from hda_hwdep.c
  */
 
-#ifdef TARGET_OS2
-#include <linux/sysfs.h>
-#endif
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/compat.h>
@@ -717,7 +714,6 @@ static int get_line_from_fw(char *buf, int size, size_t *fw_size_p,
  */
 int snd_hda_load_patch(struct hda_bus *bus, size_t fw_size, const void *fw_buf)
 {
-dprintf(("snd_hda_load_patch"));
 	char buf[128];
 	struct hda_codec *codec;
 	int line_mode;

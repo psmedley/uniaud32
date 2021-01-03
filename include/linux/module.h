@@ -6,7 +6,9 @@
 
 #ifndef _LINUX_MODULE_H
 #define _LINUX_MODULE_H
+
 #include <linux/moduleparam.h>
+
 /* Poke the use count of a module.  */
 
 #define __MOD_DEC_USE_COUNT(mod)		\

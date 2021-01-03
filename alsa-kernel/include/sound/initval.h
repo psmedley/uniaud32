@@ -21,8 +21,6 @@ static const char __module_generic_string_##name [] \
 #define MODULE_CLASSES(val) 
 #define MODULE_DEVICES(val) 
 #define MODULE_PARM_SYNTAX(id, val) 
-#define module_param_array(name, type, nump, perm)
-#define module_param(name, type, perm)
 #else
 #define MODULE_CLASSES(val) MODULE_GENERIC_STRING(info_classes, val)
 #define MODULE_DEVICES(val) MODULE_GENERIC_STRING(info_devices, val)

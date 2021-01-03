@@ -9,7 +9,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-/* from 4.14.202 */
+/* from 4.19.163 */
 
 //#include <linux/debugfs.h>
 #include <linux/device.h>
@@ -23,38 +23,33 @@
 
 #include "internal.h"
 
-/*static*/ int regcache_rbtree_write(struct regmap *map, unsigned int reg,
-				 unsigned int value);
-/*static*/ int regcache_rbtree_exit(struct regmap *map);
-
 #ifdef TARGET_OS2
 #define UINT_MAX	(~0U)
-#pragma pack(1)
 #endif
+
+/*static inline*/ int regcache_rbtree_write(struct regmap *map, unsigned int reg,
+				 unsigned int value);
+/*static inline*/ int regcache_rbtree_exit(struct regmap *map);
+
 struct regcache_rbtree_node {
 	/* block of adjacent registers */
 	void *block;
 	/* Which registers are present */
-	unsigned long *cache_present;
+	long *cache_present;
 	/* base register handled by this block */
 	unsigned int base_reg;
 	/* number of registers available in the block */
 	unsigned int blklen;
 	/* the actual rbtree node holding this block */
 	struct rb_node node;
-#ifndef TARGET_OS2
-} __attribute__ ((packed));
-#else
-};
-#pragma pack()
-#endif
+} /*__attribute__ ((packed))*/;
 
 struct regcache_rbtree_ctx {
 	struct rb_root root;
 	struct regcache_rbtree_node *cached_rbnode;
 };
 
-/*static inline*/ void regcache_rbtree_get_base_top_reg(
+/*static inline*/ inline void regcache_rbtree_get_base_top_reg(
 	struct regmap *map,
 	struct regcache_rbtree_node *rbnode,
 	unsigned int *base, unsigned int *top)
@@ -63,13 +58,13 @@ struct regcache_rbtree_ctx {
 	*top = rbnode->base_reg + ((rbnode->blklen - 1) * map->reg_stride);
 }
 
-/*static*/ unsigned int regcache_rbtree_get_register(struct regmap *map,
+/*static inline*/ unsigned int regcache_rbtree_get_register(struct regmap *map,
 	struct regcache_rbtree_node *rbnode, unsigned int idx)
 {
 	return regcache_get_val(map, rbnode->block, idx);
 }
 
-/*static*/ void regcache_rbtree_set_register(struct regmap *map,
+/*static inline*/ void regcache_rbtree_set_register(struct regmap *map,
 					 struct regcache_rbtree_node *rbnode,
 					 unsigned int idx, unsigned int val)
 {
@@ -77,7 +72,7 @@ struct regcache_rbtree_ctx {
 	regcache_set_val(map, rbnode->block, idx, val);
 }
 
-/*static*/ struct regcache_rbtree_node *regcache_rbtree_lookup(struct regmap *map,
+/*static inline*/ struct regcache_rbtree_node *regcache_rbtree_lookup(struct regmap *map,
 							   unsigned int reg)
 {
 	struct regcache_rbtree_ctx *rbtree_ctx = map->cache;
@@ -107,10 +102,11 @@ struct regcache_rbtree_ctx {
 			node = node->rb_left;
 		}
 	}
+
 	return NULL;
 }
 
-/*static*/ int regcache_rbtree_insert(struct regmap *map, struct rb_root *root,
+/*static inline*/ int regcache_rbtree_insert(struct regmap *map, struct rb_root *root,
 				  struct regcache_rbtree_node *rbnode)
 {
 	struct rb_node **new, *parent;
@@ -120,7 +116,6 @@ struct regcache_rbtree_ctx {
 
 	parent = NULL;
 	new = &root->rb_node;
-
 	while (*new) {
 		rbnode_tmp = rb_entry(*new, struct regcache_rbtree_node, node);
 		/* base and top registers of the current rbnode */
@@ -147,7 +142,7 @@ struct regcache_rbtree_ctx {
 }
 
 #ifdef CONFIG_DEBUG_FS
-/*static*/ int rbtree_show(struct seq_file *s, void *ignored)
+/*static inline*/ int rbtree_show(struct seq_file *s, void *ignored)
 {
 	struct regmap *map = s->private;
 	struct regcache_rbtree_ctx *rbtree_ctx = map->cache;
@@ -191,25 +186,25 @@ struct regcache_rbtree_ctx {
 	return 0;
 }
 
-/*static*/ int rbtree_open(struct inode *inode, struct file *file)
+/*static inline*/ int rbtree_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, rbtree_show, inode->i_private);
 }
 
-/*static*/ const struct file_operations rbtree_fops = {
+/*static inline*/ const struct file_operations rbtree_fops = {
 	.open		= rbtree_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
 
-/*static*/ void rbtree_debugfs_init(struct regmap *map)
+/*static inline*/ void rbtree_debugfs_init(struct regmap *map)
 {
 	debugfs_create_file("rbtree", 0400, map->debugfs, map, &rbtree_fops);
 }
 #endif
 
-/*static*/ int regcache_rbtree_init(struct regmap *map)
+/*static inline*/ int regcache_rbtree_init(struct regmap *map)
 {
 	struct regcache_rbtree_ctx *rbtree_ctx;
 	int i;
@@ -232,6 +227,7 @@ struct regcache_rbtree_ctx {
 	memset(&rbtree_ctx->root, 0, sizeof(struct rb_root));
 #endif
 	rbtree_ctx->cached_rbnode = NULL;
+
 	for (i = 0; i < map->num_reg_defaults; i++) {
 		ret = regcache_rbtree_write(map,
 					    map->reg_defaults[i].reg,
@@ -247,7 +243,7 @@ err:
 	return ret;
 }
 
-/*static*/ int regcache_rbtree_exit(struct regmap *map)
+/*static inline*/ int regcache_rbtree_exit(struct regmap *map)
 {
 	struct rb_node *next;
 	struct regcache_rbtree_ctx *rbtree_ctx;
@@ -276,7 +272,7 @@ err:
 	return 0;
 }
 
-/*static*/ int regcache_rbtree_read(struct regmap *map,
+/*static inline*/ int regcache_rbtree_read(struct regmap *map,
 				unsigned int reg, unsigned int *value)
 {
 	struct regcache_rbtree_node *rbnode;
@@ -291,11 +287,12 @@ err:
 	} else {
 		return -ENOENT;
 	}
+
 	return 0;
 }
 
 
-/*static*/ int regcache_rbtree_insert_to_block(struct regmap *map,
+/*static inline*/ int regcache_rbtree_insert_to_block(struct regmap *map,
 					   struct regcache_rbtree_node *rbnode,
 					   unsigned int base_reg,
 					   unsigned int top_reg,
@@ -350,7 +347,7 @@ err:
 	return 0;
 }
 
-/*static*/ struct regcache_rbtree_node *
+/*static inline*/ struct regcache_rbtree_node *
 regcache_rbtree_node_alloc(struct regmap *map, unsigned int reg)
 {
 	struct regcache_rbtree_node *rbnode;
@@ -368,6 +365,7 @@ regcache_rbtree_node_alloc(struct regmap *map, unsigned int reg)
 						&map->rd_table->yes_ranges[i]))
 				break;
 		}
+
 		if (i != map->rd_table->n_yes_ranges) {
 			range = &map->rd_table->yes_ranges[i];
 			rbnode->blklen = (range->range_max - range->range_min) /
@@ -375,6 +373,7 @@ regcache_rbtree_node_alloc(struct regmap *map, unsigned int reg)
 			rbnode->base_reg = range->range_min;
 		}
 	}
+
 	if (!rbnode->blklen) {
 		rbnode->blklen = 1;
 		rbnode->base_reg = reg;
@@ -400,7 +399,7 @@ err_free:
 	return NULL;
 }
 
-/*static*/ int regcache_rbtree_write(struct regmap *map, unsigned int reg,
+/*static inline*/ int regcache_rbtree_write(struct regmap *map, unsigned int reg,
 				 unsigned int value)
 {
 	struct regcache_rbtree_ctx *rbtree_ctx;
@@ -475,8 +474,8 @@ err_free:
 							      new_base_reg,
 							      new_top_reg, reg,
 							      value);
-			if (ret){
-				return ret;}
+			if (ret)
+				return ret;
 			rbtree_ctx->cached_rbnode = rbnode;
 			return 0;
 		}
@@ -485,17 +484,18 @@ err_free:
 		 * an existing block so create a new rbnode.
 		 */
 		rbnode = regcache_rbtree_node_alloc(map, reg);
-		if (!rbnode){
-			return -ENOMEM;}
+		if (!rbnode)
+			return -ENOMEM;
 		regcache_rbtree_set_register(map, rbnode,
 					     reg - rbnode->base_reg, value);
 		regcache_rbtree_insert(map, &rbtree_ctx->root, rbnode);
 		rbtree_ctx->cached_rbnode = rbnode;
 	}
+
 	return 0;
 }
 
-/*static*/ int regcache_rbtree_sync(struct regmap *map, unsigned int min,
+/*static inline*/ int regcache_rbtree_sync(struct regmap *map, unsigned int min,
 				unsigned int max)
 {
 	struct regcache_rbtree_ctx *rbtree_ctx;
@@ -536,7 +536,7 @@ err_free:
 	return regmap_async_complete(map);
 }
 
-/*static*/ int regcache_rbtree_drop(struct regmap *map, unsigned int min,
+/*static inline*/ int regcache_rbtree_drop(struct regmap *map, unsigned int min,
 				unsigned int max)
 {
 	struct regcache_rbtree_ctx *rbtree_ctx;

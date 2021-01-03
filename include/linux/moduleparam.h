@@ -137,10 +137,8 @@ extern int param_get_invbool(char *buffer, struct kernel_param *kp);
 	module_param_call(name, param_array_set, param_array_get, 	\
 			  &__param_arr_##name, perm)
 
-#ifndef TARGET_OS2
-#define module_param_array(name, type, nump, perm)		\
-	module_param_array_named(name, name, type, nump, perm)
-#endif
+#define module_param_array(name, type, nump, perm)
+#define module_param(name, type, perm)
 extern int param_array_set(const char *val, struct kernel_param *kp);
 extern int param_array_get(char *buffer, struct kernel_param *kp);
 

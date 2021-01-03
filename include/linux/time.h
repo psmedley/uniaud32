@@ -5,6 +5,7 @@
 #include <linux/types.h>
 #include <linux/ktime.h>
 #include <linux/time64.h>
+#include <linux/math64.h>
 
 #define NSEC_PER_SEC	1000000000L
 

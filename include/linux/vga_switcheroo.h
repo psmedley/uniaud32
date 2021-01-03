@@ -1,4 +1,4 @@
-#ifndef _LINUX_EXPORT_H
-#define _LINUX_EXPORT_H
+#ifndef _LINUX_VGA_SWITCHEROO_H
+#define _LINUX_VGA_SWITCHEROO_H
 
-#endif /* _LINUX_EXPORT_H */
+#endif /* _LINUX_VGA_SWITCHEROO_H */

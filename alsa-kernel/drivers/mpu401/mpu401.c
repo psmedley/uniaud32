@@ -5,9 +5,6 @@
  *  Copyright (c) 2004 by Castet Matthieu <castet.matthieu@free.fr>
  */
 
-#ifdef TARGET_OS2
-#include <sound/config.h>
-#endif
 #include <linux/init.h>
 #include <linux/pnp.h>
 #include <linux/err.h>

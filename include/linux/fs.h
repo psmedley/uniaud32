@@ -164,6 +164,7 @@ struct file {
 	 void *	f_list;
 	struct dentry		*f_dentry;
 	const struct file_operations	*f_op;
+	struct inode		*f_inode;	/* cached value */
 	spinlock_t		f_lock;
 	atomic_t		f_count;
 	unsigned int 		f_flags;
@@ -181,14 +182,6 @@ struct file {
 };
 
 struct inode {
-#ifdef TARGET_OS2
-	kdev_t			i_rdev;
-        struct semaphore        i_sem;
-	union {
-		void		*generic_ip;
-	} u;
-
-#else
 	 void *	i_hash;
 	 void *	i_list;
 	 void *	i_dentry;
@@ -224,7 +217,6 @@ struct inode {
 	union {
 		void				*generic_ip;
 	} u;
-#endif
 };
 
 typedef int (*filldir_t)(void *, const char *, int, off_t, ino_t);
@@ -333,5 +325,10 @@ extern int stream_open(struct inode * inode, struct file * filp);
 
 /* File is stream-like */
 #define FMODE_STREAM		(( fmode_t)0x200000)
+
+static inline struct inode *file_inode(const struct file *f)
+{
+	return f->f_inode;
+}
 
 #endif /* _LINUX_FS_H */

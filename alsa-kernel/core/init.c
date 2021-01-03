@@ -4,12 +4,6 @@
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  */
 
-#ifdef TARGET_OS2
-#include <sound/core.h>
-#include <sound/initval.h>
-#include <linux/sysfs.h>
-struct class *sound_class;
-#endif
 #include <linux/init.h>
 #include <linux/sched.h>
 #include <linux/module.h>
@@ -24,6 +18,10 @@ struct class *sound_class;
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
+
+#ifdef TARGET_OS2
+struct class *sound_class;
+#endif
 
 /* monitor files for graceful shutdown (hotplug) */
 struct snd_monitor_file {
@@ -54,7 +52,6 @@ MODULE_PARM_DESC(slots, "Module names assigned to the slots.");
 static int module_slot_match(struct module *module, int idx)
 {
 	int match = 1;
-#ifndef TARGET_OS2
 #ifdef MODULE
 	const char *s1, *s2;
 
@@ -83,7 +80,6 @@ static int module_slot_match(struct module *module, int idx)
 			break;
 	}
 #endif /* MODULE */
-#endif
 	return match;
 }
 
@@ -228,15 +224,15 @@ int snd_card_new(struct device *parent, int idx, const char *xid,
 	card->card_dev.parent = parent;
 	card->card_dev.class = sound_class;
 	card->card_dev.release = release_card_device;
-#ifndef TARGET_OS2
 	card->card_dev.groups = card->dev_groups;
 	card->dev_groups[0] = &card_dev_attr_group;
 	err = kobject_set_name(&card->card_dev.kobj, "card%d", idx);
 	if (err < 0)
 		goto __error;
+
 	snprintf(card->irq_descr, sizeof(card->irq_descr), "%s:%s",
 		 dev_driver_string(card->dev), dev_name(&card->card_dev));
-#endif
+
 	/* the control interface cannot be accessed from the user space until */
 	/* snd_cards_bitmask and snd_cards are set with snd_card_register */
 	err = snd_ctl_create(card);
@@ -477,11 +473,9 @@ void snd_card_disconnect_sync(struct snd_card *card)
 	}
 
 	spin_lock_irq(&card->files_lock);
-#ifndef TARGET_OS2
 	wait_event_lock_irq(card->remove_sleep,
 			    list_empty(&card->files_list),
 			    card->files_lock);
-#endif
 	spin_unlock_irq(&card->files_lock);
 }
 EXPORT_SYMBOL_GPL(snd_card_disconnect_sync);
@@ -547,10 +541,8 @@ int snd_card_free(struct snd_card *card)
 	ret = snd_card_free_when_closed(card);
 	if (ret)
 		return ret;
-#ifndef TARGET_OS2
 	/* wait, until all devices are ready for the free operation */
 	wait_for_completion(&released);
-#endif
 	return 0;
 }
 EXPORT_SYMBOL(snd_card_free);
@@ -708,9 +700,7 @@ card_id_store_attr(struct device *dev, struct device_attribute *attr,
 
 	return count;
 }
-#endif
 
-#ifdef NOT_USED
 static DEVICE_ATTR(id, 0644, card_id_show_attr, card_id_store_attr);
 
 static ssize_t
@@ -999,10 +989,8 @@ int snd_card_file_remove(struct snd_card *card, struct file *file)
 			break;
 		}
 	}
-#ifndef TARGET_OS2
 	if (list_empty(&card->files_list))
 		wake_up_all(&card->remove_sleep);
-#endif
 	spin_unlock(&card->files_lock);
 	if (!found) {
 		dev_err(card->dev, "card file remove problem (%p)\n", file);

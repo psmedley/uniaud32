@@ -129,5 +129,6 @@ void __add_wait_queue_tail(wait_queue_head_t *head, wait_queue_t *new);
 void __remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old);
 void __wake_up_locked(wait_queue_head_t *q, unsigned int mode, int nr);
 #endif /* __KERNEL__ */
-
+#define wait_event_lock_irq(wq_head, condition, lock)
+#define wake_up_all(x)			
 #endif

@@ -25,7 +25,7 @@
 
   See Documentation/rbtree.txt for documentation and samples.
 */
-/* from 4.14.202 */
+/* from 4.19.163 */
 
 #ifndef	_LINUX_RBTREE_H
 #define	_LINUX_RBTREE_H
@@ -34,19 +34,11 @@
 #include <linux/stddef.h>
 //#include <linux/rcupdate.h>
 
-#ifdef TARGET_OS2
-#pragma pack(4)
-#endif
 struct rb_node {
 	unsigned long  __rb_parent_color;
 	struct rb_node *rb_right;
 	struct rb_node *rb_left;
-#ifndef TARGET_OS2
-} __attribute__((aligned(sizeof(long))));
-#else
-};
-#pragma pack()
-#endif
+} /*__attribute__((aligned(sizeof(long))))*/;
     /* The alignment might seem pointless, but allegedly CRIS needs it */
 
 struct rb_root {
@@ -108,6 +100,8 @@ extern void rb_replace_node(struct rb_node *victim, struct rb_node *new,
 			    struct rb_root *root);
 extern void rb_replace_node_rcu(struct rb_node *victim, struct rb_node *new,
 				struct rb_root *root);
+extern void rb_replace_node_cached(struct rb_node *victim, struct rb_node *new,
+				   struct rb_root_cached *root);
 
 static inline void rb_link_node(struct rb_node *node, struct rb_node *parent,
 				struct rb_node **rb_link)

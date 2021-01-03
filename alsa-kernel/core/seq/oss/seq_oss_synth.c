@@ -332,9 +332,7 @@ get_synthinfo_nospec(struct seq_oss_devinfo *dp, int dev)
 {
 	if (dev < 0 || dev >= dp->max_synthdev)
 		return NULL;
-#ifndef TARGET_OS2
 	dev = array_index_nospec(dev, SNDRV_SEQ_OSS_MAX_SYNTH_DEVS);
-#endif
 	return &dp->synths[dev];
 }
 

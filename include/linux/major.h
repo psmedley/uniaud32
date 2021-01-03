@@ -1,6 +1,8 @@
 #ifndef _LINUX_MAJOR_H
 #define _LINUX_MAJOR_H
 
+#include <linux/types.h>
+
 /*
  * This file has definitions for major device numbers.
  * For the device number assignments, see Documentation/devices.txt.

@@ -34,7 +34,6 @@ void *snd_array_new(struct snd_array *array)
 		array->list = nlist;
 		array->alloced = num;
 	}
-
 	return snd_array_elem(array, array->used++);
 }
 EXPORT_SYMBOL_GPL(snd_array_new);

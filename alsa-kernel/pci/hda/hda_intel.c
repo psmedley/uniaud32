@@ -36,8 +36,6 @@
 #include <linux/time.h>
 #include <linux/completion.h>
 #ifdef TARGET_OS2
-#include <linux/math64.h>
-
 #define KBUILD_MODNAME "hda_intel"
 #endif
 
@@ -52,10 +50,8 @@
 #include <sound/hdaudio.h>
 #include <sound/hda_i915.h>
 #include <sound/intel-nhlt.h>
-#ifndef TARGET_OS2
 #include <linux/vgaarb.h>
 #include <linux/vga_switcheroo.h>
-#endif
 #include <linux/firmware.h>
 #include <sound/hda_codec.h>
 #include "hda_controller.h"
@@ -810,10 +806,8 @@ static int azx_acquire_irq(struct azx *chip, int do_disconnect)
 		dev_err(chip->card->dev,
 			"unable to grab IRQ %d, disabling device\n",
 			chip->pci->irq);
-#ifndef TARGET_OS2
 		if (do_disconnect)
 			snd_card_disconnect(chip->card);
-#endif
 		return -1;
 	}
 	bus->irq = chip->pci->irq;
@@ -1400,9 +1394,7 @@ static void azx_free(struct azx *chip)
 	azx_del_card_list(chip);
 
 	hda->init_failed = 1; /* to be sure */
-#ifndef TARGET_OS2
 	complete_all(&hda->probe_wait);
-#endif
 
 #ifdef CONFIG_VGA_SWITCHEROO
 	if (use_vga_switcheroo(hda)) {
@@ -2209,10 +2201,8 @@ static int azx_probe(struct pci_dev *pci,
 #endif
 
 	dev++;
-#ifndef TARGET_OS2
 	if (chip->disabled)
 		complete_all(&hda->probe_wait);
-#endif
 	return 0;
 
 out_free:
@@ -2390,9 +2380,7 @@ out_free:
 
 	if (!hda->need_i915_power)
 		display_power(chip, false);
-#ifndef TARGET_OS2
 	complete_all(&hda->probe_wait);
-#endif
 	to_hda_bus(bus)->bus_probing = 0;
 	return 0;
 }

@@ -3350,13 +3350,9 @@ static int snd_trident_tlb_alloc(struct snd_trident *trident)
 	trident->tlb.entries = (__le32 *)ALIGN((unsigned long)trident->tlb.buffer.area, SNDRV_TRIDENT_MAX_PAGES * 4);
 	trident->tlb.entries_dmaaddr = ALIGN(trident->tlb.buffer.addr, SNDRV_TRIDENT_MAX_PAGES * 4);
 	/* allocate shadow TLB page table (virtual addresses) */
-#ifndef TARGET_OS2
 	trident->tlb.shadow_entries =
 		vmalloc(array_size(SNDRV_TRIDENT_MAX_PAGES,
 				   sizeof(unsigned long)));
-#else
-	trident->tlb.shadow_entries = vmalloc(SNDRV_TRIDENT_MAX_PAGES*sizeof(unsigned long));
-#endif
 	if (!trident->tlb.shadow_entries)
 		return -ENOMEM;
 

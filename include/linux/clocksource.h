@@ -1,5 +1,8 @@
 #ifndef _LINUX_CLOCKSOURCE_H
 #define _LINUX_CLOCKSOURCE_H
+
+#include <linux/types.h>
+
 /* clocksource cycle base type */
 typedef u64 cycle_t;
 struct clocksource;

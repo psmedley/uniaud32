@@ -1925,7 +1925,7 @@ int snd_emu10k1_create(struct snd_card *card,
 		(unsigned long)emu->ptb_pages.addr,
 		(unsigned long)(emu->ptb_pages.addr + emu->ptb_pages.bytes));
 
-#ifndef TARGET_OS2
+#ifdef TARGET_OS2
 	emu->page_ptr_table = vmalloc(array_size(sizeof(void *),
 						 emu->max_cache_pages));
 	emu->page_addr_table = vmalloc(array_size(sizeof(unsigned long),
@@ -2090,7 +2090,7 @@ static int alloc_pm_buffer(struct snd_emu10k1 *emu)
 	size = ARRAY_SIZE(saved_regs);
 	if (emu->audigy)
 		size += ARRAY_SIZE(saved_regs_audigy);
-#ifndef TARGET_OS2
+#ifdef TARGET_OS2
 	emu->saved_ptr = vmalloc(array3_size(4, NUM_G, size));
 #else
 	emu->saved_ptr = vmalloc(4 * NUM_G * size);

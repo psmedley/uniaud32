@@ -192,7 +192,7 @@ static void vt1708_stop_hp_work(struct hda_codec *codec)
 	if (spec->hp_work_active) {
 		snd_hda_codec_write(codec, 0x1, 0, 0xf81, 1);
 		codec->jackpoll_interval = 0;
-		//NOT_USED cancel_delayed_work_sync(&codec->jackpoll_work);
+		cancel_delayed_work_sync(&codec->jackpoll_work);
 		spec->hp_work_active = false;
 	}
 }

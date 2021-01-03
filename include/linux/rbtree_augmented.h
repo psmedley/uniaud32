@@ -20,12 +20,14 @@
 
   linux/include/linux/rbtree_augmented.h
 */
-/* from 4.14.202 */
+/* from 4.19.163 */
+
 #ifndef _LINUX_RBTREE_AUGMENTED_H
 #define _LINUX_RBTREE_AUGMENTED_H
 
 #include <linux/compiler.h>
 #include <linux/rbtree.h>
+//#include <linux/rcupdate.h>
 
 /*
  * Please note - only struct rb_augment_callbacks and the prototypes for
@@ -55,14 +57,14 @@ extern void __rb_insert_augmented(struct rb_node *node,
  * a user provided function to update the augmented information on the
  * affected subtrees.
  */
-static inline void
+/*static inline*/ void
 rb_insert_augmented(struct rb_node *node, struct rb_root *root,
 		    const struct rb_augment_callbacks *augment)
 {
 	__rb_insert_augmented(node, root, false, NULL, augment->rotate);
 }
 
-static inline void
+/*static inline*/ void
 rb_insert_augmented_cached(struct rb_node *node,
 			   struct rb_root_cached *root, bool newleft,
 			   const struct rb_augment_callbacks *augment)
@@ -71,9 +73,9 @@ rb_insert_augmented_cached(struct rb_node *node,
 			      newleft, &root->rb_leftmost, augment->rotate);
 }
 
-#define RB_DECLARE_CALLBACKS(rbstatic, rbname, rbstruct, rbfield,	\
+#define RB_DECLARE_CALLBACKS(rb/*static*/, rbname, rbstruct, rbfield,	\
 			     rbtype, rbaugmented, rbcompute)		\
-static inline void							\
+/*static inline*/ void							\
 rbname ## _propagate(struct rb_node *rb, struct rb_node *stop)		\
 {									\
 	while (rb != stop) {						\
@@ -85,14 +87,14 @@ rbname ## _propagate(struct rb_node *rb, struct rb_node *stop)		\
 		rb = rb_parent(&node->rbfield);				\
 	}								\
 }									\
-static inline void							\
+/*static inline*/ void							\
 rbname ## _copy(struct rb_node *rb_old, struct rb_node *rb_new)		\
 {									\
 	rbstruct *old = rb_entry(rb_old, rbstruct, rbfield);		\
 	rbstruct *new = rb_entry(rb_new, rbstruct, rbfield);		\
 	new->rbaugmented = old->rbaugmented;				\
 }									\
-static void								\
+/*static*/ void								\
 rbname ## _rotate(struct rb_node *rb_old, struct rb_node *rb_new)	\
 {									\
 	rbstruct *old = rb_entry(rb_old, rbstruct, rbfield);		\
@@ -100,7 +102,7 @@ rbname ## _rotate(struct rb_node *rb_old, struct rb_node *rb_new)	\
 	new->rbaugmented = old->rbaugmented;				\
 	old->rbaugmented = rbcompute(old);				\
 }									\
-rbstatic const struct rb_augment_callbacks rbname = {			\
+rb/*static*/ const struct rb_augment_callbacks rbname = {			\
 	.propagate = rbname ## _propagate,				\
 	.copy = rbname ## _copy,					\
 	.rotate = rbname ## _rotate					\
@@ -119,18 +121,18 @@ rbstatic const struct rb_augment_callbacks rbname = {			\
 #define rb_is_red(rb)      __rb_is_red((rb)->__rb_parent_color)
 #define rb_is_black(rb)    __rb_is_black((rb)->__rb_parent_color)
 
-static inline void rb_set_parent(struct rb_node *rb, struct rb_node *p)
+/*static inline*/ void rb_set_parent(struct rb_node *rb, struct rb_node *p)
 {
 	rb->__rb_parent_color = rb_color(rb) | (unsigned long)p;
 }
 
-static inline void rb_set_parent_color(struct rb_node *rb,
+/*static inline*/ void rb_set_parent_color(struct rb_node *rb,
 				       struct rb_node *p, int color)
 {
 	rb->__rb_parent_color = (unsigned long)p | color;
 }
 
-static inline void
+/*static inline*/ void
 __rb_change_child(struct rb_node *old, struct rb_node *new,
 		  struct rb_node *parent, struct rb_root *root)
 {
@@ -144,7 +146,7 @@ __rb_change_child(struct rb_node *old, struct rb_node *new,
 }
 
 #ifndef TARGET_OS2
-static inline void
+/*static inline*/ void
 __rb_change_child_rcu(struct rb_node *old, struct rb_node *new,
 		      struct rb_node *parent, struct rb_root *root)
 {
@@ -161,7 +163,7 @@ __rb_change_child_rcu(struct rb_node *old, struct rb_node *new,
 extern void __rb_erase_color(struct rb_node *parent, struct rb_root *root,
 	void (*augment_rotate)(struct rb_node *old, struct rb_node *new));
 
-static inline struct rb_node *
+/*static inline*/ struct rb_node *
 __rb_erase_augmented(struct rb_node *node, struct rb_root *root,
 		     struct rb_node **leftmost,
 		     const struct rb_augment_callbacks *augment)
@@ -269,7 +271,7 @@ __rb_erase_augmented(struct rb_node *node, struct rb_root *root,
 	return rebalance;
 }
 
-static inline void
+/*static inline*/ void
 rb_erase_augmented(struct rb_node *node, struct rb_root *root,
 		   const struct rb_augment_callbacks *augment)
 {
@@ -279,7 +281,7 @@ rb_erase_augmented(struct rb_node *node, struct rb_root *root,
 		__rb_erase_color(rebalance, root, augment->rotate);
 }
 
-static inline void
+/*static inline*/ void
 rb_erase_augmented_cached(struct rb_node *node, struct rb_root_cached *root,
 			  const struct rb_augment_callbacks *augment)
 {

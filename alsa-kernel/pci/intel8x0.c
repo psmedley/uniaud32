@@ -8,13 +8,10 @@
  *   by Mike Pieper <mptei@users.sourceforge.net>. We have no datasheet
  *   for SiS735, so the code is not fully functional.
  *
-
  */      
 
 #ifdef TARGET_OS2
 #define KBUILD_MODNAME "intel8x0"
-#include <linux/ktime.h>
-extern ktime_t ktime_get(void);
 #endif
 
 #include <linux/io.h>
@@ -3181,7 +3178,6 @@ static struct snd_pci_quirk spdif_aclink_defaults[] = {
 /* look up white/black list for SPDIF over ac-link */
 static int check_default_spdif_aclink(struct pci_dev *pci)
 {
-#ifndef TARGET_OS2
 	const struct snd_pci_quirk *w;
 
 	w = snd_pci_quirk_lookup(pci, spdif_aclink_defaults);
@@ -3196,7 +3192,6 @@ static int check_default_spdif_aclink(struct pci_dev *pci)
 				    snd_pci_quirk_name(w));
 		return w->value;
 	}
-#endif
 	return 0;
 }
 
