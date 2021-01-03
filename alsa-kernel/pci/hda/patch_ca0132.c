@@ -27,6 +27,10 @@
 
 #include "ca0132_regs.h"
 
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "patch_ca0132"
+#endif
+
 /* Enable this to see controls for tuning purpose. */
 /*#define ENABLE_TUNING_CONTROLS*/
 
@@ -1091,7 +1095,7 @@ static const struct hda_pintbl alienware_pincfgs[] = {
 	{ 0x12, 0xd5a30140 }, /* Builtin Mic */
 	{ 0x13, 0x411111f0 }, /* N/A */
 	{ 0x18, 0x411111f0 }, /* N/A */
-	{}
+	{0}
 };
 
 /* Sound Blaster Z pin configs taken from Windows Driver */
@@ -1106,7 +1110,7 @@ static const struct hda_pintbl sbz_pincfgs[] = {
 	{ 0x12, 0x01a170f0 }, /* Port C -- LineIn1 */
 	{ 0x13, 0x908700f0 }, /* What U Hear In*/
 	{ 0x18, 0x50d000f0 }, /* N/A */
-	{}
+	{0}
 };
 
 /* Sound Blaster ZxR pin configs taken from Windows Driver */
@@ -1121,7 +1125,7 @@ static const struct hda_pintbl zxr_pincfgs[] = {
 	{ 0x12, 0x01a271f0 }, /* Port C -- LineIn1 */
 	{ 0x13, 0x908700f0 }, /* What U Hear In*/
 	{ 0x18, 0x50d000f0 }, /* N/A */
-	{}
+	{0}
 };
 
 /* Recon3D pin configs taken from Windows Driver */
@@ -1136,7 +1140,7 @@ static const struct hda_pintbl r3d_pincfgs[] = {
 	{ 0x12, 0x02a090f0 }, /* Port C -- LineIn1 */
 	{ 0x13, 0x908700f0 }, /* What U Hear In*/
 	{ 0x18, 0x50d000f0 }, /* N/A */
-	{}
+	{0}
 };
 
 /* Sound Blaster AE-5 pin configs taken from Windows Driver */
@@ -1151,7 +1155,7 @@ static const struct hda_pintbl ae5_pincfgs[] = {
 	{ 0x12, 0x01a170f0 }, /* Port C -- LineIn1 */
 	{ 0x13, 0x908700f0 }, /* What U Hear In*/
 	{ 0x18, 0x50d000f0 }, /* N/A */
-	{}
+	{0}
 };
 
 /* Recon3D integrated pin configs taken from Windows Driver */
@@ -1166,7 +1170,7 @@ static const struct hda_pintbl r3di_pincfgs[] = {
 	{ 0x12, 0x02a090f0 }, /* Port C -- LineIn1 */
 	{ 0x13, 0x908700f0 }, /* What U Hear In*/
 	{ 0x18, 0x500000f0 }, /* N/A */
-	{}
+	{0}
 };
 
 static const struct snd_pci_quirk ca0132_quirks[] = {
@@ -1186,7 +1190,7 @@ static const struct snd_pci_quirk ca0132_quirks[] = {
 	SND_PCI_QUIRK(0x1102, 0x0018, "Recon3D", QUIRK_R3D),
 	SND_PCI_QUIRK(0x1102, 0x0051, "Sound Blaster AE-5", QUIRK_AE5),
 	SND_PCI_QUIRK(0x1102, 0x0081, "Sound Blaster AE-7", QUIRK_AE7),
-	{}
+	{0}
 };
 
 /*
@@ -2701,7 +2705,7 @@ struct dsp_image_seg {
 	u32 magic;
 	u32 chip_addr;
 	u32 count;
-	u32 data[0];
+	u32 data[1];
 };
 
 static const u32 g_magic_value = 0x4c46584d;
@@ -2724,7 +2728,11 @@ static bool is_last(const struct dsp_image_seg *p)
 
 static size_t dsp_sizeof(const struct dsp_image_seg *p)
 {
+#ifndef TARGET_OS2
 	return struct_size(p, data, p->count);
+#else
+	return sizeof(*p) + sizeof(int) + p->count;
+#endif
 }
 
 static const struct dsp_image_seg *get_next_seg_ptr(
@@ -6294,7 +6302,7 @@ static const struct snd_pcm_chmap_elem ca0132_alt_chmaps[] = {
 	  .map = { SNDRV_CHMAP_FL, SNDRV_CHMAP_FR,
 		   SNDRV_CHMAP_FC, SNDRV_CHMAP_LFE,
 		   SNDRV_CHMAP_RL, SNDRV_CHMAP_RR } },
-	{ }
+	{0}
 };
 
 /* Add the correct chmap for streams with 6 channels. */
@@ -6303,7 +6311,7 @@ static void ca0132_alt_add_chmap_ctls(struct hda_codec *codec)
 	int err = 0;
 	struct hda_pcm *pcm;
 
-	list_for_each_entry(pcm, &codec->pcm_list_head, list) {
+	list_for_each_entry(pcm, &codec->pcm_list_head, list, struct hda_pcm) {
 		struct hda_pcm_stream *hinfo =
 			&pcm->stream[SNDRV_PCM_STREAM_PLAYBACK];
 		struct snd_pcm_chmap *chmap;
@@ -6343,7 +6351,7 @@ static const struct snd_kcontrol_new ca0132_mixer[] = {
 			       VNID_HP_ASEL, 1, HDA_OUTPUT),
 	CA0132_CODEC_MUTE_MONO("AMic1/DMic Auto Detect Capture Switch",
 			       VNID_AMIC1_ASEL, 1, HDA_INPUT),
-	{ } /* end */
+	{0} /* end */
 };
 
 /*
@@ -6366,7 +6374,7 @@ static const struct snd_kcontrol_new desktop_mixer[] = {
 	HDA_CODEC_MUTE("What U Hear Capture Switch", 0x0a, 0, HDA_INPUT),
 	CA0132_CODEC_MUTE_MONO("HP/Speaker Auto Detect Playback Switch",
 				VNID_HP_ASEL, 1, HDA_OUTPUT),
-	{ } /* end */
+	{0} /* end */
 };
 
 /*
@@ -6388,7 +6396,7 @@ static const struct snd_kcontrol_new r3di_mixer[] = {
 	HDA_CODEC_MUTE("What U Hear Capture Switch", 0x0a, 0, HDA_INPUT),
 	CA0132_CODEC_MUTE_MONO("HP/Speaker Auto Detect Playback Switch",
 				VNID_HP_ASEL, 1, HDA_OUTPUT),
-	{ } /* end */
+	{0} /* end */
 };
 
 static int ca0132_build_controls(struct hda_codec *codec)
@@ -7674,7 +7682,7 @@ static void ca0132_init_unsol(struct hda_codec *codec)
 static struct hda_verb ca0132_base_init_verbs[] = {
 	/*enable ct extension*/
 	{0x15, VENDOR_CHIPIO_CT_EXTENSIONS_ENABLE, 0x1},
-	{}
+	{0}
 };
 
 /* Send at exit. */
@@ -7683,7 +7691,7 @@ static struct hda_verb ca0132_base_exit_verbs[] = {
 	{0x01, AC_VERB_SET_POWER_STATE, 0x03},
 	/*disable ct extension*/
 	{0x15, VENDOR_CHIPIO_CT_EXTENSIONS_ENABLE, 0},
-	{}
+	{0}
 };
 
 /* Other verbs tables. Sends after DSP download. */
@@ -7717,7 +7725,7 @@ static struct hda_verb ca0132_init_verbs0[] = {
 	{0x15, 0x546, 0xC9},
 	{0x15, 0x53B, 0xCE},
 	{0x15, 0x5E8, 0xC9},
-	{}
+	{0}
 };
 
 /* Extra init verbs for desktop cards. */
@@ -7738,7 +7746,7 @@ static struct hda_verb ca0132_init_verbs1[] = {
 	{0x15, 0x70E, 0x09},
 	{0x15, 0x707, 0x14},
 	{0x15, 0x6FF, 0xC4},
-	{}
+	{0}
 };
 
 static void ca0132_init_chip(struct hda_codec *codec)
@@ -8900,7 +8908,7 @@ static int patch_ca0132(struct hda_codec *codec)
  */
 static struct hda_device_id snd_hda_id_ca0132[] = {
 	HDA_CODEC_ENTRY(0x11020011, "CA0132", patch_ca0132),
-	{} /* terminator */
+	{0} /* terminator */
 };
 MODULE_DEVICE_TABLE(hdaudio, snd_hda_id_ca0132);
 

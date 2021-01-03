@@ -22,6 +22,9 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
+#ifdef TARGET_OS2
+#include <linux/mod_devicetable.h>
+#endif
 #include <sound/core.h>
 #include <sound/jack.h>
 #include <sound/asoundef.h>
@@ -37,6 +40,10 @@
 static bool static_hdmi_pcm;
 module_param(static_hdmi_pcm, bool, 0644);
 MODULE_PARM_DESC(static_hdmi_pcm, "Don't restrict PCM parameters per ELD info");
+
+#ifdef TARGET_OS2
+#define KBUILD_MODNAME "patch_hdmi"
+#endif
 
 #define is_haswell(codec)  ((codec)->core.vendor_id == 0x80862807)
 #define is_broadwell(codec)    ((codec)->core.vendor_id == 0x80862808)
@@ -225,7 +232,7 @@ struct dp_audio_infoframe {
 union audio_infoframe {
 	struct hdmi_audio_infoframe hdmi;
 	struct dp_audio_infoframe dp;
-	u8 bytes[0];
+	u8 bytes[1];
 };
 
 /*
@@ -1820,7 +1827,7 @@ static int hdmi_add_cvt(struct hda_codec *codec, hda_nid_t cvt_nid)
 static const struct snd_pci_quirk force_connect_list[] = {
 	SND_PCI_QUIRK(0x103c, 0x870f, "HP", 1),
 	SND_PCI_QUIRK(0x103c, 0x871a, "HP", 1),
-	{}
+	{0}
 };
 
 static int hdmi_parse_codec(struct hda_codec *codec)
@@ -3057,7 +3064,7 @@ static const struct hda_verb nvhdmi_basic_init_7x_2ch[] = {
 	{ 0x1, Nv_VERB_SET_Audio_Protection_On, 0x1},
 	/* enable digital output on pin widget */
 	{ 0x5, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT | 0x5 },
-	{0] /* terminator */
+	{0} /* terminator */
 };
 
 static const struct hda_verb nvhdmi_basic_init_7x_8ch[] = {
