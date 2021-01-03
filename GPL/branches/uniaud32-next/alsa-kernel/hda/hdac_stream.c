@@ -3,9 +3,6 @@
  * HD-audio stream operations
  */
 
-#ifdef TARGET_OS2
-#include <linux/types.h>
-#endif
 #include <linux/kernel.h>
 #include <linux/delay.h>
 #include <linux/export.h>
@@ -302,11 +299,7 @@ struct hdac_stream *snd_hdac_stream_assign(struct hdac_bus *bus,
 			continue;
 		if (azx_dev->opened)
 			continue;
-#ifndef TARGET_OS2
 		if (azx_dev->assigned_key == key) {
-#else
-		if (azx_dev->device == substream->pcm->device) {
-#endif
 			res = azx_dev;
 			break;
 		}
@@ -317,11 +310,7 @@ struct hdac_stream *snd_hdac_stream_assign(struct hdac_bus *bus,
 		spin_lock_irq(&bus->reg_lock);
 		res->opened = 1;
 		res->running = 0;
-#ifndef TARGET_OS2
 		res->assigned_key = key;
-#else
-		res->device == substream->pcm->device;
-#endif
 		res->substream = substream;
 		spin_unlock_irq(&bus->reg_lock);
 	}

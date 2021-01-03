@@ -46,9 +46,7 @@ static int get_wcap_ioctl(struct hda_codec *codec,
 		res = 0;
 	} else {
 		verb -= codec->core.start_nid;
-#ifndef TARGET_OS2
 		verb = array_index_nospec(verb, codec->core.num_nodes);
-#endif
 		res = codec->wcaps[verb];
 	}
 	if (put_user(res, &arg->res))

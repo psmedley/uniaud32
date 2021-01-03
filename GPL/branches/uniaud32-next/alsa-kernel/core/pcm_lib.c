@@ -1407,7 +1407,7 @@ static int snd_pcm_hw_rule_msbits(struct snd_pcm_hw_params *params,
 
 	if ((snd_interval_value(i) == width) ||
 	    (width == 0 && snd_interval_value(i) > msbits))
-#ifdef TARGET_OS2 //fixme
+#ifdef TARGET_OS2 //fixme min_not_zero uses typeof()
 		params->msbits = msbits;
 #else
 		params->msbits = min_not_zero(params->msbits, msbits);

@@ -20,7 +20,7 @@
 
   linux/lib/rbtree.c
 */
-/* from 4.14.202 */
+/* from 4.19.163 */
 
 #include <linux/rbtree_augmented.h>
 #include <linux/export.h>
@@ -96,7 +96,7 @@ __rb_rotate_set_parents(struct rb_node *old, struct rb_node *new,
 	__rb_change_child(old, new, parent, root);
 }
 
-/*static*/ inline void
+/*static inline*/ void
 __rb_insert(struct rb_node *node, struct rb_root *root,
 	    bool newleft, struct rb_node **leftmost,
 	    void (*augment_rotate)(struct rb_node *old, struct rb_node *new))
@@ -242,7 +242,7 @@ __rb_insert(struct rb_node *node, struct rb_root *root,
  * Inline version for rb_erase() use - we want to be able to inline
  * and eliminate the dummy_rotate callback there
  */
-/*static*/ inline void
+/*static inline*/ void
 ____rb_erase_color(struct rb_node *parent, struct rb_root *root,
 	void (*augment_rotate)(struct rb_node *old, struct rb_node *new))
 {
@@ -444,7 +444,7 @@ EXPORT_SYMBOL(__rb_erase_color);
 /*static inline*/ void dummy_copy(struct rb_node *old, struct rb_node *new) {}
 /*static inline*/ void dummy_rotate(struct rb_node *old, struct rb_node *new) {}
 
-/*static*/ const struct rb_augment_callbacks dummy_callbacks = {
+static const struct rb_augment_callbacks dummy_callbacks = {
 	.propagate = dummy_propagate,
 	.copy = dummy_copy,
 	.rotate = dummy_rotate
@@ -606,6 +606,16 @@ void rb_replace_node(struct rb_node *victim, struct rb_node *new,
 }
 EXPORT_SYMBOL(rb_replace_node);
 
+void rb_replace_node_cached(struct rb_node *victim, struct rb_node *new,
+			    struct rb_root_cached *root)
+{
+	rb_replace_node(victim, new, &root->rb_root);
+
+	if (root->rb_leftmost == victim)
+		root->rb_leftmost = new;
+}
+EXPORT_SYMBOL(rb_replace_node_cached);
+
 #ifndef TARGET_OS2
 void rb_replace_node_rcu(struct rb_node *victim, struct rb_node *new,
 			 struct rb_root *root)
@@ -630,7 +640,7 @@ void rb_replace_node_rcu(struct rb_node *victim, struct rb_node *new,
 EXPORT_SYMBOL(rb_replace_node_rcu);
 #endif
 
-/*static*/ struct rb_node *rb_left_deepest_node(const struct rb_node *node)
+static struct rb_node *rb_left_deepest_node(const struct rb_node *node)
 {
 	for (;;) {
 		if (node->rb_left)

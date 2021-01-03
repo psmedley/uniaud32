@@ -6,6 +6,7 @@
 #include <linux/gfp.h>
 #include <asm/page.h>
 #include <asm/atomic.h>
+#include <linux/overflow.h>
 
 /*
  * GFP bitmasks..

@@ -63,9 +63,6 @@ struct snd_kcontrol {
 		const unsigned int *p;
 	} tlv;
 	unsigned long private_value;
-#ifdef TARGET_OS2
-        void *private_ptr;
-#endif
 	void *private_data;
 	void (*private_free)(struct snd_kcontrol *kcontrol);
 #ifndef TARGET_OS2
@@ -142,21 +139,13 @@ int snd_ctl_get_preferred_subdevice(struct snd_card *card, int type);
 static inline unsigned int snd_ctl_get_ioffnum(struct snd_kcontrol *kctl, struct snd_ctl_elem_id *id)
 {
 	unsigned int ioff = id->numid - kctl->id.numid;
-#ifndef TARGET_OS2
 	return array_index_nospec(ioff, kctl->count);
-#else
-	return ioff;
-#endif
 }
 
 static inline unsigned int snd_ctl_get_ioffidx(struct snd_kcontrol *kctl, struct snd_ctl_elem_id *id)
 {
 	unsigned int ioff = id->index - kctl->id.index;
-#ifndef TARGET_OS2
 	return array_index_nospec(ioff, kctl->count);
-#else
-	return ioff;
-#endif
 }
 
 static inline unsigned int snd_ctl_get_ioff(struct snd_kcontrol *kctl, struct snd_ctl_elem_id *id)

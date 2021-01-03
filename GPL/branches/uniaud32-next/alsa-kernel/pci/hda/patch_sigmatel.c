@@ -28,8 +28,6 @@
 
 #ifdef TARGET_OS2
 #define KBUILD_MODNAME "patch_sigmatel"
-// 2020-11-17 SHL
-#include <../../../lib32/internal.h>
 #endif
 
 enum {
@@ -1944,9 +1942,9 @@ static const struct hda_fixup stac92hd73xx_fixups[] = {
 		.type = HDA_FIXUP_PINS,
 		.v.pins = stac92hd89xx_hp_z1_g2_right_mic_jack_pin_configs,
 	},
-#ifdef TARGET_OS2xxx
 	[STAC_92HD73XX_ASUS_MOBO] = {
 		.type = HDA_FIXUP_PINS,
+#ifndef TARGET_OS2
 		.v.pins = (const struct hda_pintbl[]) {
 			/* enable 5.1 and SPDIF out */
 			{ 0x0c, 0x01014411 },
@@ -1955,8 +1953,10 @@ static const struct hda_fixup stac92hd73xx_fixups[] = {
 			{ 0x22, 0x014b1180 },
 			{0}
 		}
-	},
+#else
+		.v.pins = STAC_92HD73XX_ASUS_MOBO_PINS,
 #endif
+	},
 };
 
 static const struct hda_model_fixup stac92hd73xx_models[] = {

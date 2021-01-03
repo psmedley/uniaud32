@@ -9,26 +9,6 @@
  *                     PeiSen Hou <pshou@realtek.com.tw>
  */
 
-#ifdef TARGET_OS2
-#include <linux/delay.h>
-#include <linux/interrupt.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/dma-mapping.h>
-#include <linux/moduleparam.h>
-#include <linux/init.h>
-#include <linux/slab.h>
-#include <linux/pci.h>
-#include <linux/mutex.h>
-#include <linux/reboot.h>
-#include <linux/io.h>
-#include <linux/pm_runtime.h>
-#include <linux/clocksource.h>
-#include <linux/time.h>
-#include <linux/completion.h>
-#include <linux/math64.h>
-#endif
-
 #include <linux/clocksource.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -1395,6 +1375,7 @@ int azx_codec_configure(struct azx *chip)
 	list_for_each_codec_safe(codec, next, &chip->bus) {
 		snd_hda_codec_configure(codec);
 	}
+
 	if (!azx_bus(chip)->num_codecs)
 		return -ENODEV;
 	return 0;

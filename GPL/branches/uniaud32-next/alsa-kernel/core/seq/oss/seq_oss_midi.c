@@ -303,9 +303,7 @@ get_mididev(struct seq_oss_devinfo *dp, int dev)
 {
 	if (dev < 0 || dev >= dp->max_mididev)
 		return NULL;
-#ifndef TARGET_OS2
 	dev = array_index_nospec(dev, dp->max_mididev);
-#endif
 	return get_mdev(dev);
 }
 

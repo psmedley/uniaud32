@@ -4,9 +4,6 @@
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  */
 
-#ifdef TARGET_OS2
-#include <sound/core.h>
-#endif
 #include <linux/major.h>
 #include <linux/init.h>
 #include <linux/slab.h>

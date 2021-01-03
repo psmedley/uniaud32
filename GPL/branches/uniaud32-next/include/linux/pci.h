@@ -337,7 +337,6 @@ struct pci_dev {
   unsigned short  device;
   unsigned short  subsystem_vendor;
   unsigned short  subsystem_device;
-  unsigned int  _class;   /* 3 bytes: (base,sub,prog-if) */
   u8    hdr_type; /* PCI header type (`multi' flag masked out) */
   u8    rom_base_reg; /* Which config register controls the ROM */
 

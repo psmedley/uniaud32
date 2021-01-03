@@ -2581,10 +2581,8 @@ snd_m3_create(struct snd_card *card, struct pci_dev *pci,
 	else {
 		quirk = snd_pci_quirk_lookup(pci, m3_amp_quirk_list);
 		if (quirk) {
-#ifndef TARGET_OS2
 			dev_info(card->dev, "set amp-gpio for '%s'\n",
 				 snd_pci_quirk_name(quirk));
-#endif
 			chip->amp_gpio = quirk->value;
 		} else if (chip->allegro_flag)
 			chip->amp_gpio = GPO_EXT_AMP_ALLEGRO;
@@ -2594,10 +2592,8 @@ snd_m3_create(struct snd_card *card, struct pci_dev *pci,
 
 	quirk = snd_pci_quirk_lookup(pci, m3_irda_quirk_list);
 	if (quirk) {
-#ifndef TARGET_OS2
 		dev_info(card->dev, "enabled irda workaround for '%s'\n",
 			 snd_pci_quirk_name(quirk));
-#endif
 		chip->irda_workaround = 1;
 	}
 	quirk = snd_pci_quirk_lookup(pci, m3_hv_quirk_list);
@@ -2652,14 +2648,10 @@ snd_m3_create(struct snd_card *card, struct pci_dev *pci,
 	chip->irq = pci->irq;
 
 #ifdef CONFIG_PM_SLEEP
-#ifndef TARGET_OS2
 	chip->suspend_mem =
 		vmalloc(array_size(sizeof(u16),
 				   REV_B_CODE_MEMORY_LENGTH +
 					REV_B_DATA_MEMORY_LENGTH));
-#else
-	chip->suspend_mem = vmalloc(sizeof(u16) * (REV_B_CODE_MEMORY_LENGTH + REV_B_DATA_MEMORY_LENGTH));
-#endif
 	if (chip->suspend_mem == NULL)
 		dev_warn(card->dev, "can't allocate apm buffer\n");
 #endif
@@ -2712,11 +2704,10 @@ snd_m3_probe(struct pci_dev *pci, const struct pci_device_id *pci_id)
 	struct snd_m3 *chip;
 	int err;
 
-#ifndef TARGET_OS2
 	/* don't pick up modems */
 	if (((pci->class >> 8) & 0xffff) != PCI_CLASS_MULTIMEDIA_AUDIO)
 		return -ENODEV;
-#endif
+
 	if (dev >= SNDRV_CARDS)
 		return -ENODEV;
 	if (!enable[dev]) {

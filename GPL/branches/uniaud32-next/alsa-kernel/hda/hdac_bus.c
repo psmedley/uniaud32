@@ -157,7 +157,6 @@ void snd_hdac_bus_queue_event(struct hdac_bus *bus, u32 res, u32 res_ex)
 }
 EXPORT_SYMBOL_GPL(snd_hdac_bus_queue_event);
 
-#ifdef TARGET_OS2 //was ifndef 2020-11-26
 /*
  * process queued unsolicited events
  */
@@ -188,7 +187,6 @@ static void snd_hdac_bus_process_unsol_events(struct work_struct *work)
 	}
 	spin_unlock_irq(&bus->reg_lock);
 }
-#endif
 
 /**
  * snd_hdac_bus_add_device - Add a codec to bus

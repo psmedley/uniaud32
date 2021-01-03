@@ -857,7 +857,7 @@ int snd_p16v_mixer(struct snd_emu10k1 *emu)
 
 int snd_p16v_alloc_pm_buffer(struct snd_emu10k1 *emu)
 {
-#ifndef TARGET_OS2
+#ifdef TARGET_OS2
 	emu->p16v_saved = vmalloc(array_size(NUM_CHS * 4, 0x80));
 #else
 	emu->p16v_saved = vmalloc(NUM_CHS * 4 * 0x80);

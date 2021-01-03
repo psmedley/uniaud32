@@ -240,4 +240,8 @@ static inline struct proc_dir_entry *PDE(const struct inode *inode)
 	return (struct proc_dir_entry *) inode->u.generic_ip;
 }
 static inline void *PDE_DATA(const struct inode *inode) {return NULL;}
+
+extern struct proc_dir_entry *proc_symlink(const char *,
+		struct proc_dir_entry *, const char *);
+extern struct proc_dir_entry *proc_mkdir(const char *, struct proc_dir_entry *);
 #endif /* _LINUX_PROC_FS_H */

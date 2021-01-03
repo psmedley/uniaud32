@@ -286,9 +286,7 @@ note_on_event(struct seq_oss_devinfo *dp, int dev, int ch, int note, int vel, st
 			return set_note_event(dp, dev, SNDRV_SEQ_EVENT_NOTEON, ch, note, vel, ev);
 		}
 
-#ifndef TARGET_OS2
 		ch = array_index_nospec(ch, info->nr_voices);
-#endif
 		if (note == 255 && info->ch[ch].note >= 0) {
 			/* volume control */
 			int type;
@@ -349,9 +347,7 @@ note_off_event(struct seq_oss_devinfo *dp, int dev, int ch, int note, int vel, s
 			return set_note_event(dp, dev, SNDRV_SEQ_EVENT_NOTEON, ch, note, vel, ev);
 		}
 
-#ifndef TARGET_OS2
 		ch = array_index_nospec(ch, info->nr_voices);
-#endif
 		if (info->ch[ch].note >= 0) {
 			note = info->ch[ch].note;
 			info->ch[ch].vel = 0;

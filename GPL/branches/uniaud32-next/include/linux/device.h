@@ -5,6 +5,7 @@
 #include <linux/pm.h>
 #include <linux/sysfs.h>
 #include <linux/lockdep.h>
+#include <linux/overflow.h>
 
 struct device;
 struct device_private;
@@ -290,5 +291,9 @@ int bus_for_each_drv(struct bus_type *bus, struct device_driver *start,
 extern void devres_free(void *res);
 extern void *devres_find(struct device *dev, dr_release_t release,
 			 dr_match_t match, void *match_data);
+
+/* debugging and troubleshooting/diagnostic helpers. */
+extern const char *dev_driver_string(const struct device *dev);
+
 #endif /* _LINUX_DEVICE_H */
 

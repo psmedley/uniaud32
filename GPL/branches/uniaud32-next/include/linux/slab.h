@@ -6,6 +6,7 @@
 
 #include <linux/types.h>
 #include <linux/list.h>
+#include <linux/overflow.h>
 
 #if	!defined(_LINUX_SLAB_H)
 #define	_LINUX_SLAB_H

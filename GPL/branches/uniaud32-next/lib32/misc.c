@@ -248,6 +248,39 @@ int proc_unregister(struct proc_dir_entry *proc, int bla)
 }
 //******************************************************************************
 //******************************************************************************
+struct proc_dir_entry *proc_mkdir_mode(const char *name, umode_t mode,
+	struct proc_dir_entry *parent){
+    struct proc_dir_entry *proc;
+    proc = (struct proc_dir_entry *)kmalloc(sizeof(struct proc_dir_entry), 0);
+    memset(proc, 0, sizeof(struct proc_dir_entry));
+
+    proc->name   = name;
+    proc->parent = parent;
+
+    return proc;
+}
+//******************************************************************************
+//******************************************************************************
+struct proc_dir_entry *proc_mkdir(const char *name, struct proc_dir_entry *parent)
+{
+    return proc_mkdir_mode(name, S_IRUGO | S_IXUGO, parent);
+}
+//******************************************************************************
+//******************************************************************************
+struct proc_dir_entry *proc_symlink(const char *name, struct proc_dir_entry *parent, const char *dest)
+{
+    struct proc_dir_entry *proc;
+    proc = (struct proc_dir_entry *)kmalloc(sizeof(struct proc_dir_entry), 0);
+    memset(proc, 0, sizeof(struct proc_dir_entry));
+
+    proc->name   = name;
+    proc->parent = parent;
+    proc->data = dest;
+
+    return proc;
+}
+//******************************************************************************
+//******************************************************************************
 int fasync_helper(int a, struct file *b, int c, struct fasync_struct **d)
 {
     return 0;

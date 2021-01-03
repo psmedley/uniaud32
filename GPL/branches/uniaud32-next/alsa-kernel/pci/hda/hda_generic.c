@@ -26,6 +26,7 @@
 #include "hda_jack.h"
 #include "hda_beep.h"
 #include "hda_generic.h"
+
 #ifdef TARGET_OS2
 #define KBUILD_MODNAME "hda_generic"
 #endif
@@ -5272,6 +5273,7 @@ int snd_hda_gen_build_controls(struct hda_codec *codec)
 	}
 
 	free_kctls(spec); /* no longer needed */
+
 	err = snd_hda_jack_add_kctls(codec, &spec->autocfg);
 	if (err < 0)
 		return err;
@@ -5853,7 +5855,6 @@ static void set_output_and_unmute(struct hda_codec *codec, int path_idx)
 	snd_hda_activate_path(codec, path, path->active,
 			      aamix_default(codec->spec));
 	set_pin_eapd(codec, pin, path->active);
-
 }
 
 /* initialize primary output paths */

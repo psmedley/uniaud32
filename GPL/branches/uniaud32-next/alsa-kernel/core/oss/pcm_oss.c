@@ -1455,7 +1455,7 @@ static ssize_t snd_pcm_oss_write1(struct snd_pcm_substream *substream, const cha
 			xfer += tmp;
 			if (substream->oss.setup.partialfrag ||
 			    runtime->oss.buffer_used == runtime->oss.period_bytes) {
-				tmp = snd_pcm_oss_write2(substream, runtime->oss.buffer + runtime->oss.period_ptr,
+				tmp = snd_pcm_oss_write2(substream, runtime->oss.buffer + runtime->oss.period_ptr, 
 							 runtime->oss.buffer_used - runtime->oss.period_ptr, 1);
 				if (tmp <= 0)
 					goto err;

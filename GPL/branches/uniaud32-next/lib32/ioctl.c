@@ -275,7 +275,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 	int pcms = 0;
 
 	pcms = pcm_instances(deviceid);
-dprintf(("PSDebug: pcms= %d",pcms));
+
 	if (!pcaps || !pcms) return -1;
 
 

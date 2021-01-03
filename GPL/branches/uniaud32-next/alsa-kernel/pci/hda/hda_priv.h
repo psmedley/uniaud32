@@ -215,11 +215,7 @@ struct azx_dev {
 					 */
 	unsigned char stream_tag;	/* assigned stream */
 	unsigned char index;		/* stream index */
-#ifndef TARGET_OS2
 	int assigned_key;		/* last device# key assigned to */
-#else
-	int device;			/* last device number assigned to */
-#endif
 
 	unsigned int opened:1;
 	unsigned int running:1;

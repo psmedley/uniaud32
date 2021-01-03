@@ -34,5 +34,7 @@ static inline void init_completion(struct completion *x)
 }
 
 extern void complete(struct completion *);
-
+extern void complete_all(struct completion *);
+extern void wait_for_completion(struct completion *x);
+extern bool try_wait_for_completion(struct completion *x);
 #endif /* _LINUX_COMPLETION_H */

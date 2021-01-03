@@ -16,9 +16,7 @@
 #include <sound/memalloc.h>
 #include <sound/hda_verbs.h>
 #include <drm/i915_component.h>
-#ifdef TARGET_OS2
-#include <linux/clocksource.h>
-#endif
+
 /* codec node id */
 typedef u16 hda_nid_t;
 
@@ -360,11 +358,7 @@ struct hdac_bus {
 
 	/* locks */
 	spinlock_t reg_lock;
-#ifndef TARGET_OS2
 	struct mutex cmd_mutex;
-#else
-	struct semaphore cmd_mutex;
-#endif
 	struct mutex lock;
 
 	/* DRM component interface */
@@ -537,11 +531,7 @@ struct hdac_stream {
 					 */
 	unsigned char stream_tag;	/* assigned stream */
 	unsigned char index;		/* stream index */
-#ifndef TARGET_OS2
 	int assigned_key;		/* last device# key assigned to */
-#else
-	int device;			/* last device number assigned to */
-#endif
 	bool opened:1;
 	bool running:1;
 	bool prepared:1;

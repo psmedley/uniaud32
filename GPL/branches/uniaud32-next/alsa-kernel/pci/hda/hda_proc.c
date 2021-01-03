@@ -902,7 +902,6 @@ static void print_codec_info(struct snd_info_entry *entry,
 	snd_hda_power_down(codec);
 }
 
-#ifdef CONFIG_PROC_FS
 /*
  * create a proc read
  */
@@ -913,4 +912,3 @@ int snd_hda_codec_proc_new(struct hda_codec *codec)
 	snprintf(name, sizeof(name), "codec#%d", codec->core.addr);
 	return snd_card_ro_proc_new(codec->card, name, codec, print_codec_info);
 }
-#endif

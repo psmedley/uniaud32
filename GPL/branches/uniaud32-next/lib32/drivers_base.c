@@ -12,6 +12,7 @@
 
 #include <linux/device.h>
 #include <linux/err.h>
+#include <linux/pci.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -153,3 +154,25 @@ void put_device(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(put_device);
 
+/**
+ * dev_driver_string - Return a device's driver name, if at all possible
+ * @dev: struct device to get the name of
+ *
+ * Will return the device's driver's name if it is bound to a device.  If
+ * the device is not bound to a driver, it will return the name of the bus
+ * it is attached to.  If it is not attached to a bus either, an empty
+ * string will be returned.
+ */
+const char *dev_driver_string(const struct device *dev)
+{
+	struct device_driver *drv;
+
+	/* dev->driver can change to NULL underneath us because of unbinding,
+	 * so be careful about accessing it.  dev->bus and dev->class should
+	 * never change once they are set, so they don't need special care.
+	 */
+	drv = dev->driver;
+	return drv ? drv->name :
+			(dev->bus ? dev->bus->name :
+			(dev->class ? dev->class->name : ""));
+}

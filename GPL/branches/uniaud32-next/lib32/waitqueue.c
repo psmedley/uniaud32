@@ -108,9 +108,68 @@ void complete(struct completion *x)
 	__wake_up_locked(&x->wait, TASK_NORMAL, 1);
 	spin_unlock_irqrestore(&x->wait.lock, flags);
 }
+/**
+ * complete_all: - signals all threads waiting on this completion
+ * @x:  holds the state of this particular completion
+ *
+ * This will wake up all threads waiting on this particular completion event.
+ *
+ * If this function wakes up a task, it executes a full memory barrier before
+ * accessing the task state.
+ *
+ * Since complete_all() sets the completion of @x permanently to done
+ * to allow multiple waiters to finish, a call to reinit_completion()
+ * must be used on @x if @x is to be used again. The code must make
+ * sure that all waiters have woken and finished before reinitializing
+ * @x. Also note that the function completion_done() can not be used
+ * to know if there are still waiters after complete_all() has been called.
+ */
+void complete_all(struct completion *x)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&x->wait.lock, flags);
+	__wake_up_locked(&x->wait, TASK_NORMAL, 1);
+	spin_unlock_irqrestore(&x->wait.lock, flags);
+}
 //******************************************************************************
 //******************************************************************************
 void __wake_up_locked(wait_queue_head_t *q, unsigned int mode, int nr)
 {
     dprintf3(("WARNING: __wake_up_locked STUB"));
+}
+//******************************************************************************
+//******************************************************************************
+/**
+ * wait_for_completion: - waits for completion of a task
+ * @x:  holds the state of this particular completion
+ *
+ * This waits to be signaled for completion of a specific task. It is NOT
+ * interruptible and there is no timeout.
+ *
+ * See also similar routines (i.e. wait_for_completion_timeout()) with timeout
+ * and interrupt capability. Also see complete().
+ */
+void wait_for_completion(struct completion *x)
+{
+    dprintf3(("WARNING: wait_for_completion STUB"));
+}
+
+
+/**
+ * wait_for_completion_timeout: - waits for completion of a task (w/timeout)
+ * @x:  holds the state of this particular completion
+ * @timeout:  timeout value in jiffies
+ *
+ * This waits for either a completion of a specific task to be signaled or for a
+ * specified timeout to expire. The timeout is in jiffies. It is not
+ * interruptible.
+ *
+ * Return: 0 if timed out, and positive (at least 1, or number of jiffies left
+ * till timeout) if completed.
+ */
+unsigned long wait_for_completion_timeout(struct completion *x, unsigned long timeout)
+{
+    dprintf3(("WARNING: wait_for_completion_timeout STUB"));
+    return 1;
 }

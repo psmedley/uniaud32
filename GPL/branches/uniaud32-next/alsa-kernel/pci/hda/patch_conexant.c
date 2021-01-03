@@ -708,13 +708,6 @@ static const struct hda_pintbl cxt_pincfg_lemote[] = {
 };
 
 #ifdef TARGET_OS2
-static const struct hda_pintbl CXT_PINCFG_COMPAQ_CQ60_PINS[] = {
-			/* 0x17 was falsely set up as a mic, it should 0x1d */
-			{ 0x17, 0x400001f0 },
-			{ 0x1d, 0x97a70120 },
-			{0}
-		};
-
 static const struct hda_pintbl CXT_FIXUP_HEADPHONE_MIC_PIN_PINS[] = {
 			{ 0x18, 0x03a1913d }, /* use as headphone mic, without its own jack detect */
 			{0}
@@ -736,17 +729,6 @@ static const struct hda_pintbl CXT_FIXUP_TOSHIBA_P105_PINS[] = {
 
 static const struct hda_pintbl CXT_FIXUP_HP_530_PINS[] = {
 			{ 0x12, 0x90a60160 }, /* int mic */
-			{0}
-};
-
-static const struct hda_pintbl CXT_FIXUP_HP_SPECTRE_PINS[] = {
-			/* enable NID 0x1d for the speaker on top */
-			{ 0x1d, 0x91170111 },
-			{0}
-};
-
-static const struct hda_pintbl CXT_FIXUP_HP_MIC_NO_PRESENCE_PINS[] = {
-			{ 0x1a, 0x02a1113c },
 			{0}
 };
 #endif
