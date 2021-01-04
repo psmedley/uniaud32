@@ -20,7 +20,7 @@
 
 int snd_info_check_reserved_words(const char *str)
 {
-	static char *reserved[] =
+	static const char * const reserved[] =
 	{
 		"version",
 		"meminfo",
@@ -35,7 +35,7 @@ int snd_info_check_reserved_words(const char *str)
 		"seq",
 		NULL
 	};
-	char **xstr = reserved;
+	const char * const *xstr = reserved;
 
 	while (*xstr) {
 		if (!strcmp(*xstr, str))
@@ -218,17 +218,6 @@ static long snd_info_entry_ioctl(struct file *file, unsigned int cmd,
 				   file, cmd, arg);
 }
 
-#ifndef CONFIG_SND_HAVE_NEW_IOCTL
-/* need to unlock BKL to allow preemption */
-static int snd_info_entry_ioctl_old(struct inode *inode, struct file * file,
-				    unsigned int cmd, unsigned long arg)
-{
-	int err;
-	err = snd_info_entry_ioctl(file, cmd, arg);
-	return err;
-}
-#endif
-
 static int snd_info_entry_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct inode *inode = file_inode(file);
@@ -294,23 +283,18 @@ static int snd_info_entry_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static const struct file_operations snd_info_entry_operations =
+static const struct proc_ops snd_info_entry_operations =
 {
-	.owner =		THIS_MODULE,
-	.llseek =		snd_info_entry_llseek,
-	.read =			snd_info_entry_read,
-	.write =		snd_info_entry_write,
-	.poll =			snd_info_entry_poll,
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
-	.unlocked_ioctl =	snd_info_entry_ioctl,
-#else
-	.ioctl =		snd_info_entry_ioctl_old,
-#endif
-	.mmap =			snd_info_entry_mmap,
-	.open =			snd_info_entry_open,
-	.release =		snd_info_entry_release,
+	.proc_lseek	= snd_info_entry_llseek,
+	.proc_read	= snd_info_entry_read,
+	.proc_write	= snd_info_entry_write,
+	.proc_poll	= snd_info_entry_poll,
+	.proc_ioctl	= snd_info_entry_ioctl,
+	.proc_mmap	= snd_info_entry_mmap,
+	.proc_open	= snd_info_entry_open,
+	.proc_release	= snd_info_entry_release,
 };
-#endif
+#endif // NOT_USED
 
 /*
  * file ops for text proc files
@@ -438,14 +422,13 @@ static int snd_info_text_entry_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static const struct file_operations snd_info_text_entry_ops =
+static const struct proc_ops snd_info_text_entry_ops =
 {
-	.owner =		THIS_MODULE,
-	.open =			snd_info_text_entry_open,
-	.release =		snd_info_text_entry_release,
-	.write =		snd_info_text_entry_write,
-	.llseek =		seq_lseek,
-	.read =			seq_read,
+	.proc_open	= snd_info_text_entry_open,
+	.proc_release	= snd_info_text_entry_release,
+	.proc_write	= snd_info_text_entry_write,
+	.proc_lseek	= seq_lseek,
+	.proc_read	= seq_read,
 };
 
 static struct snd_info_entry *create_subdir(struct module *mod,
@@ -623,7 +606,7 @@ int snd_info_card_free(struct snd_card *card)
  */
 int snd_info_get_line(struct snd_info_buffer *buffer, char *line, int len)
 {
-	int c = -1;
+	int c;
 
 	if (snd_BUG_ON(!buffer))
 		return 1;
@@ -830,7 +813,7 @@ static int __snd_info_register(struct snd_info_entry *entry)
 			return -ENOMEM;
 		}
 	} else {
-		const struct file_operations *ops;
+		const struct proc_ops *ops;
 		if (entry->content == SNDRV_INFO_CONTENT_DATA)
 			ops = &snd_info_entry_operations;
 		else

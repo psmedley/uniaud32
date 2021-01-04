@@ -122,4 +122,6 @@
 #define BUG() do {} while (1)
 #define WRITE_ONCE(x, val) x=(val)
 #define __force
+#define __always_unused
+#define fallthrough                    do {} while (0)  /* fallthrough */
 #endif /* __LINUX_COMPILER_H */

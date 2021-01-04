@@ -20,6 +20,7 @@ struct completion {
 	wait_queue_head_t wait;
 };
 
+#define DECLARE_COMPLETION_ONSTACK(work) 	struct completion work;
 /**
  * init_completion - Initialize a dynamically allocated completion
  * @x:  completion structure that is to be initialized

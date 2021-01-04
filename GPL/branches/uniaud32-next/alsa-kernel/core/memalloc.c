@@ -13,6 +13,7 @@
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
 #include <linux/genalloc.h>
+#include <linux/vmalloc.h>
 #ifdef CONFIG_X86
 #include <asm/set_memory.h>
 #endif
@@ -135,6 +136,14 @@ static void snd_free_dev_iram(struct snd_dma_buffer *dmab)
  *
  */
 
+static inline gfp_t snd_mem_get_gfp_flags(const struct device *dev,
+					  gfp_t default_gfp)
+{
+	if (!dev)
+		return default_gfp;
+	else
+		return (__force gfp_t)(unsigned long)dev;
+}
 
 /**
  * snd_dma_alloc_pages - allocate the buffer area according to the given type
@@ -152,23 +161,30 @@ static void snd_free_dev_iram(struct snd_dma_buffer *dmab)
 int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 			struct snd_dma_buffer *dmab)
 {
+	gfp_t gfp;
     dprintf(("snd_dma_alloc_pages with size = %d",size));
 	if (WARN_ON(!size))
 		return -ENXIO;
 	if (WARN_ON(!dmab))
 		return -ENXIO;
-	if (WARN_ON(!device))
-		return -EINVAL;
 
 	dmab->dev.type = type;
 	dmab->dev.dev = device;
 	dmab->bytes = 0;
+	dmab->area = NULL;
+	dmab->addr = 0;
+	dmab->private_data = NULL;
 	switch (type) {
 	case SNDRV_DMA_TYPE_CONTINUOUS:
-		dmab->area = alloc_pages_exact(size,
-					       (__force gfp_t)(unsigned long)device);
-		dmab->addr = 0;
+		gfp = snd_mem_get_gfp_flags(device, GFP_KERNEL);
+		dmab->area = alloc_pages_exact(size, gfp);
 		break;
+#ifndef TARGET_OS2 //as of 5.5.19, no driver's we're targetting need this
+	case SNDRV_DMA_TYPE_VMALLOC:
+		gfp = snd_mem_get_gfp_flags(device, GFP_KERNEL | __GFP_HIGHMEM);
+		dmab->area = __vmalloc(size, gfp);
+		break;
+#endif
 #ifdef CONFIG_HAS_DMA
 #ifdef CONFIG_GENERIC_ALLOCATOR
 	case SNDRV_DMA_TYPE_DEV_IRAM:
@@ -179,8 +195,8 @@ int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 		 * so if we fail to malloc, try to fetch memory traditionally.
 		 */
 		dmab->dev.type = SNDRV_DMA_TYPE_DEV;
+		fallthrough;
 #endif /* CONFIG_GENERIC_ALLOCATOR */
-		/* fall through */
 	case SNDRV_DMA_TYPE_DEV:
 	case SNDRV_DMA_TYPE_DEV_UC:
 #ifndef TARGET_OS2
@@ -198,8 +214,6 @@ int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 #endif
 	default:
 		pr_err("snd-malloc: invalid device type %d\n", type);
-		dmab->area = NULL;
-		dmab->addr = 0;
 		return -ENXIO;
 	}
 	if (! dmab->area)
@@ -255,6 +269,9 @@ void snd_dma_free_pages(struct snd_dma_buffer *dmab)
 	switch (dmab->dev.type) {
 	case SNDRV_DMA_TYPE_CONTINUOUS:
 		free_pages_exact(dmab->area, dmab->bytes);
+		break;
+	case SNDRV_DMA_TYPE_VMALLOC:
+		vfree(dmab->area);
 		break;
 #ifdef CONFIG_HAS_DMA
 #ifdef CONFIG_GENERIC_ALLOCATOR

@@ -85,4 +85,15 @@ static inline int pm_qos_request_active(struct pm_qos_request *req)
 }
 #endif /* >= 2.6.19 */
 
+static inline s32 cpu_latency_qos_limit(void) { return INT_MAX; }
+static inline bool cpu_latency_qos_request_active(struct pm_qos_request *req)
+{
+	return false;
+}
+static inline void cpu_latency_qos_add_request(struct pm_qos_request *req,
+					       s32 value) {}
+static inline void cpu_latency_qos_update_request(struct pm_qos_request *req,
+						  s32 new_value) {}
+static inline void cpu_latency_qos_remove_request(struct pm_qos_request *req) {}
+
 #endif /* _LINUX_PM_QOS_H */
