@@ -147,5 +147,5 @@ typedef __u16 __be16;
 typedef __u32 __be32;
 typedef unsigned __poll_t;
 typedef u32 phys_addr_t;
-
+typedef s64			int64_t;
 #endif /* _LINUX_TYPES_H */

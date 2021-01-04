@@ -173,6 +173,35 @@ struct timespec ns_to_timespec(const s64 nsec)
 //******************************************************************************
 //******************************************************************************
 
+/**
+ * ns_to_timespec - Convert nanoseconds to timespec
+ * @nsec:       the nanoseconds value to be converted
+ *
+ * Returns the timespec representation of the nsec parameter.
+ */
+struct timespec64 ns_to_timespec64(const s64 nsec)
+{
+	struct timespec64 ts;
+	s32 rem;
+
+	if (!nsec) {
+		ts.tv_sec = 0;
+		ts.tv_nsec = 0;
+		return ts;
+	}
+
+	ts.tv_sec = div_s64_rem(nsec, NSEC_PER_SEC, &rem);
+	if (unlikely(rem < 0)) {
+		ts.tv_sec--;
+		rem += NSEC_PER_SEC;
+	}
+	ts.tv_nsec = rem;
+
+	return ts;
+}
+//******************************************************************************
+//******************************************************************************
+
 void timecounter_init(struct timecounter *tc,
 		      const struct cyclecounter *cc,
 		      u64 start_tstamp)

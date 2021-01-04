@@ -782,5 +782,12 @@ static inline const char *pci_name(struct pci_dev *pdev)
 	.vendor = (vend), .device = (dev), \
 	.subvendor = (subvend), .subdevice = (subdev)
 
+int pci_status_get_and_clear_errors(struct pci_dev *pdev);
+#define PCI_STATUS_ERROR_BITS (PCI_STATUS_DETECTED_PARITY  | \
+			       PCI_STATUS_SIG_SYSTEM_ERROR | \
+			       PCI_STATUS_REC_MASTER_ABORT | \
+			       PCI_STATUS_REC_TARGET_ABORT | \
+			       PCI_STATUS_SIG_TARGET_ABORT | \
+			       PCI_STATUS_PARITY)
 
 #endif /* LINUX_PCI_H */
