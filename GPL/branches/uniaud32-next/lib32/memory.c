@@ -105,7 +105,7 @@ void AddBaseAddress(ULONG baseaddr, ULONG retaddr, ULONG size)
 }
 //******************************************************************************
 //******************************************************************************
-ULONG GetBaseAddress(ULONG addr, ULONG *pSize)
+ULONG GetBaseAddressAndFree(ULONG addr, ULONG *pSize)
 {
     BaseAddr NEAR *pCur, NEAR *pTemp;
 
@@ -130,6 +130,39 @@ ULONG GetBaseAddress(ULONG addr, ULONG *pSize)
             pCur->next = pTemp->next;
 
             _kfree(pTemp);
+            break;
+        }
+        pCur = pCur->next;
+    }
+    DevSti();
+    return addr;
+}
+//******************************************************************************
+//******************************************************************************
+ULONG GetBaseAddressNoFree(ULONG addr, ULONG *pSize)
+{
+    BaseAddr NEAR *pCur, NEAR *pTemp;
+
+    if(pBaseAddrHead == NULL) return addr;
+
+    DevCli();
+    pCur = pBaseAddrHead;
+
+    if(pCur->retaddr == addr)
+    {
+        addr = pCur->base;
+        if(pSize) *pSize = pCur->size;
+        pBaseAddrHead = pCur->next;
+//        _kfree(pCur);
+    }
+    else
+    while(pCur->next) {
+        if(pCur->next->retaddr == addr) {
+            pTemp = pCur->next;
+            addr = pTemp->base;
+            if(pSize) *pSize = pTemp->size;
+            pCur->next = pTemp->next;
+//            _kfree(pTemp);
             break;
         }
         pCur = pCur->next;
@@ -373,7 +406,7 @@ int free_pages(unsigned long addr, unsigned long order)
     ULONG rc, size = 0;
 
     //check if it really is the base of the allocation (see above)
-    addr = GetBaseAddress(addr, (ULONG NEAR *)__Stack32ToFlat(&size));
+    addr = GetBaseAddressAndFree(addr, (ULONG NEAR *)__Stack32ToFlat(&size));
 
     if(VMFree((LINEAR)addr)) {
         DebugInt3();
@@ -417,7 +450,7 @@ void vfree(void *ptr)
     APIRET rc;
     ULONG  size = 0;
 
-    GetBaseAddress((ULONG)ptr, (ULONG NEAR *)__Stack32ToFlat(&size));
+    GetBaseAddressAndFree((ULONG)ptr, (ULONG NEAR *)__Stack32ToFlat(&size));
 
     if(VMFree((LINEAR)ptr)) {
         DebugInt3();
@@ -661,7 +694,7 @@ size_t ksize(const void *block)
 	if (block == ZERO_SIZE_PTR)
 		return 0;
 
-	GetBaseAddress((ULONG)block, (ULONG NEAR *)__Stack32ToFlat(&size));
+	GetBaseAddressNoFree((ULONG)block, (ULONG NEAR *)__Stack32ToFlat(&size));
 
 	return size;
 }
