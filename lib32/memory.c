@@ -707,26 +707,50 @@ size_t ksize(const void *block)
 }
 //******************************************************************************
 //******************************************************************************
-/* krealloc() wrapper */
-//from linux 2.6
+static inline void *__do_krealloc(const void *p, size_t new_size,
+					   gfp_t flags)
+{
+	void *ret;
+	size_t ks = 0;
+
+	if (p)
+		ks = ksize(p);
+
+	if (ks >= new_size)
+		return (void *)p;
+
+	ret = __kmalloc(new_size, flags);
+	if (ret && p)
+		memcpy(ret, p, ks);
+
+	return ret;
+}
+//******************************************************************************
+//******************************************************************************
+/**
+ * krealloc - reallocate memory. The contents will remain unchanged.
+ * @p: object to reallocate memory for.
+ * @new_size: how many bytes of memory are required.
+ * @flags: the type of memory to allocate.
+ *
+ * The contents of the object pointed to are preserved up to the
+ * lesser of the new and old sizes.  If @p is %NULL, krealloc()
+ * behaves exactly like kmalloc().  If @new_size is 0 and @p is not a
+ * %NULL pointer, the object pointed to is freed.
+ */
 void *krealloc(const void *p, size_t new_size, gfp_t flags)
 {
 	void *ret;
 
-	if (!p)
-		return __kmalloc(new_size, flags);
-
 	if (!new_size) {
 		kfree(p);
-		return NULL;
+		return ZERO_SIZE_PTR;
 	}
 
-	ret = __kmalloc(new_size, flags);
-	if (!ret)
-		return NULL;
+	ret = __do_krealloc(p, new_size, flags);
+	if (ret && p != ret)
+		kfree(p);
 
-	memcpy(ret, p, min(new_size, ksize(p)));
-	kfree(p);
 	return ret;
 }
 //******************************************************************************
