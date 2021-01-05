@@ -482,6 +482,7 @@ int pci_register_driver(struct pci_driver *driver)
   ULONG ulLast;
   struct pci_dev *pcidev;
   struct pci_device_id IdTable;
+  USHORT usVendor, usDevice;
   int iAdapter = 0;
 
   if (!driver->probe) return 0;
@@ -507,6 +508,9 @@ int pci_register_driver(struct pci_driver *driver)
     rprintf(("pci_register_driver: query_device found %x %x:%x class=%x checking %s",
       ulLast, pcidev->vendor, pcidev->device, pcidev->class, driver->name));
 
+    usVendor = 0;
+    usDevice = 0;
+
     for( iTableIx = 0; driver->id_table[iTableIx].vendor; iTableIx++)
     {
       struct pci_device_id const *pDriverId = &driver->id_table[iTableIx];
@@ -515,12 +519,18 @@ int pci_register_driver(struct pci_driver *driver)
       if (pDriverId->vendor != pcidev->vendor) continue;
       if ( (pDriverId->device != PCI_ANY_ID) && (pDriverId->device != pcidev->device) ) continue;
 
+      /* skip a duplicate device that could be matched by both and exact match and a class match */
+      if (usVendor == pcidev->vendor && usDevice == pcidev->device) continue;
+      usVendor = pcidev->vendor;
+      usDevice = pcidev->device;
+
       rprintf(("pci_register_driver: matched %d %x:%x/%x with %x:%x/%x %x (%s)", iTableIx,
         pcidev->vendor, pcidev->device, pcidev->class,
         pDriverId->vendor, pDriverId->device, pDriverId->class, pDriverId->class_mask, driver->name));
 
       if ((iAdapterNumber >= 0) && (iAdapter < iAdapterNumber))
       {
+        rprintf(("iAdapterNumber=%x skipping iAdapter=%x", iAdapterNumber, iAdapter));
         iAdapter++;
         continue;
       }
