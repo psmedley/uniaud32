@@ -72,9 +72,9 @@ void __kfree(const void near *ptr);
 #endif
 
 typedef struct _BaseAddr {
-    ULONG                  base;
-    ULONG                  retaddr;
-    ULONG                  size;
+    ULONG                  base;	// VMAlloc addr
+    ULONG                  retaddr;	// aligned addr returned to caller
+    ULONG                  size;	// VMAlloc size
     struct _BaseAddr NEAR *next;
 } BaseAddr;
 
@@ -114,6 +114,8 @@ ULONG GetBaseAddressAndFree(ULONG addr, ULONG *pSize)
     DevCli();
     pCur = pBaseAddrHead;
 
+    // If address is in list, remove list item and free entry
+    // Caller must VMFree returned address or else
     if(pCur->retaddr == addr)
     {
         addr = pCur->base;
@@ -286,7 +288,7 @@ void *__get_free_dma_pages(unsigned long size, unsigned long flags)
         ULONG endpage   = (physaddr + ((size < 0x10000) ? size : 63*1024)) >> 16;
 
         if(startpage != endpage) {
-            //try once more
+            // not in same 32K page, try once more
             rc = VMAlloc(size, flags, (LINEAR *)&tempaddr);
             VMFree((LINEAR)addr);
             if(rc) {
@@ -376,6 +378,7 @@ void *__get_free_pages(int gfp_mask, unsigned long order)
             ULONG endpage   = (physaddr + ((size < 0x10000) ? size : 63*1024)) >> 16;
 
             if (startpage != endpage) {
+		// Not in same 32K page
                 physaddr2 = (startpage+1) << 16;
 
                 AddBaseAddress(addr, addr + (physaddr2 - physaddr), allocsize);
@@ -689,12 +692,16 @@ size_t ksize(const void *block)
 	size_t size;
 
 	if (!block)
-		return 0;
+	    size = 0;			// Bad coder
 
-	if (block == ZERO_SIZE_PTR)
-		return 0;
+	else if (block == ZERO_SIZE_PTR)
+	    size = 0;			// Bad coder
 
-	GetBaseAddressNoFree((ULONG)block, (ULONG NEAR *)__Stack32ToFlat(&size));
+	else if(IsHeapAddr((ULONG)block))
+	    size = _msize((void _near *)block);
+
+	else if (!GetBaseAddressNoFree((ULONG)block, (ULONG NEAR *)__Stack32ToFlat(&size)))
+	    size = 0;			// Something wrong
 
 	return size;
 }
