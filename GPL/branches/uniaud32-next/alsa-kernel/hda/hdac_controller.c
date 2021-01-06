@@ -243,9 +243,6 @@ int snd_hdac_bus_get_response(struct hdac_bus *bus, unsigned int addr,
 {
 	unsigned long timeout;
 	unsigned long loopcounter;
-#ifdef TARGET_OS2
-	int count = 0;
-#endif
 	wait_queue_entry_t wait;
 	bool warned = false;
 
@@ -276,10 +273,6 @@ int snd_hdac_bus_get_response(struct hdac_bus *bus, unsigned int addr,
 		spin_unlock_irq(&bus->reg_lock);
 		if (time_after(jiffies, timeout))
 			break;
-#ifdef TARGET_OS2
-		if (count >= 5000) /* Hack on OS/2 to stop infinite loop as jiffies sometimes don't increment */
-			break;
-#endif
 #define LOOP_COUNT_MAX	3000
 		if (!bus->polling_mode) {
 			schedule_timeout(msecs_to_jiffies(2));
@@ -297,12 +290,6 @@ int snd_hdac_bus_get_response(struct hdac_bus *bus, unsigned int addr,
 			cond_resched();
 		}
 	}
-#ifdef TARGET_OS2
-	count++;
-	if (count >= 5000) {
-		snd_printk(KERN_WARNING "hda_intel: count >= 5000, aborting loop in azx_rirb_get_response\n");
-	}
-#endif
 #ifndef TARGET_OS2
 	if (!bus->polling_mode)
 		finish_wait(&bus->rirb_wq, &wait);
