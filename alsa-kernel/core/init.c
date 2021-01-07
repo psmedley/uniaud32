@@ -422,7 +422,7 @@ int snd_card_disconnect(struct snd_card *card)
 		spin_unlock(&shutdown_lock);
 
 		mfile->file->f_op = &snd_shutdown_f_ops;
-		fops_get(mfile->file->f_op);
+		//DAZ this does nothing. fops_get(mfile->file->f_op);
 	}
 	spin_unlock(&card->files_lock);	
 
@@ -907,7 +907,7 @@ int __init snd_card_info_init(void)
  *
  *  Return: Zero otherwise a negative error code.
  */
-  
+
 int snd_component_add(struct snd_card *card, const char *component)
 {
 	char *ptr;

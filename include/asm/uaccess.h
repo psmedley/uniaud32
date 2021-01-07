@@ -43,7 +43,7 @@ extern int __verify_write(const void *, unsigned long);
 
 int is_access_ok(int type, void *addr, unsigned long size);
 
-#define access_ok(addr, size) __access_ok((unsigned long)(addr),(size))
+#define access_ok(type, addr, size) __access_ok((unsigned long)(addr),(size))
 
 /*
  * The architecture should really override this if possible, at least

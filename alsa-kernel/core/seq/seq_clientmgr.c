@@ -28,7 +28,7 @@
 /* Client Manager
 
  * this module handles the connections of userland and kernel clients
- * 
+ *
  */
 
 /*
@@ -410,7 +410,7 @@ static ssize_t snd_seq_read(struct file *file, char __user *buf, size_t count,
 	if (!(snd_seq_file_flags(file) & SNDRV_SEQ_LFLG_INPUT))
 		return -ENXIO;
 
-	if (!access_ok(buf, count))
+	if (!access_ok(0, buf, count))
 		return -EFAULT;
 
 	/* check client structures are in place */
@@ -525,7 +525,7 @@ __not_avail:
  * If the receiver client is a user client, the original event is
  * encapsulated in SNDRV_SEQ_EVENT_BOUNCE as variable length event.  If
  * the original event is also variable length, the external data is
- * copied after the event record. 
+ * copied after the event record.
  * If the receiver client is a kernel client, the original event is
  * quoted in SNDRV_SEQ_EVENT_KERNEL_ERROR, since this requires no extra
  * kmalloc.
@@ -712,7 +712,7 @@ static int deliver_to_subscribers(struct snd_seq_client *client,
 }
 
 
-#ifdef SUPPORT_BROADCAST 
+#ifdef SUPPORT_BROADCAST
 /*
  * broadcast to all ports:
  */
@@ -1036,7 +1036,7 @@ static ssize_t snd_seq_write(struct file *file, const char __user *buf,
 
  repeat:
 	handled = 0;
-	/* allocate the pool now if the pool is not allocated yet */ 
+	/* allocate the pool now if the pool is not allocated yet */
 	mutex_lock(&client->ioctl_mutex);
 	if (client->pool->size > 0 && !snd_seq_write_pool_allocated(client)) {
 		err = snd_seq_pool_init(client->pool);
@@ -1288,8 +1288,8 @@ static int snd_seq_ioctl_set_client_info(struct snd_seq_client *client,
 }
 
 
-/* 
- * CREATE PORT ioctl() 
+/*
+ * CREATE PORT ioctl()
  */
 static int snd_seq_ioctl_create_port(struct snd_seq_client *client, void *arg)
 {
@@ -1335,8 +1335,8 @@ static int snd_seq_ioctl_create_port(struct snd_seq_client *client, void *arg)
 	return 0;
 }
 
-/* 
- * DELETE PORT ioctl() 
+/*
+ * DELETE PORT ioctl()
  */
 static int snd_seq_ioctl_delete_port(struct snd_seq_client *client, void *arg)
 {
@@ -1354,8 +1354,8 @@ static int snd_seq_ioctl_delete_port(struct snd_seq_client *client, void *arg)
 }
 
 
-/* 
- * GET_PORT_INFO ioctl() (on any client) 
+/*
+ * GET_PORT_INFO ioctl() (on any client)
  */
 static int snd_seq_ioctl_get_port_info(struct snd_seq_client *client, void *arg)
 {
@@ -1382,8 +1382,8 @@ static int snd_seq_ioctl_get_port_info(struct snd_seq_client *client, void *arg)
 }
 
 
-/* 
- * SET_PORT_INFO ioctl() (only ports on this/own client) 
+/*
+ * SET_PORT_INFO ioctl() (only ports on this/own client)
  */
 static int snd_seq_ioctl_set_port_info(struct snd_seq_client *client, void *arg)
 {
@@ -1456,8 +1456,8 @@ int snd_seq_client_notify_subscription(int client, int port,
 }
 
 
-/* 
- * add to port's subscription list IOCTL interface 
+/*
+ * add to port's subscription list IOCTL interface
  */
 static int snd_seq_ioctl_subscribe_port(struct snd_seq_client *client,
 					void *arg)
@@ -1498,8 +1498,8 @@ static int snd_seq_ioctl_subscribe_port(struct snd_seq_client *client,
 }
 
 
-/* 
- * remove from port's subscription list 
+/*
+ * remove from port's subscription list
  */
 static int snd_seq_ioctl_unsubscribe_port(struct snd_seq_client *client,
 					  void *arg)
@@ -2034,7 +2034,7 @@ static int snd_seq_ioctl_query_next_client(struct snd_seq_client *client,
 	return 0;
 }
 
-/* 
+/*
  * query next port
  */
 static int snd_seq_ioctl_query_next_port(struct snd_seq_client *client,
@@ -2303,7 +2303,7 @@ int snd_seq_kernel_client_enqueue(int client, struct snd_seq_event *ev,
 }
 EXPORT_SYMBOL(snd_seq_kernel_client_enqueue);
 
-/* 
+/*
  * exported, called by kernel clients to dispatch events directly to other
  * clients, bypassing the queues.  Event time-stamp will be updated.
  *
@@ -2455,7 +2455,7 @@ static void snd_seq_info_dump_ports(struct snd_info_buffer *buffer,
 
 
 /* exported to seq_info.c */
-void snd_seq_info_clients_read(struct snd_info_entry *entry, 
+void snd_seq_info_clients_read(struct snd_info_entry *entry,
 			       struct snd_info_buffer *buffer)
 {
 	int c;
@@ -2521,8 +2521,8 @@ static const struct file_operations snd_seq_f_ops =
 
 static struct device seq_dev;
 
-/* 
- * register sequencer device 
+/*
+ * register sequencer device
  */
 int __init snd_sequencer_device_init(void)
 {
@@ -2545,8 +2545,8 @@ int __init snd_sequencer_device_init(void)
 
 
 
-/* 
- * unregister sequencer device 
+/*
+ * unregister sequencer device
  */
 void snd_sequencer_device_done(void)
 {
