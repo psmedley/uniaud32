@@ -71,6 +71,7 @@ EXPORT_SYMBOL(snd_seq_root);
 struct snd_info_entry *snd_oss_root;
 #endif
 
+#ifdef NOT_USED
 static int alloc_info_private(struct snd_info_entry *entry,
 			      struct snd_info_private_data **ret)
 {
@@ -102,7 +103,6 @@ static bool valid_pos(loff_t pos, size_t count)
 /*
  * file ops for binary proc files
  */
-#ifdef NOT_USED
 static loff_t snd_info_entry_llseek(struct file *file, loff_t offset, int orig)
 {
 	struct snd_info_private_data *data;
@@ -294,7 +294,6 @@ static const struct proc_ops snd_info_entry_operations =
 	.proc_open	= snd_info_entry_open,
 	.proc_release	= snd_info_entry_release,
 };
-#endif // NOT_USED
 
 /*
  * file ops for text proc files
@@ -430,6 +429,7 @@ static const struct proc_ops snd_info_text_entry_ops =
 	.proc_lseek	= seq_lseek,
 	.proc_read	= seq_read,
 };
+#endif /* NOT_USED */
 
 static struct snd_info_entry *create_subdir(struct module *mod,
 					    const char *name)

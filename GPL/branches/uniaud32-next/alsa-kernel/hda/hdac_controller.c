@@ -243,7 +243,7 @@ int snd_hdac_bus_get_response(struct hdac_bus *bus, unsigned int addr,
 {
 	unsigned long timeout;
 	unsigned long loopcounter;
-	wait_queue_entry_t wait;
+	//NOT_USED wait_queue_entry_t wait;
 	bool warned = false;
 
 #ifndef TARGET_OS2

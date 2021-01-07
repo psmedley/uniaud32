@@ -185,11 +185,11 @@ static void snd_mpu401_uart_add_timer (struct snd_mpu401 *mpu, int input)
 #else
 		init_timer(&mpu->timer);
 		mpu->timer.data = (unsigned long)mpu;
-		mpu->timer.function = snd_mpu401_uart_timer;
+		mpu->timer.function = (void(*)(unsigned long))snd_mpu401_uart_timer;
 		mpu->timer.expires = 1 + jiffies;
 		add_timer(&mpu->timer);
 #endif
-	} 
+	}
 	mpu->timer_invoked |= input ? MPU401_MODE_INPUT_TIMER :
 		MPU401_MODE_OUTPUT_TIMER;
 	spin_unlock_irqrestore (&mpu->timer_lock, flags);

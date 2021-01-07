@@ -6,7 +6,7 @@ PRODUCTNAME = Universal Audio Driver for OS/2
 # Full UNIAUD build version
 # BUILDVERSION must be 3 parts, and only numbers like 5.44.108
 # The second and third numbers must be 2 digits
-BUILDVERSION = 2.02.05
+BUILDVERSION = 3.01.01
 
 # Fixpack version
 # Use this if you want to add extra chars (comments) to bldlevel

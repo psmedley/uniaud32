@@ -93,7 +93,7 @@ static inline int platform_driver_register(struct platform_driver *drv)
 	if (drv->remove)
 		drv->driver.remove = snd_platform_driver_remove;
 	if (drv->suspend)
-		drv->driver.suspend = snd_platform_driver_suspend;
+		drv->driver.suspend = (int(*)(struct device *,unsigned int))snd_platform_driver_suspend;
 	if (drv->resume)
 		drv->driver.resume = snd_platform_driver_resume;
 	return driver_register(&drv->driver);

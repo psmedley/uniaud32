@@ -40,7 +40,7 @@ extern unsigned long find_first_bit(const unsigned long *addr,
  *
  * Undefined if no bit exists, so code should check against 0 first.
  */
-static unsigned long __ffs(unsigned long word)
+static inline unsigned long __ffs(unsigned long word)
 {
 	int num = 0;
 
@@ -77,7 +77,7 @@ static unsigned long __ffs(unsigned long word)
  *
  * Undefined if no set bit exists, so code should check against 0 first.
  */
-static unsigned long __fls(unsigned long word)
+static inline unsigned long __fls(unsigned long word)
 {
 	int num = BITS_PER_LONG - 1;
 
