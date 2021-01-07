@@ -30,11 +30,12 @@
 #define CREATE_TRACE_POINTS
 #include "hda_controller_trace.h"
 #else
-#define trace_azx_pcm_close {}
-#define trace_azx_pcm_open {}
-#define trace_azx_pcm_prepare {}
-#define trace_azx_pcm_hw_params {}
-#define trace_azx_resume {}
+#pragma disable_message (201)
+#define trace_azx_pcm_close(...)
+#define trace_azx_pcm_open(...)
+#define trace_azx_pcm_prepare(...)
+#define trace_azx_pcm_hw_params(...)
+#define trace_azx_resume(...)
 #endif
 /* DSP lock helpers */
 #define dsp_lock(dev)		snd_hdac_dsp_lock(azx_stream(dev))
@@ -111,8 +112,8 @@ static int azx_pcm_close(struct snd_pcm_substream *substream)
 static int azx_pcm_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *hw_params)
 {
-	struct azx_pcm *apcm = snd_pcm_substream_chip(substream);
-	struct azx *chip = apcm->chip;
+	//NOT_USED struct azx_pcm *apcm = snd_pcm_substream_chip(substream);
+	//NOT_USED struct azx *chip = apcm->chip;
 	struct azx_dev *azx_dev = get_azx_dev(substream);
 	int ret = 0;
 
@@ -473,11 +474,13 @@ static int azx_get_sync_time(ktime_t *device,
 }
 
 #else
+#ifdef NOT_USED
 static int azx_get_sync_time(ktime_t *device,
 		struct system_counterval_t *system, void *ctx)
 {
 	return -ENXIO;
 }
+#endif /* NOT_USED */
 #endif
 
 #ifndef TARGET_OS2

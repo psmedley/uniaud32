@@ -275,7 +275,7 @@ struct proc_dir_entry *proc_symlink(const char *name, struct proc_dir_entry *par
 
     proc->name   = name;
     proc->parent = parent;
-    proc->data = dest;
+    proc->data = (void*)dest;
 
     return proc;
 }

@@ -28,6 +28,7 @@
 
 #ifdef TARGET_OS2
 #define KBUILD_MODNAME "patch_realtek"
+#pragma disable_message (201)
 #endif
 
 /* keep halting ALC5505 DSP, for power saving */
@@ -4444,7 +4445,7 @@ static void alc5505_dsp_init(struct hda_codec *codec)
 #ifdef CONFIG_PM
 static int alc269_suspend(struct hda_codec *codec)
 {
-	struct alc_spec *spec = codec->spec;
+	//NOT_USED struct alc_spec *spec = codec->spec;
 
 #ifndef TARGET_OS2
 	if (spec->has_alc5505_dsp)
@@ -4684,6 +4685,7 @@ static void alc269_fixup_x101_headset_mic(struct hda_codec *codec,
 	}
 }
 
+#ifdef NOT_USED
 static void alc_update_vref_led(struct hda_codec *codec, hda_nid_t pin,
 				bool polarity, bool on)
 {
@@ -4713,6 +4715,7 @@ static int vref_mute_led_set(struct led_classdev *led_cdev,
 			    spec->mute_led_polarity, brightness);
 	return 0;
 }
+#endif /* NOT_USED */
 
 /* Make sure the led works even in runtime suspend */
 static unsigned int led_power_filter(struct hda_codec *codec,
@@ -4741,7 +4744,7 @@ static void alc269_fixup_hp_mute_led(struct hda_codec *codec,
 	if (action != HDA_FIXUP_ACT_PRE_PROBE)
 		return;
 
-	while ((dev = dmi_find_device(DMI_DEV_TYPE_OEM_STRING, NULL, dev))) {
+	while ((dev = dmi_find_device(DMI_DEV_TYPE_OEM_STRING, NULL, dev))!=0) {
 		int pol, pin;
 		if (sscanf(dev->name, "HP_Mute_LED_%d_%x", &pol, &pin) != 2)
 			continue;
@@ -4803,6 +4806,7 @@ static void alc_update_gpio_led(struct hda_codec *codec, unsigned int mask,
 	alc_update_gpio_data(codec, mask, !enabled); /* muted -> LED on */
 }
 
+#ifdef NOT_USED
 /* turn on/off mute LED via GPIO per vmaster hook */
 static int gpio_mute_led_set(struct led_classdev *led_cdev,
 			     enum led_brightness brightness)
@@ -4826,6 +4830,7 @@ static int micmute_led_set(struct led_classdev *led_cdev,
 			    spec->micmute_led_polarity, !brightness);
 	return 0;
 }
+#endif /* NOT_USED */
 
 /* setup mute and mic-mute GPIO bits, add hooks appropriately */
 static void alc_fixup_hp_gpio_led(struct hda_codec *codec,
@@ -4871,6 +4876,7 @@ static void alc286_fixup_hp_gpio_led(struct hda_codec *codec,
 	alc_fixup_hp_gpio_led(codec, action, 0x02, 0x20);
 }
 
+#ifdef NOT_USED
 static void alc287_fixup_hp_gpio_led(struct hda_codec *codec,
 				const struct hda_fixup *fix, int action)
 {
@@ -4888,6 +4894,7 @@ static int vref_micmute_led_set(struct led_classdev *led_cdev,
 			    spec->micmute_led_polarity, brightness);
 	return 0;
 }
+#endif
 
 static void alc269_fixup_hp_gpio_mic1_led(struct hda_codec *codec,
 				const struct hda_fixup *fix, int action)
@@ -4924,6 +4931,7 @@ static void alc280_fixup_hp_gpio4(struct hda_codec *codec,
 	}
 }
 
+#ifdef NOT_USED
 static void alc_update_coef_led(struct hda_codec *codec,
 				struct alc_coef_led *led,
 				bool polarity, bool on)
@@ -4946,6 +4954,7 @@ static int coef_mute_led_set(struct led_classdev *led_cdev,
 			    spec->mute_led_polarity, brightness);
 	return 0;
 }
+#endif /* NOT_USED */
 
 static void alc285_fixup_hp_mute_led_coefbit(struct hda_codec *codec,
 					  const struct hda_fixup *fix,
@@ -4983,6 +4992,7 @@ static void alc236_fixup_hp_mute_led_coefbit(struct hda_codec *codec,
 	}
 }
 
+#ifdef NOT_USED
 /* turn on/off mic-mute LED per capture hook by coef bit */
 static int coef_micmute_led_set(struct led_classdev *led_cdev,
 				enum led_brightness brightness)
@@ -4994,6 +5004,7 @@ static int coef_micmute_led_set(struct led_classdev *led_cdev,
 			    spec->micmute_led_polarity, brightness);
 	return 0;
 }
+#endif /* NOT_USED */
 
 static void alc285_fixup_hp_coef_micmute_led(struct hda_codec *codec,
 				const struct hda_fixup *fix, int action)
@@ -6163,7 +6174,7 @@ static void alc_fixup_headset_mode_alc255_no_hp_mic(struct hda_codec *codec,
 		struct alc_spec *spec = codec->spec;
 		spec->parse_flags |= HDA_PINCFG_HEADSET_MIC;
 		alc255_set_default_jack_type(codec);
-	} 
+	}
 	else
 		alc_fixup_headset_mode(codec, fix, action);
 }
@@ -6690,6 +6701,7 @@ static void alc274_fixup_bind_dacs(struct hda_codec *codec,
 	codec->power_save_node = 0;
 }
 
+#ifdef NOT_USED
 /* avoid DAC 0x06 for bass speaker 0x17; it has no volume control */
 static void alc289_fixup_asus_ga401(struct hda_codec *codec,
 				    const struct hda_fixup *fix, int action)
@@ -6704,6 +6716,7 @@ static void alc289_fixup_asus_ga401(struct hda_codec *codec,
 		spec->gen.obey_preferred_dacs = 1;
 	}
 }
+#endif /* NOT_USED */
 
 /* The DAC of NID 0x3 will introduce click/pop noise on headphones, so invalidate it */
 static void alc285_fixup_invalidate_dacs(struct hda_codec *codec,
@@ -6759,6 +6772,7 @@ static void alc_fixup_disable_mic_vref(struct hda_codec *codec,
 }
 
 
+#ifdef NOT_USED
 static void alc294_gx502_toggle_output(struct hda_codec *codec,
 					struct hda_jack_callback *cb)
 {
@@ -6828,6 +6842,7 @@ static void alc_fixup_no_int_mic(struct hda_codec *codec,
 		break;
 	}
 }
+#endif /* NOT_USED */
 
 /* for hda_fixup_thinkpad_acpi() */
 #include "thinkpad_helper.c"
@@ -7059,17 +7074,17 @@ static const struct hda_pintbl ALC269_FIXUP_LIFEBOOK_pins[] = {
 			{ 0x1a, 0x2101103f }, /* dock line-out */
 			{ 0x1b, 0x23a11040 }, /* dock mic-in */
 			{0}
-}; 
+};
 
 static const struct hda_pintbl ALC269_FIXUP_LIFEBOOK_EXTMIC_PINS[] = {
 			{ 0x19, 0x01a1903c }, /* headset mic, with jack detect */
 			{0}
-}; 
+};
 
 static const struct hda_pintbl ALC269_FIXUP_LIFEBOOK_HP_PIN_PINS[] = {
 			{ 0x21, 0x0221102f }, /* HP out */
 			{0}
-}; 
+};
 
 static const struct hda_pintbl ALC269_FIXUP_AMIC_pins[] = {
 			{ 0x14, 0x99130110 }, /* speaker */
@@ -7077,7 +7092,7 @@ static const struct hda_pintbl ALC269_FIXUP_AMIC_pins[] = {
 			{ 0x18, 0x01a19c20 }, /* mic */
 			{ 0x19, 0x99a3092f }, /* int-mic */
 			{0}
-}; 
+};
 
 
 static const struct hda_pintbl ALC269_FIXUP_DMIC_pins [] = {
@@ -7086,8 +7101,8 @@ static const struct hda_pintbl ALC269_FIXUP_DMIC_pins [] = {
 			{ 0x15, 0x0121401f }, /* HP out */
 			{ 0x18, 0x01a19c20 }, /* mic */
 			{0}
-}; 
- 
+};
+
 
 static const struct hda_pintbl ALC269VB_FIXUP_AMIC_pins[] = {
 			{ 0x14, 0x99130110 }, /* speaker */
@@ -7095,7 +7110,7 @@ static const struct hda_pintbl ALC269VB_FIXUP_AMIC_pins[] = {
 			{ 0x19, 0x99a3092f }, /* int-mic */
 			{ 0x21, 0x0121401f }, /* HP out */
 			{0}
-}; 
+};
 
 static const struct hda_pintbl ALC269VB_FIXUP_DMIC_pins[] = {
 			{ 0x12, 0x99a3092f }, /* int-mic */

@@ -140,6 +140,7 @@ static void cx_auto_vmaster_hook(void *private_data, int enabled)
 	cx_auto_turn_eapd(codec, spec->num_eapds, spec->eapds, enabled);
 }
 
+#ifdef NOT_USED
 /* turn on/off EAPD according to Master switch (inversely!) for mute LED */
 static int cx_auto_vmaster_mute_led(struct led_classdev *led_cdev,
 				    enum led_brightness brightness)
@@ -152,6 +153,7 @@ static int cx_auto_vmaster_mute_led(struct led_classdev *led_cdev,
 			    brightness ? 0x02 : 0x00);
 	return 0;
 }
+#endif /* NOT_USED */
 
 static int cx_auto_init(struct hda_codec *codec)
 {
@@ -617,6 +619,7 @@ static void cxt_fixup_hp_gate_mic_jack(struct hda_codec *codec,
 		snd_hda_jack_set_gating_jack(codec, 0x19, 0x16);
 }
 
+#ifdef NOT_USED
 /* update LED status via GPIO */
 static void cxt_update_gpio_led(struct hda_codec *codec, unsigned int mask,
 				bool led_on)
@@ -659,7 +662,7 @@ static int cxt_gpio_micmute_update(struct led_classdev *led_cdev,
 	cxt_update_gpio_led(codec, spec->gpio_mic_led_mask, brightness);
 	return 0;
 }
-
+#endif /* NOT_USED */
 
 static void cxt_fixup_mute_led_gpio(struct hda_codec *codec,
 				const struct hda_fixup *fix, int action)
