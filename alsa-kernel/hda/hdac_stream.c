@@ -14,8 +14,8 @@
 #ifndef TARGET_OS2
 #include "trace.h"
 #else
-#define trace_snd_hdac_stream_start
-#define trace_snd_hdac_stream_stop
+#define trace_snd_hdac_stream_start(...)
+#define trace_snd_hdac_stream_stop(...)
 #endif
 
 /**

@@ -100,7 +100,7 @@ static int snd_opl3_synth_use(void *private_data, struct snd_seq_port_subscribe 
 
 	if (use_internal_drums) {
 		/* Percussion mode */
-		opl3->voices[6].state = opl3->voices[7].state = 
+		opl3->voices[6].state = opl3->voices[7].state =
 			opl3->voices[8].state = SNDRV_OPL3_ST_NOT_AVAIL;
 		snd_opl3_load_drums(opl3);
 		opl3->drum_reg = OPL3_PERCUSSION_ENABLE;
@@ -241,7 +241,7 @@ static int snd_opl3_seq_probe(struct device *_dev)
 	timer_setup(&opl3->tlist, snd_opl3_timer_func, 0);
 #else
 	init_timer(&opl3->tlist);
-	opl3->tlist.function = snd_opl3_timer_func;
+	opl3->tlist.function = (void(*)(unsigned long))snd_opl3_timer_func;
 	opl3->tlist.data = (unsigned long) opl3;
 #endif
 	spin_lock_init(&opl3->sys_timer_lock);

@@ -505,7 +505,7 @@ int pci_register_driver(struct pci_driver *driver)
   {
     int iTableIx;
 
-    rprintf(("pci_register_driver: query_device found %x %x:%x class=%x checking %s",
+    rprintf((__func__": query_device found %x %x:%x class=%x checking %s",
       ulLast, pcidev->vendor, pcidev->device, pcidev->class, driver->name));
 
     usVendor = 0;
@@ -524,13 +524,13 @@ int pci_register_driver(struct pci_driver *driver)
       usVendor = pcidev->vendor;
       usDevice = pcidev->device;
 
-      rprintf(("pci_register_driver: matched %d %x:%x/%x with %x:%x/%x %x (%s)", iTableIx,
+      rprintf((__func__": matched %d %x:%x/%x with %x:%x/%x %x (%s)", iTableIx,
         pcidev->vendor, pcidev->device, pcidev->class,
         pDriverId->vendor, pDriverId->device, pDriverId->class, pDriverId->class_mask, driver->name));
 
       if ((iAdapterNumber >= 0) && (iAdapter < iAdapterNumber))
       {
-        rprintf(("iAdapterNumber=%x skipping iAdapter=%x", iAdapterNumber, iAdapter));
+        rprintf((__func__": AdapterNumber=%x skipping Adapter=%x", iAdapterNumber, iAdapter));
         iAdapter++;
         continue;
       }

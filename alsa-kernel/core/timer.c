@@ -32,7 +32,7 @@
 #define DEFAULT_TIMER_LIMIT 1
 #endif
 
-static int timer_limit = DEFAULT_TIMER_LIMIT;
+//NOT_USED static int timer_limit = DEFAULT_TIMER_LIMIT;
 static int timer_tstamp_monotonic = 1;
 MODULE_AUTHOR("Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("ALSA timer interface");
@@ -1244,7 +1244,7 @@ static int snd_timer_register_system(void)
 	timer_setup(&priv->tlist, snd_timer_s_function, 0);
 #else
 	init_timer(&priv->tlist);
-	priv->tlist.function = snd_timer_s_function;
+	priv->tlist.function = (void(*)(unsigned long))snd_timer_s_function;
 	priv->tlist.data = (unsigned long) timer;
 #endif
 	timer->private_data = priv;

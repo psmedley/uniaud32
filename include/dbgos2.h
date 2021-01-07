@@ -66,5 +66,8 @@ extern void DbgPrintIrq(void);
 #define DebugInt3()
 #endif
 
+void DevInt3(void);
+#pragma aux DevInt3 = "int 3";
+
 #endif //__COMMDBG_H__
 

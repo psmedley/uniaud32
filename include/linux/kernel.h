@@ -96,9 +96,9 @@ static void complete_and_exit(struct completion *, long);
 #define roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 int strict_strtoul(const char *, unsigned int, unsigned long *);
 
-#define BUG_ON(condition) 
-#define WARN_ON(condition) 0
-#define WARN_ON_ONCE(condition) 0
+#define BUG_ON(condition)
+#define WARN_ON(condition) (void)0
+#define WARN_ON_ONCE(condition) (void)0
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 #define SIZE_MAX	(~(size_t)0)
 _WCRTLINK extern int     vsnprintf( char *__s, size_t __bufsize,

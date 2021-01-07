@@ -68,11 +68,6 @@ end
 
 parse value versionIn with major'.'minor'.'projVersion
 
-if fixpack="" then
-  projVers = versionIn;
-else
-  projVers = versionIn||'-'||fixpack;
-
 projVers2 = major||minor||projVersion;
 
 LINEIN(AlsaVersHdr,,0)
@@ -92,7 +87,6 @@ if (sDebugMode<>'') then do
   say 'ProjString='||ProjString;
   say 'alsalevel='||alsalevel;
   say 'ProjVersion='||ProjVersion;
-  say 'projVers='||projVers;
   say 'projVers2='||projVers2;
   say 'Fixpack='||Fixpack;
 end
@@ -139,7 +133,7 @@ do
     call lineout versHdr, '#define PRODUCT_NAME            "'||ProductName||'"';
     call lineout versHdr, '#define VENDOR_NAME             "'||projVendor||'"';
     call lineout versHdr, '#define PRODUCT_TIMESTAMP       '||projDate2||'       // YYYYMMDD';
-    call lineout versHdr, '#define UNIAUD_VERSION          "'||projVers||'"';
+    call lineout versHdr, '#define UNIAUD_VERSION          "'||versionIn||'"';
     call lineout versHdr, '#define ALSA_VERSION            "'||alsalevel||'"';
     call lineout versHdr, ' '
     call lineout versHdr, ' '

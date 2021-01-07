@@ -55,12 +55,12 @@ static DEFINE_MUTEX(register_mutex);
 #define rmidi_dbg(rmidi, fmt, args...) \
 	dev_dbg(&(rmidi)->dev, fmt, ##args)
 #else
-#define rmidi_err(rmidi, fmt) \
-	dev_err((rmidi)->card->dev, fmt)
-#define rmidi_warn(rmidi, fmt) \
-	dev_warn((rmidi)->card->dev, fmt)
-#define rmidi_dbg(rmidi, fmt) \
-	dev_dbg((rmidi)->card->dev, fmt)
+#define rmidi_err(rmidi, fmt, ...) \
+	dev_err((rmidi)->card->dev, fmt, ##__VA_ARGS__)
+#define rmidi_warn(rmidi, fmt, ...) \
+	dev_warn((rmidi)->card->dev, fmt, ##__VA_ARGS__)
+#define rmidi_dbg(rmidi, fmt, ...) \
+	dev_dbg((rmidi)->card->dev, fmt, ##__VA_ARGS__)
 #endif
 
 struct snd_rawmidi_status32 {

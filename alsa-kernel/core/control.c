@@ -22,6 +22,8 @@
 #define MAX_USER_CONTROLS	32
 #define MAX_CONTROL_COUNT	1028
 
+#pragma disable_message (201)
+
 struct snd_kctl_ioctl {
 	struct list_head list;		/* list of all ioctls */
 	snd_kctl_ioctl_func_t fioctl;
@@ -1382,7 +1384,7 @@ static int snd_ctl_elem_init_enum_names(struct user_element *ue)
 	char *names, *p;
 	size_t buf_len, name_len;
 	unsigned int i;
-//	const 
+//	const
 uintptr_t user_ptrval = ue->info.value.enumerated.names_ptr;
 
 	if (ue->info.value.enumerated.names_length > 64 * 1024)
