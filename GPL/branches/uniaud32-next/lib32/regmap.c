@@ -429,21 +429,21 @@ bool regmap_readable_noinc(struct regmap *map, unsigned int reg)
 
 /*static inline*/ void regmap_lock_hwlock(void *__map)
 {
-	struct regmap *map = __map;
+	//NOT_USED struct regmap *map = __map;
 
 //	hwspin_lock_timeout(map->hwlock, UINT_MAX);
 }
 
 /*static inline*/ void regmap_lock_hwlock_irq(void *__map)
 {
-	struct regmap *map = __map;
+	//NOT_USED struct regmap *map = __map;
 
 //	hwspin_lock_timeout_irq(map->hwlock, UINT_MAX);
 }
 
 /*static inline*/ void regmap_lock_hwlock_irqsave(void *__map)
 {
-	struct regmap *map = __map;
+	//NOT_USED struct regmap *map = __map;
 
 //	hwspin_lock_timeout_irqsave(map->hwlock, UINT_MAX,
 //				    &map->spinlock_flags);
@@ -451,21 +451,21 @@ bool regmap_readable_noinc(struct regmap *map, unsigned int reg)
 
 /*static inline*/ void regmap_unlock_hwlock(void *__map)
 {
-	struct regmap *map = __map;
+	//NOT_USED struct regmap *map = __map;
 
 //	hwspin_unlock(map->hwlock);
 }
 
 /*static inline*/ void regmap_unlock_hwlock_irq(void *__map)
 {
-	struct regmap *map = __map;
+	//NOT_USED struct regmap *map = __map;
 
 //	hwspin_unlock_irq(map->hwlock);
 }
 
 /*static inline*/ void regmap_unlock_hwlock_irqrestore(void *__map)
 {
-	struct regmap *map = __map;
+	//NOT_USED struct regmap *map = __map;
 
 //	hwspin_unlock_irqrestore(map->hwlock, &map->spinlock_flags);
 }
@@ -1160,7 +1160,7 @@ err_range:
 err_hwlock:
 //	if (map->hwlock)
 //		hwspin_lock_free(map->hwlock);
-err_name:
+//err_name:
 //	kfree_const(map->name);
 err_map:
 	kfree(map);
@@ -2097,7 +2097,8 @@ EXPORT_SYMBOL_GPL(regmap_bulk_write);
 	kfree(buf);
 
 	for (i = 0; i < num_regs; i++) {
-		int reg = regs[i].reg;
+		int reg;
+		reg = regs[i].reg;
 	}
 	return ret;
 }

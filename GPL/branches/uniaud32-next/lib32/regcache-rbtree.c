@@ -327,7 +327,7 @@ err:
 		       (BITS_TO_LONGS(blklen) - BITS_TO_LONGS(rbnode->blklen))
 		       * sizeof(*present));
 	} else {
-		present = rbnode->cache_present;
+		present = (unsigned long *)rbnode->cache_present;
 	}
 
 	/* insert the register value in the correct place in the rbnode block */
@@ -341,7 +341,7 @@ err:
 	rbnode->block = blk;
 	rbnode->blklen = blklen;
 	rbnode->base_reg = base_reg;
-	rbnode->cache_present = present;
+	rbnode->cache_present = (long*)present;
 
 	regcache_rbtree_set_register(map, rbnode, pos, value);
 	return 0;
@@ -527,7 +527,7 @@ err_free:
 			end = rbnode->blklen;
 
 		ret = regcache_sync_block(map, rbnode->block,
-					  rbnode->cache_present,
+					  (unsigned long *)rbnode->cache_present,
 					  rbnode->base_reg, start, end);
 		if (ret != 0)
 			return ret;
@@ -566,7 +566,7 @@ err_free:
 		else
 			end = rbnode->blklen;
 
-		bitmap_clear(rbnode->cache_present, start, end - start);
+		bitmap_clear((unsigned long *)rbnode->cache_present, start, end - start);
 	}
 
 	return 0;

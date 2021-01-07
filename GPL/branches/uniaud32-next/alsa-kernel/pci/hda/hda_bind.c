@@ -17,6 +17,7 @@
 
 // 2020-11-17 SHL
 #include <../../../lib32/internal.h>
+#pragma disable_message (201)
 
 /*
  * find a matching codec id

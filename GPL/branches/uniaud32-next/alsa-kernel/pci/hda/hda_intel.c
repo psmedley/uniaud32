@@ -40,6 +40,7 @@
 
 #ifdef TARGET_OS2
 #define KBUILD_MODNAME "hda_intel"
+#pragma disable_message (201)
 #endif
 
 #ifdef CONFIG_X86
@@ -181,12 +182,14 @@ MODULE_PARM_DESC(dmic_detect, "Allow DSP driver selection (bypass this driver) "
 		 "deprecated, use snd-intel-dspcfg.dsp_driver option instead");
 
 #ifdef CONFIG_PM
+#ifdef NOT_USED
 static int param_set_xint(const char *val, const struct kernel_param *kp);
 static const struct kernel_param_ops param_ops_xint = {
 	.set = param_set_xint,
 	.get = param_get_int,
 };
 #define param_check_xint param_check_int
+#endif /* NOT_USED */
 
 static int power_save = CONFIG_SND_HDA_POWER_SAVE_DEFAULT;
 module_param(power_save, xint, 0644);
@@ -201,7 +204,7 @@ MODULE_PARM_DESC(pm_blacklist, "Enable power-management denylist");
  * this may give more power-saving, but will take longer time to
  * wake up.
  */
-static bool power_save_controller = 1;
+//NOT_USED static bool power_save_controller = 1;
 module_param(power_save_controller, bool, 0644);
 MODULE_PARM_DESC(power_save_controller, "Reset controller in power save mode.");
 #else
@@ -400,8 +403,8 @@ static const char * const driver_short_names[] = {
 	[AZX_DRIVER_SIS] = "HDA SIS966",
 	[AZX_DRIVER_ULI] = "HDA ULI M5461",
 	[AZX_DRIVER_NVIDIA] = "HDA NVidia",
-	[AZX_DRIVER_TERA] = "HDA Teradici", 
-	[AZX_DRIVER_CTX] = "HDA Creative", 
+	[AZX_DRIVER_TERA] = "HDA Teradici",
+	[AZX_DRIVER_CTX] = "HDA Creative",
 	[AZX_DRIVER_CTHDA] = "HDA Creative",
 	[AZX_DRIVER_CMEDIA] = "HDA C-Media",
 	[AZX_DRIVER_ZHAOXIN] = "HDA Zhaoxin",
@@ -954,6 +957,7 @@ static void azx_del_card_list(struct azx *chip)
 	mutex_unlock(&card_list_lock);
 }
 
+#ifdef NOT_USED
 /* trigger power-save check at writing parameter */
 static int param_set_xint(const char *val, const struct kernel_param *kp)
 {
@@ -975,6 +979,7 @@ static int param_set_xint(const char *val, const struct kernel_param *kp)
 	mutex_unlock(&card_list_lock);
 	return 0;
 }
+#endif /* NOT_USED */
 
 /*
  * power management
@@ -1136,6 +1141,7 @@ static int azx_thaw_noirq(struct device *dev)
 }
 #endif /* CONFIG_PM_SLEEP */
 
+#ifdef NOT_USED
 static int azx_runtime_suspend(struct device *dev)
 {
 	struct snd_card *card = dev_get_drvdata(dev);
@@ -1194,6 +1200,7 @@ static int azx_runtime_idle(struct device *dev)
 
 	return 0;
 }
+#endif /* NOT_USED */
 
 static const struct dev_pm_ops azx_pm = {
 	SET_SYSTEM_SLEEP_PM_OPS(azx_suspend, azx_resume)
@@ -1442,7 +1449,7 @@ static void azx_free(struct azx *chip)
 static int azx_dev_disconnect(struct snd_device *device)
 {
 	struct azx *chip = device->device_data;
-	struct hdac_bus *bus = azx_bus(chip);
+	//NOT_USED struct hdac_bus *bus = azx_bus(chip);
 
 	chip->bus.shutdown = 1;
 	cancel_work_sync(&bus->unsol_work);

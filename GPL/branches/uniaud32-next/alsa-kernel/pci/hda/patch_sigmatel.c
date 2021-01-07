@@ -323,6 +323,7 @@ static void stac_gpio_set(struct hda_codec *codec, unsigned int mask,
 			   AC_VERB_SET_GPIO_DATA, gpiostate); /* sync */
 }
 
+#ifdef NOT_USED
 /* hook for controlling mic-mute LED GPIO */
 static int stac_capture_led_update(struct led_classdev *led_cdev,
 				   enum led_brightness brightness)
@@ -360,6 +361,7 @@ static int stac_vrefout_set(struct hda_codec *codec,
 
 	return 1;
 }
+#endif /* NOT_USED */
 
 /* prevent codec AFG to D3 state when vref-out pin is used for mute LED */
 /* this hook is set in stac_setup_gpio() */
@@ -372,6 +374,7 @@ static unsigned int stac_vref_led_power_filter(struct hda_codec *codec,
 	return snd_hda_gen_path_power_filter(codec, nid, power_state);
 }
 
+#ifdef NOT_USED
 /* update mute-LED accoring to the master switch */
 static void stac_update_led_status(struct hda_codec *codec, bool muted)
 {
@@ -407,6 +410,7 @@ static int stac_vmaster_hook(struct led_classdev *led_cdev,
 	stac_update_led_status(codec, brightness);
 	return 0;
 }
+#endif /* NOT_USED */
 
 /* automute hook to handle GPIO mute and EAPD updates */
 static void stac_update_outputs(struct hda_codec *codec)
@@ -1198,7 +1202,7 @@ static const struct hda_pintbl dell9200_d23_pin_configs[] = {
 };
 
 
-/* 
+/*
     STAC 9200-32 pin configs for
     102801B5 (Dell Inspiron 630m)
     102801D8 (Dell Inspiron 640m)
@@ -1215,13 +1219,13 @@ static const struct hda_pintbl dell9200_m21_pin_configs[] = {
 	{0}
 };
 
-/* 
+/*
     STAC 9200-32 pin configs for
     102801C2 (Dell Latitude D620)
-    102801C8 
+    102801C8
     102801CC (Dell Latitude D820)
-    102801D4 
-    102801D6 
+    102801D4
+    102801D6
 */
 static const struct hda_pintbl dell9200_m22_pin_configs[] = {
 	{ 0x08, 0x40c003fa },
@@ -1235,7 +1239,7 @@ static const struct hda_pintbl dell9200_m22_pin_configs[] = {
 	{0}
 };
 
-/* 
+/*
     STAC 9200-32 pin configs for
     102801CE (Dell XPS M1710)
     102801CF (Dell Precision M90)
@@ -1253,7 +1257,7 @@ static const struct hda_pintbl dell9200_m23_pin_configs[] = {
 };
 
 /*
-    STAC 9200-32 pin configs for 
+    STAC 9200-32 pin configs for
     102801C9
     102801CA
     102801CB (Dell Latitude 120L)
@@ -4496,7 +4500,7 @@ static void stac92hd_proc_hook(struct snd_info_buffer *buffer,
 			       struct hda_codec *codec, hda_nid_t nid)
 {
 	if (nid == codec->core.afg)
-		snd_iprintf(buffer, "Power-Map: 0x%02x\n", 
+		snd_iprintf(buffer, "Power-Map: 0x%02x\n",
 			    snd_hda_codec_read(codec, nid, 0,
 					       AC_VERB_IDT_GET_POWER_MAP, 0));
 }
