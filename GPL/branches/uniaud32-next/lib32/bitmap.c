@@ -1172,6 +1172,7 @@ int bitmap_allocate_region(unsigned long *bitmap, int pos, int order)
 }
 EXPORT_SYMBOL(bitmap_allocate_region);
 
+#pragma disable_message (201)
 /**
  * bitmap_copy_le - copy a bitmap, putting the bits into little-endian order.
  * @dst:   destination buffer

@@ -740,7 +740,8 @@ int hex_to_bin(char ch)
 int stream_open(struct inode *inode, struct file *filp)
 {
 	filp->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE | FMODE_ATOMIC_POS);
-	filp->f_mode |= FMODE_STREAM;
+	//DAZ f_mode is 16 bit so FMODE_STREAM doesn't fit, but we don't use this on OS/2.
+	//filp->f_mode |= FMODE_STREAM;
 	return 0;
 }
 
