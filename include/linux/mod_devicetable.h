@@ -1,6 +1,8 @@
 #ifndef _LINUX_MOD_DEVICETABLE_H
 #define _LINUX_MOD_DEVICETABLE_H
 
+#include <linux/types.h>
+
 struct hda_device_id {
 	__u32 vendor_id;
 	__u32 rev_id;
