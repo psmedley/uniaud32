@@ -1260,7 +1260,7 @@ static const struct hda_pintbl ae7_pincfgs[] = {
 	{ 0x12, 0x01a170f0 },
 	{ 0x13, 0x908700f0 },
 	{ 0x18, 0x500000f0 },
-	{}
+	{0}
 };
 
 static const struct snd_pci_quirk ca0132_quirks[] = {
@@ -6529,7 +6529,6 @@ static int ca0132_alt_add_effect_slider(struct hda_codec *codec, hda_nid_t nid,
 	int type = dir ? HDA_INPUT : HDA_OUTPUT;
 	struct snd_kcontrol_new knew =
 		HDA_CODEC_VOLUME_MONO(namestr, nid, 1, 0, type);
-
 	sprintf(namestr, "FX: %s %s Volume", pfx, dirstr[dir]);
 
 	knew.tlv.c = NULL;
