@@ -815,7 +815,7 @@ static int azx_rirb_get_response(struct hdac_bus *bus, unsigned int addr,
 	if (!err)
 		return 0;
 
-#ifndef TARGET_OS2
+#ifndef TARGET_OS2 /* fixes 2nd HDA adapter on OS/2 */
 	if (hbus->no_response_fallback)
 #else
 	if (!hbus->no_response_fallback)
