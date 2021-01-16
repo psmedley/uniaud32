@@ -316,7 +316,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 			pHandle->file.f_flags = O_NONBLOCK;
 
 			dprintf(("GetUniaudPcmCaps: cp1. pcm %i, phandle %x", i, pHandle));
-			ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_INFO, (ULONG)pcminfo);
+			ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_INFO, (ULONG)pcminfo);
 			if(ret != 0) {
 				rprintf(("GetUniaudPcmCaps: SNDRV_PCM_IOCTL_INFO error %i", ret));
 				ret = UNIXToOSSError(ret);
@@ -336,7 +336,7 @@ int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 			dprintf(("GetUniaudPcmCaps: pcm %i, cp2. nr of streams: %i", i, pWaveCaps->nrStreams));
 			//get all hardware parameters
 			_snd_pcm_hw_params_any(params);
-			ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)params);
+			ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)params);
 			if(ret != 0) {
 				dprintf(("GetUniaudPcmCaps: SNDRV_PCM_IOCTL_HW_REFINE error %i", ret));
 				ret = UNIXToOSSError(ret);
@@ -467,7 +467,7 @@ int UniaudCtlGetPowerState(ULONG deviceid, void *state)
 		goto failure;
 	}
 	//retrieve mixer information
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
 									SNDRV_CTL_IOCTL_POWER_STATE,
 									(ULONG)state);
 
@@ -521,7 +521,7 @@ int UniaudCtlSetPowerState(ULONG deviceid, void *state)
 		goto failure;
 	}
 	//retrieve mixer information
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
 									SNDRV_CTL_IOCTL_POWER,
 									(ULONG)state);
 
@@ -577,7 +577,7 @@ int GetUniaudCardInfo(ULONG deviceid, void *info)
 		goto failure;
 	}
 	//retrieve mixer information
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
 									SNDRV_CTL_IOCTL_CARD_INFO,
 									(ULONG)(struct snd_ctl_card_info *)info);
 	if(ret) {
@@ -634,7 +634,7 @@ int GetUniaudControlNum(ULONG deviceid)
 		goto failure;
 	}
 	//retrieve mixer information
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
 									SNDRV_CTL_IOCTL_CARD_INFO,
 									(ULONG)&pHandle->info);
 	if(ret) {
@@ -644,7 +644,7 @@ int GetUniaudControlNum(ULONG deviceid)
 	//get the number of mixer elements
 	pHandle->list.offset = 0;
 	pHandle->list.space  = 0;
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
 									SNDRV_CTL_IOCTL_ELEM_LIST,
 									(ULONG)&pHandle->list);
 	if(ret) {
@@ -702,7 +702,7 @@ int GetUniaudControls(ULONG deviceid, void *pids)
 		goto failure;
 	}
 	//retrieve mixer information
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
 									SNDRV_CTL_IOCTL_CARD_INFO,
 									(ULONG)&pHandle->info);
 	if(ret) {
@@ -712,7 +712,7 @@ int GetUniaudControls(ULONG deviceid, void *pids)
 	//get the number of mixer elements
 	pHandle->list.offset = 0;
 	pHandle->list.space  = 0;
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
 									SNDRV_CTL_IOCTL_ELEM_LIST,
 									(ULONG)&pHandle->list);
 	if(ret) {
@@ -731,7 +731,7 @@ int GetUniaudControls(ULONG deviceid, void *pids)
 	pHandle->list.offset = 0;
 	pHandle->list.space  = pHandle->list.count;
 	pHandle->list.pids	 = pHandle->pids;
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
 									SNDRV_CTL_IOCTL_ELEM_LIST,
 									(ULONG)&pHandle->list);
 	if(ret) {
@@ -805,7 +805,7 @@ int GetUniaudControlInfo(ULONG deviceid, ULONG id, void *info)
 //	  printk("sizeof elem_info %i\n",sizeof(struct snd_ctl_elem_info));
 
 	pElemInfo->id.numid = id;
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
 	ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
 	if(pHandle) kfree(pHandle);
 //	  printk("elem type: %i, id: %i, card: %i\n", pElemInfo->type, pElemInfo->id.numid, deviceid);
@@ -863,7 +863,7 @@ int GetUniaudControlValueGet(ULONG deviceid, ULONG id, void *value)
 
 	pElem->id.numid = id;
 	pElem->indirect = 0;
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_READ, (ULONG)pElem);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_READ, (ULONG)pElem);
 	ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
 	if(pHandle) kfree(pHandle);
 
@@ -923,7 +923,7 @@ int GetUniaudControlValuePut(ULONG deviceid, ULONG id, void *value)
 	pElem->id.numid = id;
 	pElem->indirect = 0;
 
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
 	ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
 	if(pHandle) kfree(pHandle);
 
@@ -951,7 +951,7 @@ int UniaudIoctlHWRefine(OSSSTREAMID streamid, void *pHwParams)
 	if (!pHandle) return -1002;
 
 	pHandle->file.f_flags = O_NONBLOCK;
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)params);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)params);
 	return ret;
 }
 
@@ -968,7 +968,7 @@ int UniaudIoctlHWParamSet(OSSSTREAMID streamid, void *pHwParams)
 	if (!pHandle) return -1002;
 
 	pHandle->file.f_flags = O_NONBLOCK;
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)params);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)params);
 	return ret;
 }
 
@@ -987,7 +987,7 @@ int UniaudIoctlSWParamSet(OSSSTREAMID streamid, void *pSwParams)
 
 	pHandle->file.f_flags = O_NONBLOCK;
 
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_SW_PARAMS, (ULONG)params);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_SW_PARAMS, (ULONG)params);
 	return ret;
 }
 
@@ -1004,7 +1004,7 @@ int UniaudIoctlPCMStatus(OSSSTREAMID streamid, void *pstatus)
 
 	pHandle->file.f_flags = O_NONBLOCK;
 
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)status);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)status);
 	return ret;
 }
 
@@ -1053,7 +1053,7 @@ int UniaudIoctlPCMPrepare(OSSSTREAMID streamid)
 
 	pHandle->file.f_flags = O_NONBLOCK;
 
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
 	return ret;
 }
 
@@ -1068,7 +1068,7 @@ int UniaudIoctlPCMResume(OSSSTREAMID streamid, int pause)
 
 	pHandle->file.f_flags = O_NONBLOCK;
 
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_PAUSE, pause);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_PAUSE, pause);
 
 	return ret;
 }
@@ -1084,7 +1084,7 @@ int UniaudIoctlPCMStart(OSSSTREAMID streamid)
 
 	pHandle->file.f_flags = O_NONBLOCK;
 
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_START, 0);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_START, 0);
 
 	return ret;
 }
@@ -1100,7 +1100,7 @@ int UniaudIoctlPCMDrop(OSSSTREAMID streamid)
 
 	pHandle->file.f_flags = O_NONBLOCK;
 
-	ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_PCM_IOCTL_DROP, 0);
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_DROP, 0);
 
 	return ret;
 }

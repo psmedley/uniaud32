@@ -1988,17 +1988,6 @@ EXPORT_SYMBOL_GPL(snd_ctl_get_preferred_subdevice);
 #define snd_ctl_ioctl_compat	NULL
 #endif
 
-#ifndef CONFIG_SND_HAVE_NEW_IOCTL
-/* need to unlock BKL to allow preemption */
-static int snd_ctl_ioctl_old(struct inode *inode, struct file * file,
-			     unsigned int cmd, unsigned long arg)
-{
-	int err;
-	err = snd_ctl_ioctl(file, cmd, arg);
-	return err;
-}
-#endif
-
 /*
  *  INIT PART
  */
@@ -2011,12 +2000,8 @@ static const struct file_operations snd_ctl_f_ops =
 	.release =	snd_ctl_release,
 	.llseek =	no_llseek,
 	.poll =		snd_ctl_poll,
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	snd_ctl_ioctl,
 	.compat_ioctl =	snd_ctl_ioctl_compat,
-#else
-	.ioctl =	snd_ctl_ioctl_old,
-#endif
 	.fasync =	snd_ctl_fasync,
 };
 

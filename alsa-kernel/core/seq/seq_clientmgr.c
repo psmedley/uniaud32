@@ -2174,19 +2174,6 @@ static long snd_seq_ioctl(struct file *file, unsigned int cmd,
 #define snd_seq_ioctl_compat	NULL
 #endif
 
-#ifndef CONFIG_SND_HAVE_NEW_IOCTL
-/* need to unlock BKL to allow preemption */
-static int snd_seq_ioctl_old(struct inode *inode, struct file * file,
-			     unsigned int cmd, unsigned long arg)
-{
-	int err;
-	unlock_kernel();
-	err = snd_seq_ioctl(file, cmd, arg);
-	lock_kernel();
-	return err;
-}
-#endif
-
 /* -------------------------------------------------------- */
 
 
@@ -2511,12 +2498,8 @@ static const struct file_operations snd_seq_f_ops =
 	.release =	snd_seq_release,
 	.llseek =	no_llseek,
 	.poll =		snd_seq_poll,
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	snd_seq_ioctl,
 	.compat_ioctl =	snd_seq_ioctl_compat,
-#else
-	.ioctl =	snd_seq_ioctl_old,
-#endif
 };
 
 static struct device seq_dev;

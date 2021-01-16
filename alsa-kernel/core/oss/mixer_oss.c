@@ -394,17 +394,6 @@ static long snd_mixer_oss_ioctl_compat(struct file *file, unsigned int cmd,
 #define snd_mixer_oss_ioctl_compat	NULL
 #endif
 
-#ifndef CONFIG_SND_HAVE_NEW_IOCTL
-/* need to unlock BKL to allow preemption */
-static int snd_mixer_oss_ioctl_old(struct inode *inode, struct file * file,
-				   unsigned int cmd, unsigned long arg)
-{
-	int err;
-	err = snd_mixer_oss_ioctl(file, cmd, arg);
-	return err;
-}
-#endif
-
 /*
  *  REGISTRATION PART
  */
@@ -415,12 +404,8 @@ static const struct file_operations snd_mixer_oss_f_ops =
 	.open =		snd_mixer_oss_open,
 	.release =	snd_mixer_oss_release,
 	.llseek =	no_llseek,
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
  	.unlocked_ioctl =	snd_mixer_oss_ioctl,
  	.compat_ioctl =	snd_mixer_oss_ioctl_compat,
-#else
-	.ioctl =	snd_mixer_oss_ioctl_old,
-#endif	
 };
 
 /*

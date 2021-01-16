@@ -193,17 +193,6 @@ static long odev_ioctl_compat(struct file *file, unsigned int cmd,
 #define odev_ioctl_compat	NULL
 #endif
 
-#ifndef CONFIG_SND_HAVE_NEW_IOCTL
-/* need to unlock BKL to allow preemption */
-static int odev_ioctl_old(struct inode *inode, struct file * file,
-			  unsigned int cmd, unsigned long arg)
-{
-	int err;
-	err = odev_ioctl(file, cmd, arg);
-	return err;
-}
-#endif
-
 static __poll_t
 odev_poll(struct file *file, poll_table * wait)
 {
@@ -226,12 +215,8 @@ static const struct file_operations seq_oss_f_ops =
 	.open =		odev_open,
 	.release =	odev_release,
 	.poll =		odev_poll,
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	odev_ioctl,
 	.compat_ioctl =	odev_ioctl_compat,
-#else
-	.ioctl =	odev_ioctl_old,
-#endif
 	.llseek =	noop_llseek,
 };
 

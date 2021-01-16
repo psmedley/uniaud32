@@ -3913,24 +3913,6 @@ static int snd_pcm_fasync(int fd, struct file * file, int on)
 #define snd_pcm_ioctl_compat	NULL
 #endif
 
-#ifndef CONFIG_SND_HAVE_NEW_IOCTL
-/* need to unlock BKL to allow preemption */
-static int snd_pcm_playback_ioctl_old(struct inode *inode, struct file * file,
-				      unsigned int cmd, unsigned long arg)
-{
-	int err;
-	err = snd_pcm_ioctl(file, cmd, arg);
-	return err;
-}
-static int snd_pcm_capture_ioctl_old(struct inode *inode, struct file * file,
-				      unsigned int cmd, unsigned long arg)
-{
-	int err;
-	err = snd_pcm_ioctl(file, cmd, arg);
-	return err;
-}
-#endif
-
 /*
  *  To be removed helpers to keep binary compatibility
  */
@@ -4085,12 +4067,8 @@ const struct file_operations snd_pcm_f_ops[2] = {
 		.release =		snd_pcm_release,
 		.llseek =		no_llseek,
 		.poll =			snd_pcm_poll,
-#ifndef TARGET_OS2
 		.unlocked_ioctl =	snd_pcm_ioctl,
 		.compat_ioctl = 	snd_pcm_ioctl_compat,
-#else
-		.ioctl =		snd_pcm_playback_ioctl_old,
-#endif
 #ifndef TARGET_OS2
 		.mmap =			snd_pcm_mmap,
 #endif
@@ -4107,12 +4085,8 @@ const struct file_operations snd_pcm_f_ops[2] = {
 		.release =		snd_pcm_release,
 		.llseek =		no_llseek,
 		.poll =			snd_pcm_poll,
-#ifndef TARGET_OS2
 		.unlocked_ioctl =	snd_pcm_ioctl,
 		.compat_ioctl = 	snd_pcm_ioctl_compat,
-#else
-		.ioctl =		snd_pcm_capture_ioctl_old,
-#endif
 #ifndef TARGET_OS2
 		.mmap =			snd_pcm_mmap,
 #endif

@@ -319,17 +319,6 @@ static int snd_hwdep_control_ioctl(struct snd_card *card,
 #define snd_hwdep_ioctl_compat	NULL
 #endif
 
-#ifndef CONFIG_SND_HAVE_NEW_IOCTL
-/* need to unlock BKL to allow preemption */
-static int snd_hwdep_ioctl_old(struct inode *inode, struct file * file,
-			       unsigned int cmd, unsigned long arg)
-{
-	int err;
-	err = snd_hwdep_ioctl(file, cmd, arg);
-	return err;
-}
-#endif
-
 /*
 
  */
@@ -343,12 +332,8 @@ static const struct file_operations snd_hwdep_f_ops =
 	.open =		snd_hwdep_open,
 	.release =	snd_hwdep_release,
 	.poll =		snd_hwdep_poll,
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	snd_hwdep_ioctl,
 	.compat_ioctl =	snd_hwdep_ioctl_compat,
-#else
-	.ioctl =	snd_hwdep_ioctl_old,
-#endif
 	.mmap =		snd_hwdep_mmap,
 };
 

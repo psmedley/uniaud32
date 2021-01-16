@@ -147,7 +147,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
     goto failure;
   }
   //retrieve mixer information
-  ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+  ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
                   SNDRV_CTL_IOCTL_CARD_INFO,
                   (ULONG)&pHandle->info);
   if(ret) {
@@ -156,7 +156,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
   //get the number of mixer elements
   pHandle->list.offset = 0;
   pHandle->list.space  = 0;
-  ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+  ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
                   SNDRV_CTL_IOCTL_ELEM_LIST,
                   (ULONG)&pHandle->list);
   if(ret) {
@@ -171,7 +171,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
   pHandle->list.offset = 0;
   pHandle->list.space  = pHandle->list.count;
   pHandle->list.pids   = pHandle->pids;
-  ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+  ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
                   SNDRV_CTL_IOCTL_ELEM_LIST,
                   (ULONG)&pHandle->list);
   if(ret) {
@@ -270,7 +270,7 @@ OSSRET OSS32_MixOpen(ULONG deviceid, OSSSTREAMID *pStreamId)
     {
       pElemInfo->value.enumerated.item = i;
       pElemInfo->id.numid = pHandle->pids[idx].numid;
-      ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
+      ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
       if(ret) {
         DebugInt3();
         break;
@@ -483,11 +483,11 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
 
     pElem->value.integer.value[0] = TRUE;  //switch, not mute control (inversed)
     pElem->value.integer.value[1] = TRUE;
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
+    ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
   }
   //request information about mixer control
   pElemInfo->id.numid = pHandle->pids[idx].numid;
-  ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
+  ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
   if(ret) {
     ret = UNIXToOSSError(ret);
     DebugInt3();
@@ -514,7 +514,7 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
     GET_VOLUME_L(volume), GET_VOLUME_R(volume), lVol, rVol, pElemInfo->value.integer.max));
 
 #if 1
-  ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
+  ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
 #else
   // looking for more, then one opened streams to prevent of muting active stream
   cnt = 0;
@@ -527,7 +527,7 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
   if (cnt == 1 || line != OSS32_MIX_VOLUME_PCM)
   {
     dprintf(("OSS32_MixSetVolume Ioctl"));
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
+    ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
 
     if(idxMute != -1 && volume == 0) {
       //enable mute
@@ -537,7 +537,7 @@ OSSRET OSS32_MixSetVolume(OSSSTREAMID streamid, ULONG line, ULONG volume)
       pElem->value.integer.value[0] = FALSE;  //switch, not mute control (inversed)
       pElem->value.integer.value[1] = FALSE;
       dprintf(("OSS32_MixSetVolume Ioctl mute"));
-      ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
+      ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
     }
   }
 #endif
@@ -602,7 +602,7 @@ OSSRET OSS32_MixSetProperty(OSSSTREAMID streamid, ULONG ulLine, ULONG ulValue)
 
           //request information about mixer control
           pElemInfo->id.numid       = pHandle->pids[idx].numid;
-          ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
+          ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
           if(ret) {
             ret = UNIXToOSSError(ret);
             DebugInt3();
@@ -620,7 +620,7 @@ OSSRET OSS32_MixSetProperty(OSSSTREAMID streamid, ULONG ulLine, ULONG ulValue)
             pElem->value.integer.value[i] = 0;
           }
 
-          ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
+          ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
           if(ret) {
             ret = UNIXToOSSError(ret);
             DebugInt3();
@@ -630,7 +630,7 @@ OSSRET OSS32_MixSetProperty(OSSSTREAMID streamid, ULONG ulLine, ULONG ulValue)
       }
       //request information about mixer control
       pElemInfo->id.numid = pHandle->pids[idx].numid;
-      ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
+      ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
       if(ret) {
         ret = UNIXToOSSError(ret);
         DebugInt3();
@@ -677,7 +677,7 @@ levelcontinue:
     }
     //request information about mixer control
     pElemInfo->id.numid = pHandle->pids[idx].numid;
-    ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
+    ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_INFO, (ULONG)pElemInfo);
     if(ret) {
       ret = UNIXToOSSError(ret);
       DebugInt3();
@@ -706,7 +706,7 @@ levelcontinue:
   pElem->indirect = 0;
 
   dprintf(("OSS32_MixSetProperty of %s to %x", pHandle->pids[idx].name, ulValue));
-  ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
+  ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_CTL_IOCTL_ELEM_WRITE, (ULONG)pElem);
 
   kfree(pElem);
   pElem = NULL;
@@ -848,7 +848,7 @@ OSSRET OSS32_MixQueryName(ULONG deviceid, char *pszMixerName, ULONG cbMixerName)
     goto failure;
   }
   //retrieve mixer information
-  ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+  ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
                   SNDRV_CTL_IOCTL_CARD_INFO,
                   (ULONG)&pHandle->info);
   if(ret) {
@@ -910,7 +910,7 @@ OSSRET OSS32_QueryNames(ULONG deviceid, char *pszDeviceName, ULONG cbDeviceName,
     goto failure;
   }
   //retrieve mixer information
-  ret = pHandle->file.f_op->ioctl(&pHandle->inode, &pHandle->file,
+  ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file,
                   SNDRV_CTL_IOCTL_CARD_INFO,
                   (ULONG)&pHandle->info);
   if(ret) {
