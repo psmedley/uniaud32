@@ -2,7 +2,7 @@
 #define _LINUX_COMPLETION_H
 
 #include <linux/wait.h>
-#include <sound/compat_22.h>
+
 /*
  * struct completion - structure used to maintain state for a "completion"
  *

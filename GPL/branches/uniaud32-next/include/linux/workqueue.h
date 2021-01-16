@@ -2,7 +2,6 @@
 #define __LINUX_WORKQUEUE_H
 
 #include <linux/timer.h>
-#include <sound/compat_22.h>
 #include <linux/completion.h>
 
 #define cancel_work_sync(w)	flush_scheduled_work()
