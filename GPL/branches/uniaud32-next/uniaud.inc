@@ -13,11 +13,3 @@ BUILDVERSION = 3.01.01
 # ex RC3  GA  FIXPACK2 beta_47
 # Comment out to avoid a fixpack line in bldlevel
 FIXPACK = SVN
-
-# ALSA BUILD VERSION
-# Use this to to include the ALSA revision
-# ex 0.9.2  1.0.14RC3
-# Leave empty or use MIXED
-# STRING must be max X chars
-ALSAVERSION = linux-3.6
-
