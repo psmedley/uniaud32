@@ -2294,17 +2294,6 @@ static __poll_t snd_timer_user_poll(struct file *file, poll_table * wait)
 #define snd_timer_user_ioctl_compat	NULL
 #endif
 
-#ifndef CONFIG_SND_HAVE_NEW_IOCTL
-/* need to unlock BKL to allow preemption */
-static int snd_timer_user_ioctl_old(struct inode *inode, struct file * file,
-				    unsigned int cmd, unsigned long arg)
-{
-	int err;
-	err = snd_timer_user_ioctl(file, cmd, arg);
-	return err;
-}
-#endif
-
 static const struct file_operations snd_timer_f_ops =
 {
 	.owner =	THIS_MODULE,
@@ -2313,12 +2302,8 @@ static const struct file_operations snd_timer_f_ops =
 	.release =	snd_timer_user_release,
 	.llseek =	no_llseek,
 	.poll =		snd_timer_user_poll,
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	snd_timer_user_ioctl,
 	.compat_ioctl =	snd_timer_user_ioctl_compat,
-#else
-	.ioctl =	snd_timer_user_ioctl_old,
-#endif
 	.fasync = 	snd_timer_user_fasync,
 };
 

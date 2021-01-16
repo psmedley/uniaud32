@@ -340,19 +340,11 @@ static __poll_t snd_disconnect_poll(struct file * file, poll_table * wait)
 	return EPOLLERR | EPOLLNVAL;
 }
 
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 static long snd_disconnect_ioctl(struct file *file,
 				 unsigned int cmd, unsigned long arg)
 {
 	return -ENODEV;
 }
-#else
-static int snd_disconnect_ioctl_old(struct inode *inode, struct file *file,
-				    unsigned int cmd, unsigned long arg)
-{
-	return -ENODEV;
-}
-#endif
 
 static int snd_disconnect_mmap(struct file *file, struct vm_area_struct *vma)
 {
@@ -372,13 +364,9 @@ static const struct file_operations snd_shutdown_f_ops =
 	.write =	snd_disconnect_write,
 	.release =	snd_disconnect_release,
 	.poll =		snd_disconnect_poll,
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl = snd_disconnect_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = snd_disconnect_ioctl,
-#endif
-#else
-	.ioctl =	snd_disconnect_ioctl_old,
 #endif
 	.mmap =		snd_disconnect_mmap,
 	.fasync =	snd_disconnect_fasync

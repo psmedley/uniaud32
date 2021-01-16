@@ -2789,17 +2789,6 @@ static long snd_pcm_oss_ioctl_compat(struct file *file, unsigned int cmd,
 #define snd_pcm_oss_ioctl_compat	NULL
 #endif
 
-#ifndef CONFIG_SND_HAVE_NEW_IOCTL
-/* need to unlock BKL to allow preemption */
-static int snd_pcm_oss_ioctl_old(struct inode *inode, struct file * file,
-				 unsigned int cmd, unsigned long arg)
-{
-	int err;
-	err = snd_pcm_oss_ioctl(file, cmd, arg);
-	return err;
-}
-#endif
-
 static ssize_t snd_pcm_oss_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
 	struct snd_pcm_oss_file *pcm_oss_file;
@@ -3150,12 +3139,8 @@ static const struct file_operations snd_pcm_oss_f_reg =
 	.release =	snd_pcm_oss_release,
 	.llseek =	no_llseek,
 	.poll =		snd_pcm_oss_poll,
-#ifdef CONFIG_SND_HAVE_NEW_IOCTL
 	.unlocked_ioctl =	snd_pcm_oss_ioctl,
 	.compat_ioctl =	snd_pcm_oss_ioctl_compat,
-#else
-	.ioctl =	snd_pcm_oss_ioctl_old,
-#endif
 #ifndef TARGET_OS2
 	.mmap =		snd_pcm_oss_mmap,
 #endif
