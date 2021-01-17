@@ -5,6 +5,8 @@
 #ifndef MATH64_COMPAT_H
 #define MATH64_COMPAT_H
 
+#include <linux/types.h>
+
 #if BITS_PER_LONG >= 64
 
 static inline u64 div_u64_rem(u64 n, u32 div, u32 *rem)

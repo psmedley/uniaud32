@@ -18,6 +18,10 @@
 #define BLANK_LOOP_SIZE		12
 #define BLANK_HEAD_SIZE		32
 
+#ifdef TARGET_OS2
+#define swap(a, b) \
+	do { int __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
+#endif
 /*
  * allocate a sample block and copy data from userspace
  */

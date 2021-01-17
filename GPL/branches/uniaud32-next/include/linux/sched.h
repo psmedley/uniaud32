@@ -5,6 +5,7 @@
 
 #include <asm/param.h>	/* for HZ */
 #include <asm/atomic.h>	
+#include <linux/pid.h>
 
 #define MAX_SCHEDULE_TIMEOUT    INT_MAX
 

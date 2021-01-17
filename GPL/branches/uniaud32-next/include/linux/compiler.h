@@ -124,4 +124,7 @@
 #define __force
 #define __always_unused
 #define fallthrough                    do {} while (0)  /* fallthrough */
+#define __builtin_return_address(a)	0
+#define __builtin_expect(x, expected_value) (x)
+
 #endif /* __LINUX_COMPILER_H */

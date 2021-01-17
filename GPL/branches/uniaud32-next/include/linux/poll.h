@@ -8,6 +8,7 @@
 #include <asm/uaccess.h>
 #include <linux/wait.h>
 #include <linux/fs.h>
+#include <linux/string.h>
 
 #ifdef __KERNEL__
 

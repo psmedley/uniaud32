@@ -1,5 +1,8 @@
 #ifndef __LINUX_LOCKDEP_H
 #define __LINUX_LOCKDEP_H
+
+#include <linux/types.h>
+
 #define SINGLE_DEPTH_NESTING                    1
 /*
  * lockdep macros

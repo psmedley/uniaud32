@@ -173,4 +173,7 @@ struct kernel_param_ops {
 
 #define module_param_hw_array(name, type, hwtype, nump, perm)
 #define module_param_hw(name, type, hwtype, perm)		
+#define MODULE_PARM(var,type)
+#define MODULE_PARM_DESC(var,desc)
+
 #endif /* _LINUX_MODULE_PARAMS_H */

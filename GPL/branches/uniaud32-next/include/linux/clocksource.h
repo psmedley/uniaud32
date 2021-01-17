@@ -1,7 +1,9 @@
 #ifndef _LINUX_CLOCKSOURCE_H
 #define _LINUX_CLOCKSOURCE_H
 
+#include <linux/init.h>
 #include <linux/types.h>
+#include <asm/io.h>
 
 /* clocksource cycle base type */
 typedef u64 cycle_t;

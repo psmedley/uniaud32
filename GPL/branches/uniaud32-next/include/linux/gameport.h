@@ -18,5 +18,7 @@
  *  along with Uniaud32.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <asm/io.h>
+#include <linux/types.h>
 
 #endif /* _GAMEPORT_H */

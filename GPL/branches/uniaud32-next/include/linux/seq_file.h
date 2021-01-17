@@ -1,6 +1,8 @@
 #ifndef _LINUX_SEQ_FILE_H
 #define _LINUX_SEQ_FILE_H
 
+#include <linux/string.h>
+
 struct seq_file {
 	char *buf;
 	size_t size;

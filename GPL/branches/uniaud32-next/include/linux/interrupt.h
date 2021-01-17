@@ -3,8 +3,10 @@
 #define _LINUX_INTERRUPT_H
 
 #include <linux/kernel.h>
-//#include <asm/bitops.h>
+#include <linux/bitops.h>
 #include <asm/atomic.h>
+#include <asm/hardirq.h>
+#include <linux/workqueue.h>
 
 /*
  * For 2.4.x compatibility, 2.4.x can use

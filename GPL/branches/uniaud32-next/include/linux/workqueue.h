@@ -3,6 +3,7 @@
 
 #include <linux/timer.h>
 #include <linux/completion.h>
+#include <linux/bitops.h>
 
 #define cancel_work_sync(w)	flush_scheduled_work()
 /* we know this is used below exactly once for at most one waiter */

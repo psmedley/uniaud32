@@ -23,6 +23,7 @@
 
 #include <linux/list.h>
 #include <asm/atomic.h>
+#include <linux/workqueue.h>
 
 enum rpm_status {
 	RPM_ACTIVE = 0,

@@ -22,6 +22,7 @@
 #include <linux/kobject.h>
 #include <linux/device.h>
 #include <linux/pm.h>
+#include <linux/io.h>
 
 #pragma pack(1) //!!! by vladest
 /*
@@ -581,31 +582,6 @@ struct pci_device_id {
         unsigned int class, class_mask;
         unsigned long driver_data;
 };
-
-#if 1
-struct device_driver {
-	const char		*name;
-	struct bus_type		*bus;
-
-	struct module		*owner;
-	const char		*mod_name;	/* used for built-in modules */
-
-	bool suppress_bind_attrs;	/* disables bind/unbind via sysfs */
-
-	const struct of_device_id	*of_match_table;
-
-	int (*probe) (struct device *dev);
-	int (*remove) (struct device *dev);
-	void (*shutdown) (struct device *dev);
-	int (*suspend) (struct device *dev, u32 state);
-	int (*resume) (struct device *dev);
-	const struct attribute_group **groups;
-
-	const struct dev_pm_ops *pm;
-
-	struct driver_private *p;
-};
-#endif
 
 struct pci_driver {
 	struct list_head node;
