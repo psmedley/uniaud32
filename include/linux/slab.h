@@ -4,9 +4,11 @@
  * (markhe@nextd.demon.co.uk)
  */
 
+#include <linux/gfp.h>
+#include <linux/overflow.h>
 #include <linux/types.h>
 #include <linux/list.h>
-#include <linux/overflow.h>
+#include <linux/workqueue.h>
 
 #if	!defined(_LINUX_SLAB_H)
 #define	_LINUX_SLAB_H

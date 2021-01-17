@@ -3,6 +3,7 @@
 
 //#pragma off (unreferenced)
 
+#include <limits.h>
 #include <linux/posix_types.h>
 #include <linux/compiler.h>
 #include <asm/types.h>

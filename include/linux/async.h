@@ -2,6 +2,7 @@
 #define _LINUX_ASYNC_H
 
 #include <linux/list.h>
+#include <linux/types.h>
 typedef u64 async_cookie_t;
 typedef void (*async_func_t) (void *data, async_cookie_t cookie);
 struct async_domain {

@@ -3,6 +3,7 @@
 
 #include <asm/semaphore.h>
 #include <linux/list.h>
+#include <linux/types.h>
 
 struct mutex {
 	atomic_long_t		owner;

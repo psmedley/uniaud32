@@ -12,6 +12,7 @@
 //#include <linux/linkage.h>
 #include <linux/gfp.h>
 #include <linux/types.h>
+#include <linux/bitops.h>
 
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */
@@ -119,4 +120,7 @@ extern int hex_to_bin(char ch);
  */
 #define container_of(ptr, type, member) \
 ( (type *)( (char *)ptr - offsetof(type,member) ) )
+
+_WCRTLINK extern int    sscanf( const char *__s, const char *__format, ... );
+
 #endif

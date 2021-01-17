@@ -2,6 +2,7 @@
 #define __LINUX_GFP_H
 
 #include <asm/page.h>
+#include <linux/export.h>
 #include <linux/mm.h>
 #include <linux/types.h>
 

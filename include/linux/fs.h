@@ -11,6 +11,7 @@
  * recompiled to take full advantage of the new limits..  
  */
 
+#include <linux/init.h>
 #include <linux/types.h>
 #include <linux/fcntl.h>
 #include <linux/signal.h>
@@ -19,7 +20,9 @@
 #include <linux/list.h>
 #include <linux/dcache.h>
 #include <linux/vmalloc.h>
-#include <linux/tqueue.h>
+#include <linux/pid.h>
+#include <linux/err.h>
+#include <linux/workqueue.h>
 
 #define FALSE	0
 #define TRUE	1

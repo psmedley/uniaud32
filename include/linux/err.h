@@ -2,6 +2,8 @@
 
 #ifndef _LINUX_ERR_H
 #define _LINUX_ERR_H
+#include <linux/types.h>
+
 #define IS_ERR_VALUE(x) ((x) > (unsigned long)-1000L)
 
 static inline void *ERR_PTR(long error)

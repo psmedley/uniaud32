@@ -1,6 +1,7 @@
 #ifndef _LINUX_DEVICE_H
 #define _LINUX_DEVICE_H
 
+#include <linux/types.h>
 #include <linux/kobject.h>
 #include <linux/pm.h>
 #include <linux/sysfs.h>
@@ -42,9 +43,6 @@ struct device_type {
 	const struct dev_pm_ops *pm;
 };
 
-#ifndef STRUCT_DEVICE
-struct device_private;
-#define STRUCT_DEVICE
 typedef struct device {
     struct pci_dev *pci;  /* for PCI and PCI-SG types */
   struct device   * parent;
@@ -85,7 +83,6 @@ typedef struct device {
 					     allocations such descriptors. */
   struct device_node	*of_node; /* associated device tree node */
 } device;
-#endif
 
 static inline struct device *kobj_to_dev(struct kobject *kobj)
 {
@@ -112,7 +109,6 @@ struct bus_type {
 	struct lock_class_key lock_key;
 };
 
-#if 0
 struct device_driver {
 	const char		*name;
 	struct bus_type		*bus;
@@ -135,7 +131,6 @@ struct device_driver {
 
 	struct driver_private *p;
 };
-#endif
 
 struct device_attribute {
 	struct attribute	attr;

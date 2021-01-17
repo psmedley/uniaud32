@@ -40,7 +40,13 @@ int snd_emux_new(struct snd_emux **remu)
 	emu->max_voices = 0;
 	emu->use_time = 0;
 
+#ifndef TARGET_OS2
 	timer_setup(&emu->tlist, snd_emux_timer_callback, 0);
+#else
+	init_timer(&emu->tlist);
+	emu->tlist.function = (void(*)(unsigned long))snd_emux_timer_callback;
+	emu->tlist.data = (unsigned long)emu;
+#endif
 	emu->timer_active = 0;
 
 	*remu = emu;

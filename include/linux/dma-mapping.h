@@ -2,6 +2,8 @@
 #define _ASM_LINUX_DMA_MAPPING_H
 #include <linux/pci.h>
 #include <linux/errno.h>
+#include <linux/string.h>
+#include <linux/err.h>
 
 /* These definitions mirror those in pci.h, so they can be used
  * interchangeably with their PCI_ counterparts */
@@ -140,5 +142,5 @@ static inline bool dma_can_mmap(struct device *dev)
 {
 	return false;
 }
-
+#define pci_set_consistent_dma_mask(p,x) pci_set_dma_mask(p,x)
 #endif

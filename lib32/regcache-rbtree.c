@@ -23,10 +23,6 @@
 
 #include "internal.h"
 
-#ifdef TARGET_OS2
-#define UINT_MAX	(~0U)
-#endif
-
 /*static inline*/ int regcache_rbtree_write(struct regmap *map, unsigned int reg,
 				 unsigned int value);
 /*static inline*/ int regcache_rbtree_exit(struct regmap *map);

@@ -1,6 +1,9 @@
 #ifndef _LINUX_LOG2_H
 #define _LINUX_LOG2_H
 
+#include <linux/bitops.h>
+#include <linux/types.h>
+
 /*
  *  Determine whether some value is a power of two, where zero is
  * *not* considered a power of two.

@@ -4,5 +4,6 @@
 #define _LINUX_FCNTL_H
 
 #include <asm/fcntl.h>
+#include <linux/stat.h>
 
 #endif

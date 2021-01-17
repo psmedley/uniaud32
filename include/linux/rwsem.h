@@ -2,6 +2,9 @@
 
 #ifndef _LINUX_RWSEM_H
 #define _LINUX_RWSEM_H
+
+#include <linux/err.h>
+
 /* rw_semaphore - replaced with mutex */
 #define rw_semaphore semaphore
 #define init_rwsem(x) init_MUTEX(x)
