@@ -381,7 +381,7 @@ struct pci_dev {
 //DAZ unsigned int picirq;
 //DAZ unsigned int apicirq;
   unsigned long hAdapter;
-  unsigned long hDevice;
+//AT  unsigned long hDevice;
   void *pcidriver;
 #endif
 };

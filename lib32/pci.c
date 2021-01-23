@@ -535,19 +535,20 @@ int pci_register_driver(struct pci_driver *driver)
         continue;
       }
 
-      RMInit();
       if (driver->probe(pcidev, pDriverId) == 0)
       {
         pcidev->pcidriver = (void *)driver;
         pcidev->current_state = 4;
 
         // create adapter
-        RMDone((pcidev->device << 16) | pcidev->vendor, &pcidev->hAdapter, &pcidev->hDevice);
+        RMCreateAdapterU32((pcidev->device << 16) | pcidev->vendor, &pcidev->hAdapter, ulLast, iNumCards);
+
         iNumCards++;
         pcidev = NULL; /* we need a new slot */
         break;
       }
-      RMDone(0, 0, 0);
+      // release resources which were possibly allocated during probe() 
+      RMDeallocRes();
     } /* for id_table loop */
 
     if (pcidev)
@@ -1083,7 +1084,7 @@ OSSRET OSS32_APMResume()
   {
     if(pci_devices[i].devfn)
     {
-      RMSetHandles(pci_devices[i].hAdapter, pci_devices[i].hDevice); /* DAZ - dirty hack */
+      RMSetHandles(pci_devices[i].hAdapter); /* DAZ - dirty hack */
       driver = pci_devices[i].pcidriver;
       if(driver && driver->resume) {
         driver->resume(&pci_devices[i]);
@@ -1106,7 +1107,7 @@ OSSRET OSS32_APMSuspend()
   {
     if(pci_devices[i].devfn)
     {
-      RMSetHandles(pci_devices[i].hAdapter, pci_devices[i].hDevice); /* DAZ - dirty hack */
+      RMSetHandles(pci_devices[i].hAdapter); /* DAZ - dirty hack */
       driver = pci_devices[i].pcidriver;
       if(driver && driver->suspend) {
         driver->suspend(&pci_devices[i], SNDRV_CTL_POWER_D3cold);

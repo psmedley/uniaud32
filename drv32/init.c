@@ -37,6 +37,7 @@
 #include <ossidc32.h>
 #include <dbgos2.h>
 #include <irqos2.h>
+#include <osspci.h>
 //#include <bsedos16.h>
 #ifdef KEE
 #include <kee.h>
@@ -205,6 +206,11 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
   GetTKSSBase();
 #endif
 //_asm int 3;
+
+  DebugLevel = 1;
+  rp->init_out.usCodeEnd = 0;
+  rp->init_out.usDataEnd = 0;
+
   if(LockSegments())
   {
     WriteString(ERR_ERROR, sizeof(ERR_ERROR)-1);
@@ -212,9 +218,7 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
     return RPDONE | RPERR_BADCOMMAND;
   }
 
-  DebugLevel = 1;
-  rp->init_out.usCodeEnd = 0;
-  rp->init_out.usDataEnd = 0;
+  RMCreateDriverU32(); // register driver in  Resource Manager
 
   if ( szprintBuf == 0 )
   {
@@ -324,4 +328,3 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
   // Confirm a successful installation
   return RPDONE;
 }
-
