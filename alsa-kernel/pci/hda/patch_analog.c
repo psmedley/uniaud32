@@ -312,6 +312,22 @@ static const struct hda_pintbl AD1986A_FIXUP_LAPTOP_IMIC_PINS[] = {
 			{ 0x1d, 0x90a7013e }, /* int mic */
 			{0}
 		};
+
+static const struct hda_pintbl AD1986A_FIXUP_EASYNOTE_PINS[] = {
+			{ 0x1a, 0x0421402f }, /* headphone */
+			{ 0x1b, 0x90170110 }, /* speaker */
+			{ 0x1c, 0x411111f0 }, /* N/A */
+			{ 0x1d, 0x90a70130 }, /* int mic */
+			{ 0x1e, 0x411111f0 }, /* N/A */
+			{ 0x1f, 0x04a19040 }, /* mic */
+			{ 0x20, 0x411111f0 }, /* N/A */
+			{ 0x21, 0x411111f0 }, /* N/A */
+			{ 0x22, 0x411111f0 }, /* N/A */
+			{ 0x23, 0x411111f0 }, /* N/A */
+			{ 0x24, 0x411111f0 }, /* N/A */
+			{ 0x25, 0x411111f0 }, /* N/A */
+			{0}
+		};
 #endif
 
 static const struct hda_fixup ad1986a_fixups[] = {
@@ -400,9 +416,9 @@ static const struct hda_fixup ad1986a_fixups[] = {
 		.type = HDA_FIXUP_FUNC,
 		.v.func = ad1986a_fixup_eapd_mix_in,
 	},
-#ifdef TARGET_OS2xxx
 	[AD1986A_FIXUP_EASYNOTE] = {
 		.type = HDA_FIXUP_PINS,
+#ifndef TARGET_OS2
 		.v.pins = (const struct hda_pintbl[]) {
 			{ 0x1a, 0x0421402f }, /* headphone */
 			{ 0x1b, 0x90170110 }, /* speaker */
@@ -418,10 +434,12 @@ static const struct hda_fixup ad1986a_fixups[] = {
 			{ 0x25, 0x411111f0 }, /* N/A */
 			{0}
 		},
+#else
+		.v.pins = AD1986A_FIXUP_EASYNOTE_PINS,
+#endif
 		.chained = true,
 		.chain_id = AD1986A_FIXUP_EAPD_MIX_IN,
 	},
-#endif
 };
 
 static const struct snd_pci_quirk ad1986a_fixup_tbl[] = {
