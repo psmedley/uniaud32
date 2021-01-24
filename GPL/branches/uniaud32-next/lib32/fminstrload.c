@@ -214,7 +214,7 @@ static int load_patch (midihandle *pHandle, struct fm_instrument * fm_instr, int
     ev.data.ext.len = size;
     ev.data.ext.ptr = put;
 
-    err = pHandle->file.f_op->write(&pHandle->file, (char *)__Stack32ToFlat(&ev), sizeof(ev), &pHandle->file.f_pos);
+    err = pHandle->file.f_op->write(&pHandle->file, (char *)&ev, sizeof(ev), &pHandle->file.f_pos);
     if(err < 0) {
         dprintf(("Unable to write an instrument %.3i put event: %x",prg, err));
         return -1;

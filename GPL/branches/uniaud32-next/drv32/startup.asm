@@ -1038,13 +1038,13 @@ ASSUME CS:FLAT, DS:FLAT, ES:FLAT
 	extrn  ALSA_IDC : near
 	extrn  ALSA_TIMER_ : near
         extrn  ALSA_Interrupt : near
-        extrn  GetTKSSBase : near
         extrn  _rdOffset: dword
 
 IFDEF KEE
 	extrn  KernThunkStackTo16 : near
 	extrn  KernThunkStackTo32 : near
 ELSE
+        extrn  GetTKSSBase : near
         extrn  StackAlloc : near
         extrn  StackFree  : near
 ENDIF
@@ -1066,34 +1066,24 @@ DevHelpDebug  proc near
         ret
 DevHelpDebug  endp
 
-	ALIGN 	4
 
         ALIGN 4
 DevHlp proc near
-IFDEF FLATSTACK
         DevThunkStackTo16_Int
-ENDIF
-
 	jmp	far ptr CODE16:thunk3216_devhelp
 	ALIGN 4
 thunk1632_devhelp:
-IFDEF FLATSTACK
         DevThunkStackTo32_Int
-ENDIF
 	ret
 DevHlp endp
 
 	ALIGN 	4
 DevHlp_ModifiedDS proc near
-IFDEF FLATSTACK
         DevThunkStackTo16_Int
-ENDIF
 	jmp	far ptr CODE16:thunk3216_devhelp_modified_ds
 	ALIGN 4
 thunk1632_devhelp_modified_ds:
-IFDEF FLATSTACK
         DevThunkStackTo32_Int
-ENDIF
 	ret
 DevHlp_ModifiedDS endp
 
@@ -1221,37 +1211,23 @@ STRATEGY_ proc far
 	push	es
 	push	fs
 	push	gs
-
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
 	mov	es, eax
-
-IFDEF FLATSTACK
-
 IFNDEF KEE
         ;done in init.cpp for the KEE version
         cmp     dword ptr [intSwitchStack], 0
         jne     stratcontinue
-
         ;get TKSSBase & intSwitchStack pointers
         call    GetTKSSBase
 stratcontinue:
 ENDIF
-
         DevThunkStackTo32
         cmp     eax, 0
         jne     @@stackswitchfail_strat
-
 	call 	ALSA_STRATEGY
-
         DevThunkStackTo16
-
 @@stackswitchfail_strat:
-ELSE
-        int     3
-	call 	ALSA_STRATEGY
-ENDIF
-
 	pop	gs
 	pop	fs
 	pop	es
@@ -1272,27 +1248,15 @@ IDC_ proc far
 	push	es
 	push	fs
 	push	gs
-
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
 	mov	es, eax
-
-IFDEF FLATSTACK
         DevThunkStackTo32
         cmp     eax, 0
         jne     @@stackswitchfail_idc
-
 	call 	ALSA_IDC
-
         DevThunkStackTo16
-
 @@stackswitchfail_idc:
-
-ELSE
-        int     3
-	call 	ALSA_IDC
-ENDIF
-
 	pop	gs
 	pop	fs
 	pop	es
@@ -1309,34 +1273,21 @@ TIMER_ proc far
 	push	es
 	push	fs
 	push	gs
-
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
 	mov	es, eax
-
 IFDEF DEBUG
 	add	DbgU32TimerCnt, 1
 ENDIF
-
-IFDEF FLATSTACK
         DevThunkStackTo32
         cmp     eax, 0
         jne     @@stackswitchfail_timer
-
 	call 	ALSA_TIMER_
-
         DevThunkStackTo16
-
 @@stackswitchfail_timer:
-
-ELSE
-        int     3
-	call 	ALSA_TIMER_
-ENDIF
 IFDEF DEBUG
 	add	DbgU32TimerCnt, -1
 ENDIF
-
 	pop	gs
 	pop	fs
 	pop	es
@@ -1354,66 +1305,45 @@ TIMER_ endp
 Interrupt32 proc far
         enter   0, 0
         and     sp, 0fffch			; align stack
-
         pushad
 	push	ds
 	push	es
 	push	fs
 	push	gs
-
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
 	mov	es, eax
-
         pushfd
-
 IFDEF DEBUG
 		add         DbgU32IntCnt, 1
 ENDIF
-
         ; At this point a cli is redundant
         ; we enter the interrupt handler with interrupts disabled.
         ;cli
-
-IFDEF FLATSTACK
         DevThunkStackTo32
         cmp     eax, 0
         jne     @@stackswitchfail_irq
-
         ;returns irq status in eax (1=handled; 0=unhandled)
 	call 	ALSA_Interrupt
-
         DevThunkStackTo16
-
 @@stackswitchfail_irq:
-ELSE
-        int     3
-	call 	ALSA_Interrupt
-ENDIF
-
 IFDEF DEBUG
 		add         DbgU32IntCnt, -1
 ENDIF
-
         ;restore flags
         popfd
-
         cmp     eax, 1
         je      irqhandled
         stc			;tell OS/2 kernel we didn't handle this interrupt
         jmp     short endofirq
-
 irqhandled:
         clc			;tell OS/2 kernel this interrupt was ours
-
 endofirq:
-
 	pop	gs
 	pop	fs
 	pop	es
 	pop	ds
         popad
-
         leave
 	retf
 Interrupt32 endp
@@ -1599,10 +1529,6 @@ DATA32 	segment
     public  _ISR06
     public  _ISR07
 
-IFDEF FLATSTACK
-    extrn   intSwitchStack : dword
-ENDIF
-
 IFDEF KEE
     public  stackbase
     public  stacksel
@@ -1610,6 +1536,7 @@ IFDEF KEE
     stackbase dd 0
     stacksel  dd 0
 ELSE
+    extrn   intSwitchStack : dword
 
     public  gdtsave
     public  fWrongDPL

@@ -25,6 +25,15 @@
 #ifndef __STACKTOFLAT_H__
 #define __STACKTOFLAT_H__
 
+#ifdef KEE
+extern ULONG stacksel;		//16 bits stack selector
+#pragma aux stacksel "stacksel"
+
+extern ULONG stackbase;		//32 bits stackbase
+#pragma aux stackbase "stackbase"
+
+#else
+
 extern ULONG TKSSBase;
 #pragma aux TKSSBase "_TKSSBase"
 
@@ -32,15 +41,7 @@ extern ULONG GetTKSSBase();
 #pragma aux GetTKSSBase "GetTKSSBase" \
   value [eax];
 
-#ifdef KEE
-extern ULONG stacksel;		//16 bits stack selector
-#pragma aux stacksel "stacksel"
-
-extern ULONG stackbase;		//32 bits stackbase
-#pragma aux stackbase "stackbase"
 #endif
-
-#ifdef FLATSTACK
 
 #ifdef KEE
 //Convert 16:16 stack based address to 0:32 flat addresss
@@ -48,17 +49,6 @@ extern ULONG stackbase;		//32 bits stackbase
 #else
 //Convert 16:16 stack based address to 0:32 flat addresss
 #define __Stack16ToFlat(addr)	(LINEAR)((((ULONG)addr)&0xffff) + *(ULONG *)TKSSBase)
-#endif
-
-//stack is already flat
-#define __Stack32ToFlat(addr)	(LINEAR)addr
-
-#else
-//Convert 16:16 stack based address to 0:32 flat addresss
-#define __Stack16ToFlat(addr)	(LINEAR)((((ULONG)addr)&0xffff) + *(ULONG *)TKSSBase)
-
-//Convert 16:16 stack based address to 0:32 flat addresss
-#define __Stack32ToFlat(addr)	(LINEAR)((((ULONG)addr)&0xffff) + *(ULONG *)TKSSBase)
 #endif
 
 // Convert 16:16 pointer to 16:32

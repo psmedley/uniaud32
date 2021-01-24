@@ -140,7 +140,6 @@ do
     call lineout versHdr, '#define RM_VERSION              '||projVers2;
     call lineout versHdr, '#define RM_DRIVER_NAME          "UNIAUD32.SYS"';
     call lineout versHdr, '#define RM_DRIVER_DESCRIPTION   "'||projProduct||'"';
-    call lineout versHdr, '#define RM_ADAPTER_NAME         "'||projAdapter||'"';
     call lineout versHdr, '#define RM_DRIVER_VENDORNAME    "'||projVendorNam||'"';
     call lineout versHdr, '#define RM_DRIVER_BUILDYEAR     (PRODUCT_TIMESTAMP / 10000)';
     call lineout versHdr, '#define RM_DRIVER_BUILDMONTH    ((PRODUCT_TIMESTAMP / 100) % 100)';

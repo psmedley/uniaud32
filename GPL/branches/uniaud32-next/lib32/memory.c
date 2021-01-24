@@ -190,7 +190,7 @@ unsigned long virt_to_phys(void * address)
     LINEAR addr = (LINEAR)address;
     PAGELIST pagelist;
 
-	if(DevLinToPageList(addr, PAGE_SIZE, (PAGELIST NEAR *)__Stack32ToFlat((ULONG)&pagelist))) {
+	if(DevLinToPageList(addr, PAGE_SIZE, (PAGELIST NEAR *)&pagelist)) {
 		DebugInt3();
 		return 0;
 	}
@@ -208,7 +208,7 @@ void * phys_to_virt(unsigned long address)
     SHORT sel;
     rc = KernVMAlloc(PAGE_SIZE, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&address, &sel);
 #else
-    rc = DevVMAlloc(VMDHA_PHYS, PAGE_SIZE, (LINEAR)&address, __Stack32ToFlat((ULONG)&addr));
+    rc = DevVMAlloc(VMDHA_PHYS, PAGE_SIZE, (LINEAR)&address, (ULONG)&addr);
 #endif
     if (rc != 0) {
         DebugInt3();
@@ -235,7 +235,7 @@ __again:
 
     rc = KernVMAlloc(size, flags, (PVOID*)&addr, (PVOID*)-1, &sel);
 #else
-    rc = DevVMAlloc(flags, size, (LINEAR)-1, __Stack32ToFlat((ULONG)&addr));
+    rc = DevVMAlloc(flags, size, (LINEAR)-1, (ULONG)&addr);
 #endif
     if (rc == 0) {
         *pAddr = (LINEAR)addr;
@@ -409,7 +409,7 @@ int free_pages(unsigned long addr, unsigned long order)
     ULONG rc, size = 0;
 
     //check if it really is the base of the allocation (see above)
-    addr = GetBaseAddressAndFree(addr, (ULONG NEAR *)__Stack32ToFlat(&size));
+    addr = GetBaseAddressAndFree(addr, (ULONG NEAR *)&size);
 
     if(VMFree((LINEAR)addr)) {
         DebugInt3();
@@ -453,7 +453,7 @@ void vfree(void *ptr)
     APIRET rc;
     ULONG  size = 0;
 
-    GetBaseAddressAndFree((ULONG)ptr, (ULONG NEAR *)__Stack32ToFlat(&size));
+    GetBaseAddressAndFree((ULONG)ptr, (ULONG NEAR *)&size);
 
     if(VMFree((LINEAR)ptr)) {
         DebugInt3();
@@ -504,8 +504,8 @@ void * __ioremap(unsigned long physaddr, unsigned long size, unsigned long flags
 	//rc = KernVMAlloc(size, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&physaddr, &sel);
     rc = KernVMAlloc(Length, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&PhysicalAddress, &sel);
 #else
-    //rc = DevVMAlloc(VMDHA_PHYS, size, (LINEAR)&physaddr, __Stack32ToFlat((ULONG)&addr));
-    rc = DevVMAlloc(VMDHA_PHYS, Length, (LINEAR)&PhysicalAddress, __Stack32ToFlat((ULONG)&addr));
+    //rc = DevVMAlloc(VMDHA_PHYS, size, (LINEAR)&physaddr, (ULONG)&addr);
+    rc = DevVMAlloc(VMDHA_PHYS, Length, (LINEAR)&PhysicalAddress, (ULONG)&addr);
 #endif
     if (rc != 0) {
         dprintf(("ioremap error: %x", rc));
@@ -543,7 +543,7 @@ void __copy_user(void *to, const void *from, unsigned long n)
 	}
     if(n == 0) return;
 
-	kmemcpy(to, from, n);
+	memcpy(to, from, n);
 }
 //******************************************************************************
 //******************************************************************************
@@ -555,7 +555,7 @@ unsigned long copy_to_user(void *to, const void *from, unsigned long n)
 	}
     if(n == 0) return 0;
 
-	kmemcpy(to, from, n);
+	memcpy(to, from, n);
 	return 0;
 }
 //******************************************************************************
@@ -580,7 +580,7 @@ unsigned long copy_from_user(void *to, const void *from, unsigned long n)
 	}
     if(n == 0) return 0;
 
-	kmemcpy(to, from, n);
+	memcpy(to, from, n);
 	return 0;
 }
 //******************************************************************************
@@ -593,7 +593,7 @@ int __get_user(int size, void *dest, void *src)
 		DebugInt3();
 		return 0;
 	}
-	kmemcpy(dest, src, size);
+	memcpy(dest, src, size);
 	return 0;
 }
 //******************************************************************************
@@ -700,7 +700,7 @@ size_t ksize(const void *block)
 	else if(IsHeapAddr((ULONG)block))
 	    size = _msize((void _near *)block);
 
-	else if (!GetBaseAddressNoFree((ULONG)block, (ULONG NEAR *)__Stack32ToFlat(&size)))
+	else if (!GetBaseAddressNoFree((ULONG)block, (ULONG NEAR *)&size))
 	    size = 0;			// Something wrong
 
 	return size;

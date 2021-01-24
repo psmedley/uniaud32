@@ -24,10 +24,10 @@
 
 	.386p
 
-        include bseerr.inc
-        include devhlp.inc
 	include segments.inc
 
+IFNDEF KEE
+        include devhlp.inc
 DosTable2 struc
         d2_ErrMap24                     dd ?
         d2_MsgMap24                     dd ?
@@ -51,30 +51,21 @@ DosTable2 struc
 DosTable2 ends
 
 DATA32 segment
-        public DevHelp32
         public intSwitchStack
-
-DevHelp32	dd 0
-intSwitchStack  dd 0
-
 	public _TKSSBase
+intSwitchStack  dd 0
 _TKSSBase	dd 0
 
 DATA32 ends
-
+ENDIF
 
 CODE32 segment
 ASSUME CS:FLAT, DS:FLAT, ES:FLAT
 
-	public iodelay32_
-
+IFNDEF KEE
         extrn  DevHlp : near
-        extrn   DOSIODELAYCNT : ABS
-
 	ALIGN 	4
-
 	public GetTKSSBase
-
 GetTKSSBase proc near
         push ebp
         mov  ebp, esp
@@ -130,6 +121,10 @@ GetTKSSBase_Err:
         leave
         ret
 GetTKSSBase endp
+ENDIF
+
+	public iodelay32_
+        extrn  DOSIODELAYCNT : ABS
 
 	ALIGN 4
 

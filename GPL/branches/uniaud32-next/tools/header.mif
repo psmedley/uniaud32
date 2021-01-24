@@ -43,14 +43,15 @@ WAT2MAP=$(TOOLS)\wat2map.cmd
 .SUFFIXES:
 .SUFFIXES: .lst .obj .lib .cpp .cpp16 .c .c16 .asm .def
 
+CPPFLAGS = -xd
+ASFLAGS  = -Mb -Li -Sv:M510
+CFLAGS   = -bt=os2v2 -5r -omlinear -s -wx -ze -zdp -zl -zq -nt=CODE32 -zff -zgf -ei
+CFLAGS16 = $(CFLAGS) -mc -zu -zc
+CFLAGS  += -mf
+
 !if "$(DEBUG)" == "1"
-CFLAGS = -dDEBUG -bt=os2v2 -hc -5r -omlinear -s -wx -ze -zdp -zl -zq -nt=CODE32 -zff -zgf -ei
-CPPFLAGS= -xd
-ASFLAGS = -D:DEBUG -Mb -Li -Sv:M510
-!else
-CFLAGS = -bt=os2v2 -5r -omlinear -s -wx -ze -zdp -zl -zq -nt=CODE32 -zff -zgf -ei
-CPPFLAGS= -xd
-ASFLAGS = -Mb -Li -Sv:M510
+CFLAGS  += -dDEBUG -hc
+ASFLAGS += -D:DEBUG
 !endif
 
 !ifdef PACK_1
@@ -60,13 +61,8 @@ CFLAGS += -zp4
 !endif
 
 !if $(KEE) == 1
-CFLAGS16 = $(CFLAGS) -mc -zu -zc
-CFLAGS += -mf -DKEE -DFLATSTACK
-ASFLAGS += -D:KEE -D:FLATSTACK
-!else
-CFLAGS16 = $(CFLAGS) -mc -zu -zc
-CFLAGS += -mf -DFLATSTACK
-ASFLAGS += -D:FLATSTACK
+CFLAGS  += -DKEE
+ASFLAGS += -D:KEE
 !endif
 
 CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
