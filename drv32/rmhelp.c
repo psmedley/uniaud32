@@ -57,14 +57,14 @@ VOID RMCreateDriverU32(VOID)
     strcpy(VendorName, RM_DRIVER_VENDORNAME);
     strcpy(DriverDesc, RM_DRIVER_DESCRIPTION);
 
-    DriverStruct.DrvrName     = FlatToSel((ULONG)DriverName);        /* ### IHV */
-    DriverStruct.DrvrDescript = FlatToSel((ULONG)DriverDesc);        /* ### IHV */
-    DriverStruct.VendorName   = FlatToSel((ULONG)VendorName);        /* ### IHV */
-    DriverStruct.MajorVer     = CMVERSION_MAJOR;          //rmbase.h /* ### IHV */
-    DriverStruct.MinorVer     = CMVERSION_MINOR;          //rmbase.h /* ### IHV */
-    DriverStruct.Date.Year    = RM_DRIVER_BUILDYEAR;                 /* ### IHV */
-    DriverStruct.Date.Month   = RM_DRIVER_BUILDMONTH;                /* ### IHV */
-    DriverStruct.Date.Day     = RM_DRIVER_BUILDDAY;                  /* ### IHV */
+    DriverStruct.DrvrName     = FlatToSel((ULONG)DriverName);
+    DriverStruct.DrvrDescript = FlatToSel((ULONG)DriverDesc);
+    DriverStruct.VendorName   = FlatToSel((ULONG)VendorName);
+    DriverStruct.MajorVer     = RM_VMAJOR;
+    DriverStruct.MinorVer     = RM_VMINOR;
+    DriverStruct.Date.Year    = RM_DRIVER_BUILDYEAR;
+    DriverStruct.Date.Month   = RM_DRIVER_BUILDMONTH;
+    DriverStruct.Date.Day     = RM_DRIVER_BUILDDAY;
     DriverStruct.DrvrFlags    = 0;
     DriverStruct.DrvrType     = DRT_AUDIO;
     DriverStruct.DrvrSubType  = 0;

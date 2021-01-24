@@ -301,13 +301,13 @@ struct resource * __request_region(struct resource *a, unsigned long start, unsi
 
   if(a->flags & IORESOURCE_MEM) {
     if(RMRequestMem(/*hResMgr,*/ start, n) == FALSE) {
-      printk("RMRequestIO failed for io %x, length %x\n", start, n);
+      printk("RMRequestIO failed for mem %x length %x\n", start, n);
       return NULL;
     }
   }
   else if(a->flags & IORESOURCE_IO) {
     if(RMRequestIO(/*hResMgr,*/ start, n) == FALSE) {
-      printk("RMRequestIO failed for io %x, length %x\n", start, n);
+      printk("RMRequestIO failed for io %x length %x\n", start, n);
       return NULL;
     }
   }
