@@ -459,45 +459,57 @@ static unsigned int regmap_parse_64_native(const void *buf)
 
 static void regmap_lock_hwlock(void *__map)
 {
+#ifndef TARGET_OS2
 	struct regmap *map = __map;
 
-//	hwspin_lock_timeout(map->hwlock, UINT_MAX);
+	hwspin_lock_timeout(map->hwlock, UINT_MAX);
+#endif
 }
 
 static void regmap_lock_hwlock_irq(void *__map)
 {
+#ifndef TARGET_OS2
 	struct regmap *map = __map;
 
-//	hwspin_lock_timeout_irq(map->hwlock, UINT_MAX);
+	hwspin_lock_timeout_irq(map->hwlock, UINT_MAX);
+#endif
 }
 
 static void regmap_lock_hwlock_irqsave(void *__map)
 {
+#ifndef TARGET_OS2
 	struct regmap *map = __map;
 
-//	hwspin_lock_timeout_irqsave(map->hwlock, UINT_MAX,
-//				    &map->spinlock_flags);
+	hwspin_lock_timeout_irqsave(map->hwlock, UINT_MAX,
+				    &map->spinlock_flags);
+#endif
 }
 
 static void regmap_unlock_hwlock(void *__map)
 {
+#ifndef TARGET_OS2
 	struct regmap *map = __map;
 
-//	hwspin_unlock(map->hwlock);
+	hwspin_unlock(map->hwlock);
+#endif
 }
 
 static void regmap_unlock_hwlock_irq(void *__map)
 {
+#ifndef TARGET_OS2
 	struct regmap *map = __map;
 
-//	hwspin_unlock_irq(map->hwlock);
+	hwspin_unlock_irq(map->hwlock);
+#endif
 }
 
 static void regmap_unlock_hwlock_irqrestore(void *__map)
 {
+#ifndef TARGET_OS2
 	struct regmap *map = __map;
 
-//	hwspin_unlock_irqrestore(map->hwlock, &map->spinlock_flags);
+	hwspin_unlock_irqrestore(map->hwlock, &map->spinlock_flags);
+#endif
 }
 
 static void regmap_lock_unlock_none(void *__map)
@@ -684,8 +696,6 @@ enum regmap_endian regmap_get_val_endian(struct device *dev,
 {
 #ifndef TARGET_OS2
 	struct fwnode_handle *fwnode = dev ? dev_fwnode(dev) : NULL;
-#else
-	struct fwnode_handle *fwnode = NULL;
 #endif
 	enum regmap_endian endian;
 
@@ -1229,12 +1239,8 @@ err_hwlock:
 #ifndef TARGET_OS2
 	if (map->hwlock)
 		hwspin_lock_free(map->hwlock);
-#endif
 err_name:
-#ifndef TARGET_OS2
 	kfree_const(map->name);
-#else
-	kfree(map->name);
 #endif
 err_map:
 	kfree(map);
@@ -2358,9 +2364,12 @@ static int _regmap_raw_multi_reg_write(struct regmap *map,
 
 	kfree(buf);
 
+#ifndef TARGET_OS2
 	for (i = 0; i < num_regs; i++) {
 		int reg = regs[i].reg;
+		trace_regmap_hw_write_done(map, reg, 1);
 	}
+#endif
 	return ret;
 }
 
@@ -3170,6 +3179,7 @@ void regmap_async_complete_cb(struct regmap_async *async, int ret)
 }
 EXPORT_SYMBOL_GPL(regmap_async_complete_cb);
 
+#ifndef TARGET_OS2
 static int regmap_async_is_done(struct regmap *map)
 {
 	unsigned long flags;
@@ -3181,6 +3191,7 @@ static int regmap_async_is_done(struct regmap *map)
 
 	return ret;
 }
+#endif
 
 /**
  * regmap_async_complete - Ensure all asynchronous I/O has completed.
