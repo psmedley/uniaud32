@@ -817,7 +817,7 @@ tryagain:
 							  SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
 		_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_CHANNELS,
 							  pHwParams->ulNumChannels, 0);
-		ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+		ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)&params);
 		if (ret == 0) break;
 		pHwParams->ulNumChannels--;
 	} while(ret < 0 && pHwParams->ulNumChannels > 1);
@@ -830,21 +830,21 @@ tryagain:
 						   SNDRV_PCM_ACCESS_RW_INTERLEAVED, 0);
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FORMAT,
 						   OSSToALSADataType[pHwParams->ulDataType], 0);
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)&params);
 	if(ret != 0) {
 		rprintf(("invalid format %lx\n", OSSToALSADataType[pHwParams->ulDataType]));
 		return UNIXToOSSError(ret);
 	}
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
 						  pHwParams->ulBitsPerSample, 0);
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)&params);
 	if(ret != 0) {
 		rprintf(("invalid number of sample bits %d\n", pHwParams->ulBitsPerSample));
 		return UNIXToOSSError(ret);
 	}
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
 						  pHwParams->ulBitsPerSample*pHwParams->ulNumChannels, 0);
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)&params);
 	if(ret != 0) {
 		rprintf(("invalid number of frame bits %d\n", pHwParams->ulBitsPerSample*pHwParams->ulNumChannels));
 		return UNIXToOSSError(ret);
@@ -861,7 +861,7 @@ tryagain:
 						   pHwParams->ulNumChannels, 0);
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
 						  pHwParams->ulSampleRate, 0);
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)&params);
 	if(ret != 0) {
 		rprintf(("32_WSetHwPms (first pass) error %d bps:%d fmt: %d ch: %d sr: %d\n",
 				  ret,
@@ -880,7 +880,7 @@ tryagain:
 				pHwParams->ulSampleRate = rates[i];
 				_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
 									  pHwParams->ulSampleRate, 0);
-				ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+				ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)&params);
 				if(ret == 0)
 				{
 					_snd_pcm_hw_params_any(&params);
@@ -894,7 +894,7 @@ tryagain:
 										  pHwParams->ulNumChannels, 0);
 					_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
 										  pHwParams->ulSampleRate, 0);
-					ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)__Stack32ToFlat(&params));
+					ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_REFINE, (ULONG)&params);
 					goto __next;
 				}
 			}
@@ -1002,7 +1002,7 @@ tryagain:
 	dprintf(("HWP: SR rate %ld, BPS %ld, CH %ld, PRSZ %lx, periods %lx",
 			 pHwParams->ulSampleRate, pHwParams->ulBitsPerSample, pHwParams->ulNumChannels, periodsize, nrperiods));
 
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)__Stack32ToFlat(&params));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_HW_PARAMS, (ULONG)&params);
 	if (ret == -77 && fTryAgain == FALSE)
 	{
 		ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_PREPARE, 0);
@@ -1047,12 +1047,12 @@ tryagain:
 		swparams.tstamp_mode	   = SNDRV_PCM_TSTAMP_NONE;
 		swparams.xfer_align 	   = periodsize;
 
-		ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_SW_PARAMS, (ULONG)__Stack32ToFlat(&swparams));
+		ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_SW_PARAMS, (ULONG)&swparams);
 	}
 
 	total = 0;
 	per_bytes = periodbytes;
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)&status);
 	if ( ((status.state != SNDRV_PCM_STATE_PREPARED) &&
 		   (status.state != SNDRV_PCM_STATE_SETUP) &&
 		   (status.state != SNDRV_PCM_STATE_RUNNING) &&
@@ -1096,7 +1096,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 	pHandle->file.f_flags = O_NONBLOCK;
 
 	/* get the status of the circular dma buffer */
-	iRet = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+	iRet = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)&status);
 
 	if(iRet) {
 		DebugInt3();
@@ -1133,7 +1133,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 				rprintf(("Prepare failed: state=%x avail=%x ReqSize=%x", status.state, status.avail, ulReqSize));
 				return UNIXToOSSError(iRet);
 			}
-			iRet = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+			iRet = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)&status);
 			rprintf(("Xrun restarted: state=%x avail=%x ReqSize=%x", status.state, status.avail, ulReqSize));
 			if (iRet < 0) return UNIXToOSSError(iRet);
 		}
@@ -1167,7 +1167,7 @@ OSSRET OSS32_WaveAddBuffer(OSSSTREAMID streamid, ULONG ulBuffer, ULONG ulReqSize
 		iRet = -11;
 		while (ulSize && ulJ && iRet) {
 			for (ulI=0; ulI < 1000; ulI++) {
-				iRet1 = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+				iRet1 = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)&status);
 				// If here any state and have free buffer to any byte
 				if ((status.state != SNDRV_PCM_STATE_XRUN ) && samples_to_bytes(status.avail) ) break;
 				if (status.state == SNDRV_PCM_STATE_XRUN) {
@@ -1259,7 +1259,7 @@ OSSRET OSS32_WaveGetPosition(ULONG streamid, ULONG *pPosition)
 	pHandle->file.f_flags = O_NONBLOCK;
 
 	//Get the status of the stream
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)&status);
 
 	if(ret) {
 		DebugInt3();
@@ -1291,7 +1291,7 @@ OSSRET OSS32_WaveGetSpace(ULONG streamid, ULONG *pBytesAvail)
 	pHandle->file.f_flags = O_NONBLOCK;
 
 	//Get the nr of bytes left in the audio buffer
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)&status);
 
 	if(ret) {
 		DebugInt3();
@@ -1323,7 +1323,7 @@ OSSRET OSS32_WaveGetHwPtr(ULONG streamid, ULONG *pPosition)
 	pHandle->file.f_flags = O_NONBLOCK;
 
 	//Get the status of the stream
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)&status);
 
 	if(ret) {
 		DebugInt3();
@@ -1354,7 +1354,7 @@ OSSRET OSS32_WaveGetStatus(ULONG streamid, ULONG *pStatus)
 	pHandle->file.f_flags = O_NONBLOCK;
 
 	//Get the status of the stream
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)__Stack32ToFlat(&status));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_STATUS, (ULONG)&status);
 	if(ret) return UNIXToOSSError(ret);
 	*pStatus = status.state;
 
@@ -1386,7 +1386,7 @@ OSSRET OSS32_WaveSetVolume(OSSSTREAMID streamid, ULONG volume)
 	pcm_volume.volume[SNDRV_PCM_VOL_REAR_RIGHT]  = rightvol;
 
 	dprintf(("OSS32_WaveSetVolume %x to (%d,%d)", streamid, leftvol, rightvol));
-	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_SETVOLUME, (ULONG)__Stack32ToFlat(&pcm_volume));
+	ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_SETVOLUME, (ULONG)&pcm_volume);
 	return UNIXToOSSError(ret);
 }
 //******************************************************************************

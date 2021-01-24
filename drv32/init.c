@@ -202,10 +202,9 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
   char debugmsg[64];
   char FAR48 *args;
 
-#ifdef KEE
+#ifndef KEE
   GetTKSSBase();
 #endif
-//_asm int 3;
 
   DebugLevel = 1;
   rp->init_out.usCodeEnd = 0;

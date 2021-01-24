@@ -129,10 +129,10 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
         //find the FM device
         for(i=64;i<64+((deviceid+1)<<3);i++)
         {
-            memset((PVOID)__Stack32ToFlat(&clientinfo), 0, sizeof(clientinfo));
+            memset(&clientinfo, 0, sizeof(clientinfo));
             clientinfo.client = i;
             clientinfo.type   = KERNEL_CLIENT;
-            ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_GET_CLIENT_INFO, (ULONG)__Stack32ToFlat(&clientinfo));
+            ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_GET_CLIENT_INFO, (ULONG)&clientinfo);
             if(ret) {
                 continue;
             }
@@ -156,7 +156,7 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
         strcpy(portinfo.name, "Unamed port");
         portinfo.addr.client = pHandle->clientid;
         portinfo.flags       = SNDRV_SEQ_PORT_TYPE_APPLICATION;
-        ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_CREATE_PORT, (ULONG)__Stack32ToFlat(&portinfo));
+        ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_CREATE_PORT, (ULONG)&portinfo);
         if(ret) {
             rprintf(("subscribe error %d", ret));
             kfree(pHandle);
@@ -171,7 +171,7 @@ OSSRET OSS32_MidiOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId)
         subs.dest.port     = pHandle->destport;
         subs.sender.client = pHandle->clientid;
         subs.sender.port   = pHandle->clientport;
-        ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_SUBSCRIBE_PORT, (ULONG)__Stack32ToFlat(&subs));
+        ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_SUBSCRIBE_PORT, (ULONG)&subs);
         if(ret) {
             rprintf(("subscribe error %d", ret));
             kfree(pHandle);
@@ -211,7 +211,7 @@ OSSRET OSS32_MidiClose(OSSSTREAMID streamid)
         subs.dest.port     = pHandle->destport;
         subs.sender.client = pHandle->clientid;
         subs.sender.port   = pHandle->clientport;
-        ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_UNSUBSCRIBE_PORT, (ULONG)__Stack32ToFlat(&subs));
+        ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_UNSUBSCRIBE_PORT, (ULONG)&subs);
         if(ret) {
             rprintf(("unsubscribe error %d", ret));
             DebugInt3();
@@ -226,7 +226,7 @@ OSSRET OSS32_MidiClose(OSSSTREAMID streamid)
         strcpy(portinfo.name, "Unamed port");
         portinfo.addr.client = pHandle->clientid;
         portinfo.addr.port   = pHandle->clientport;
-        ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_DELETE_PORT, (ULONG)__Stack32ToFlat(&portinfo));
+        ret = pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_SEQ_IOCTL_DELETE_PORT, (ULONG)&portinfo);
         if(ret) {
             dprintf(("delete port error %d", ret));
             DebugInt3();
@@ -299,7 +299,7 @@ OSSRET OSS32_MidiCommand(OSSSTREAMID streamid, ULONG Cmd, BYTE channel, BYTE par
     //set operation to non-blocking
     pHandle->file.f_flags = O_NONBLOCK;
 
-    memset((PVOID)__Stack32ToFlat(&fmevent), 0, sizeof(fmevent));
+    memset(&fmevent, 0, sizeof(fmevent));
     switch(Cmd) {
     case IDC32_MIDI_NOTEON:
         snd_seq_ev_set_noteon((&fmevent), channel, param1, param2);
@@ -330,7 +330,7 @@ OSSRET OSS32_MidiCommand(OSSSTREAMID streamid, ULONG Cmd, BYTE channel, BYTE par
     fmevent.dest.client   = pHandle->destclient;
     fmevent.dest.port     = pHandle->destport;
 
-    transferred = pHandle->file.f_op->write(&pHandle->file, (char *)__Stack32ToFlat(&fmevent), sizeof(fmevent), &pHandle->file.f_pos);
+    transferred = pHandle->file.f_op->write(&pHandle->file, (char *)&fmevent, sizeof(fmevent), &pHandle->file.f_pos);
 
     if(transferred < 0) {
         rprintf(("OSS32_MidiNoteOn failed!!"));

@@ -113,25 +113,6 @@ struct ustat {
 
 #define __inline__ __inline
 
-#ifdef FLATSTACK
-#define kstrcpy strcpy
-#define kstrcat strcat
-#define kmemcpy memcpy
-#define kmemcmp memcmp
-#define kmemset memset
-#else
-#define kstrcpy _fstrcpy
-#define kstrcat _fstrcat
-#define kmemcpy _fmemcpy
-#define kmemcmp _fmemcmp
-#define kmemset _fmemset
-#define strcpy  _fstrcpy
-#define strcat  _fstrcat
-#define memcpy  _fmemcpy
-#define memcmp  _fmemcmp
-#define memset  _fmemset
-#endif
-
 typedef unsigned __nocast gfp_t;
 
 #include <string.h>

@@ -29,12 +29,11 @@ CFLAGS += -zp4
 
 !if $(KEE) == 1
 CFLAGS16 = $(CFLAGS) -mc -zu -zc
-CFLAGS  +=  -mf -DKEE -DFLATSTACK
-ASFLAGS += -D:KEE -D:FLATSTACK
+CFLAGS  +=  -mf -DKEE
+ASFLAGS += -D:KEE
 !else
 CFLAGS16 = $(CFLAGS) -mc -zu -zc
-CFLAGS  +=  -mf -DFLATSTACK
-ASFLAGS += -D:FLATSTACK
+CFLAGS  +=  -mf
 !endif
 
 !if "$(ACPI)" == "1"
