@@ -1,15 +1,12 @@
-/*
- * Register cache access API
- *
- * Copyright 2011 Wolfson Microelectronics plc
- *
- * Author: Dimitris Papastamos <dp@opensource.wolfsonmicro.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
-/* from 4.19.163 */
+// SPDX-License-Identifier: GPL-2.0
+//
+// Register cache access API
+//
+// Copyright 2011 Wolfson Microelectronics plc
+//
+// Author: Dimitris Papastamos <dp@opensource.wolfsonmicro.com>
+
+/* from 5.10.10 */
 
 //#include <linux/bsearch.h>
 #include <linux/device.h>
@@ -252,6 +249,10 @@ int regcache_read(struct regmap *map,
 	if (!regmap_volatile(map, reg)) {
 		ret = map->cache_ops->read(map, reg, value);
 
+#ifndef TARGET_OS2
+		if (ret == 0)
+			trace_regmap_reg_read_cache(map, reg, *value);
+#endif
 		return ret;
 	}
 
@@ -357,7 +358,9 @@ int regcache_sync(struct regmap *map)
 	dev_dbg(map->dev, "Syncing %s cache\n",
 		map->cache_ops->name);
 	name = map->cache_ops->name;
-
+#ifndef TARGET_OS2
+	trace_regcache_sync(map, name, "start");
+#endif
 	if (!map->cache_dirty)
 		goto out;
 
@@ -392,6 +395,9 @@ out:
 
 	regmap_async_complete(map);
 
+#ifndef TARGET_OS2
+	trace_regcache_sync(map, name, "stop");
+#endif
 	return ret;
 }
 EXPORT_SYMBOL_GPL(regcache_sync);
@@ -425,6 +431,9 @@ int regcache_sync_region(struct regmap *map, unsigned int min,
 	name = map->cache_ops->name;
 	dev_dbg(map->dev, "Syncing %s cache from %d-%d\n", name, min, max);
 
+#ifndef TARGET_OS2
+	trace_regcache_sync(map, name, "start region");
+#endif
 	if (!map->cache_dirty)
 		goto out;
 
@@ -444,6 +453,9 @@ out:
 
 	regmap_async_complete(map);
 
+#ifndef TARGET_OS2
+	trace_regcache_sync(map, name, "stop region");
+#endif
 	return ret;
 }
 EXPORT_SYMBOL_GPL(regcache_sync_region);
@@ -469,6 +481,9 @@ int regcache_drop_region(struct regmap *map, unsigned int min,
 
 	map->lock(map->lock_arg);
 
+#ifndef TARGET_OS2
+	trace_regcache_drop_region(map, min, max);
+#endif
 	ret = map->cache_ops->drop(map, min, max);
 
 	map->unlock(map->lock_arg);
@@ -494,6 +509,9 @@ void regcache_cache_only(struct regmap *map, bool enable)
 	map->lock(map->lock_arg);
 	WARN_ON(map->cache_bypass && enable);
 	map->cache_only = enable;
+#ifndef TARGET_OS2
+	trace_regmap_cache_only(map, enable);
+#endif
 	map->unlock(map->lock_arg);
 }
 EXPORT_SYMBOL_GPL(regcache_cache_only);
@@ -536,6 +554,9 @@ void regcache_cache_bypass(struct regmap *map, bool enable)
 	map->lock(map->lock_arg);
 	WARN_ON(map->cache_only && enable);
 	map->cache_bypass = enable;
+#ifndef TARGET_OS2
+	trace_regmap_cache_bypass(map, enable);
+#endif
 	map->unlock(map->lock_arg);
 }
 EXPORT_SYMBOL_GPL(regcache_cache_bypass);
@@ -712,7 +733,7 @@ static int regcache_sync_block_raw_flush(struct regmap *map, const void **data,
 
 	map->cache_bypass = true;
 
-	ret = _regmap_raw_write(map, base, *data, count * val_bytes);
+	ret = _regmap_raw_write(map, base, *data, count * val_bytes, false);
 	if (ret)
 		dev_err(map->dev, "Unable to sync registers %#x-%#x. %d\n",
 			base, cur - map->reg_stride, ret);
