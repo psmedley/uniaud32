@@ -33,6 +33,7 @@ extern int use_internal_drums;
 extern_module_init(alsa_sound_init)
 extern_module_exit(alsa_sound_exit)
 extern_module_init(alsa_seq_device_init)
+extern_module_exit(alsa_seq_device_exit)
 extern_module_init(alsa_pcm_init)
 extern_module_exit(alsa_pcm_exit)
 extern_module_init(alsa_hwdep_init)
@@ -112,6 +113,7 @@ extern_module_init(ac97_bus_init)
 
 //hda
 extern_module_init(hda_bus_init)
+extern_module_exit(hda_bus_exit)
 extern_module_init(generic_driver_init)
 extern_module_exit(generic_driver_exit)
 extern_module_init(azx_driver_init)
