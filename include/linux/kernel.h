@@ -10,9 +10,10 @@
 #include <stdlib.h>
 #include <stdarg.h>
 //#include <linux/linkage.h>
+#include <linux/bitops.h>
 #include <linux/gfp.h>
 #include <linux/types.h>
-#include <linux/bitops.h>
+#include <linux/log2.h>
 
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */

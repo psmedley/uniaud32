@@ -192,4 +192,9 @@ static inline int get_count_order(unsigned int count)
 	return order;
 }
 
+static inline unsigned fls_long(unsigned long l)
+{
+		return fls(l);
+}
+
 #endif /* _I386_BITOPS_H */

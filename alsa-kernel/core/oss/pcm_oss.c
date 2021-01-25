@@ -29,32 +29,6 @@
 #include <linux/soundcard.h>
 #include <sound/initval.h>
 #include <sound/mixer_oss.h>
-#ifdef TARGET_OS2
-static inline unsigned int ld2(u_int32_t v)
-{
-        unsigned r = 0;
-
-        if (v >= 0x10000) {
-                v >>= 16;
-                r += 16;
-        }
-        if (v >= 0x100) {
-                v >>= 8;
-                r += 8;
-        }
-        if (v >= 0x10) {
-                v >>= 4;
-                r += 4;
-        }
-        if (v >= 4) {
-                v >>= 2;
-                r += 2;
-        }
-        if (v >= 2)
-                r++;
-        return r;
-}
-#endif
 
 #define OSS_ALSAEMULVER		_SIOR ('M', 249, int)
 
@@ -729,11 +703,7 @@ static int snd_pcm_oss_period_size(struct snd_pcm_substream *substream,
 						   snd_pcm_hw_param_value_max(slave_params, SNDRV_PCM_HW_PARAM_BUFFER_SIZE, NULL)) * oss_frame_size;
 	if (!oss_buffer_size)
 		return -EINVAL;
-#ifndef TARGET_OS2 //fixme
 	oss_buffer_size = rounddown_pow_of_two(oss_buffer_size);
-#else
-	oss_buffer_size = 1 << ld2(oss_buffer_size);
-#endif
 	if (atomic_read(&substream->mmap_count)) {
 		if (oss_buffer_size > runtime->oss.mmap_bytes)
 			oss_buffer_size = runtime->oss.mmap_bytes;
@@ -770,11 +740,7 @@ static int snd_pcm_oss_period_size(struct snd_pcm_substream *substream,
 						   snd_pcm_hw_param_value_min(slave_params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, NULL));
 	if (min_period_size) {
 		min_period_size *= oss_frame_size;
-#ifndef TARGET_OS2 //fixme
 		min_period_size = roundup_pow_of_two(min_period_size);
-#else
-		min_period_size = 1 << (ld2(min_period_size - 1) + 1);
-#endif
 		if (oss_period_size < min_period_size)
 			oss_period_size = min_period_size;
 	}
@@ -783,11 +749,7 @@ static int snd_pcm_oss_period_size(struct snd_pcm_substream *substream,
 						   snd_pcm_hw_param_value_max(slave_params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, NULL));
 	if (max_period_size) {
 		max_period_size *= oss_frame_size;
-#ifndef TARGET_OS2 //fixme
 	 	max_period_size = rounddown_pow_of_two(max_period_size);
-#else
-		max_period_size = 1 << ld2(max_period_size);
-#endif
 
 		if (oss_period_size > max_period_size)
 			oss_period_size = max_period_size;
