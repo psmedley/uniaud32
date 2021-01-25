@@ -728,6 +728,11 @@ static int azx_position_ok(struct azx *chip, struct azx_dev *azx_dev)
 	if (WARN_ONCE(!azx_dev->core.period_bytes,
 		      "hda-intel: zero azx_dev->period_bytes"))
 		return -1; /* this shouldn't happen! */
+#else
+	if (!azx_dev->core.period_bytes) {
+		pr_debug("hda-intel: zero azx_dev->period_bytes");
+		return -1; /* this shouldn't happen! */
+	}
 #endif
 	if (wallclk < (azx_dev->core.period_wallclk * 5) / 4 &&
 	    pos % azx_dev->core.period_bytes > azx_dev->core.period_bytes / 2)
