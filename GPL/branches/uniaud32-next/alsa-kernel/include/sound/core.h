@@ -295,17 +295,17 @@ enum {
 };
 
 #if defined(CONFIG_SND_DEBUG) || defined(CONFIG_SND_VERBOSE_PRINTK)
+#error "Not valid for OS/2"
 __printf(4, 5)
-void __snd_printk(unsigned int level, const char *file, int line,
-		  const char *format, ...);
+void __snd_printk(unsigned int level, const char *file, int line, const char *format, ...);
 #else
 #ifndef TARGET_OS2
 #define __snd_printk(level, file, line, format, ...) \
-	printk(format, ##__VA_ARGS__)
+ printk(format, ##__VA_ARGS__)
 #else
 #define __snd_printk printk
-#endif /* nothing */
-#endif
+#endif /* TARGET_OS2 */
+#endif /* defined(...) */
 
 /**
  * snd_printk - printk wrapper
@@ -314,8 +314,12 @@ void __snd_printk(unsigned int level, const char *file, int line,
  * Works like printk() but prints the file and the line of the caller
  * when configured with CONFIG_SND_VERBOSE_PRINTK.
  */
+#ifndef TARGET_OS2
 #define snd_printk(fmt, ...) \
 	__snd_printk(0, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#else
+#define snd_printk __snd_printk
+#endif	
 
 #ifdef CONFIG_SND_DEBUG
 /**
@@ -327,12 +331,12 @@ void __snd_printk(unsigned int level, const char *file, int line,
  */
 #ifndef TARGET_OS2
 #define snd_printd(fmt, ...) \
-	__snd_printk(1, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
-#else
-#define snd_printd printk
-#endif
+ __snd_printk(1, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define _snd_printd(level, fmt, ...) \
 	__snd_printk(level, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#else /* TARGET_OS2 */
+#define snd_printd printk
+#endif /* TARGET_OS2 */
 
 /**
  * snd_BUG - give a BUG warning message and stack trace
@@ -403,18 +407,18 @@ static inline bool snd_printd_ratelimit(void) { return false; }
  */
 #ifndef TARGET_OS2
 #define snd_printdd(format, ...) \
-	__snd_printk(2, __FILE__, __LINE__, format, ##__VA_ARGS__)
+ __snd_printk(2, __FILE__, __LINE__, format, ##__VA_ARGS__)
 #else
 #define snd_printdd snd_printk
-#endif
-#else
+#endif /* TARGET_OS2 */
+#else /* CONFIG_SND_DEBUG_VERBIOSE */
 #ifndef TARGET_OS2
 __printf(1, 2)
 static inline void snd_printdd(const char *format, ...) {}
 #else
-#define snd_printdd 1 ? (void)0 : (void)((int (*)(char *, ...)) NULL)
-#endif
-#endif
+#define snd_printdd snd_printk
+#endif /* TARGET_OS2 */
+#endif /* CONFIG_SND_DEBUG_VERBIOSE */
 
 
 #define SNDRV_OSS_VERSION         ((3<<16)|(8<<8)|(1<<4)|(0))	/* 3.8.1a */
