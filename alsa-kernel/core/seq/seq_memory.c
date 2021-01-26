@@ -374,12 +374,8 @@ int snd_seq_pool_init(struct snd_seq_pool *pool)
 	if (snd_BUG_ON(!pool))
 		return -EINVAL;
 
-#ifndef TARGET_OS2
 	cellptr = kvmalloc_array(sizeof(struct snd_seq_event_cell), pool->size,
 				 GFP_KERNEL);
-#else
-	cellptr = vmalloc(sizeof(struct snd_seq_event_cell) * pool->size);
-#endif
 	if (!cellptr)
 		return -ENOMEM;
 

@@ -123,4 +123,15 @@ struct kmem_cache {
 
 #define kvzalloc kzalloc
 size_t ksize(const void *);
+
+static inline void *__kmalloc_node(size_t size, gfp_t flags, int node)
+{
+	return __kmalloc(size, flags);
+}
+
+static inline void *kmalloc_node(size_t size, gfp_t flags, int node)
+{
+	return __kmalloc_node(size, flags, node);
+}
+
 #endif	/* _LINUX_SLAB_H */

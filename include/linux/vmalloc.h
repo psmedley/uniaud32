@@ -24,5 +24,8 @@ int vmalloc_area_pages(unsigned long address, unsigned long size);
 
 extern struct vm_struct * vmlist;
 extern void *vzalloc(unsigned long size);
+extern void *__vmalloc(unsigned long size, gfp_t gfp_mask);
+void *__vmalloc_node(unsigned long size, unsigned long align, gfp_t gfp_mask,
+		int node, const void *caller);
 #endif
 
