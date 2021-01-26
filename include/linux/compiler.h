@@ -120,6 +120,7 @@
 #define __acquires(x)
 #define __releases(x)
 #define BUG() do {} while (1)
+#define READ_ONCE(x) x
 #define WRITE_ONCE(x, val) x=(val)
 #define __force
 #define __always_unused
