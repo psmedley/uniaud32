@@ -1404,10 +1404,10 @@ int snd_pcm_hw_constraint_ratdens(struct snd_pcm_runtime *runtime,
 EXPORT_SYMBOL(snd_pcm_hw_constraint_ratdens);
 
 #ifdef TARGET_OS2
-static inline min_not_zero(unsigned int x, unsigned int y) {
+static unsigned int min_not_zero(unsigned int x, unsigned int y) {
 	unsigned int __x = (x);
 	unsigned int __y = (y);
-	__x == 0 ? __y : ((__y == 0) ? __x : min(__x, __y));
+	return __x == 0 ? __y : ((__y == 0) ? __x : min(__x, __y));
 }
 #endif
 
