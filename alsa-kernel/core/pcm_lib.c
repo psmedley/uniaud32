@@ -1403,6 +1403,14 @@ int snd_pcm_hw_constraint_ratdens(struct snd_pcm_runtime *runtime,
 }
 EXPORT_SYMBOL(snd_pcm_hw_constraint_ratdens);
 
+#ifdef TARGET_OS2
+static inline min_not_zero(unsigned int x, unsigned int y) {
+	unsigned int __x = (x);
+	unsigned int __y = (y);
+	__x == 0 ? __y : ((__y == 0) ? __x : min(__x, __y));
+}
+#endif
+
 static int snd_pcm_hw_rule_msbits(struct snd_pcm_hw_params *params,
 				  struct snd_pcm_hw_rule *rule)
 {
@@ -1417,11 +1425,7 @@ static int snd_pcm_hw_rule_msbits(struct snd_pcm_hw_params *params,
 
 	if ((snd_interval_value(i) == width) ||
 	    (width == 0 && snd_interval_value(i) > msbits))
-#ifdef TARGET_OS2 //fixme min_not_zero uses typeof()
-		params->msbits = msbits;
-#else
 		params->msbits = min_not_zero(params->msbits, msbits);
-#endif
 
 	return 0;
 }
