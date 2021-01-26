@@ -127,12 +127,10 @@ static int traverse(struct seq_file *m, loff_t offset)
 		error = m->op->show(m, p);
 		if (error < 0)
 			break;
-#if 0 //fixme
-		if (unlikely(error)) {
+		if (error) {
 			error = 0;
 			m->count = 0;
 		}
-#endif
 		if (seq_has_overflowed(m))
 			goto Eoverflow;
 		if (pos + m->count > offset) {
@@ -195,9 +193,8 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 	 */
 	m->version = file->f_version;
 
-#if 0 //fixme
 	/* Don't assume *ppos is where we left it */
-	if (unlikely(*ppos != m->read_pos)) {
+	if (*ppos != m->read_pos) {
 		while ((err = traverse(m, *ppos)) == -EAGAIN)
 			;
 		if (err) {
@@ -211,7 +208,7 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 			m->read_pos = *ppos;
 		}
 	}
-#endif
+
 	/* grab buffer if we didn't have one */
 	if (!m->buf) {
 		m->buf = seq_buf_alloc(m->size = PAGE_SIZE);
@@ -246,15 +243,13 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 		err = m->op->show(m, p);
 		if (err < 0)
 			break;
-#if 0 //fixme
-		if (unlikely(err))
+		if (err)
 			m->count = 0;
-		if (unlikely(!m->count)) {
+		if (!m->count) {
 			p = m->op->next(m, p, &pos);
 			m->index = pos;
 			continue;
 		}
-#endif
 		if (m->count < m->size)
 			goto Fill;
 		m->op->stop(m, p);
@@ -283,10 +278,8 @@ Fill:
 		err = m->op->show(m, p);
 		if (seq_has_overflowed(m) || err) {
 			m->count = offs;
-#if 0 //fixme
-			if (likely(err <= 0))
+			if (err <= 0)
 				break;
-#endif
 		}
 		pos = next;
 	}
