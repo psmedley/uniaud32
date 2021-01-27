@@ -6,7 +6,7 @@ ROOT=$(%ROOT)
 NOOBJ=1
 !include $(ROOT)\tools\header.mif
 
-WMAKEOPTS=-h $(__MAKEOPTS__) KEE=1
+WMAKEOPTS=-h $(__MAKEOPTS__)
 
 !if "$(IBM_BUILD)" == "1"
 WMAKEOPTS += IBM_BUILD=1

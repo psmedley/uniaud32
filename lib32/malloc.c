@@ -28,9 +28,7 @@
 #include <dbgos2.h>
 
 #include <devhelp.h>
-#ifdef KEE
 #include <kee.h>
-#endif
 #include "malloc.h"
 
 #if !defined(min)

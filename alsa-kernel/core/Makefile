@@ -5,7 +5,7 @@ ROOT=$(%ROOT)
 
 !include $(ROOT)\tools\header.mif
 
-WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
+WMAKEOPTS=-h $(__MAKEOPTS__) DEBUG=$(DEBUG)
 
 #===================================================================
 #

@@ -28,11 +28,6 @@ FILES = spinlock.obj malloc.obj pci.obj irq.obj ioctl.obj devres.obj &
   instropl2.obj instropl3.obj vsprintf.obj bitmap.obj find_next_bit.obj &
   regmap.obj regcache.obj regcache-flat.obj regcache-rbtree.obj
 
-  
-!if $(KEE) == 0
-FILES += stack.obj
-!endif
-
 TARGET = linuxlib
 
 LNKFILE = $(OBJDIR)\$(TARGET).lnk

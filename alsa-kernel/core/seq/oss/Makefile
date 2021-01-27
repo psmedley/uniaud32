@@ -11,14 +11,6 @@ WMAKEOPTS=-h $(__MAKEOPTS__)
 WMAKEOPTS += DEBUG=1
 !endif
 
-!if "$(KEE)" == "0"
-WMAKEOPTS += KEE=0
-KEE=0
-!else
-WMAKEOPTS += KEE=1
-KEE=1
-!endif
-
 #===================================================================
 #
 #   List of source files

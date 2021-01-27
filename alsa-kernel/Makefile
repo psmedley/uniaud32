@@ -1,4 +1,4 @@
-WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
+WMAKEOPTS=-h $(__MAKEOPTS__) DEBUG=$(DEBUG)
 
 #===================================================================
 #

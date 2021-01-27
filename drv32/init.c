@@ -38,10 +38,7 @@
 #include <dbgos2.h>
 #include <irqos2.h>
 #include <osspci.h>
-//#include <bsedos16.h>
-#ifdef KEE
 #include <kee.h>
-#endif
 #include "parse.h"
 #include "malloc.h"
 #include "sound/version.h"
@@ -102,12 +99,7 @@ void DevSaveMessage(char FAR48 *str, int length)
 //SvL: Lock our 32 bits data & code segments
 int LockSegments(void)
 {
-#ifdef KEE
     KEEVMLock lock;
-#else
-    char   lock[12];
-    ULONG  PgCount;
-#endif
     ULONG  segsize;
 
     /*
@@ -121,21 +113,13 @@ int LockSegments(void)
       segsize += PAGE_SIZE;
     }
     segsize &= ~0xFFF;
-#ifdef KEE
+
     if(KernVMLock(VMDHL_LONG,
                   (PVOID)((OffsetBeginDS32) & ~0xFFF),
                   segsize,
                   &lock,
                   (KEEVMPageList*)-1,
                   0)) {
-#else
-    if(DevVMLock(VMDHL_LONG,
-                   ((OffsetBeginDS32) & ~0xFFF),
-                   segsize,
-                   (LINEAR)-1,
-                   (LINEAR)lock,
-                   (LINEAR)&PgCount)) {
-#endif
       return(1);
     }
     /*
@@ -146,21 +130,13 @@ int LockSegments(void)
       segsize += PAGE_SIZE;
     }
     segsize &= ~0xFFF;
-#ifdef KEE
+
     if(KernVMLock(VMDHL_LONG,
                   (PVOID)((OffsetBeginCS32) & ~0xFFF),
                   segsize,
                   &lock,
                   (KEEVMPageList*)-1,
                   0)) {
-#else
-    if(DevVMLock(VMDHL_LONG,
-                 ((OffsetBeginCS32) & ~0xFFF),
-                 segsize,
-                 (LINEAR)-1,
-                 (LINEAR)lock,
-                 (LINEAR)&PgCount)) {
-#endif
       return(1);
     }
     return 0;
@@ -201,10 +177,6 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
 {
   char debugmsg[64];
   char FAR48 *args;
-
-#ifndef KEE
-  GetTKSSBase();
-#endif
 
   DebugLevel = 1;
   rp->init_out.usCodeEnd = 0;
