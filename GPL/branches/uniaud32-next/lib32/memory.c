@@ -31,9 +31,7 @@
 #include <dbgos2.h>
 #include <stacktoflat.h>
 #include <limits.h>
-#ifdef KEE
 #include <kee.h>
-#endif
 #include "malloc.h"
 #define _I386_PAGE_H
 typedef struct { unsigned long pgprot; } pgprot_t;
@@ -177,7 +175,6 @@ ULONG GetBaseAddressNoFree(ULONG addr, ULONG *pSize)
 //******************************************************************************
 unsigned long virt_to_phys(void * address)
 {
-#ifdef KEE
     KEEVMPageList pagelist;
     ULONG         nrpages;
 
@@ -186,16 +183,6 @@ unsigned long virt_to_phys(void * address)
 		return 0;
 	}
 	return pagelist.addr;
-#else
-    LINEAR addr = (LINEAR)address;
-    PAGELIST pagelist;
-
-	if(DevLinToPageList(addr, PAGE_SIZE, (PAGELIST NEAR *)&pagelist)) {
-		DebugInt3();
-		return 0;
-	}
-	return pagelist.physaddr;
-#endif
 }
 //******************************************************************************
 //******************************************************************************
@@ -204,12 +191,8 @@ void * phys_to_virt(unsigned long address)
     APIRET rc = 0;
     ULONG addr = 0;
 
-#ifdef KEE
     SHORT sel;
     rc = KernVMAlloc(PAGE_SIZE, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&address, &sel);
-#else
-    rc = DevVMAlloc(VMDHA_PHYS, PAGE_SIZE, (LINEAR)&address, (ULONG)&addr);
-#endif
     if (rc != 0) {
         DebugInt3();
         return NULL;
@@ -231,12 +214,7 @@ APIRET VMAlloc(ULONG size, ULONG flags, LINEAR *pAddr)
 
 __again:
 
-#ifdef KEE
-
     rc = KernVMAlloc(size, flags, (PVOID*)&addr, (PVOID*)-1, &sel);
-#else
-    rc = DevVMAlloc(flags, size, (LINEAR)-1, (ULONG)&addr);
-#endif
     if (rc == 0) {
         *pAddr = (LINEAR)addr;
         if (flags & VMDHA_USEHIGHMEM)
@@ -256,12 +234,7 @@ __again:
 APIRET VMFree(LINEAR addr)
 {
     APIRET rc;
-
-#ifdef KEE
-	rc = KernVMFree((PVOID)addr);
-#else
-	rc = DevVMFree((LINEAR)addr);
-#endif
+    rc = KernVMFree((PVOID)addr);
     if(rc) {
         DebugInt3();
     }
@@ -530,15 +503,9 @@ void * __ioremap(unsigned long physaddr, unsigned long size, unsigned long flags
 	//size = size + PAGE_SIZE - 1;
 	//size &= 0xFFFFF000;
 
-#ifdef KEE
     SHORT sel;
-
-	//rc = KernVMAlloc(size, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&physaddr, &sel);
+    //rc = KernVMAlloc(size, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&physaddr, &sel);
     rc = KernVMAlloc(Length, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&PhysicalAddress, &sel);
-#else
-    //rc = DevVMAlloc(VMDHA_PHYS, size, (LINEAR)&physaddr, (ULONG)&addr);
-    rc = DevVMAlloc(VMDHA_PHYS, Length, (LINEAR)&PhysicalAddress, (ULONG)&addr);
-#endif
     if (rc != 0) {
         dprintf(("ioremap error: %x", rc));
         DebugInt3();

@@ -52,8 +52,6 @@ ret16           MACRO
 		ret
 		ENDM
 
-
-IFDEF KEE
 ;pushfd/popfd trashed by fucking BUGY KernThunkStackTo32
 ;fix idea by zuko
 
@@ -63,18 +61,16 @@ IFDEF KEE
 DevThunkStackTo32 MACRO
 	push	stacksel
 	push	stackbase
-
 	push	edx
 	mov	edx, ss
 	mov	stacksel, edx
         pushfd
-
         call	KernThunkStackTo32
         popfd
 	mov	stackbase, edx
-	pop	edx	;trashed by KernThunkStackTo32
-        xor     eax, eax ; mark success
+	pop	edx      ;trashed by KernThunkStackTo32
         ENDM
+
 ;;******************************************************************************
 ;;******************************************************************************
 DevThunkStackTo32_Int MACRO
@@ -86,6 +82,7 @@ DevThunkStackTo32_Int MACRO
 	pop	edx	;trashed by KernThunkStackTo32
 	pop	eax	;trashed by KernThunkStackTo32
         ENDM
+
 ;;******************************************************************************
 ;;******************************************************************************
 DevThunkStackTo16 MACRO
@@ -96,7 +93,6 @@ DevThunkStackTo16 MACRO
         popfd
 	pop	eax	;trashed by KernThunkStackTo16
         pop     edx     ;trashed by KernThunkStackTo16 when called in interrupt context
-
 	pop	stackbase
 	pop	stacksel
         ENDM
@@ -112,141 +108,6 @@ DevThunkStackTo16_Int MACRO
 	pop	eax	;trashed by KernThunkStackTo16
         pop     edx     ;trashed by KernThunkStackTo16 when called in interrupt context
         ENDM
-;;******************************************************************************
-;;******************************************************************************
-
-ELSE
-
-;;******************************************************************************
-;;Need to preserve fs:ebx!! (all other registers must be saved by the caller)
-;;******************************************************************************
-DevThunkStackTo32 MACRO
-        LOCAL @@stackok, @@stackchangeend
-
-;;;;        int     3
-	
-	pushfd
-	cli
-	pop	dword ptr [cpuflags]
-
-        ;check if kernel DS selector DPL == 3; if so, change to 0        
-	call    FixSelDPL
-
-        ;allocate private stack
-        push    fs
-	call	StackAlloc
-        pop     fs                             ;trashed by StackAlloc
-        mov     dword ptr [fInitStack], 1
-
-        cmp     eax, 0
-        jne     @@stackok
-	
-IFDEF DEBUG
-        int     3   ;this is very fatal
-ENDIF
-        call    RestoreSelDPL
-        mov     eax, -1				;mark failure
-
-	push	dword ptr [cpuflags]
-	popfd
-        jmp     short @@stackchangeend
-        
-@@stackok:
-	;stack ptr in eax
-	call    dword ptr [intSwitchStack]
-
-	push	dword ptr [cpuflags]
-	popfd
-
-        mov     eax, 0                          ;mark success
-@@stackchangeend:
-        ENDM
-        
-;;******************************************************************************
-;;******************************************************************************
-DevThunkStackTo32_Int MACRO
-        LOCAL @@cont32
-
-        cmp     dword ptr [fInitStack], 0
-        je      @@cont32
-
-;;;;        int     3
-	pushfd
-	cli
-	pop	dword ptr [cpuflags]
-
-	mov	dword ptr [tempeax], eax	;save eax
-
-	pop	eax		;pop saved flat stack pointer
-
-        ;and switch back to our flat stack again
-	call    dword ptr [intSwitchStack]
-
-	mov	eax, dword ptr [tempeax]	;restore eax
-	push	dword ptr [cpuflags]
-	popfd
-
-@@cont32:
-        ENDM
-        
-;;******************************************************************************
-;;******************************************************************************
-DevThunkStackTo16 MACRO
-;;;;        int     3
-
-	pushfd
-	cli
-	pop	dword ptr [cpuflags]
-
-	mov	dword ptr [tempeax], eax	;save eax
-	mov	dword ptr [tempesi], esi	;save esi
-
-	mov	esi, esp
-	xor	eax, eax	;switch to 16 bits stack
-	call    dword ptr [intSwitchStack]
-
-	mov	eax, esi	
-	call	StackFree
-
-	call    RestoreSelDPL
-
-	mov	eax, dword ptr [tempeax]
-	mov	esi, dword ptr [tempesi]
-               
-	push	dword ptr [cpuflags]
-	popfd
-        
-        ENDM
-        
-;;******************************************************************************
-;;******************************************************************************
-DevThunkStackTo16_Int MACRO
-        LOCAL @@cont16
-
-        cmp     dword ptr [fInitStack], 0
-        je      @@cont16
-
-;;;;        int     3
-	pushfd
-	cli
-	pop	dword ptr [cpuflags]
-
-	mov 	dword ptr [tempeax], eax	;save eax
-	mov	dword ptr [tempesi], esi	;save esi
-	mov	esi, esp
-	xor	eax, eax	;switch to 16 bits stack
-	call    dword ptr [intSwitchStack]
-	push	esi		;flat stack ptr (popped before switching back to flat)
-
-	mov	eax, dword ptr [tempeax]
-	mov	esi, dword ptr [tempesi]
-	push	dword ptr [cpuflags]
-	popfd
-
-@@cont16:
-        ENDM
-
-ENDIF ;KEE
 
 ;*******************************************************************************
 ;enter a function that needs to switch to a 16 bits stack
@@ -261,12 +122,11 @@ enterKEERM      MACRO
                 push    edx
                 push    esi
                 push    edi
-
                 ;to access the parameters on the 32 bits stack, once we've switched
                 mov     edi, ebp
-
 	        DevThunkStackTo16_Int
                 ENDM
+
 ;*******************************************************************************
 ;switch stack from 16 bits to 32 bits and return
 ;*******************************************************************************
@@ -288,9 +148,6 @@ retKEERM        MACRO
 
 
 ;Constants and structure definitions
-
-DevHlp_VirtToLin	EQU	5Bh
-DevHlp_VMLock		EQU	55h
 
 ; Status word masks
 STERR	EQU	8000H		; Bit 15 - Error

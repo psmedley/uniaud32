@@ -53,17 +53,8 @@ CDEFINES = -DIBM_BUILD
 #
 #===================================================================
 
-FILES = begin.obj startup.obj &
-  strategy.obj read.obj &
-  init.obj parse.obj &
-  devhlp.obj &
-  idc.obj dispatch.obj &
-  rmhelp.obj irq.obj util.obj &
-  impdos.lib
-!if "$(KEE)" == "1"
-FILES += impkee.lib
-!endif
-FILES += end.obj
+FILES = begin.obj startup.obj strategy.obj read.obj init.obj parse.obj idc.obj &
+        dispatch.obj rmhelp.obj irq.obj util.obj impdos.lib impkee.lib end.obj
 
 LIBS = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\ac97.lib $(ALSA_LIB)\pci.lib &
  $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\hda.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib &

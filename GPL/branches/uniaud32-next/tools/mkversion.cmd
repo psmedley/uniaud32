@@ -9,7 +9,6 @@ parse arg sDebugMode;
 /* I don't this will ever change from Netlabs */
 projVendor    = EnvVar_Get_If('VENDOR', 'Netlabs <www.netlabs.org>');
 projProduct   = "OS/2 Universal Audio 32 Driver";
-projAdapter   = "OS/2 Universal Audio";
 
 /* uniaud.inc is located in the base gpl directory and
  * is read by mkversion.cmd for constants. The result is

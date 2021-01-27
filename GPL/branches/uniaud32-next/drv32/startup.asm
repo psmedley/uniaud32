@@ -1039,15 +1039,8 @@ ASSUME CS:FLAT, DS:FLAT, ES:FLAT
 	extrn  ALSA_TIMER_ : near
         extrn  ALSA_Interrupt : near
         extrn  _rdOffset: dword
-
-IFDEF KEE
 	extrn  KernThunkStackTo16 : near
 	extrn  KernThunkStackTo32 : near
-ELSE
-        extrn  GetTKSSBase : near
-        extrn  StackAlloc : near
-        extrn  StackFree  : near
-ENDIF
 
 ;Called by Watcom to set the DS
         ALIGN 4
@@ -1087,88 +1080,6 @@ thunk1632_devhelp_modified_ds:
 	ret
 DevHlp_ModifiedDS endp
 
-
-IFNDEF KEE
-;;******************************************************************************
-;FixSelDPL:
-;
-; Set DPL of DOS32FLATDS selector to 0 or else we'll get a trap D when loading
-; it into the SS register (DPL must equal CPL when loading a selector into SS)
-;;******************************************************************************
-        PUBLIC FixSelDPL
-        ALIGN  4
-FixSelDPL proc near
-	cmp 	fWrongDPL, 1
-	jne 	short @@fixdpl_end
-	cmp 	SelRef, 0
-	jne 	short @@fixdpl_endfix
-	push	eax
-	push	ebx
-	push	edx
-	sgdt	fword ptr [gdtsave]		; access the GDT ptr
-	mov	ebx, dword ptr [gdtsave+2]	; get lin addr of GDT
-	mov	eax, ds				; build offset into table
-	and	eax, 0fffffff8h			; mask away DPL
-	add	ebx, eax			; build address
-
-	mov	eax, dword ptr [ebx+4]
-	mov	edx, eax
-	shr	edx, 13
-	and	edx, 3
-
-        ;has the OS/2 kernel finally changed the DPL to 0?
-	cmp	edx, 0
-	jne	@@changedpl
-	mov 	fWrongDPL, 0		;don't bother anymore
-	mov 	SelRef, 0
-	jmp	short @@endchange
-
-@@changedpl:
-	mov 	oldDPL, eax
-	and 	eax, NOT 6000h		;clear bits 5 & 6 in the high word (DPL)
-	mov 	dword ptr [ebx+4], eax
-@@endchange:
-	pop	edx
-	pop	ebx
-	pop	eax
-@@fixdpl_endfix:
-	inc     SelRef
-@@fixdpl_end:
-        ret
-FixSelDPL endp
-;;******************************************************************************
-; RestoreSelDPL:
-;
-;  Restore DPL of DOS32FLATDS selector or else OS/2 kernel code running in ring 3
-;  will trap (during booting only; this sel has a DPL of 0 when PM starts up)
-;;******************************************************************************
-        PUBLIC RestoreSelDPL
-        ALIGN  4
-RestoreSelDPL proc near
-	cmp 	fWrongDPL, 1
-	jne 	short @@restdpl_end
-
-	cmp 	SelRef, 1
-	jne 	short @@restdpl_endrest
-	push	eax
-	push	ebx
-	sgdt	fword ptr [gdtsave]		; access the GDT ptr
-	mov	ebx, dword ptr [gdtsave+2]	; get lin addr of GDT
-	mov	eax, ds				; build offset into table
-	and	eax, 0fffffff8h			; mask away DPL
-	add	ebx, eax			; build address
-
-	mov	eax, oldDPL
-	mov	dword ptr [ebx+4], eax
-	pop	ebx
-	pop	eax
-@@restdpl_endrest:
-	dec     SelRef
-@@restdpl_end:
-        ret
-RestoreSelDPL endp
-ENDIF
-
 ;*******************************************************************************
 ;Copy parameters to 16 bits stack and call 16:32 IDC handler
 ;
@@ -1183,18 +1094,14 @@ _CallPDD16 proc near
         push ebp
 	mov  ebp, esp
         push ebx
-
         lea  ebx, [ebp+8]
         DevThunkStackTo16_Int
-
         push dword ptr [ebx+16]    ;param2
         push dword ptr [ebx+12]    ;param1
         push dword ptr [ebx+8]     ;cmd
         call fword ptr [ebx]
         add  sp, 12
-
         DevThunkStackTo32_Int
-
         pop  ebx
         pop  ebp
         ret
@@ -1214,20 +1121,9 @@ STRATEGY_ proc far
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
 	mov	es, eax
-IFNDEF KEE
-        ;done in init.cpp for the KEE version
-        cmp     dword ptr [intSwitchStack], 0
-        jne     stratcontinue
-        ;get TKSSBase & intSwitchStack pointers
-        call    GetTKSSBase
-stratcontinue:
-ENDIF
         DevThunkStackTo32
-        cmp     eax, 0
-        jne     @@stackswitchfail_strat
 	call 	ALSA_STRATEGY
         DevThunkStackTo16
-@@stackswitchfail_strat:
 	pop	gs
 	pop	fs
 	pop	es
@@ -1252,11 +1148,8 @@ IDC_ proc far
 	mov	ds, eax
 	mov	es, eax
         DevThunkStackTo32
-        cmp     eax, 0
-        jne     @@stackswitchfail_idc
 	call 	ALSA_IDC
         DevThunkStackTo16
-@@stackswitchfail_idc:
 	pop	gs
 	pop	fs
 	pop	es
@@ -1280,11 +1173,8 @@ IFDEF DEBUG
 	add	DbgU32TimerCnt, 1
 ENDIF
         DevThunkStackTo32
-        cmp     eax, 0
-        jne     @@stackswitchfail_timer
 	call 	ALSA_TIMER_
         DevThunkStackTo16
-@@stackswitchfail_timer:
 IFDEF DEBUG
 	add	DbgU32TimerCnt, -1
 ENDIF
@@ -1321,12 +1211,9 @@ ENDIF
         ; we enter the interrupt handler with interrupts disabled.
         ;cli
         DevThunkStackTo32
-        cmp     eax, 0
-        jne     @@stackswitchfail_irq
         ;returns irq status in eax (1=handled; 0=unhandled)
 	call 	ALSA_Interrupt
         DevThunkStackTo16
-@@stackswitchfail_irq:
 IFDEF DEBUG
 		add         DbgU32IntCnt, -1
 ENDIF
@@ -1501,6 +1388,18 @@ _RMHandleToResourceHandleList  proc near
         retKEERM
 _RMHandleToResourceHandleList endp
 
+; shifted from devhlp.asm
+        extrn  DOSIODELAYCNT : ABS
+	ALIGN 4
+	public iodelay32_
+iodelay32_ proc near
+	mov   eax, DOSIODELAYCNT
+        align 4
+@@:     dec   eax
+        jnz   @b
+        loop  iodelay32_
+	ret
+iodelay32_ endp
 
 CODE32 ends
 
@@ -1529,32 +1428,11 @@ DATA32 	segment
     public  _ISR06
     public  _ISR07
 
-IFDEF KEE
     public  stackbase
     public  stacksel
 
     stackbase dd 0
     stacksel  dd 0
-ELSE
-    extrn   intSwitchStack : dword
-
-    public  gdtsave
-    public  fWrongDPL
-    public  oldDPL
-    public  SelRef
-
-    tempeax          dd 0
-    tempedx          dd 0
-    tempesi          dd 0
-    cpuflags         dd 0
-
-    gdtsave	     dq 0
-    fWrongDPL	     dd 1	;DOS32FLATDS has the wrong DPL for SS
-    SelRef	     dd 0
-    oldDPL	     dd 0
-
-    fInitStack       dd 0
-ENDIF
 
     __OffsetFinalCS16 dw OFFSET CODE16:__OffFinalCS16
     __OffsetFinalDS16 dw OFFSET DATA16:__OffFinalDS16

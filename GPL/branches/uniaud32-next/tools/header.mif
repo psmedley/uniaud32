@@ -17,9 +17,6 @@ DDK=$(%DDK)
 !endif
 WATCOM=$(%WATCOM)
 
-#Always build KEE version
-KEE = 1
-
 !if "$(DEBUG)" == "1"
 ALSA_BIN = $(ROOT)\bin\Debug
 ALSA_LIB = $(ROOT)\lib\Debug
@@ -58,11 +55,6 @@ ASFLAGS += -D:DEBUG
 CFLAGS += -zp1
 !else
 CFLAGS += -zp4
-!endif
-
-!if $(KEE) == 1
-CFLAGS  += -DKEE
-ASFLAGS += -D:KEE
 !endif
 
 CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_

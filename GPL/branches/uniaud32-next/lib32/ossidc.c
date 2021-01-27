@@ -31,9 +31,6 @@
 #include <devhelp.h>
 #include <unicard.h>
 #include <version.h>
-#ifdef KEE
-#include <kee.h>
-#endif
 #include "initcall.h"
 
 extern DWORD TimerHandler16; 	//drv32\strategy.asm
