@@ -327,7 +327,7 @@ static int hda_tegra_first_init(struct azx *chip, struct platform_device *pdev)
 	 * GCAP_NSDO is bits 19:18 in T_AZA_DBG_CFG_2,
 	 * 0 for 1 SDO, 1 for 2 SDO, 2 for 4 SDO lines.
 	 */
-	if (of_device_is_compatible(np, "nvidia,tegra194-hda")) {
+	if (of_device_is_compatible(np, "nvidia,tegra30-hda"))
 		u32 val;
 
 		dev_info(card->dev, "Override SDO lines to %u\n",
