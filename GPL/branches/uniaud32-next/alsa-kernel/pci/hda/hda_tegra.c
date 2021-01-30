@@ -327,7 +327,7 @@ static int hda_tegra_first_init(struct azx *chip, struct platform_device *pdev)
 	 * GCAP_NSDO is bits 19:18 in T_AZA_DBG_CFG_2,
 	 * 0 for 1 SDO, 1 for 2 SDO, 2 for 4 SDO lines.
 	 */
-	if (of_device_is_compatible(np, "nvidia,tegra30-hda"))
+	if (of_device_is_compatible(np, "nvidia,tegra194-hda")) {
 		u32 val;
 
 		dev_info(card->dev, "Override SDO lines to %u\n",
@@ -388,7 +388,7 @@ static int hda_tegra_first_init(struct azx *chip, struct platform_device *pdev)
 	 * in powers of 2, next available ratio is 16 which can be
 	 * used as a limiting factor here.
 	 */
-	if (of_device_is_compatible(np, "nvidia,tegra194-hda"))
+	if (of_device_is_compatible(np, "nvidia,tegra30-hda"))
 		chip->bus.core.sdo_limit = 16;
 
 	/* codec detection */
