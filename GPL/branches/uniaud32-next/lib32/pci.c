@@ -505,7 +505,7 @@ int pci_register_driver(struct pci_driver *driver)
   {
     int iTableIx;
 
-    rprintf((__func__": query_device found %x %x:%x class=%x checking %s",
+    rprintf((__func__": query_device found %x %04x:%04x class=%x checking %s",
       ulLast, pcidev->vendor, pcidev->device, pcidev->class, driver->name));
 
     usVendor = 0;
