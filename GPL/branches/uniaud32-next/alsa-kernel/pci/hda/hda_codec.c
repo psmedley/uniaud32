@@ -6,10 +6,6 @@
  */
 
 #include <linux/init.h>
-#ifdef TARGET_OS2
-#include <linux/time.h>
-#include <linux/mm.h>
-#endif
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
@@ -628,10 +624,6 @@ void snd_hda_shutup_pins(struct hda_codec *codec)
 }
 EXPORT_SYMBOL_GPL(snd_hda_shutup_pins);
 
-// 2020-11-17 SHL
-#include <../../../lib32/internal.h>
-
-
 #ifdef CONFIG_PM
 /* Restore the pin controls cleared previously via snd_hda_shutup_pins() */
 static void restore_shutup_pins(struct hda_codec *codec)
@@ -751,14 +743,12 @@ struct hda_pcm *snd_hda_codec_pcm_new(struct hda_codec *codec,
 	va_start(args, fmt);
 	pcm->name = kvasprintf(GFP_KERNEL, fmt, args);
 	va_end(args);
-
 	if (!pcm->name) {
 		kfree(pcm);
 		return NULL;
 	}
 
 	list_add_tail(&pcm->list, &codec->pcm_list_head);
-
 	return pcm;
 }
 EXPORT_SYMBOL_GPL(snd_hda_codec_pcm_new);
@@ -2317,6 +2307,7 @@ static void set_dig_out(struct hda_codec *codec, hda_nid_t nid,
 			int mask, int val)
 {
 	const hda_nid_t *d;
+
 	snd_hdac_regmap_update(&codec->core, nid, AC_VERB_SET_DIGI_CONVERT_1,
 			       mask, val);
 	d = codec->follower_dig_outs;
@@ -3098,7 +3089,6 @@ EXPORT_SYMBOL_GPL(snd_pcm_2_1_chmaps);
 int snd_hda_codec_build_controls(struct hda_codec *codec)
 {
 	int err = 0;
-
 	hda_exec_init_verbs(codec);
 	/* continue to initialize... */
 	if (codec->patch_ops.init)
