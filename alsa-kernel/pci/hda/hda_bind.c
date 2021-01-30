@@ -15,8 +15,6 @@
 #include <sound/hda_codec.h>
 #include "hda_local.h"
 
-// 2020-11-17 SHL
-#include <../../../lib32/internal.h>
 #pragma disable_message (201)
 
 /*
@@ -39,6 +37,7 @@ static int hda_codec_match(struct hdac_device *dev, struct hdac_driver *drv)
 			return 1;
 		}
 	}
+
 	return 0;
 }
 
@@ -101,7 +100,6 @@ static int hda_codec_driver_probe(struct device *dev)
 	err = snd_hda_codec_set_name(codec, codec->preset->name);
 	if (err < 0)
 		goto error;
-
 	err = snd_hdac_regmap_init(&codec->core);
 	if (err < 0)
 		goto error;
@@ -131,8 +129,8 @@ static int hda_codec_driver_probe(struct device *dev)
 			goto error_module;
 		snd_hda_codec_register(codec);
 	}
-	codec->core.lazy_cache = true;
 
+	codec->core.lazy_cache = true;
 	return 0;
 
  error_module:
@@ -307,6 +305,7 @@ int snd_hda_codec_configure(struct hda_codec *codec)
 		codec->probe_id = HDA_CODEC_ID_GENERIC;
 	else
 		codec->probe_id = 0;
+
 	err = snd_hdac_device_register(&codec->core);
 	if (err < 0)
 		return err;
@@ -320,6 +319,7 @@ int snd_hda_codec_configure(struct hda_codec *codec)
 			goto error;
 		}
 	}
+
 	return 0;
 
  error:
