@@ -714,9 +714,11 @@ get_hda_cvt_setup(struct hda_codec *codec, hda_nid_t nid)
 static void release_pcm(struct kref *kref)
 {
 	struct hda_pcm *pcm = container_of(kref, struct hda_pcm, kref);
-
+#ifndef TARGET_OS2
+/* don't do this on OS/2 - results in the device being free'd and can't be re-opened */
 	if (pcm->pcm)
 		snd_device_free(pcm->codec->card, pcm->pcm);
+#endif
 	clear_bit(pcm->device, pcm->codec->bus->pcm_dev_bits);
 	kfree(pcm->name);
 	kfree(pcm);

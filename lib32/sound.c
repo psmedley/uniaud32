@@ -618,7 +618,6 @@ OSSRET OSS32_WaveClose(OSSSTREAMID streamid)
 		if (opened_handles[i].handle == pHandle)
 		{
 			dprintf(("Found phandle for closing: %x reuse flag: %i\n", pHandle, opened_handles[i].reuse));
-#if 0 //2020-12-27
 			if (!opened_handles[i].reuse)
 			{
 				ret = pHandle->file.f_op->release(&pHandle->inode, &pHandle->file);
@@ -626,7 +625,6 @@ OSSRET OSS32_WaveClose(OSSSTREAMID streamid)
 				kfree(pHandle);   //free handle data
 				OSS32_CloseUNI16(); /* say to UNIAUD16 that we closing now */
 			} else
-#endif
 			{
 				/* prepare for reuse */
 				pHandle->file.f_op->unlocked_ioctl(&pHandle->file, SNDRV_PCM_IOCTL_RESET, 0);
