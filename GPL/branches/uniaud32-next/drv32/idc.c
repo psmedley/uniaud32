@@ -27,18 +27,15 @@
 #define INCL_DOSINFOSEG
 #include <os2.h>
 //DAZ }
-#include <devtype.h>
 #include <devhelp.h>
-//#include <strategy.h>
 #include <ossidc32.h>
 #include <irqos2.h>
-#include <stacktoflat.h>
 #include <dbgos2.h>
 
 //16:32 address of 16 bits pdd idc handler
 IDC16_HANDLER idc16_PddHandler = 0;
 extern int pcm_device;
-WORD32 OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket);
+OSSRET OSS32IDC(ULONG cmd, PIDC32_PACKET pPacket);
 
 //packet pointer must reference a structure on the stack
 

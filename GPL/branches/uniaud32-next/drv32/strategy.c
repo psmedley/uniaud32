@@ -28,16 +28,15 @@
 #include <os2.h>
 
 #include <devhelp.h>
-//DAZ #include <devrp.h>
-#include <devown.h>
-#include "strategy.h"
 #include <ossidc32.h>
 #include <dbgos2.h>
 #include <string.h>
+#include <u32ioctl.h>
+#include "devown.h"
+#include "strategy.h"
 
 ULONG StratRead(REQPACKET __far *_rp);
 ULONG StratIOCtl(REQPACKET __far *_rp);
-ULONG StratClose(REQPACKET __far *_rp);
 
 ULONG DiscardableInit(REQPACKET __far*);
 ULONG deviceOwner = DEV_NO_OWNER;
@@ -53,6 +52,22 @@ ULONG StratOpen(REQPACKET __far* rp)
     deviceOwner = DEV_PDD_OWNER;
   }
   numOS2Opens++;
+  return RPDONE;
+}
+
+//******************************************************************************
+ULONG StratClose(REQPACKET __far* rp)
+{
+  // only called if device successfully opened
+  //  printk("strat close\n");
+  numOS2Opens--;
+
+  UniaudCloseAll(rp->open_close.usSysFileNum);
+
+  if (numOS2Opens == 0)
+  {
+    deviceOwner = DEV_NO_OWNER;
+  }
   return RPDONE;
 }
 

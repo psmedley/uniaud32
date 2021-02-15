@@ -37,6 +37,12 @@
 #include <irqos2.h>
 #include <dbgos2.h>
 
+#pragma pack(1)
+#include     "infoseg.h"
+#pragma pack()
+extern PVOID  KernSISData;
+#define	KernSISData	 	((struct InfoSegGDT *)&KernSISData)
+
 static   long          jiffiems    = 1000/HZ;
 static   long          lasttime    = 0;
 unsigned long volatile jiffies     = 0;
@@ -48,7 +54,7 @@ void ALSA_TIMER()
 { 
     long delta, newtime, remainder;
 
-    newtime    = os2gettimemsec();
+    newtime    = KernSISData->SIS_MsCount;
     delta      = newtime - lasttime;
 
     jiffies   += delta/jiffiems;
@@ -96,10 +102,10 @@ void mdelay(unsigned long msecs)
 void do_gettimeofday(struct timeval *tv)
 {
 #if 0
-    tv->tv_sec  = 0; //os2gettimesec();
-    tv->tv_usec = os2gettimemsec() * 1000;
+    tv->tv_sec  = 0; //KernSISData->SIS_BigTime;
+    tv->tv_usec = KernSISData->SIS_MsCount * 1000;
 #else /* r.ihle patch */
-    unsigned u = os2gettimemsec();
+    unsigned u = KernSISData->SIS_MsCount;
     tv->tv_sec  = u / 1000;
     tv->tv_usec = (u % 1000) * 1000;
 #endif

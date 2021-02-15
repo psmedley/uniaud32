@@ -1,9 +1,8 @@
 #define INCL_NOPMAPI
 #include <os2.h>
-#include <devhelp.h>
-#include <strategy.h>
 #include <dbgos2.h>
 #include <string.h> // memcpy
+#include "strategy.h"
 
 int   rdOffset= 0;
 int   wrOffset= 0;

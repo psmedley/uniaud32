@@ -5,6 +5,9 @@ ROOT=$(%ROOT)
 
 !include $(ROOT)\tools\header.mif
 
+# note: Watcom headers must be before DDK headers to avoid conflicts
+# with C runtime headers
+%INCLUDE = $(%INCLUDE)$(DDK)\base\h;
 AINCLUDES = $(DDK)\base\H
 
 !if "$(IBM_BUILD)" == "1"

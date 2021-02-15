@@ -29,19 +29,15 @@
 
 // Device support
 #include <devhelp.h>
-#include <devtype.h>
-//DAZ #include <devrp.h>
-#include <strategy.h>
-#include "devown.h"
 #include <version.h>
 #include <ossidc32.h>
 #include <dbgos2.h>
-#include <irqos2.h>
 #include <osspci.h>
 #include <kee.h>
+#include <malloc.h>
 #include "parse.h"
-#include "malloc.h"
 #include "sound/version.h"
+#include "strategy.h"
 
 const char ERR_ERROR[]   = "ERROR: ";
 const char ERR_LOCK[]    = "Unable to lock 32 bit data & code segments, exiting...\r\r\n";
@@ -227,9 +223,6 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
     sprintf(debugmsg, szCodeStartEnd, OffsetBeginCS32, OffsetFinalCS32);
     WriteString(debugmsg, strlen(debugmsg));
   }
-
-  //get the current time (to force retrieval of GIS pointer)
-  os2gettimemsec();
 
   char szMixerName[64];
   char szDeviceName[128];

@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include "soundoss.h"
 
+#include <u32ioctl.h>
+
 POSS32_DEVCAPS pcmcaps[8] = {0,0,0,0,0,0,0,0};
 extern int pcm_device;
 extern OpenedHandles opened_handles[8*256];
@@ -33,8 +35,6 @@ struct snd_pcm_substream *substream_int[8*256] = {0}; // interrupted substream
 int control_id_changed = 0;
 int card_id_changed = 0;
 int unlock_all = 0;
-int GetUniaudPcmCaps(ULONG deviceid, void *caps);
-void FillCaps(ULONG deviceid);
 int pcm_instances(int card_id);
 
 void uniaud_set_interrupted_substream(struct snd_pcm_substream *substream)
@@ -179,6 +179,7 @@ int SetPCMInstance(int card_id, int pcm)
 		return pcm_device;
 }
 
+/*
 int GetPcmForChannels(ULONG deviceid, int type, int channels)
 {
 	POSS32_DEVCAPS pcaps = NULL;
@@ -219,6 +220,7 @@ int GetPcmForChannels(ULONG deviceid, int type, int channels)
 
 	return sel_pcm;
 }
+*/
 
 int GetMaxChannels(ULONG deviceid, int type)
 {
@@ -261,7 +263,7 @@ int GetMaxChannels(ULONG deviceid, int type)
 /*
  returns pcm caps
  */
-int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
+static int GetUniaudPcmCaps1(ULONG deviceid, void *caps)
 {
 	POSS32_DEVCAPS pcaps = (POSS32_DEVCAPS)caps;
 	int i;

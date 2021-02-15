@@ -13,20 +13,14 @@
 #include <os2.h>
 
 #include <devhelp.h>
-#include <devinfo.h>
-
-#include <rmbase.h>		// Resource manager definitions.
-#include "rmcalls.h"
-#include <rmioctl.h>
-
 #include <version.h>
 #include <dbgos2.h>
-#include <unicard.h>
 #include <osspci.h>
 #include <ossidc32.h>
-#include "pciids.h"
-
 #include <string.h>
+#include "rmbase.h"		// Resource manager definitions.
+#include "rmcalls.h"
+#include "pciids.h"
 
 #define	MAX_RESHANDLES	16
 
