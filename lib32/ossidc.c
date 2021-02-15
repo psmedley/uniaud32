@@ -32,6 +32,7 @@
 #include <unicard.h>
 #include <version.h>
 #include "initcall.h"
+#include <u32ioctl.h>
 
 extern DWORD TimerHandler16; 	//drv32\strategy.asm
 extern int OSS32_ProcessMIDIIRQ(int bytes);
@@ -94,7 +95,6 @@ cardcalls_t cardcalls[CARDS_NUM] = {
 int 	   nrCardsDetected = 0;
 int 	   fStrategyInit = FALSE;
 void pcm_info(void);
-void FillCaps(ULONG deviceid);
 
 //******************************************************************************
 // This routine should be discarded after init time

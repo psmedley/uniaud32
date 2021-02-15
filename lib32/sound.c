@@ -36,14 +36,13 @@
 #include <stacktoflat.h>
 #include <stdlib.h>
 #include <proto.h>
-//#include <dbgos2.h>
+#include <u32ioctl.h>
 #include "soundoss.h"
 
 #undef samples_to_bytes
 #undef bytes_to_samples
 #define samples_to_bytes(a) 	((a*pHandle->doublesamplesize)/2)
 #define bytes_to_samples(a)    (pHandle->doublesamplesize ? ((a*2)/pHandle->doublesamplesize) : a)
-int GetMaxChannels(ULONG deviceid, int type);
 
 struct file_operations oss_devices[OSS32_MAX_DEVICES] = {0};
 const struct file_operations *alsa_fops = NULL;
