@@ -23,10 +23,7 @@
  *
  */
 
-#define INCL_NOPMAPI
-#define INCL_DOSINFOSEG    // Need Global info seg in rm.cpp algorithms
 #include <os2.h>
-
 #include <devhelp.h>
 #include <ossidc32.h>
 #include <dbgos2.h>
@@ -186,4 +183,3 @@ ULONG Strategy(REQPACKET __far* rp)
   if (rp->bCommand < sizeof(StratDispatch)/sizeof(StratDispatch[0])) return(StratDispatch[rp->bCommand](rp));
   else return(RPERR_BADCOMMAND | RPDONE);
 }
-

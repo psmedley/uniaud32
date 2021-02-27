@@ -53,8 +53,8 @@ CDEFINES = -DIBM_BUILD
 #
 #===================================================================
 
-FILES = begin.obj startup.obj strategy.obj read.obj init.obj parse.obj idc.obj &
-        dispatch.obj rmhelp.obj irq.obj impdos.lib impkee.lib end.obj
+FILES = startup.obj strategy.obj read.obj init.obj parse.obj idc.obj &
+        dispatch.obj rmhelp.obj irq.obj impdos.lib impkee.lib
 
 LIBS = $(ALSA_LIB)\linuxlib.lib $(ALSA_LIB)\core.lib $(ALSA_LIB)\ac97.lib $(ALSA_LIB)\pci.lib &
  $(ALSA_LIB)\ca0106.lib $(ALSA_LIB)\hda.lib $(ALSA_LIB)\sequencer.lib $(ALSA_LIB)\opl3.lib &
@@ -84,7 +84,6 @@ $(LNKFILE): $(MAKEFILE)
   @for %f in ($(FILES)) do @%append $^@ file $(OBJDIR)\%f
   @for %f in ($(LIBS)) do @%append $^@ library %f
   @%write $^@ library $(WATCOM)\lib386\os2\clib3r.lib
-  @%write $^@ library $(WATCOM)\lib386\os2\os2386.lib
 !else
 $(LNKFILE): $(MAKEFILE)
   @%write $^@ /OUT:$(OBJDIR)\$(TARGET).sys
@@ -92,7 +91,6 @@ $(LNKFILE): $(MAKEFILE)
   @for %f in ($(FILES)) do @%append $^@ $(OBJDIR)\%f
   @for %f in ($(LIBS)) do @%append $^@ %f
   @%write $^@ $(WATCOM)\lib386\os2\clib3r.lib
-  @%write $^@ $(WATCOM)\lib386\os2\os2386.lib
 !ifdef %DRV32KIT
   @%write $^@ $(%DRV32KIT)\drv32.lib
 !endif

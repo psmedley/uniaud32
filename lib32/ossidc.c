@@ -206,10 +206,6 @@ int OSS32_CloseUNI16(void)
 }
 
 //******************************************************************************
-int MyDevBlock(ULONG id, ULONG tout, char flag)
-{
-	return DevBlock(id,tout, flag);
-}
 
 int OSS32_DebugString(char *buffer, ULONG size)
 {

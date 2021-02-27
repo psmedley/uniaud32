@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include "soundoss.h"
 
+#include <kee.h>
 #include <u32ioctl.h>
 
 POSS32_DEVCAPS pcmcaps[8] = {0,0,0,0,0,0,0,0};
@@ -60,7 +61,6 @@ void uniaud_set_interrupted_substream(struct snd_pcm_substream *substream)
 int WaitForControlChange(int card_id, int timeout)
 {
 	int ctl_id;
-	ULONG blkid = 0;
 	int i = 0;
 
 	while (1)
@@ -76,7 +76,7 @@ int WaitForControlChange(int card_id, int timeout)
 		if (i > timeout)
 			return -ETIME;
 
-		MyDevBlock(blkid, 1, 0);
+                KernBlock((ULONG)&WaitForControlChange, 1, 0, 0, 0);
 		if (unlock_all)
 		{
 			unlock_all = 0;
@@ -88,7 +88,6 @@ int WaitForControlChange(int card_id, int timeout)
 
 int WaitForPCMInterrupt(void *handle, int timeout)
 {
-	ULONG blkid = 0;
 	int i = 0;
 	int j = 0;
 	struct snd_pcm_file *pcm_file = NULL;
@@ -142,7 +141,7 @@ int WaitForPCMInterrupt(void *handle, int timeout)
 			return -ETIME;
 		}
 
-		MyDevBlock(blkid, 1, 0);
+                KernBlock((ULONG)&WaitForPCMInterrupt, 1, 0, 0, 0);
 		if (unlock_all)
 		{
 			unlock_all = 0;

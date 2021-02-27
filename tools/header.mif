@@ -78,11 +78,11 @@ LFLAGS = system os2v2 physdevice option int, dosseg, map, eliminate, mang, tog s
 QFLAGS = system os2 option quiet, map, align=512
 LINK = wlink $(LFLAGS)
 !else
-LD2TARGETFLAGS =/PDD /OLDcpp /map /linenumbers
+LD2TARGETFLAGS = /PDD /nologo /noe /packcode /packdata /nod /OLDcpp
 !if "$(DEBUG)" == "1"
-LD2FLAGS = /nologo /noe /map /packcode /packdata /nod /debug $(LD2TARGETFLAGS)
+LD2FLAGS = /linenumbers /debug $(LD2TARGETFLAGS)
 !else
-LD2FLAGS = /nologo /noe /map /packcode /packdata /exepack:2 /nod $(LD2TARGETFLAGS)
+LD2FLAGS = /exepack:2 $(LD2TARGETFLAGS)
 !endif
 LINK = ilink $(LD2FLAGS)
 !endif

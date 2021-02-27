@@ -37,6 +37,9 @@ CODE32 ends
 _TEXT segment dword public use32 'CODE'
 _TEXT ends
 
+BEGTEXT segment dword public use32 'CODE'
+BEGTEXT ends
+
 LASTCODE32 segment dword public use32 'CODE'
 LASTCODE32 ends
 
@@ -73,4 +76,4 @@ LASTDATA32 ENDS
 ;order is important!
 DGROUP  group BSS32, DATA32, _DATA, CONST32, C_COMMON, c_common, CONST2, CONST, _BSS, LASTDATA32
 
-CGROUP  group FIRSTCODE32, CODE32, _TEXT, LASTCODE32
+CGROUP  group FIRSTCODE32, CODE32, _TEXT, BEGTEXT, LASTCODE32

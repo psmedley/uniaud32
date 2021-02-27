@@ -36,29 +36,10 @@
 
 DATA16 segment
 		extrn DOS32FLATDS : abs                ; ring 0 FLAT kernel data selector
-  	        public __OffFinalDS16
-		public help_header
-		public uniaud_header
-		public _MSG_TABLE16
-		public DevHelpInit
-		public fOpen	
-		public InitPktSeg
-		public InitPktOff
-		public _MESSAGE_STR
-		public pddname16
-		public FileName
- 	        public _RM_Help0
- 	        public _RM_Help1
-	        public _RM_Help3
-	        public _RMFlags
-IFDEF DEBUG
-		public DbgU32TimerCnt
-		public DbgU32IntCnt
-ENDIF
-
 ;*********************************************************************************************
 ;************************* Device Driver Header **********************************************
 ;*********************************************************************************************
+		public help_header
 help_header     dw OFFSET DATA16:uniaud_header         ; Pointer to next driver
 		dw SEG DATA16:uniaud_header
                 dw 1000100110000000b            ; Device attributes
@@ -91,7 +72,8 @@ help_header     dw OFFSET DATA16:uniaud_header         ; Pointer to next driver
 ;                             +---------------------- InitComplete
                 dw 0000000000000000b
 
-uniaud_header    dd -1
+		public uniaud_header
+uniaud_header   dd -1
                 dw 1101100110000000b            ; Device attributes
 ;                  ||||| +-+   ||||
 ;                  ||||| | |   |||+------------------ STDIN
@@ -122,49 +104,59 @@ uniaud_header    dd -1
 ;                             +---------------------- InitComplete
                 dw 0000000000000000b
 
+
+		public DevHelpInit
 DevHelpInit	dd 0
+
+		public fOpen	
 fOpen		dd 0
+
+		public InitPktSeg
+		public InitPktOff
 InitPktSeg	dw 0
 InitPktOff	dw 0
+
 IFDEF DEBUG
-DbgU32TimerCnt dd 0
-DbgU32IntCnt dd 0
+		public DbgU32TimerCnt
+		public DbgU32IntCnt
+DbgU32TimerCnt  dd 0
+DbgU32IntCnt    dd 0
 ENDIF
+
 ;needed for rmcalls.lib
+ 	        public _RM_Help0
+ 	        public _RM_Help1
+	        public _RM_Help3
+	        public _RMFlags
 _RM_Help0       dd 0
 _RM_Help1       dd 0
 _RM_Help3       dd 0
 _RMFlags        dd 0
+
+		public _MESSAGE_STR
+		public _MSG_TABLE16
 _MESSAGE_STR    db 1024 dup (0)
 _MSG_TABLE16    dw 0	;message length
 		dw OFFSET _MESSAGE_STR	;message far pointer
 		dw SEG    _MESSAGE_STR
 
-pddname16	db 'ALSA32$'
-FileName 	db "ALSAHLP$", 0
-ResMgr          DB  52H,45H,53H,4dH,47H,52H,24H,20H
-                DB  00H
+FileName 	db 'ALSAHLP$', 0
+ResMgr          db 'RESMGR$ ',0
+
 _RMIDCTable     DB  00H,00H,00H,00H,00H,00H,00H,00H
                 DB  00H,00H,00H,00H
 
 ;last byte in 16 bits data segment
-__OffFinalDS16 label byte
+  	        public __OffFinalDS16
+__OffFinalDS16  label byte
 
 DATA16 ends
-
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
 CODE16 segment
         assume cs:CODE16, ds:DATA16
 
-        public __OffFinalCS16
-
-        public help_stub_strategy
-        public uniaud_stub_strategy
-	public uniaud_stub_idc
-	public uniaud_stub_timer
-	public thunk3216_devhelp
-	public thunk3216_devhelp_modified_ds
         extrn DOSOPEN       : far
-        extrn DOSWRITE      : far
+        extrn _DOSWRITE     : far
         extrn DOSCLOSE      : far
 
         ALIGN 2
@@ -393,7 +385,7 @@ device_init proc near
 	push	ss
         lea     dx, [bp - 2]
         push    dx
-        call    DOSWRITE
+        call    _DOSWRITE
 
 	pop	eax
 
@@ -412,16 +404,17 @@ device_init endp
 
 	ALIGN   2
 ;use devhlp pointer stored in 16 bits code segment
+	public thunk3216_devhelp
 thunk3216_devhelp:
 	push	ds
 	push	DATA16
 	pop	ds
         call 	dword ptr DevHelpInit
 	pop	ds
-
         jmp 	far ptr FLAT:thunk1632_devhelp
 
 	ALIGN 	2
+	public thunk3216_devhelp_modified_ds
 thunk3216_devhelp_modified_ds:
 	push	gs
 	push	DATA16
@@ -1019,21 +1012,20 @@ ISR07_16 proc far
 ISR07_16 endp
 
 ;end of 16 bits code segment
+               public __OffFinalCS16
 __OffFinalCS16 label byte
 
 CODE16 ends
-
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+;Label to mark start of 32 bits code section
+FIRSTCODE32 segment
+               public __OffBeginCS32
+__OffBeginCS32 label byte
+FIRSTCODE32 ends
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
 CODE32 segment
 ASSUME CS:FLAT, DS:FLAT, ES:FLAT
 
-	public __GETDS
-        public thunk1632_devhelp
-	public thunk1632_devhelp_modified_ds	
-        public DevHlp
-        public DevHlp_ModifiedDS
-	public STRATEGY_
-	public IDC_
-        public TIMER_
         extrn  ALSA_STRATEGY  : near
 	extrn  ALSA_IDC : near
 	extrn  ALSA_TIMER_ : near
@@ -1059,8 +1051,8 @@ DevHelpDebug  proc near
         ret
 DevHelpDebug  endp
 
-
         ALIGN 4
+        public DevHlp
 DevHlp proc near
         DevThunkStackTo16_Int
 	jmp	far ptr CODE16:thunk3216_devhelp
@@ -1402,12 +1394,36 @@ iodelay32_ proc near
 iodelay32_ endp
 
 CODE32 ends
-
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+;Label to mark end of 32 bits code section
+LASTCODE32 segment
+       public __OffFinalCS32
+__OffFinalCS32 label byte
+LASTCODE32 ends
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+;Label to mark start of 32 bits data section
+BSS32 segment
+    public  __OffBeginDS32
+    __OffBeginDS32   dd 0
+BSS32 ends
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
 DATA32 	segment
+
+    public  stackbase
+    public  stacksel
+    stackbase dd 0
+    stacksel  dd 0
+
     public  __OffsetFinalCS16
     public  __OffsetFinalDS16
-    public  PDDName
+    __OffsetFinalCS16 dw OFFSET CODE16:__OffFinalCS16
+    __OffsetFinalDS16 dw OFFSET DATA16:__OffFinalDS16
+
     public  _MSG_TABLE32
+    _MSG_TABLE32     dw OFFSET  DATA16:_MSG_TABLE16
+    		     dw SEG     DATA16:_MSG_TABLE16
+
+;16:32 addresses of resource manager functions in 16 bits code segment
     public  RMAllocResource1632
     public  RMModifyResources1632
     public  RMDeallocResource1632
@@ -1418,33 +1434,6 @@ DATA32 	segment
     public  RMGetNodeInfo1632
     public  RMDevIDToHandleList1632
     public  RMHandleToResourceHandleList1632
-    public  _TimerHandler16
-    public  _ISR00
-    public  _ISR01
-    public  _ISR02
-    public  _ISR03
-    public  _ISR04
-    public  _ISR05
-    public  _ISR06
-    public  _ISR07
-
-    public  stackbase
-    public  stacksel
-
-    stackbase dd 0
-    stacksel  dd 0
-
-    __OffsetFinalCS16 dw OFFSET CODE16:__OffFinalCS16
-    __OffsetFinalDS16 dw OFFSET DATA16:__OffFinalDS16
-
-    _MSG_TABLE32     dw OFFSET  DATA16:_MSG_TABLE16
-    		     dw SEG     DATA16:_MSG_TABLE16
-
-;16:16 address of driver name
-    PDDName          dw OFFSET  DATA16:pddname16
-		     dw SEG     DATA16:pddname16
-
-;16:32 addresses of resource manager functions in 16 bits code segment
     RMAllocResource1632  dd OFFSET CODE16:_RMAllocResource16
 		         dw SEG CODE16:_RMAllocResource16
 		         dw 0
@@ -1478,10 +1467,19 @@ DATA32 	segment
    	        	          dw 0
 
 ;16:16 address of uniaud_stub_timer
+    public  _TimerHandler16
     _TimerHandler16   	 dd OFFSET CODE16:uniaud_stub_timer
                      	 dw OFFSET CODE16:uniaud_stub_timer
 
 ;16:16 addresses of interrupt dispatchers
+    public  _ISR00
+    public  _ISR01
+    public  _ISR02
+    public  _ISR03
+    public  _ISR04
+    public  _ISR05
+    public  _ISR06
+    public  _ISR07
     _ISR00               dw OFFSET CODE16:ISR00_16
 			 dw SEG CODE16:ISR00_16
     _ISR01               dw OFFSET CODE16:ISR01_16
@@ -1498,7 +1496,12 @@ DATA32 	segment
 			 dw SEG CODE16:ISR06_16
     _ISR07               dw OFFSET CODE16:ISR07_16
                          dw SEG CODE16:ISR07_16
-DATA32 ends
+DATA32     ends
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+;Label to mark end of 32 bits data section
+LASTDATA32 segment
+    public __OffFinalDS32
+    __OffFinalDS32 dd 0
+LASTDATA32 ends
 
-end
-
+           end
