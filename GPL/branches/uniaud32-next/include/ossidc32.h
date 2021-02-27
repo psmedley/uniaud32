@@ -31,8 +31,6 @@
 extern "C" {
 #endif
 
-int MyDevBlock(ULONG id, ULONG tout, char flag);
-
 //32 bits IDC procedures
 //16 bits pdd calls this during init. OSS_InitDriver calls init_module
 OSSRET OSS32_Initialize();

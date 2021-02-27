@@ -31,7 +31,7 @@ extern "C" {
 }
 #endif
 
-#include <devhelp.h>
+#include <devtype.h>
 #include <string.h>
 #include "parse.h"         // NUM_DEVICES
 

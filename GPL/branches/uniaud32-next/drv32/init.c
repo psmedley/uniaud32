@@ -28,7 +28,8 @@
 #include <string.h>
 
 // Device support
-#include <devhelp.h>
+#include <devtype.h>
+#include <stacktoflat.h>
 #include <version.h>
 #include <ossidc32.h>
 #include <dbgos2.h>
@@ -110,7 +111,7 @@ int LockSegments(void)
     }
     segsize &= ~0xFFF;
 
-    if(KernVMLock(VMDHL_LONG,
+    if(KernVMLock(KEE_VML_LONGLOCK,
                   (PVOID)((OffsetBeginDS32) & ~0xFFF),
                   segsize,
                   &lock,
@@ -127,7 +128,7 @@ int LockSegments(void)
     }
     segsize &= ~0xFFF;
 
-    if(KernVMLock(VMDHL_LONG,
+    if(KernVMLock(KEE_VML_LONGLOCK,
                   (PVOID)((OffsetBeginCS32) & ~0xFFF),
                   segsize,
                   &lock,

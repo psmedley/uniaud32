@@ -27,7 +27,8 @@
 #define INCL_DOSINFOSEG
 #include <os2.h>
 //DAZ }
-#include <devhelp.h>
+#include <devtype.h>
+#include <stacktoflat.h>
 #include <ossidc32.h>
 #include <irqos2.h>
 #include <dbgos2.h>

@@ -12,7 +12,8 @@
 #define INCL_DOSINFOSEG
 #include <os2.h>
 
-#include <devhelp.h>
+#include <devtype.h>
+#include <stacktoflat.h>
 #include <version.h>
 #include <dbgos2.h>
 #include <osspci.h>

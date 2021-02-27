@@ -184,11 +184,3 @@ o_dataend	dw ?
 o_bpbarray	dd ?
 o_status	dw ?
 rpInitOut       ends
-
-
-; definitions for 16 bits resource manager buffers
-; (also in rm.hpp!!)
-MAXSIZE_RMNodeData     EQU 1024
-MAXSIZE_RMResources    EQU 128
-MAXSIZE_RMHandleList   EQU 128
-MAXSIZE_RMResourceList EQU 256
