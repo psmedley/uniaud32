@@ -5,7 +5,7 @@ ROOT=$(%ROOT)
 
 !include $(ROOT)\tools\header.mif
 
-WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
+WMAKEOPTS=-h $(__MAKEOPTS__) DEBUG=$(DEBUG)
 
 #===================================================================
 #
@@ -14,7 +14,7 @@ WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
 #===================================================================
 FILES = sound.obj init.obj memory.obj memalloc.obj sgbuf.obj &
   control.obj device.obj misc.obj &
-  sound_oss.obj info_oss.obj &
+  sound_oss.obj info_oss.obj ctljack.obj jack.obj &
   pcm.obj pcm_native.obj pcm_lib.obj pcm_misc.obj pcm_timer.obj pcm_memory.obj &
   rawmidi.obj timer.obj rtctimer.obj hwdep.obj info.obj vmaster.obj
 

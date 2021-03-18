@@ -1,4 +1,4 @@
-WMAKEOPTS=-h $(__MAKEOPTS__) KEE=$(KEE) DEBUG=$(DEBUG)
+WMAKEOPTS=-h $(__MAKEOPTS__) DEBUG=$(DEBUG)
 
 #===================================================================
 #
@@ -18,6 +18,10 @@ subdirs: .SYMBOLIC
   @cd ..
   @echo BUILDING isa
   @cd isa
+  @wmake $(WMAKEOPTS)
+  @cd ..
+  @echo BUILDING hda
+  @cd hda
   @wmake $(WMAKEOPTS)
   @cd ..
   @echo BUILDING pci
@@ -40,6 +44,10 @@ clean: .SYMBOLIC
   @cd ..
   @echo CLEANING isa
   @cd isa
+  @wmake $(WMAKEOPTS) clean
+  @cd ..
+  @echo CLEANING hda
+  @cd hda
   @wmake $(WMAKEOPTS) clean
   @cd ..
   @echo CLEANING pci

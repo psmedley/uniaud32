@@ -89,5 +89,6 @@ extern void it_real_fn(unsigned long);
 
 #define time_after_eq(a,b)	((long)(a) - (long)(b) >= 0)
 #define time_before_eq(a,b)	time_after_eq(b,a)
+# define del_timer_sync(t)		del_timer(t)
 
 #endif

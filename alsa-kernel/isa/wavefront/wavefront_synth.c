@@ -1,11 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (C) by Paul Barton-Davis 1998-1999
  *
  * Some portions of this file are taken from work that is
  * copyright (C) by Hannu Savolainen 1993-1996
- *
- * This program is distributed under the GNU GENERAL PUBLIC LICENSE (GPL)
- * Version 2 (June 1991). See the "COPYING" file distributed with this software
- * for more info.  
  */
 
 /*  
@@ -20,15 +17,17 @@
  *
  */
 
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/time.h>
 #include <linux/wait.h>
+#include <linux/sched/signal.h>
 #include <linux/firmware.h>
 #include <linux/moduleparam.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/snd_wavefront.h>
 #include <sound/initval.h>
@@ -537,7 +536,7 @@ munge_int32 (unsigned int src,
 	                            /* Note: we leave the upper bits in place */ 
 
 		dst++;
- 	};
+	}
 	return dst;
 };
 
@@ -784,15 +783,17 @@ wavefront_send_patch (snd_wavefront_t *dev, wavefront_patch_info *header)
 	DPRINT (WF_DEBUG_LOAD_PATCH, "downloading patch %d\n",
 				      header->number);
 
+	if (header->number >= ARRAY_SIZE(dev->patch_status))
+		return -EINVAL;
+
 	dev->patch_status[header->number] |= WF_SLOT_FILLED;
 
-	bptr = buf;
 	bptr = munge_int32 (header->number, buf, 2);
 	munge_buf ((unsigned char *)&header->hdr.p, bptr, WF_PATCH_BYTES);
     
 	if (snd_wavefront_cmd (dev, WFC_DOWNLOAD_PATCH, NULL, buf)) {
 		snd_printk ("download patch failed\n");
-		return -(EIO);
+		return -EIO;
 	}
 
 	return (0);
@@ -807,6 +808,9 @@ wavefront_send_program (snd_wavefront_t *dev, wavefront_patch_info *header)
 
 	DPRINT (WF_DEBUG_LOAD_PATCH, "downloading program %d\n",
 		header->number);
+
+	if (header->number >= ARRAY_SIZE(dev->prog_status))
+		return -EINVAL;
 
 	dev->prog_status[header->number] = WF_SLOT_USED;
 
@@ -830,7 +834,7 @@ wavefront_send_program (snd_wavefront_t *dev, wavefront_patch_info *header)
     
 	if (snd_wavefront_cmd (dev, WFC_DOWNLOAD_PROGRAM, NULL, buf)) {
 		snd_printk ("download patch failed\n");	
-		return -(EIO);
+		return -EIO;
 	}
 
 	return (0);
@@ -897,6 +901,9 @@ wavefront_send_sample (snd_wavefront_t *dev,
 		header->number = x;
 	}
 
+	if (header->number >= WF_MAX_SAMPLE)
+		return -EINVAL;
+
 	if (header->size) {
 
 		/* XXX it's a debatable point whether or not RDONLY semantics
@@ -951,7 +958,7 @@ wavefront_send_sample (snd_wavefront_t *dev,
 	if (skip > 0 && header->hdr.s.SampleResolution != LINEAR_16BIT) {
 		snd_printk ("channel selection only "
 			    "possible on 16-bit samples");
-		return -(EINVAL);
+		return -EINVAL;
 	}
 
 	switch (skip) {
@@ -1048,7 +1055,7 @@ wavefront_send_sample (snd_wavefront_t *dev,
 			   NULL, sample_hdr)) {
 		snd_printk ("sample %sdownload refused.\n",
 			    header->size ? "" : "header ");
-		return -(EIO);
+		return -EIO;
 	}
 
 	if (header->size == 0) {
@@ -1074,7 +1081,7 @@ wavefront_send_sample (snd_wavefront_t *dev,
 		if (snd_wavefront_cmd (dev, WFC_DOWNLOAD_BLOCK, NULL, NULL)) {
 			snd_printk ("download block "
 				    "request refused.\n");
-			return -(EIO);
+			return -EIO;
 		}
 
 		for (i = 0; i < blocksize; i++) {
@@ -1134,12 +1141,12 @@ wavefront_send_sample (snd_wavefront_t *dev,
 			if (dma_ack == -1) {
 				snd_printk ("upload sample "
 					    "DMA ack timeout\n");
-				return -(EIO);
+				return -EIO;
 			} else {
 				snd_printk ("upload sample "
 					    "DMA ack error 0x%x\n",
 					    dma_ack);
-				return -(EIO);
+				return -EIO;
 			}
 		}
 	}
@@ -1164,7 +1171,10 @@ wavefront_send_alias (snd_wavefront_t *dev, wavefront_patch_info *header)
 				      "alias for %d\n",
 				      header->number,
 				      header->hdr.a.OriginalSample);
-    
+
+	if (header->number >= WF_MAX_SAMPLE)
+		return -EINVAL;
+
 	munge_int32 (header->number, &alias_hdr[0], 2);
 	munge_int32 (header->hdr.a.OriginalSample, &alias_hdr[2], 2);
 	munge_int32 (*((unsigned int *)&header->hdr.a.sampleStartOffset),
@@ -1180,7 +1190,7 @@ wavefront_send_alias (snd_wavefront_t *dev, wavefront_patch_info *header)
 
 	if (snd_wavefront_cmd (dev, WFC_DOWNLOAD_SAMPLE_ALIAS, NULL, alias_hdr)) {
 		snd_printk ("download alias failed.\n");
-		return -(EIO);
+		return -EIO;
 	}
 
 	dev->sample_status[header->number] = (WF_SLOT_FILLED|WF_ST_ALIAS);
@@ -1195,7 +1205,10 @@ wavefront_send_multisample (snd_wavefront_t *dev, wavefront_patch_info *header)
 	int num_samples;
 	unsigned char *msample_hdr;
 
-	msample_hdr = kmalloc(sizeof(WF_MSAMPLE_BYTES), GFP_KERNEL);
+	if (header->number >= WF_MAX_SAMPLE)
+		return -EINVAL;
+
+	msample_hdr = kmalloc(WF_MSAMPLE_BYTES, GFP_KERNEL);
 	if (! msample_hdr)
 		return -ENOMEM;
 
@@ -1231,7 +1244,7 @@ wavefront_send_multisample (snd_wavefront_t *dev, wavefront_patch_info *header)
 			   msample_hdr)) {
 		snd_printk ("download of multisample failed.\n");
 		kfree(msample_hdr);
-		return -(EIO);
+		return -EIO;
 	}
 
 	dev->sample_status[header->number] = (WF_SLOT_FILLED|WF_ST_MULTISAMPLE);
@@ -1253,7 +1266,7 @@ wavefront_fetch_multisample (snd_wavefront_t *dev,
     
 	if (snd_wavefront_cmd (dev, WFC_UPLOAD_MULTISAMPLE, log_ns, number)) {
 		snd_printk ("upload multisample failed.\n");
-		return -(EIO);
+		return -EIO;
 	}
     
 	DPRINT (WF_DEBUG_DATA, "msample %d has %d samples\n",
@@ -1272,14 +1285,14 @@ wavefront_fetch_multisample (snd_wavefront_t *dev,
 		if ((val = wavefront_read (dev)) == -1) {
 			snd_printk ("upload multisample failed "
 				    "during sample loop.\n");
-			return -(EIO);
+			return -EIO;
 		}
 		d[0] = val;
 
 		if ((val = wavefront_read (dev)) == -1) {
 			snd_printk ("upload multisample failed "
 				    "during sample loop.\n");
-			return -(EIO);
+			return -EIO;
 		}
 		d[1] = val;
 	
@@ -1314,7 +1327,7 @@ wavefront_send_drum (snd_wavefront_t *dev, wavefront_patch_info *header)
 
 	if (snd_wavefront_cmd (dev, WFC_DOWNLOAD_EDRUM_PROGRAM, NULL, drumbuf)) {
 		snd_printk ("download drum failed.\n");
-		return -(EIO);
+		return -EIO;
 	}
 
 	return (0);
@@ -1738,7 +1751,7 @@ snd_wavefront_internal_interrupt (snd_wavefront_card_t *card)
 7 Unused
 */
 
-static int __devinit
+static int
 snd_wavefront_interrupt_bits (int irq)
 
 {
@@ -1766,12 +1779,12 @@ snd_wavefront_interrupt_bits (int irq)
 	return bits;
 }
 
-static void __devinit
+static void
 wavefront_should_cause_interrupt (snd_wavefront_t *dev, 
 				  int val, int port, unsigned long timeout)
 
 {
-	wait_queue_t wait;
+	wait_queue_entry_t wait;
 
 	init_waitqueue_entry(&wait, current);
 	spin_lock_irq(&dev->irq_lock);
@@ -1785,7 +1798,7 @@ wavefront_should_cause_interrupt (snd_wavefront_t *dev,
 	}
 }
 
-static int __devinit
+static int
 wavefront_reset_to_cleanliness (snd_wavefront_t *dev)
 
 {
@@ -1936,7 +1949,7 @@ wavefront_reset_to_cleanliness (snd_wavefront_t *dev)
 	return (1);
 }
 
-static int __devinit
+static int
 wavefront_download_firmware (snd_wavefront_t *dev, char *path)
 
 {
@@ -2009,7 +2022,7 @@ wavefront_download_firmware (snd_wavefront_t *dev, char *path)
 }
 
 
-static int __devinit
+static int
 wavefront_do_reset (snd_wavefront_t *dev)
 
 {
@@ -2098,7 +2111,7 @@ wavefront_do_reset (snd_wavefront_t *dev)
 	return 1;
 }
 
-int __devinit
+int
 snd_wavefront_start (snd_wavefront_t *dev)
 
 {
@@ -2140,7 +2153,7 @@ snd_wavefront_start (snd_wavefront_t *dev)
 	return (0);
 }
 
-int __devinit
+int
 snd_wavefront_detect (snd_wavefront_card_t *card)
 
 {

@@ -199,7 +199,7 @@ APIRET APIENTRY KernLinToPageList(PVOID linaddr,ULONG size,KEEVMPageList* list, 
 APIRET APIENTRY KernVMSetMem(ULONG flags, PVOID linaddr, ULONG size);
 
 /*ordinal 66*/
-ULONG KernSelToFlat(ULONG addr16);
+ULONG APIENTRY KernSelToFlat(ULONG addr16);
 
 /*ordinal 70*/
 APIRET APIENTRY KernDynamicAPI(PVOID addr, ULONG cnt, ULONG dummy, PUSHORT sel);

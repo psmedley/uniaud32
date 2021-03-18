@@ -8,6 +8,7 @@
 #include <asm/uaccess.h>
 #include <linux/wait.h>
 #include <linux/fs.h>
+#include <linux/string.h>
 
 #ifdef __KERNEL__
 
@@ -79,5 +80,19 @@ static void zero_fd_set(unsigned long nr, unsigned long *fdset);
 extern int do_select(int n, fd_set_bits *fds, long *timeout);
 
 #endif /* KERNEL */
+
+/* Epoll event masks */
+#define EPOLLIN		(__force __poll_t)0x00000001
+#define EPOLLPRI	(__force __poll_t)0x00000002
+#define EPOLLOUT	(__force __poll_t)0x00000004
+#define EPOLLERR	(__force __poll_t)0x00000008
+#define EPOLLHUP	(__force __poll_t)0x00000010
+#define EPOLLNVAL	(__force __poll_t)0x00000020
+#define EPOLLRDNORM	(__force __poll_t)0x00000040
+#define EPOLLRDBAND	(__force __poll_t)0x00000080
+#define EPOLLWRNORM	(__force __poll_t)0x00000100
+#define EPOLLWRBAND	(__force __poll_t)0x00000200
+#define EPOLLMSG	(__force __poll_t)0x00000400
+#define EPOLLRDHUP	(__force __poll_t)0x00002000
 
 #endif /* _LINUX_POLL_H */

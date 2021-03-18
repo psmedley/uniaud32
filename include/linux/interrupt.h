@@ -3,8 +3,10 @@
 #define _LINUX_INTERRUPT_H
 
 #include <linux/kernel.h>
-//#include <asm/bitops.h>
+#include <linux/bitops.h>
 #include <asm/atomic.h>
+#include <asm/hardirq.h>
+#include <linux/workqueue.h>
 
 /*
  * For 2.4.x compatibility, 2.4.x can use
@@ -150,4 +152,5 @@ typedef irqreturn_t (*snd_irq_handler_t)(int, void *);
 int request_irq(unsigned int, irq_handler_t handler,
 		    unsigned long, const char *, void *);
 
+static inline void devm_free_irq(struct device *dev, unsigned int irq, void *dev_id) {}
 #endif

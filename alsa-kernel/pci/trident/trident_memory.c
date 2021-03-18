@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *  Copyright (c) by Takashi Iwai <tiwai@suse.de>
@@ -5,31 +6,15 @@
  *
  *  Trident 4DWave-NX memory page allocation (TLB area)
  *  Trident chip can handle only 16MByte of the memory at the same time.
- *
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
  */
 
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/pci.h>
 #include <linux/time.h>
 #include <linux/mutex.h>
 
 #include <sound/core.h>
-#include <sound/trident.h>
+#include "trident.h"
 
 /* page arguments of these two macros are Trident page (4096 bytes), not like
  * aligned pages in others
@@ -139,12 +124,11 @@ static inline void *offset_ptr(struct snd_trident *trident, int offset)
 static struct snd_util_memblk *
 search_empty(struct snd_util_memhdr *hdr, int size)
 {
-	struct snd_util_memblk *blk, *prev;
+	struct snd_util_memblk *blk;
 	int page, psize;
 	struct list_head *p;
 
 	psize = get_aligned_page(size + ALIGN_PAGE_SIZE -1);
-	prev = NULL;
 	page = 0;
 	list_for_each(p, &hdr->block) {
 		blk = list_entry(p, struct snd_util_memblk, list);
@@ -213,7 +197,7 @@ snd_trident_alloc_sg_pages(struct snd_trident *trident,
 		mutex_unlock(&hdr->block_mutex);
 		return NULL;
 	}
-			
+			   
 	/* set TLB entries */
 	idx = 0;
 	for (page = firstpg(blk); page <= lastpg(blk); page++, idx++) {
@@ -262,7 +246,7 @@ snd_trident_alloc_cont_pages(struct snd_trident *trident,
 		mutex_unlock(&hdr->block_mutex);
 		return NULL;
 	}
-			
+			   
 	/* set TLB entries */
 	addr = runtime->dma_addr;
 	ptr = (unsigned long)runtime->dma_area;

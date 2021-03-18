@@ -31,11 +31,9 @@ extern "C" {
 }
 #endif
 
-#include <devhelp.h>
 #include <devtype.h>
-#include <unicard.h>
-#include "parse.h"         // NUM_DEVICES
 #include <string.h>
+#include "parse.h"         // NUM_DEVICES
 
 #define COMM_DEBUG
 

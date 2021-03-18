@@ -2,7 +2,10 @@
 #define __LINUX_WORKQUEUE_H
 
 #include <linux/timer.h>
-#include <sound/compat_22.h>
+#include <linux/completion.h>
+#include <linux/bitops.h>
+
+#define cancel_work_sync(w)	flush_scheduled_work()
 /* we know this is used below exactly once for at most one waiter */
 
 struct work_struct {
@@ -62,4 +65,24 @@ static inline void snd_INIT_WORK(struct work_struct *w, void (*f)(struct work_st
 
 #define create_singlethread_workqueue(name) create_workqueue(name)
 #define cancel_delayed_work_sync flush_delayed_work_sync
+
+/**
+ * schedule_work - put work task in global workqueue
+ * @work: job to be done
+ *
+ * Returns %false if @work was already on the kernel-global workqueue and
+ * %true otherwise.
+ *
+ * This puts a job in the kernel-global workqueue if it was not already
+ * queued and leaves it in the same position on the kernel-global
+ * workqueue otherwise.
+ */
+int schedule_work(struct work_struct *works);
+
+bool flush_delayed_work_sync(struct delayed_work *dwork);
+extern struct workqueue_struct *system_wq;
+
+/* I can't find a more suitable replacement... */
+#define flush_work(work) cancel_work_sync(work)
+
 #endif /* __LINUX_WORKQUEUE_H */

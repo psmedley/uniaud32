@@ -2,10 +2,11 @@
  * Adds the specified line to the end of the specified file.
  * Written by and Copyright (c) 2010-2018 David Azarewicz http://88watts.net
  *
- * @#D Azarewicz:1.03#@##1## 02 Mar 2020              DAZAR1    ::::::@@AddToFile.cmd (c) David Azarewicz 2020
+ * @#D Azarewicz:1.04#@##1## 02 Jan 2021              DAZAR1    ::::::@@AddToFile.cmd (c) David Azarewicz 2021
  * V1.01 16-Sep-2016 First official release
  * V1.02 02-Jun-2017 Added Asd to bldlevel, added DATE1
  * V1.03 02-Mar-2020 Added STRING function
+ * V1.04 02-Jan-2021 Added FILESIZE function
  *
  * The following line is for the help sample code for the VAR function:
 EXAMPLEVAR=Example String
@@ -29,6 +30,7 @@ if (OutFile='') then do
   Say '  VERSIONREVISION - Adds the revision portion of the provided version number.';
   Say '  STRING - Adds the string with %Y substitution.';
   Say '  VAR - Adds the value of the specified variable from a specified file.';
+  Say '  FILESIZE - Adds the file size.';
   Say '  FILE - Adds the contents of a file.';
   Say 'Examples:';
   MyFile='AddToFile.tmp';
@@ -69,6 +71,9 @@ if (OutFile='') then do
   MyCmd=MyFile||',#define XYZ "%A",VAR,EXAMPLEVAR=,AddToFile.cmd';
   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
   call 'AddToFile.cmd' MyCmd;
+  MyCmd=MyFile||',#define FSIZE,FILESIZE,addtofile.cmd';
+  rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
+  call 'AddToFile.cmd' MyCmd;
   MyCmd=MyFile||',InFileName,FILE';
   rc=LineOut(MyFile, '--- AddToFile.cmd '||MyCmd);
   call 'AddToFile.cmd' MyCmd;
@@ -91,6 +96,9 @@ select
   end
 
   when (LEFT(Function,8)='BLDLEVEL') then do
+    /*  option description,BLDLEVEL,Vendor,1.2.3,Description,Fixpack,Asd';
+     *  String            ,Function,Parm1 ,Parm2,Parm3      ,Parm4  ,Parm5
+     */
     Type=SUBSTR(Function,9,1);
 
     /* get hostname for build system */
@@ -110,6 +118,7 @@ select
       Parm3=Substr(Parm3,1,RepLoc-1)||FORMAT(SUBSTR(DATE('S'), 1, 4))||Substr(Parm3,RepLoc+2);
     end
 
+    /*           Vendor     TextVersion        Date/Time/Host    ASD            Revision         Fixpack      Desc */
     NewStr='@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||':'||Parm5||':::'||ProjVersion||'::'||Parm4||'@@'||Parm3;
     if (Type='2') then do
       /*OutStr=String||' "@#'||Parm1||':'||Parm2||'#@##1## '||ProjString||'::::'||ProjVersion||'::'||Parm4||'@@'||Parm3||'"';*/
@@ -208,6 +217,15 @@ select
       rc=LINEOUT(OutFile, LINEIN(String));
     end;
     rc=stream(String,'c','close');
+    rc=lineout(OutFile);
+  end
+
+  when (Function="FILESIZE") then do
+    NewStr=stream(Parm1,'c','query size');
+    RepLoc=Pos('%A', String);
+    if (RepLoc>0) then OutStr=Substr(String,1,RepLoc-1)||NewStr||Substr(String,RepLoc+2);
+    else OutStr=String||' '||NewStr;
+    rc=lineout(OutFile, OutStr);
     rc=lineout(OutFile);
   end
 

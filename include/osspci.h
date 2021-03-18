@@ -29,13 +29,14 @@
 extern "C" {
 #endif
 
-VOID	RMInit(VOID);
+VOID    RMCreateDriverU32(VOID);
+VOID    RMCreateAdapterU32(ULONG DevID, ULONG *phAdapter, USHORT BusDevFunc, ULONG CardNum);
 BOOL    RMRequestIO(ULONG ulIOBase, ULONG ulIOLength);
 BOOL    RMRequestMem(ULONG ulMemBase, ULONG ulMemLength);
 BOOL    RMRequestIRQ(ULONG ulIrq, BOOL fShared, ULONG *phRes);
 BOOL    RMDeallocateIRQ(ULONG hRes);
-VOID	RMDone(ULONG DevID, ULONG *phAdapter, ULONG *phDevice);
-VOID	RMSetHandles(ULONG hAdapter, ULONG hDevice);
+VOID	RMDeallocRes(VOID);
+VOID	RMSetHandles(ULONG hAdapter);
 
 #ifdef __cplusplus
 }

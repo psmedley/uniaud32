@@ -78,7 +78,6 @@
  *
  */
 
-
 #if defined(__KERNEL__)
 /*
  * inside the kernel, we can use nicknames;

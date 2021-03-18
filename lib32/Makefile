@@ -5,6 +5,9 @@ ROOT=$(%ROOT)
 
 !include $(ROOT)\tools\header.mif
 
+# note: Watcom headers must be before DDK headers to avoid conflicts
+# with C runtime headers
+%INCLUDE = $(%INCLUDE)$(DDK)\base\h;
 AINCLUDES = $(DDK)\base\H
 
 !if "$(IBM_BUILD)" == "1"
@@ -20,16 +23,13 @@ CDEFINES+= -DUSE_MSI
 #   List of source files
 #
 #===================================================================
-FILES = spinlock.obj malloc.obj pci.obj irq.obj ioctl.obj &
+FILES = spinlock.obj malloc.obj pci.obj irq.obj ioctl.obj devres.obj &
   memory.obj debug.obj sound.obj soundmixer.obj soundmidi.obj &
-  ossidc.obj semaphore.obj waitqueue.obj misc.obj &
-  strncpy.obj task.obj &
-  strncmp.obj timer.obj &
-  instropl2.obj instropl3.obj vsprintf.obj
-# ossidc.obj semaphore.obj waitqueue.obj misc.obj fminstrload.obj
-!if $(KEE) == 0
-FILES += stack.obj
-!endif
+  ossidc.obj semaphore.obj waitqueue.obj misc.obj klist.obj kasprintf.obj &
+  seq_file.obj strncpy.obj strscpy.obj task.obj rbtree.obj &
+  strncmp.obj timer.obj kobject.obj driver.obj drivers_base.obj &
+  instropl2.obj instropl3.obj vsprintf.obj bitmap.obj find_next_bit.obj &
+  regmap.obj regcache.obj regcache-flat.obj regcache-rbtree.obj
 
 TARGET = linuxlib
 

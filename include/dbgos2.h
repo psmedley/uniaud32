@@ -55,7 +55,7 @@ extern void DbgPrintIrq(void);
 #define dprintf2(a)	if(DebugLevel > 1) printk a
 #define dprintf3(a)	if(DebugLevel > 2) printk a
 #define DebugInt3()	
-//#define DebInt3()	_asm int 3;
+//#define DebugInt3()	_asm int 3;
 #else
 // not DEBUG
 #define DBG_MAX_BUF_SIZE 0x10000
@@ -65,6 +65,9 @@ extern void DbgPrintIrq(void);
 #define dprintf3(a)
 #define DebugInt3()
 #endif
+
+void DevInt3(void);
+#pragma aux DevInt3 = "int 3";
 
 #endif //__COMMDBG_H__
 

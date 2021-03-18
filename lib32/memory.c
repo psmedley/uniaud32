@@ -31,14 +31,25 @@
 #include <dbgos2.h>
 #include <stacktoflat.h>
 #include <limits.h>
-#ifdef KEE
 #include <kee.h>
-#endif
 #include "malloc.h"
+#define _I386_PAGE_H
+typedef struct { unsigned long pgprot; } pgprot_t;
+#define MAP_NR(addr)		(__pa(addr) >> PAGE_SHIFT)
+#define PAGE_SHIFT	12
+#define __PAGE_OFFSET		(0xC0000000)
+
+#define PAGE_OFFSET		((unsigned long)__PAGE_OFFSET)
+#define __pa(x)			((unsigned long)(x)-PAGE_OFFSET)
+
+#include <linux/mm.h>
+#include <linux/slab.h>
+#include <linux/printk.h>
 
 #pragma off (unreferenced)
 
 #define PAGE_SIZE 4096
+#define min(a,b)  (((a) < (b)) ? (a) : (b))
 
 int free_pages(unsigned long addr, unsigned long order);
 int __compat_get_order(unsigned long size);
@@ -59,9 +70,9 @@ void __kfree(const void near *ptr);
 #endif
 
 typedef struct _BaseAddr {
-    ULONG                  base;
-    ULONG                  retaddr;
-    ULONG                  size;
+    ULONG                  base;	// VMAlloc addr
+    ULONG                  retaddr;	// aligned addr returned to caller
+    ULONG                  size;	// VMAlloc size
     struct _BaseAddr NEAR *next;
 } BaseAddr;
 
@@ -92,7 +103,7 @@ void AddBaseAddress(ULONG baseaddr, ULONG retaddr, ULONG size)
 }
 //******************************************************************************
 //******************************************************************************
-ULONG GetBaseAddress(ULONG addr, ULONG *pSize)
+ULONG GetBaseAddressAndFree(ULONG addr, ULONG *pSize)
 {
     BaseAddr NEAR *pCur, NEAR *pTemp;
 
@@ -101,6 +112,8 @@ ULONG GetBaseAddress(ULONG addr, ULONG *pSize)
     DevCli();
     pCur = pBaseAddrHead;
 
+    // If address is in list, remove list item and free entry
+    // Caller must VMFree returned address or else
     if(pCur->retaddr == addr)
     {
         addr = pCur->base;
@@ -125,11 +138,43 @@ ULONG GetBaseAddress(ULONG addr, ULONG *pSize)
     return addr;
 }
 //******************************************************************************
+//******************************************************************************
+ULONG GetBaseAddressNoFree(ULONG addr, ULONG *pSize)
+{
+    BaseAddr NEAR *pCur, NEAR *pTemp;
+
+    if(pBaseAddrHead == NULL) return addr;
+
+    DevCli();
+    pCur = pBaseAddrHead;
+
+    if(pCur->retaddr == addr)
+    {
+        addr = pCur->base;
+        if(pSize) *pSize = pCur->size;
+        pBaseAddrHead = pCur->next;
+//        _kfree(pCur);
+    }
+    else
+    while(pCur->next) {
+        if(pCur->next->retaddr == addr) {
+            pTemp = pCur->next;
+            addr = pTemp->base;
+            if(pSize) *pSize = pTemp->size;
+            pCur->next = pTemp->next;
+//            _kfree(pTemp);
+            break;
+        }
+        pCur = pCur->next;
+    }
+    DevSti();
+    return addr;
+}
+//******************************************************************************
 //NOTE: Assumes memory is continuous!!
 //******************************************************************************
 unsigned long virt_to_phys(void * address)
 {
-#ifdef KEE
     KEEVMPageList pagelist;
     ULONG         nrpages;
 
@@ -138,16 +183,6 @@ unsigned long virt_to_phys(void * address)
 		return 0;
 	}
 	return pagelist.addr;
-#else
-    LINEAR addr = (LINEAR)address;
-    PAGELIST pagelist;
-
-	if(DevLinToPageList(addr, PAGE_SIZE, (PAGELIST NEAR *)__Stack32ToFlat((ULONG)&pagelist))) {
-		DebugInt3();
-		return 0;
-	}
-	return pagelist.physaddr;
-#endif
 }
 //******************************************************************************
 //******************************************************************************
@@ -156,12 +191,8 @@ void * phys_to_virt(unsigned long address)
     APIRET rc = 0;
     ULONG addr = 0;
 
-#ifdef KEE
     SHORT sel;
     rc = KernVMAlloc(PAGE_SIZE, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&address, &sel);
-#else
-    rc = DevVMAlloc(VMDHA_PHYS, PAGE_SIZE, (LINEAR)&address, __Stack32ToFlat((ULONG)&addr));
-#endif
     if (rc != 0) {
         DebugInt3();
         return NULL;
@@ -183,12 +214,7 @@ APIRET VMAlloc(ULONG size, ULONG flags, LINEAR *pAddr)
 
 __again:
 
-#ifdef KEE
-
     rc = KernVMAlloc(size, flags, (PVOID*)&addr, (PVOID*)-1, &sel);
-#else
-    rc = DevVMAlloc(flags, size, (LINEAR)-1, __Stack32ToFlat((ULONG)&addr));
-#endif
     if (rc == 0) {
         *pAddr = (LINEAR)addr;
         if (flags & VMDHA_USEHIGHMEM)
@@ -208,12 +234,7 @@ __again:
 APIRET VMFree(LINEAR addr)
 {
     APIRET rc;
-
-#ifdef KEE
-	rc = KernVMFree((PVOID)addr);
-#else
-	rc = DevVMFree((LINEAR)addr);
-#endif
+    rc = KernVMFree((PVOID)addr);
     if(rc) {
         DebugInt3();
     }
@@ -223,8 +244,6 @@ APIRET VMFree(LINEAR addr)
 //******************************************************************************
 ULONG ulget_free_pagesMemUsed = 0;
 
-#define GFP_DMA	        0x80
-#define GFP_DMAHIGHMEM	0x100
 //******************************************************************************
 //******************************************************************************
 void *__get_free_dma_pages(unsigned long size, unsigned long flags)
@@ -242,7 +261,7 @@ void *__get_free_dma_pages(unsigned long size, unsigned long flags)
         ULONG endpage   = (physaddr + ((size < 0x10000) ? size : 63*1024)) >> 16;
 
         if(startpage != endpage) {
-            //try once more
+            // not in same 32K page, try once more
             rc = VMAlloc(size, flags, (LINEAR *)&tempaddr);
             VMFree((LINEAR)addr);
             if(rc) {
@@ -332,6 +351,7 @@ void *__get_free_pages(int gfp_mask, unsigned long order)
             ULONG endpage   = (physaddr + ((size < 0x10000) ? size : 63*1024)) >> 16;
 
             if (startpage != endpage) {
+		// Not in same 32K page
                 physaddr2 = (startpage+1) << 16;
 
                 AddBaseAddress(addr, addr + (physaddr2 - physaddr), allocsize);
@@ -362,7 +382,7 @@ int free_pages(unsigned long addr, unsigned long order)
     ULONG rc, size = 0;
 
     //check if it really is the base of the allocation (see above)
-    addr = GetBaseAddress(addr, (ULONG NEAR *)__Stack32ToFlat(&size));
+    addr = GetBaseAddressAndFree(addr, (ULONG NEAR *)&size);
 
     if(VMFree((LINEAR)addr)) {
         DebugInt3();
@@ -401,12 +421,44 @@ void *vmalloc(unsigned long size)
 }
 //******************************************************************************
 //******************************************************************************
+void *__vmalloc(unsigned long size, gfp_t gfp_mask)
+{
+	return vmalloc(size);
+}
+//******************************************************************************
+//******************************************************************************
+/**
+ * __vmalloc_node - allocate virtually contiguous memory
+ * @size:	    allocation size
+ * @align:	    desired alignment
+ * @gfp_mask:	    flags for the page level allocator
+ * @node:	    node to use for allocation or NUMA_NO_NODE
+ * @caller:	    caller's return address
+ *
+ * Allocate enough pages to cover @size from the page level allocator with
+ * @gfp_mask flags.  Map them into contiguous kernel virtual space.
+ *
+ * Reclaim modifiers in @gfp_mask - __GFP_NORETRY, __GFP_RETRY_MAYFAIL
+ * and __GFP_NOFAIL are not supported
+ *
+ * Any use of gfp flags outside of GFP_KERNEL should be consulted
+ * with mm people.
+ *
+ * Return: pointer to the allocated memory or %NULL on error
+ */
+void *__vmalloc_node(unsigned long size, unsigned long align,
+			    gfp_t gfp_mask, int node, const void *caller)
+{
+	return vmalloc(size);
+}
+//******************************************************************************
+//******************************************************************************
 void vfree(void *ptr)
 {
     APIRET rc;
     ULONG  size = 0;
 
-    GetBaseAddress((ULONG)ptr, (ULONG NEAR *)__Stack32ToFlat(&size));
+    GetBaseAddressAndFree((ULONG)ptr, (ULONG NEAR *)&size);
 
     if(VMFree((LINEAR)ptr)) {
         DebugInt3();
@@ -426,7 +478,7 @@ struct page * alloc_pages(int gfp_mask, unsigned long order)
 }
 //******************************************************************************
 //******************************************************************************
-int remap_page_range(unsigned long from, unsigned long to, unsigned long size, unsigned long prot)
+int remap_page_range(unsigned long from, unsigned long to, unsigned long size, pgprot_t prot)
 {
 	DebugInt3();
 	return 0;
@@ -451,15 +503,9 @@ void * __ioremap(unsigned long physaddr, unsigned long size, unsigned long flags
 	//size = size + PAGE_SIZE - 1;
 	//size &= 0xFFFFF000;
 
-#ifdef KEE
     SHORT sel;
-
-	//rc = KernVMAlloc(size, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&physaddr, &sel);
+    //rc = KernVMAlloc(size, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&physaddr, &sel);
     rc = KernVMAlloc(Length, VMDHA_PHYS, (PVOID*)&addr, (PVOID*)&PhysicalAddress, &sel);
-#else
-    //rc = DevVMAlloc(VMDHA_PHYS, size, (LINEAR)&physaddr, __Stack32ToFlat((ULONG)&addr));
-    rc = DevVMAlloc(VMDHA_PHYS, Length, (LINEAR)&PhysicalAddress, __Stack32ToFlat((ULONG)&addr));
-#endif
     if (rc != 0) {
         dprintf(("ioremap error: %x", rc));
         DebugInt3();
@@ -496,7 +542,7 @@ void __copy_user(void *to, const void *from, unsigned long n)
 	}
     if(n == 0) return;
 
-	kmemcpy(to, from, n);
+	memcpy(to, from, n);
 }
 //******************************************************************************
 //******************************************************************************
@@ -508,7 +554,7 @@ unsigned long copy_to_user(void *to, const void *from, unsigned long n)
 	}
     if(n == 0) return 0;
 
-	kmemcpy(to, from, n);
+	memcpy(to, from, n);
 	return 0;
 }
 //******************************************************************************
@@ -533,7 +579,7 @@ unsigned long copy_from_user(void *to, const void *from, unsigned long n)
 	}
     if(n == 0) return 0;
 
-	kmemcpy(to, from, n);
+	memcpy(to, from, n);
 	return 0;
 }
 //******************************************************************************
@@ -546,7 +592,7 @@ int __get_user(int size, void *dest, void *src)
 		DebugInt3();
 		return 0;
 	}
-	kmemcpy(dest, src, size);
+	memcpy(dest, src, size);
 	return 0;
 }
 //******************************************************************************
@@ -637,4 +683,153 @@ void *kcalloc(size_t n, size_t size, unsigned int flags)
 		return NULL;
 	return kzalloc(n * size, flags);
 }
+//******************************************************************************
+//******************************************************************************
 
+size_t ksize(const void *block)
+{
+	size_t size;
+
+	if (!block)
+	    size = 0;			// Bad coder
+
+	else if (block == ZERO_SIZE_PTR)
+	    size = 0;			// Bad coder
+
+	else if(IsHeapAddr((ULONG)block))
+	    size = _msize((void _near *)block);
+
+	else if (!GetBaseAddressNoFree((ULONG)block, (ULONG NEAR *)&size))
+	    size = 0;			// Something wrong
+
+	return size;
+}
+//******************************************************************************
+//******************************************************************************
+static inline void *__do_krealloc(const void *p, size_t new_size,
+					   gfp_t flags)
+{
+	void *ret;
+	size_t ks = 0;
+
+	if (p)
+		ks = ksize(p);
+
+	if (ks >= new_size)
+		return (void *)p;
+
+	ret = __kmalloc(new_size, flags);
+	if (ret && p)
+		memcpy(ret, p, ks);
+
+	return ret;
+}
+//******************************************************************************
+//******************************************************************************
+/**
+ * krealloc - reallocate memory. The contents will remain unchanged.
+ * @p: object to reallocate memory for.
+ * @new_size: how many bytes of memory are required.
+ * @flags: the type of memory to allocate.
+ *
+ * The contents of the object pointed to are preserved up to the
+ * lesser of the new and old sizes.  If @p is %NULL, krealloc()
+ * behaves exactly like kmalloc().  If @new_size is 0 and @p is not a
+ * %NULL pointer, the object pointed to is freed.
+ */
+void *krealloc(const void *p, size_t new_size, gfp_t flags)
+{
+	void *ret;
+
+	if (!new_size) {
+		kfree(p);
+		return ZERO_SIZE_PTR;
+	}
+
+	ret = __do_krealloc(p, new_size, flags);
+	if (ret && p != ret)
+		kfree(p);
+
+	return ret;
+}
+//******************************************************************************
+//******************************************************************************
+/**
+ *	vzalloc - allocate virtually contiguous memory with zero fill
+ *	@size:	allocation size
+ *	Allocate enough pages to cover @size from the page level
+ *	allocator and map them into contiguous kernel virtual space.
+ *	The memory allocated is set to zero.
+ *
+ *	For tight control over page level allocator and protection flags
+ *	use __vmalloc() instead.
+ */
+void *vzalloc(unsigned long size)
+{
+	void *buf;
+	buf = vmalloc(size);
+	if (buf)
+		memset(buf, 0, size);
+	return buf;
+}
+//******************************************************************************
+//******************************************************************************
+/**
+ * kvmalloc_node - attempt to allocate physically contiguous memory, but upon
+ * failure, fall back to non-contiguous (vmalloc) allocation.
+ * @size: size of the request.
+ * @flags: gfp mask for the allocation - must be compatible (superset) with GFP_KERNEL.
+ * @node: numa node to allocate from
+ *
+ * Uses kmalloc to get the memory but if the allocation fails then falls back
+ * to the vmalloc allocator. Use kvfree for freeing the memory.
+ *
+ * Reclaim modifiers - __GFP_NORETRY and __GFP_NOFAIL are not supported.
+ * __GFP_RETRY_MAYFAIL is supported, and it should be used only if kmalloc is
+ * preferable to the vmalloc fallback, due to visible performance drawbacks.
+ *
+ * Please note that any use of gfp flags outside of GFP_KERNEL is careful to not
+ * fall back to vmalloc.
+ *
+ * Return: pointer to the allocated memory of %NULL in case of failure
+ */
+void *kvmalloc_node(size_t size, gfp_t flags, int node)
+{
+	gfp_t kmalloc_flags = flags;
+	void *ret;
+
+	/*
+	 * vmalloc uses GFP_KERNEL for some internal allocations (e.g page tables)
+	 * so the given set of flags has to be compatible.
+	 */
+	if ((flags & GFP_KERNEL) != GFP_KERNEL)
+		return kmalloc_node(size, flags, node);
+
+	/*
+	 * We want to attempt a large physically contiguous block first because
+	 * it is less likely to fragment multiple larger blocks and therefore
+	 * contribute to a long term fragmentation less than vmalloc fallback.
+	 * However make sure that larger requests are not too disruptive - no
+	 * OOM killer and no allocation failure warnings as we have a fallback.
+	 */
+	if (size > PAGE_SIZE) {
+		kmalloc_flags |= __GFP_NOWARN;
+
+		if (!(kmalloc_flags & __GFP_RETRY_MAYFAIL))
+			kmalloc_flags |= __GFP_NORETRY;
+	}
+
+	ret = kmalloc_node(size, kmalloc_flags, node);
+
+	/*
+	 * It doesn't really make sense to fallback to vmalloc for sub page
+	 * requests
+	 */
+	if (ret || size <= PAGE_SIZE)
+		return ret;
+
+	return __vmalloc_node(size, 1, flags, node,
+			__builtin_return_address(0));
+}
+//******************************************************************************
+//******************************************************************************

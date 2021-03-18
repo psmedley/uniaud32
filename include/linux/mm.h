@@ -3,9 +3,13 @@
 
 #include <linux/sched.h>
 #include <linux/errno.h>
+#include <linux/gfp.h>
 #include <asm/page.h>
 #include <asm/atomic.h>
+#include <linux/overflow.h>
+#include <linux/err.h>
 
+#define	NUMA_NO_NODE	(-1)
 /*
  * GFP bitmasks..
  */
@@ -15,13 +19,8 @@
 #define __GFP_HIGH	0x08
 #define __GFP_IO	0x10
 #define __GFP_SWAP	0x20
-#ifdef CONFIG_HIGHMEM
-#define __GFP_HIGHMEM	0x40
-#else
-#define __GFP_HIGHMEM	0x0 /* noop */
-#endif
-
-#define __GFP_DMA	0x80
+#define ___GFP_ZERO		0x100u
+#define __GFP_ZERO	((__force gfp_t)___GFP_ZERO)
 
 #ifdef TARGET_OS2
 #define __GFP_DMAHIGHMEM  0x100
@@ -124,6 +123,8 @@ typedef struct page {
 	atomic_t count;
 	unsigned long flags;	/* atomic flags, some possibly updated asynchronously */
 	unsigned long virtual; /* nonzero if kmapped */
+	struct kmem_cache *slab_cache;	/* SL[AU]B: Pointer to slab */
+	struct page *first_page;	/* Compound tail pages */
 } mem_map_t;
 
 extern mem_map_t * mem_map;
@@ -173,4 +174,26 @@ struct vm_operations_struct {
 #define SetPageReserved(a)		a
 #define ClearPageReserved(a)		a
 struct page *vmalloc_to_page(void *addr);
+
+extern void *kvmalloc_node(size_t size, gfp_t flags, int node);
+static inline void *kvmalloc(size_t size, gfp_t flags)
+{
+	return kvmalloc_node(size, flags, NUMA_NO_NODE);
+}
+static inline void *kvzalloc_node(size_t size, gfp_t flags, int node)
+{
+	return kvmalloc_node(size, flags | __GFP_ZERO, node);
+}
+static inline void *kvzalloc(size_t size, gfp_t flags)
+{
+	return kvmalloc(size, flags | __GFP_ZERO);
+}
+static inline void *kvmalloc_array(size_t n, size_t size, gfp_t flags)
+{
+	size_t bytes;
+
+	bytes = n * size;
+
+	return kvmalloc(bytes, flags);
+}
 #endif

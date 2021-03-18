@@ -21,11 +21,16 @@
 #ifndef _LINUX_PM_H
 #define _LINUX_PM_H
 
-#ifdef __KERNEL__
-
-#include <linux/config.h>
 #include <linux/list.h>
 #include <asm/atomic.h>
+#include <linux/workqueue.h>
+
+enum rpm_status {
+	RPM_ACTIVE = 0,
+	RPM_RESUMING,
+	RPM_SUSPENDED,
+	RPM_SUSPENDING,
+};
 
 /*
  * Power management requests
@@ -229,13 +234,13 @@ extern int pm_suspend(u32 state);
 struct device;
 
 struct dev_pm_info {
-#ifdef	CONFIG_PM
+	unsigned int		async_suspend:1;
+	bool			is_prepared:1;	/* Owned by the PM core */
 	u32			power_state;
 	u8			* saved_state;
 	atomic_t		pm_users;
 	struct device		* pm_parent;
 	struct list_head	entry;
-#endif
 };
 
 extern void device_pm_set_parent(struct device * dev, struct device * parent);
@@ -246,11 +251,76 @@ extern void device_power_up(void);
 extern void device_resume(void);
 
 
-#endif /* __KERNEL__ */
+typedef struct pm_message {
+	int event;
+} pm_message_t;
 
-typedef u32 __bitwise pm_message_t;
 #define PMSG_FREEZE	3
 #define PMSG_SUSPEND	3
 #define PMSG_ON		0
+#define PMSG_RESUME	0
+#define PMSG_THAW	0
+#define PMSG_RESTORE	0
+
+
+struct dev_pm_ops {
+	int (*prepare)(struct device *dev);
+	void (*complete)(struct device *dev);
+	int (*suspend)(struct device *dev);
+	int (*resume)(struct device *dev);
+	int (*freeze)(struct device *dev);
+	int (*thaw)(struct device *dev);
+	int (*poweroff)(struct device *dev);
+	int (*restore)(struct device *dev);
+	int (*suspend_late)(struct device *dev);
+	int (*resume_early)(struct device *dev);
+	int (*freeze_late)(struct device *dev);
+	int (*thaw_early)(struct device *dev);
+	int (*poweroff_late)(struct device *dev);
+	int (*restore_early)(struct device *dev);
+	int (*suspend_noirq)(struct device *dev);
+	int (*resume_noirq)(struct device *dev);
+	int (*freeze_noirq)(struct device *dev);
+	int (*thaw_noirq)(struct device *dev);
+	int (*poweroff_noirq)(struct device *dev);
+	int (*restore_noirq)(struct device *dev);
+	int (*runtime_suspend)(struct device *dev);
+	int (*runtime_resume)(struct device *dev);
+	int (*runtime_idle)(struct device *dev);
+};
+
+#define SET_SYSTEM_SLEEP_PM_OPS(suspend_fn, resume_fn) \
+	.suspend = suspend_fn, \
+	.resume = resume_fn, \
+	.freeze = suspend_fn, \
+	.thaw = resume_fn, \
+	.poweroff = suspend_fn, \
+	.restore = resume_fn,
+
+/*
+ * Use this if you want to use the same suspend and resume callbacks for suspend
+ * to RAM and hibernation.
+ */
+#define SIMPLE_DEV_PM_OPS(name, suspend_fn, resume_fn) \
+const struct dev_pm_ops name = { \
+	SET_SYSTEM_SLEEP_PM_OPS(suspend_fn, resume_fn) \
+}
+
+#define SET_RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn) \
+	.runtime_suspend = suspend_fn, \
+	.runtime_resume = resume_fn, \
+	.runtime_idle = idle_fn,
+
+
+/*
+ * Power domains provide callbacks that are executed during system suspend,
+ * hibernation, system resume and during runtime PM transitions along with
+ * subsystem-level and driver-level callbacks.
+ */
+struct dev_pm_domain {
+	struct dev_pm_ops	ops;
+};
+
+#define PM_EVENT_RESTORE	0x0040
 
 #endif /* _LINUX_PM_H */

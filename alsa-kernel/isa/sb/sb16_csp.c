@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  Copyright (c) 1999 by Uros Bizjak <uros@kss-loka.si>
  *                        Takashi Iwai <tiwai@suse.de>
@@ -5,27 +6,13 @@
  *  SB16ASP/AWE32 CSP control
  *
  *  CSP microcode loader:
- *   alsa-tools/sb16_csp/
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
+ *   alsa-tools/sb16_csp/ 
  */
 
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/info.h>
@@ -60,18 +47,18 @@ MODULE_FIRMWARE("sb16/ima_adpcm_capture.csp");
  * RIFF data format
  */
 struct riff_header {
-	__u32 name;
-	__u32 len;
+	__le32 name;
+	__le32 len;
 };
 
 struct desc_header {
 	struct riff_header info;
-	__u16 func_nr;
-	__u16 VOC_type;
-	__u16 flags_play_rec;
-	__u16 flags_16bit_8bit;
-	__u16 flags_stereo_mono;
-	__u16 flags_rates;
+	__le16 func_nr;
+	__le16 VOC_type;
+	__le16 flags_play_rec;
+	__le16 flags_16bit_8bit;
+	__le16 flags_stereo_mono;
+	__le16 flags_rates;
 };
 
 /*
@@ -93,7 +80,7 @@ static int snd_sb_csp_riff_load(struct snd_sb_csp * p,
 				struct snd_sb_csp_microcode __user * code);
 static int snd_sb_csp_unload(struct snd_sb_csp * p);
 static int snd_sb_csp_load_user(struct snd_sb_csp * p, const unsigned char __user *buf, int size, int load_flags);
-static int snd_sb_csp_autoload(struct snd_sb_csp * p, int pcm_sfmt, int play_rec_mode);
+static int snd_sb_csp_autoload(struct snd_sb_csp * p, snd_pcm_format_t pcm_sfmt, int play_rec_mode);
 static int snd_sb_csp_check_version(struct snd_sb_csp * p);
 
 static int snd_sb_csp_use(struct snd_sb_csp * p);
@@ -116,7 +103,7 @@ static void info_read(struct snd_info_entry *entry, struct snd_info_buffer *buff
 int snd_sb_csp_new(struct snd_sb *chip, int device, struct snd_hwdep ** rhwdep)
 {
 	struct snd_sb_csp *p;
-	int uninitialized_var(version);
+	int version;
 	int err;
 	struct snd_hwdep *hw;
 
@@ -208,6 +195,7 @@ static int snd_sb_csp_ioctl(struct snd_hwdep * hw, struct file *file, unsigned i
 	switch (cmd) {
 		/* get information */
 	case SNDRV_SB_CSP_IOCTL_INFO:
+		memset(&info, 0, sizeof(info));
 		*info.codec_name = *p->codec_name;
 		info.func_nr = p->func_nr;
 		info.acc_format = p->acc_format;
@@ -300,7 +288,7 @@ static int snd_sb_csp_unuse(struct snd_sb_csp * p)
 }
 
 /*
- * load microcode via ioctl:
+ * load microcode via ioctl: 
  * code is user-space pointer
  */
 static int snd_sb_csp_riff_load(struct snd_sb_csp * p,
@@ -313,7 +301,7 @@ static int snd_sb_csp_riff_load(struct snd_sb_csp * p,
 	unsigned short func_nr = 0;
 
 	struct riff_header file_h, item_h, code_h;
-	__u32 item_type;
+	__le32 item_type;
 	struct desc_header funcdesc_h;
 
 	unsigned long flags;
@@ -325,7 +313,7 @@ static int snd_sb_csp_riff_load(struct snd_sb_csp * p,
 
 	if (copy_from_user(&file_h, data_ptr, sizeof(file_h)))
 		return -EFAULT;
-	if ((file_h.name != RIFF_HEADER) ||
+	if ((le32_to_cpu(file_h.name) != RIFF_HEADER) ||
 	    (le32_to_cpu(file_h.len) >= SNDRV_SB_CSP_MAX_MICROCODE_FILE_SIZE - sizeof(file_h))) {
 		snd_printd("%s: Invalid RIFF header\n", __func__);
 		return -EINVAL;
@@ -335,7 +323,7 @@ static int snd_sb_csp_riff_load(struct snd_sb_csp * p,
 
 	if (copy_from_user(&item_type, data_ptr, sizeof(item_type)))
 		return -EFAULT;
-	if (item_type != CSP__HEADER) {
+	if (le32_to_cpu(item_type) != CSP__HEADER) {
 		snd_printd("%s: Invalid RIFF file type\n", __func__);
 		return -EINVAL;
 	}
@@ -345,12 +333,12 @@ static int snd_sb_csp_riff_load(struct snd_sb_csp * p,
 		if (copy_from_user(&item_h, data_ptr, sizeof(item_h)))
 			return -EFAULT;
 		data_ptr += sizeof(item_h);
-		if (item_h.name != LIST_HEADER)
+		if (le32_to_cpu(item_h.name) != LIST_HEADER)
 			continue;
 
 		if (copy_from_user(&item_type, data_ptr, sizeof(item_type)))
 			 return -EFAULT;
-		switch (item_type) {
+		switch (le32_to_cpu(item_type)) {
 		case FUNC_HEADER:
 			if (copy_from_user(&funcdesc_h, data_ptr + sizeof(item_type), sizeof(funcdesc_h)))
 				return -EFAULT;
@@ -377,7 +365,7 @@ static int snd_sb_csp_riff_load(struct snd_sb_csp * p,
 					return -EFAULT;
 
 				/* init microcode blocks */
-				if (code_h.name != INIT_HEADER)
+				if (le32_to_cpu(code_h.name) != INIT_HEADER)
 					break;
 				data_ptr += sizeof(code_h);
 				err = snd_sb_csp_load_user(p, data_ptr, le32_to_cpu(code_h.len),
@@ -390,7 +378,7 @@ static int snd_sb_csp_riff_load(struct snd_sb_csp * p,
 			if (copy_from_user(&code_h, data_ptr, sizeof(code_h)))
 				return -EFAULT;
 
-			if (code_h.name != MAIN_HEADER) {
+			if (le32_to_cpu(code_h.name) != MAIN_HEADER) {
 				snd_printd("%s: Missing 'main' microcode\n", __func__);
 				return -EINVAL;
 			}
@@ -682,7 +670,7 @@ static int snd_sb_csp_load(struct snd_sb_csp * p, const unsigned char *buf, int 
 	spin_unlock_irqrestore(&p->chip->reg_lock, flags);
 	return result;
 }
-
+ 
 static int snd_sb_csp_load_user(struct snd_sb_csp * p, const unsigned char __user *buf, int size, int load_flags)
 {
 	int err;
@@ -725,17 +713,17 @@ static int snd_sb_csp_firmware_load(struct snd_sb_csp *p, int index, int flags)
  * autoload hardware codec if necessary
  * return 0 if CSP is loaded and ready to run (p->running != 0)
  */
-static int snd_sb_csp_autoload(struct snd_sb_csp * p, int pcm_sfmt, int play_rec_mode)
+static int snd_sb_csp_autoload(struct snd_sb_csp * p, snd_pcm_format_t pcm_sfmt, int play_rec_mode)
 {
 	unsigned long flags;
 	int err = 0;
 
 	/* if CSP is running or manually loaded then exit */
-	if (p->running & (SNDRV_SB_CSP_ST_RUNNING | SNDRV_SB_CSP_ST_LOADED))
+	if (p->running & (SNDRV_SB_CSP_ST_RUNNING | SNDRV_SB_CSP_ST_LOADED)) 
 		return -EBUSY;
 
 	/* autoload microcode only if requested hardware codec is not already loaded */
-	if (((1 << pcm_sfmt) & p->acc_format) && (play_rec_mode & p->mode)) {
+	if (((1U << (__force int)pcm_sfmt) & p->acc_format) && (play_rec_mode & p->mode)) {
 		p->running = SNDRV_SB_CSP_ST_AUTO;
 	} else {
 		switch (pcm_sfmt) {
@@ -764,7 +752,7 @@ static int snd_sb_csp_autoload(struct snd_sb_csp * p, int pcm_sfmt, int play_rec
 				p->mode = SNDRV_SB_CSP_MODE_DSP_READ;
 			}
 			p->acc_format = SNDRV_PCM_FMTBIT_IMA_ADPCM;
-			break;				
+			break;				  
 		default:
 			/* Decouple CSP from IRQ and DMAREQ lines */
 			if (p->running & SNDRV_SB_CSP_ST_AUTO) {
@@ -788,7 +776,7 @@ static int snd_sb_csp_autoload(struct snd_sb_csp * p, int pcm_sfmt, int play_rec
 			p->acc_width = SNDRV_SB_CSP_SAMPLE_16BIT;	/* only 16 bit data */
 			p->acc_channels = SNDRV_SB_CSP_MONO | SNDRV_SB_CSP_STEREO;
 			p->acc_rates = SNDRV_SB_CSP_RATE_ALL;	/* HW codecs accept all rates */
-		}
+		}   
 
 	}
 	return (p->running & SNDRV_SB_CSP_ST_AUTO) ? 0 : -ENXIO;
@@ -1028,7 +1016,7 @@ static int snd_sb_qsound_space_put(struct snd_kcontrol *kcontrol, struct snd_ctl
 	return change;
 }
 
-static struct snd_kcontrol_new snd_sb_qsound_switch = {
+static const struct snd_kcontrol_new snd_sb_qsound_switch = {
 	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
 	.name = "3D Control - Switch",
 	.info = snd_sb_qsound_switch_info,
@@ -1036,7 +1024,7 @@ static struct snd_kcontrol_new snd_sb_qsound_switch = {
 	.put = snd_sb_qsound_switch_put
 };
 
-static struct snd_kcontrol_new snd_sb_qsound_space = {
+static const struct snd_kcontrol_new snd_sb_qsound_space = {
 	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
 	.name = "3D Control - Space",
 	.info = snd_sb_qsound_space_info,
@@ -1125,10 +1113,9 @@ static int snd_sb_csp_qsound_transfer(struct snd_sb_csp * p)
 static int init_proc_entry(struct snd_sb_csp * p, int device)
 {
 	char name[16];
-	struct snd_info_entry *entry;
+
 	sprintf(name, "cspD%d", device);
-	if (! snd_card_proc_new(p->chip->card, name, &entry))
-		snd_info_set_text_ops(entry, p, info_read);
+	snd_card_ro_proc_new(p->chip->card, name, p, info_read);
 	return 0;
 }
 
@@ -1184,19 +1171,3 @@ static void info_read(struct snd_info_entry *entry, struct snd_info_buffer *buff
 /* */
 
 EXPORT_SYMBOL(snd_sb_csp_new);
-
-/*
- * INIT part
- */
-
-static int __init alsa_sb_csp_init(void)
-{
-	return 0;
-}
-
-static void __exit alsa_sb_csp_exit(void)
-{
-}
-
-module_init(alsa_sb_csp_init)
-module_exit(alsa_sb_csp_exit)

@@ -36,29 +36,10 @@
 
 DATA16 segment
 		extrn DOS32FLATDS : abs                ; ring 0 FLAT kernel data selector
-  	        public __OffFinalDS16
-		public help_header
-		public uniaud_header
-		public _MSG_TABLE16
-		public DevHelpInit
-		public fOpen	
-		public InitPktSeg
-		public InitPktOff
-		public _MESSAGE_STR
-		public pddname16
-		public FileName
- 	        public _RM_Help0
- 	        public _RM_Help1
-	        public _RM_Help3
-	        public _RMFlags
-IFDEF DEBUG
-		public DbgU32TimerCnt
-		public DbgU32IntCnt
-ENDIF
-
 ;*********************************************************************************************
 ;************************* Device Driver Header **********************************************
 ;*********************************************************************************************
+		public help_header
 help_header     dw OFFSET DATA16:uniaud_header         ; Pointer to next driver
 		dw SEG DATA16:uniaud_header
                 dw 1000100110000000b            ; Device attributes
@@ -91,7 +72,8 @@ help_header     dw OFFSET DATA16:uniaud_header         ; Pointer to next driver
 ;                             +---------------------- InitComplete
                 dw 0000000000000000b
 
-uniaud_header    dd -1
+		public uniaud_header
+uniaud_header   dd -1
                 dw 1101100110000000b            ; Device attributes
 ;                  ||||| +-+   ||||
 ;                  ||||| | |   |||+------------------ STDIN
@@ -122,49 +104,59 @@ uniaud_header    dd -1
 ;                             +---------------------- InitComplete
                 dw 0000000000000000b
 
+
+		public DevHelpInit
 DevHelpInit	dd 0
+
+		public fOpen	
 fOpen		dd 0
+
+		public InitPktSeg
+		public InitPktOff
 InitPktSeg	dw 0
 InitPktOff	dw 0
+
 IFDEF DEBUG
-DbgU32TimerCnt dd 0
-DbgU32IntCnt dd 0
+		public DbgU32TimerCnt
+		public DbgU32IntCnt
+DbgU32TimerCnt  dd 0
+DbgU32IntCnt    dd 0
 ENDIF
+
 ;needed for rmcalls.lib
+ 	        public _RM_Help0
+ 	        public _RM_Help1
+	        public _RM_Help3
+	        public _RMFlags
 _RM_Help0       dd 0
 _RM_Help1       dd 0
 _RM_Help3       dd 0
 _RMFlags        dd 0
+
+		public _MESSAGE_STR
+		public _MSG_TABLE16
 _MESSAGE_STR    db 1024 dup (0)
 _MSG_TABLE16    dw 0	;message length
 		dw OFFSET _MESSAGE_STR	;message far pointer
 		dw SEG    _MESSAGE_STR
 
-pddname16	db 'ALSA32$'
-FileName 	db "ALSAHLP$", 0
-ResMgr          DB  52H,45H,53H,4dH,47H,52H,24H,20H
-                DB  00H
+FileName 	db 'ALSAHLP$', 0
+ResMgr          db 'RESMGR$ ',0
+
 _RMIDCTable     DB  00H,00H,00H,00H,00H,00H,00H,00H
                 DB  00H,00H,00H,00H
 
 ;last byte in 16 bits data segment
-__OffFinalDS16 label byte
+  	        public __OffFinalDS16
+__OffFinalDS16  label byte
 
 DATA16 ends
-
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
 CODE16 segment
         assume cs:CODE16, ds:DATA16
 
-        public __OffFinalCS16
-
-        public help_stub_strategy
-        public uniaud_stub_strategy
-	public uniaud_stub_idc
-	public uniaud_stub_timer
-	public thunk3216_devhelp
-	public thunk3216_devhelp_modified_ds
         extrn DOSOPEN       : far
-        extrn DOSWRITE      : far
+        extrn _DOSWRITE     : far
         extrn DOSCLOSE      : far
 
         ALIGN 2
@@ -393,7 +385,7 @@ device_init proc near
 	push	ss
         lea     dx, [bp - 2]
         push    dx
-        call    DOSWRITE
+        call    _DOSWRITE
 
 	pop	eax
 
@@ -412,16 +404,17 @@ device_init endp
 
 	ALIGN   2
 ;use devhlp pointer stored in 16 bits code segment
+	public thunk3216_devhelp
 thunk3216_devhelp:
 	push	ds
 	push	DATA16
 	pop	ds
         call 	dword ptr DevHelpInit
 	pop	ds
-
         jmp 	far ptr FLAT:thunk1632_devhelp
 
 	ALIGN 	2
+	public thunk3216_devhelp_modified_ds
 thunk3216_devhelp_modified_ds:
 	push	gs
 	push	DATA16
@@ -1019,35 +1012,27 @@ ISR07_16 proc far
 ISR07_16 endp
 
 ;end of 16 bits code segment
+               public __OffFinalCS16
 __OffFinalCS16 label byte
 
 CODE16 ends
-
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+;Label to mark start of 32 bits code section
+FIRSTCODE32 segment
+               public __OffBeginCS32
+__OffBeginCS32 label byte
+FIRSTCODE32 ends
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
 CODE32 segment
 ASSUME CS:FLAT, DS:FLAT, ES:FLAT
 
-	public __GETDS
-        public thunk1632_devhelp
-	public thunk1632_devhelp_modified_ds	
-        public DevHlp
-        public DevHlp_ModifiedDS
-	public STRATEGY_
-	public IDC_
-        public TIMER_
         extrn  ALSA_STRATEGY  : near
 	extrn  ALSA_IDC : near
 	extrn  ALSA_TIMER_ : near
         extrn  ALSA_Interrupt : near
-        extrn  GetTKSSBase : near
         extrn  _rdOffset: dword
-
-IFDEF KEE
 	extrn  KernThunkStackTo16 : near
 	extrn  KernThunkStackTo32 : near
-ELSE
-        extrn  StackAlloc : near
-        extrn  StackFree  : near
-ENDIF
 
 ;Called by Watcom to set the DS
         ALIGN 4
@@ -1066,118 +1051,26 @@ DevHelpDebug  proc near
         ret
 DevHelpDebug  endp
 
-	ALIGN 	4
-
         ALIGN 4
+        public DevHlp
 DevHlp proc near
-IFDEF FLATSTACK
         DevThunkStackTo16_Int
-ENDIF
-
 	jmp	far ptr CODE16:thunk3216_devhelp
 	ALIGN 4
 thunk1632_devhelp:
-IFDEF FLATSTACK
         DevThunkStackTo32_Int
-ENDIF
 	ret
 DevHlp endp
 
 	ALIGN 	4
 DevHlp_ModifiedDS proc near
-IFDEF FLATSTACK
         DevThunkStackTo16_Int
-ENDIF
 	jmp	far ptr CODE16:thunk3216_devhelp_modified_ds
 	ALIGN 4
 thunk1632_devhelp_modified_ds:
-IFDEF FLATSTACK
         DevThunkStackTo32_Int
-ENDIF
 	ret
 DevHlp_ModifiedDS endp
-
-
-IFNDEF KEE
-;;******************************************************************************
-;FixSelDPL:
-;
-; Set DPL of DOS32FLATDS selector to 0 or else we'll get a trap D when loading
-; it into the SS register (DPL must equal CPL when loading a selector into SS)
-;;******************************************************************************
-        PUBLIC FixSelDPL
-        ALIGN  4
-FixSelDPL proc near
-	cmp 	fWrongDPL, 1
-	jne 	short @@fixdpl_end
-	cmp 	SelRef, 0
-	jne 	short @@fixdpl_endfix
-	push	eax
-	push	ebx
-	push	edx
-	sgdt	fword ptr [gdtsave]		; access the GDT ptr
-	mov	ebx, dword ptr [gdtsave+2]	; get lin addr of GDT
-	mov	eax, ds				; build offset into table
-	and	eax, 0fffffff8h			; mask away DPL
-	add	ebx, eax			; build address
-
-	mov	eax, dword ptr [ebx+4]
-	mov	edx, eax
-	shr	edx, 13
-	and	edx, 3
-
-        ;has the OS/2 kernel finally changed the DPL to 0?
-	cmp	edx, 0
-	jne	@@changedpl
-	mov 	fWrongDPL, 0		;don't bother anymore
-	mov 	SelRef, 0
-	jmp	short @@endchange
-
-@@changedpl:
-	mov 	oldDPL, eax
-	and 	eax, NOT 6000h		;clear bits 5 & 6 in the high word (DPL)
-	mov 	dword ptr [ebx+4], eax
-@@endchange:
-	pop	edx
-	pop	ebx
-	pop	eax
-@@fixdpl_endfix:
-	inc     SelRef
-@@fixdpl_end:
-        ret
-FixSelDPL endp
-;;******************************************************************************
-; RestoreSelDPL:
-;
-;  Restore DPL of DOS32FLATDS selector or else OS/2 kernel code running in ring 3
-;  will trap (during booting only; this sel has a DPL of 0 when PM starts up)
-;;******************************************************************************
-        PUBLIC RestoreSelDPL
-        ALIGN  4
-RestoreSelDPL proc near
-	cmp 	fWrongDPL, 1
-	jne 	short @@restdpl_end
-
-	cmp 	SelRef, 1
-	jne 	short @@restdpl_endrest
-	push	eax
-	push	ebx
-	sgdt	fword ptr [gdtsave]		; access the GDT ptr
-	mov	ebx, dword ptr [gdtsave+2]	; get lin addr of GDT
-	mov	eax, ds				; build offset into table
-	and	eax, 0fffffff8h			; mask away DPL
-	add	ebx, eax			; build address
-
-	mov	eax, oldDPL
-	mov	dword ptr [ebx+4], eax
-	pop	ebx
-	pop	eax
-@@restdpl_endrest:
-	dec     SelRef
-@@restdpl_end:
-        ret
-RestoreSelDPL endp
-ENDIF
 
 ;*******************************************************************************
 ;Copy parameters to 16 bits stack and call 16:32 IDC handler
@@ -1193,18 +1086,14 @@ _CallPDD16 proc near
         push ebp
 	mov  ebp, esp
         push ebx
-
         lea  ebx, [ebp+8]
         DevThunkStackTo16_Int
-
         push dword ptr [ebx+16]    ;param2
         push dword ptr [ebx+12]    ;param1
         push dword ptr [ebx+8]     ;cmd
         call fword ptr [ebx]
         add  sp, 12
-
         DevThunkStackTo32_Int
-
         pop  ebx
         pop  ebp
         ret
@@ -1221,37 +1110,12 @@ STRATEGY_ proc far
 	push	es
 	push	fs
 	push	gs
-
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
 	mov	es, eax
-
-IFDEF FLATSTACK
-
-IFNDEF KEE
-        ;done in init.cpp for the KEE version
-        cmp     dword ptr [intSwitchStack], 0
-        jne     stratcontinue
-
-        ;get TKSSBase & intSwitchStack pointers
-        call    GetTKSSBase
-stratcontinue:
-ENDIF
-
         DevThunkStackTo32
-        cmp     eax, 0
-        jne     @@stackswitchfail_strat
-
 	call 	ALSA_STRATEGY
-
         DevThunkStackTo16
-
-@@stackswitchfail_strat:
-ELSE
-        int     3
-	call 	ALSA_STRATEGY
-ENDIF
-
 	pop	gs
 	pop	fs
 	pop	es
@@ -1272,27 +1136,12 @@ IDC_ proc far
 	push	es
 	push	fs
 	push	gs
-
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
 	mov	es, eax
-
-IFDEF FLATSTACK
         DevThunkStackTo32
-        cmp     eax, 0
-        jne     @@stackswitchfail_idc
-
 	call 	ALSA_IDC
-
         DevThunkStackTo16
-
-@@stackswitchfail_idc:
-
-ELSE
-        int     3
-	call 	ALSA_IDC
-ENDIF
-
 	pop	gs
 	pop	fs
 	pop	es
@@ -1309,34 +1158,18 @@ TIMER_ proc far
 	push	es
 	push	fs
 	push	gs
-
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
 	mov	es, eax
-
 IFDEF DEBUG
 	add	DbgU32TimerCnt, 1
 ENDIF
-
-IFDEF FLATSTACK
         DevThunkStackTo32
-        cmp     eax, 0
-        jne     @@stackswitchfail_timer
-
 	call 	ALSA_TIMER_
-
         DevThunkStackTo16
-
-@@stackswitchfail_timer:
-
-ELSE
-        int     3
-	call 	ALSA_TIMER_
-ENDIF
 IFDEF DEBUG
 	add	DbgU32TimerCnt, -1
 ENDIF
-
 	pop	gs
 	pop	fs
 	pop	es
@@ -1354,66 +1187,42 @@ TIMER_ endp
 Interrupt32 proc far
         enter   0, 0
         and     sp, 0fffch			; align stack
-
         pushad
 	push	ds
 	push	es
 	push	fs
 	push	gs
-
         mov 	eax, DOS32FLATDS
 	mov	ds, eax
 	mov	es, eax
-
         pushfd
-
 IFDEF DEBUG
 		add         DbgU32IntCnt, 1
 ENDIF
-
         ; At this point a cli is redundant
         ; we enter the interrupt handler with interrupts disabled.
         ;cli
-
-IFDEF FLATSTACK
         DevThunkStackTo32
-        cmp     eax, 0
-        jne     @@stackswitchfail_irq
-
         ;returns irq status in eax (1=handled; 0=unhandled)
 	call 	ALSA_Interrupt
-
         DevThunkStackTo16
-
-@@stackswitchfail_irq:
-ELSE
-        int     3
-	call 	ALSA_Interrupt
-ENDIF
-
 IFDEF DEBUG
 		add         DbgU32IntCnt, -1
 ENDIF
-
         ;restore flags
         popfd
-
         cmp     eax, 1
         je      irqhandled
         stc			;tell OS/2 kernel we didn't handle this interrupt
         jmp     short endofirq
-
 irqhandled:
         clc			;tell OS/2 kernel this interrupt was ours
-
 endofirq:
-
 	pop	gs
 	pop	fs
 	pop	es
 	pop	ds
         popad
-
         leave
 	retf
 Interrupt32 endp
@@ -1571,14 +1380,50 @@ _RMHandleToResourceHandleList  proc near
         retKEERM
 _RMHandleToResourceHandleList endp
 
+; shifted from devhlp.asm
+        extrn  DOSIODELAYCNT : ABS
+	ALIGN 4
+	public iodelay32_
+iodelay32_ proc near
+	mov   eax, DOSIODELAYCNT
+        align 4
+@@:     dec   eax
+        jnz   @b
+        loop  iodelay32_
+	ret
+iodelay32_ endp
 
 CODE32 ends
-
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+;Label to mark end of 32 bits code section
+LASTCODE32 segment
+       public __OffFinalCS32
+__OffFinalCS32 label byte
+LASTCODE32 ends
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+;Label to mark start of 32 bits data section
+BSS32 segment
+    public  __OffBeginDS32
+    __OffBeginDS32   dd 0
+BSS32 ends
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
 DATA32 	segment
+
+    public  stackbase
+    public  stacksel
+    stackbase dd 0
+    stacksel  dd 0
+
     public  __OffsetFinalCS16
     public  __OffsetFinalDS16
-    public  PDDName
+    __OffsetFinalCS16 dw OFFSET CODE16:__OffFinalCS16
+    __OffsetFinalDS16 dw OFFSET DATA16:__OffFinalDS16
+
     public  _MSG_TABLE32
+    _MSG_TABLE32     dw OFFSET  DATA16:_MSG_TABLE16
+    		     dw SEG     DATA16:_MSG_TABLE16
+
+;16:32 addresses of resource manager functions in 16 bits code segment
     public  RMAllocResource1632
     public  RMModifyResources1632
     public  RMDeallocResource1632
@@ -1589,57 +1434,6 @@ DATA32 	segment
     public  RMGetNodeInfo1632
     public  RMDevIDToHandleList1632
     public  RMHandleToResourceHandleList1632
-    public  _TimerHandler16
-    public  _ISR00
-    public  _ISR01
-    public  _ISR02
-    public  _ISR03
-    public  _ISR04
-    public  _ISR05
-    public  _ISR06
-    public  _ISR07
-
-IFDEF FLATSTACK
-    extrn   intSwitchStack : dword
-ENDIF
-
-IFDEF KEE
-    public  stackbase
-    public  stacksel
-
-    stackbase dd 0
-    stacksel  dd 0
-ELSE
-
-    public  gdtsave
-    public  fWrongDPL
-    public  oldDPL
-    public  SelRef
-
-    tempeax          dd 0
-    tempedx          dd 0
-    tempesi          dd 0
-    cpuflags         dd 0
-
-    gdtsave	     dq 0
-    fWrongDPL	     dd 1	;DOS32FLATDS has the wrong DPL for SS
-    SelRef	     dd 0
-    oldDPL	     dd 0
-
-    fInitStack       dd 0
-ENDIF
-
-    __OffsetFinalCS16 dw OFFSET CODE16:__OffFinalCS16
-    __OffsetFinalDS16 dw OFFSET DATA16:__OffFinalDS16
-
-    _MSG_TABLE32     dw OFFSET  DATA16:_MSG_TABLE16
-    		     dw SEG     DATA16:_MSG_TABLE16
-
-;16:16 address of driver name
-    PDDName          dw OFFSET  DATA16:pddname16
-		     dw SEG     DATA16:pddname16
-
-;16:32 addresses of resource manager functions in 16 bits code segment
     RMAllocResource1632  dd OFFSET CODE16:_RMAllocResource16
 		         dw SEG CODE16:_RMAllocResource16
 		         dw 0
@@ -1673,10 +1467,19 @@ ENDIF
    	        	          dw 0
 
 ;16:16 address of uniaud_stub_timer
+    public  _TimerHandler16
     _TimerHandler16   	 dd OFFSET CODE16:uniaud_stub_timer
                      	 dw OFFSET CODE16:uniaud_stub_timer
 
 ;16:16 addresses of interrupt dispatchers
+    public  _ISR00
+    public  _ISR01
+    public  _ISR02
+    public  _ISR03
+    public  _ISR04
+    public  _ISR05
+    public  _ISR06
+    public  _ISR07
     _ISR00               dw OFFSET CODE16:ISR00_16
 			 dw SEG CODE16:ISR00_16
     _ISR01               dw OFFSET CODE16:ISR01_16
@@ -1693,7 +1496,12 @@ ENDIF
 			 dw SEG CODE16:ISR06_16
     _ISR07               dw OFFSET CODE16:ISR07_16
                          dw SEG CODE16:ISR07_16
-DATA32 ends
+DATA32     ends
+; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+;Label to mark end of 32 bits data section
+LASTDATA32 segment
+    public __OffFinalDS32
+    __OffFinalDS32 dd 0
+LASTDATA32 ends
 
-end
-
+           end

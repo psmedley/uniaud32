@@ -1,31 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  Copyright (c) 1998-2002 by Paul Davis <pbd@op.net>
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/init.h>
 #include <linux/time.h>
 #include <linux/wait.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 #include <linux/firmware.h>
 #include <sound/core.h>
 #include <sound/snd_wavefront.h>
 #include <sound/initval.h>
-#include <proto.h>
 
 /* Control bits for the Load Control Register
  */
@@ -79,13 +66,13 @@ wavefront_fx_memset (snd_wavefront_t *dev,
 	if (page < 0 || page > 7) {
 		snd_printk ("FX memset: "
 			"page must be >= 0 and <= 7\n");
-		return -(EINVAL);
+		return -EINVAL;
 	}
 
 	if (addr < 0 || addr > 0x7f) {
 		snd_printk ("FX memset: "
 			"addr must be >= 0 and <= 7f\n");
-		return -(EINVAL);
+		return -EINVAL;
 	}
 
 	if (cnt == 1) {
@@ -118,7 +105,7 @@ wavefront_fx_memset (snd_wavefront_t *dev,
 			snd_printk ("FX memset "
 				    "(0x%x, 0x%x, 0x%lx, %d) incomplete\n",
 				    page, addr, (unsigned long) data, cnt);
-			return -(EIO);
+			return -EIO;
 		}
 	}
 
@@ -153,7 +140,7 @@ snd_wavefront_fx_open (struct snd_hwdep *hw, struct file *file)
 	return 0;
 }
 
-int
+int 
 snd_wavefront_fx_release (struct snd_hwdep *hw, struct file *file)
 
 {
@@ -240,7 +227,7 @@ snd_wavefront_fx_ioctl (struct snd_hwdep *sdev, struct file *file,
    that outputs it.
 */
 
-int __devinit
+int
 snd_wavefront_fx_start (snd_wavefront_t *dev)
 {
 	unsigned int i;

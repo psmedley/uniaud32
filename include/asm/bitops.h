@@ -92,12 +92,32 @@ extern int test_and_change_bit(int nr, volatile void * addr);
 
 extern int __constant_test_bit(int nr, const volatile void * addr);
 extern int __test_bit(int nr, volatile void * addr);
-extern int find_first_zero_bit(void * addr, unsigned size);
-extern int find_next_zero_bit (void * addr, int size, int offset);
+/**
+ * find_first_zero_bit - find the first cleared bit in a memory region
+ * @addr: The address to start the search at
+ * @size: The maximum size to search
+ *
+ * Returns the bit number of the first cleared bit.
+ */
+extern unsigned long find_first_zero_bit(const unsigned long *addr,
+					 unsigned long size);
+
+/**
+ * find_next_zero_bit - find the next cleared bit in a memory region
+ * @addr: The address to base the search on
+ * @offset: The bitnumber to start searching at
+ * @size: The bitmap size in bits
+ */
+extern unsigned long find_next_zero_bit(const unsigned long *addr, unsigned
+		long size, unsigned long offset);
+
 
 /*
  * This routine doesn't need to be atomic.
  */
 #define test_bit(nr, addr) (((1UL << (nr & 31)) & (((const unsigned int *) addr)[nr >> 5])) != 0)
+
+extern unsigned long find_next_bit(const unsigned long *addr, unsigned long
+		size, unsigned long offset);
 
 #endif /* _ASM_BITOPS_H */

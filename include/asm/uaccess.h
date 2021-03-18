@@ -43,7 +43,16 @@ extern int __verify_write(const void *, unsigned long);
 
 int is_access_ok(int type, void *addr, unsigned long size);
 
-#define access_ok(type, addr, size)	is_access_ok((int)type, (void *)addr, size)
+#define access_ok(type, addr, size) __access_ok((unsigned long)(addr),(size))
+
+/*
+ * The architecture should really override this if possible, at least
+ * doing a check on the get_fs()
+ */
+static inline int __access_ok(unsigned long addr, unsigned long size)
+{
+	return 1;
+}
 
 #define verify_area(type, addr, size) (access_ok(type, (void *)addr,size) ? 0 : -EFAULT)
 
@@ -171,6 +180,7 @@ void __constant_copy_user_zeroing(void *to, const void *from, unsigned long n);
 unsigned long __generic_copy_to_user(void *, const void *, unsigned long);
 unsigned long __generic_copy_from_user(void *, const void *, unsigned long);
 
+#if 0
 static __inline unsigned long
 __constant_copy_to_user(void *to, const void *from, unsigned long n)
 {
@@ -186,6 +196,7 @@ __constant_copy_from_user(void *to, const void *from, unsigned long n)
 		__constant_copy_user_zeroing(to,from,n);
 	return n;
 }
+#endif
 
 static __inline unsigned long
 __constant_copy_to_user_nocheck(void *to, const void *from, unsigned long n)
