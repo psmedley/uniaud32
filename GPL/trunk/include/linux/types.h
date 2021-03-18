@@ -3,6 +3,7 @@
 
 //#pragma off (unreferenced)
 
+#include <limits.h>
 #include <linux/posix_types.h>
 #include <linux/compiler.h>
 #include <asm/types.h>
@@ -112,32 +113,25 @@ struct ustat {
 
 #define __inline__ __inline
 
-#ifdef FLATSTACK
-#define kstrcpy strcpy
-#define kstrcat strcat
-#define kmemcpy memcpy
-#define kmemcmp memcmp
-#define kmemset memset
-#else
-#define kstrcpy _fstrcpy
-#define kstrcat _fstrcat
-#define kmemcpy _fmemcpy
-#define kmemcmp _fmemcmp
-#define kmemset _fmemset
-#define strcpy  _fstrcpy
-#define strcat  _fstrcat
-#define memcpy  _fmemcpy
-#define memcmp  _fmemcmp
-#define memset  _fmemset
-#endif
-
 typedef unsigned __nocast gfp_t;
 
 #include <string.h>
 typedef __u32 __le32;
+typedef __u16 __le16;
 typedef unsigned int fmode_t;
 
-//typedef int _Bool;
-typedef _Bool bool;
+typedef int bool;
+#define false	0
+#define true 1
+typedef	unsigned int		__uintptr_t;
+typedef	__uintptr_t		uintptr_t;
+typedef __u16 __be16;
+typedef __u32 __be32;
+typedef unsigned __poll_t;
+typedef u32 phys_addr_t;
+typedef s64			int64_t;
+
+#define DECLARE_BITMAP(name,bits) \
+        unsigned long name[((bits)+BITS_PER_LONG-1)/BITS_PER_LONG]
 
 #endif /* _LINUX_TYPES_H */

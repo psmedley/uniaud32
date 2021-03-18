@@ -847,17 +847,4 @@ ULONG DevTickCount(DWORD TimerHandler, DWORD TickCount);
    parm [eax] [ebx] \
    modify [eax edx];
 
-#ifdef FLATSTACK
-#define kstrcpy strcpy
-#define kmemcpy memcpy
-#define kmemset memset
-#else
-#define kstrcpy _fstrcpy
-#define kmemcpy _fmemcpy
-#define kmemset _fmemset
-#define strcpy  _fstrcpy
-#define memcpy  _fmemcpy
-#define memset  _fmemset
-#endif
-
 #endif // DevHelp_h

@@ -68,7 +68,7 @@ typedef struct {
     mixcontrol          controls[OSS_MIXER_NRDEVICES]; //array of standard mixer controls
 } mixerhandle;
 
-extern struct file_operations *alsa_fops;
+extern const struct file_operations *alsa_fops;
 extern int                     nrCardsDetected;
 
 OSSRET UNIXToOSSError(int unixerror);

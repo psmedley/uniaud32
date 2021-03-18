@@ -25,41 +25,14 @@
 #ifndef __STACKTOFLAT_H__
 #define __STACKTOFLAT_H__
 
-extern ULONG TKSSBase;
-#pragma aux TKSSBase "_TKSSBase"
-
-extern ULONG GetTKSSBase();
-#pragma aux GetTKSSBase "GetTKSSBase" \
-  value [eax];
-
-#ifdef KEE
 extern ULONG stacksel;		//16 bits stack selector
 #pragma aux stacksel "stacksel"
 
 extern ULONG stackbase;		//32 bits stackbase
 #pragma aux stackbase "stackbase"
-#endif
 
-#ifdef FLATSTACK
-
-#ifdef KEE
 //Convert 16:16 stack based address to 0:32 flat addresss
 #define __Stack16ToFlat(addr)	(LINEAR)((ULONG)(addr&0xffff) + stackbase)
-#else
-//Convert 16:16 stack based address to 0:32 flat addresss
-#define __Stack16ToFlat(addr)	(LINEAR)((((ULONG)addr)&0xffff) + *(ULONG *)TKSSBase)
-#endif
-
-//stack is already flat
-#define __Stack32ToFlat(addr)	(LINEAR)addr
-
-#else
-//Convert 16:16 stack based address to 0:32 flat addresss
-#define __Stack16ToFlat(addr)	(LINEAR)((((ULONG)addr)&0xffff) + *(ULONG *)TKSSBase)
-
-//Convert 16:16 stack based address to 0:32 flat addresss
-#define __Stack32ToFlat(addr)	(LINEAR)((((ULONG)addr)&0xffff) + *(ULONG *)TKSSBase)
-#endif
 
 // Convert 16:16 pointer to 16:32
 char FAR48 *MAKE_FARPTR32(FARPTR16 addr1616);
@@ -114,11 +87,6 @@ ULONG GETFLATPTR(char FAR48 *ptr);
 
 #define FLATPTR(a)	GETFLATPTR((char FAR48 *)a)
 
-#ifdef KEE
 #define FlatToSel(addr32)	((stacksel << 16) | (((ULONG)addr32 - stackbase) & 0xffff))
-#else
-//Only valid for stack based pointer!!
-ULONG FlatToSel(ULONG addr32);
-#endif
 
 #endif

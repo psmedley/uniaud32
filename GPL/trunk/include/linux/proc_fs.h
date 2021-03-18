@@ -8,6 +8,21 @@
  * The proc filesystem constants/structures
  */
 
+struct proc_ops {
+	int	(*proc_open)(struct inode *, struct file *);
+	ssize_t	(*proc_read)(struct file *, char __user *, size_t, loff_t *);
+	ssize_t	(*proc_write)(struct file *, const char __user *, size_t, loff_t *);
+	loff_t	(*proc_lseek)(struct file *, loff_t, int);
+	int	(*proc_release)(struct inode *, struct file *);
+	__poll_t (*proc_poll)(struct file *, struct poll_table_struct *);
+	long	(*proc_ioctl)(struct file *, unsigned int, unsigned long);
+#ifdef CONFIG_COMPAT
+	long	(*proc_compat_ioctl)(struct file *, unsigned int, unsigned long);
+#endif
+	int	(*proc_mmap)(struct file *, struct vm_area_struct *);
+	unsigned long (*proc_get_unmapped_area)(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
+};
+
 /*
  * Offset of the first process in the /proc root directory..
  */
@@ -83,7 +98,6 @@ struct proc_dir_entry {
 	    && (inode->i_ino < PROC_OPENPROM_FIRST + PROC_NOPENPROM))
 
 #ifdef CONFIG_PROC_FS
-
 extern struct proc_dir_entry proc_root;
 extern struct proc_dir_entry *proc_root_fs;
 extern struct proc_dir_entry *proc_net;
@@ -207,7 +221,7 @@ struct proc_dir_entry *create_proc_info_entry(const char *name,
 	mode_t mode, struct proc_dir_entry *base, get_info_t *get_info);
 struct proc_dir_entry *proc_net_create(const char *name);
 void proc_net_remove(const char *name);
-
+static inline void proc_remove(struct proc_dir_entry *de) {}
 #else
 
 extern inline int proc_register(struct proc_dir_entry *a, struct proc_dir_entry *b) { return 0; }
@@ -232,12 +246,17 @@ struct proc_dir_entry *create_proc_info_entry(const char *name,
 void proc_net_remove(const char *name);
 
 extern struct proc_dir_entry proc_root;
-
+static inline void proc_remove(struct proc_dir_entry *de) {}
+static inline void *PDE_DATA(const struct inode *inode) {return NULL;}
 #endif /* CONFIG_PROC_FS */
 
 static inline struct proc_dir_entry *PDE(const struct inode *inode)
 {
 	return (struct proc_dir_entry *) inode->u.generic_ip;
 }
+static inline void *PDE_DATA(const struct inode *inode) {return NULL;}
 
+extern struct proc_dir_entry *proc_symlink(const char *,
+		struct proc_dir_entry *, const char *);
+extern struct proc_dir_entry *proc_mkdir(const char *, struct proc_dir_entry *);
 #endif /* _LINUX_PROC_FS_H */

@@ -27,49 +27,12 @@
 #include <os2.h>
 
 #include <dbgos2.h>
-#include <devhelp.h>
-#include <devtype.h>
-#include <strategy.h>
-#include "devown.h"
 #include <ossidc.h>
 #include <ossidc32.h>
 #include <version.h>
-
-extern int cdecl printk(const char * fmt, ...);
-//******************************************************************************
-// Dispatch IOCtl requests received from the Strategy routine
-//******************************************************************************
-extern int GetUniaudCardInfo(ULONG deviceid, void *info);
-extern int GetUniaudControlNum(ULONG deviceid);
-extern int GetUniaudControls(ULONG deviceid, void *pids);
-extern int GetUniaudControlInfo(ULONG deviceid, ULONG id, void *info);
-extern int GetUniaudControlValueGet(ULONG deviceid, ULONG id, void *value);
-extern int GetUniaudControlValuePut(ULONG deviceid, ULONG id, void *value);
-extern int GetNumberOfPcm(int card_id);
-extern int GetUniaudPcmCaps(ULONG deviceid, void *caps);
-extern int SetPCMInstance(int card_id, int pcm);
-extern int WaitForControlChange(int card_id, int timeout);
-extern int GetNumberOfCards(void);
-extern OSSRET OSS32_WaveOpen(ULONG deviceid, ULONG streamtype, OSSSTREAMID *pStreamId, int pcm, USHORT fileid);
-extern OSSRET OSS32_WaveClose(OSSSTREAMID streamid);
-extern int UniaudIoctlHWRefine(OSSSTREAMID streamid, void *pHwParams);
-extern int UniaudIoctlHWParamSet(OSSSTREAMID streamid, void *pHwParams);
-extern int UniaudIoctlSWParamSet(OSSSTREAMID streamid, void *pSwParams);
-extern int UniaudIoctlPCMStatus(OSSSTREAMID streamid, void *pstatus);
-extern int UniaudIoctlPCMWrite(OSSSTREAMID streamid, char *buf, int size);
-extern int UniaudIoctlPCMRead(OSSSTREAMID streamid, char *buf, int size);
-extern int UniaudIoctlPCMPrepare(OSSSTREAMID streamid);
-extern int UniaudIoctlPCMStart(OSSSTREAMID streamid);
-extern int UniaudIoctlPCMDrop(OSSSTREAMID streamid);
-extern int UniaudIoctlPCMResume(OSSSTREAMID streamid, int pause);
-extern void UniaudCloseAll(USHORT fileid);
-extern int WaitForPCMInterrupt(void *file, int timeout);
-extern int unlock_all;
-extern int OSS32_CloseUNI16(void);
-extern int UniaudCtlGetPowerState(ULONG deviceid, void *state);
-extern int UniaudCtlSetPowerState(ULONG deviceid, void *state);
-
-typedef UCHAR LOCKHANDLE[12];
+#include <kee.h>
+#include <u32ioctl.h>
+#include "strategy.h"
 
 /*
  * structure passed to pcm open ioctl
@@ -86,10 +49,10 @@ typedef struct ioctl_pcm {
 
 ULONG StratIOCtl(REQPACKET __far* rp)
 {
-    USHORT rc = 0;;
-    LOCKHANDLE lhParm, lhData;
-    LINEAR linParm, linData;
-    ULONG pages;
+    USHORT rc = 0;
+    KEEVMLock lhParm, lhData;
+    char  *linParm;
+    char  *linData;
     ULONG *pData;
     ULONG card_id;
     ULONG ctl_id;
@@ -111,32 +74,24 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         ((rp->ioctl.pvParm & 0xfffcffff) != 0))
     {
         // got Parm Packet
-        rc = DevVirtToLin((USHORT)((ULONG)(rp->ioctl.pvParm) >> 16),
-                          (ULONG)((USHORT)(rp->ioctl.pvParm)),
-                          (UCHAR * __far *)&linParm);
+        linParm = (char*)KernSelToFlat(rp->ioctl.pvParm);
 
-        if (rc == 0)
+        if (rp->ioctl.bFunction == IOCTL_OSS32_ATTACH)
         {
-            if (rp->ioctl.bFunction == IOCTL_OSS32_ATTACH)
-            {
-                rc = DevVMLock(VMDHL_LONG, (ULONG)linParm, 4, (LINEAR)-1L, lhParm, (UCHAR*)&pages);
-            }
-            else
-            {
-                rc = DevVMLock(VMDHL_LONG, (ULONG)linParm, rp->ioctl.usParmLen, (LINEAR)-1L, lhParm, (UCHAR*)&pages);
-            }
+            rc = KernVMLock(KEE_VML_LONGLOCK, (PVOID)linParm, 4, &lhParm, (KEEVMPageList*)-1, 0);
+        }
+        else
+        {
+            rc = KernVMLock(KEE_VML_LONGLOCK, (PVOID)linParm, rp->ioctl.usParmLen, &lhParm, (KEEVMPageList*)-1, 0);
+        }
 
-            if (rc != 0)
-            {
-                printk("error in DevVMLock rc = %i\n",rc);
-                return (RPERR_PARAMETER | RPDONE);
-            }
-        } else
+        if (rc != 0)
         {
-            printk("error in VirtToLin rc = %i\n",rc);
+            printk("error in KernVMLock rc = %i\n",rc);
             return (RPERR_PARAMETER | RPDONE);
         }
-    } else
+    }
+    else
     {
         // no Parm Packet
         linParm = NULL;
@@ -147,25 +102,16 @@ ULONG StratIOCtl(REQPACKET __far* rp)
         ((rp->ioctl.pvData & 0xfffcffff) != 0))
     {
         // got Data Packet
-        rc = DevVirtToLin((USHORT)((ULONG)(rp->ioctl.pvData) >> 16),
-                          (ULONG)((USHORT)(rp->ioctl.pvData)),
-                          (UCHAR * __far *)&linData);
-        if (rc == 0)
-        {
-            rc = DevVMLock(VMDHL_LONG, (ULONG)linData, rp->ioctl.usDataLen, (LINEAR)-1L, lhData,
-                           (UCHAR*)&pages);
-        } else
-            printk("error in VirtToLin rc = %i\n",rc);
+        linData = (char*)KernSelToFlat(rp->ioctl.pvData);
 
+        rc = KernVMLock(KEE_VML_LONGLOCK, (PVOID)linData, rp->ioctl.usDataLen, &lhData, (KEEVMPageList*)-1, 0);
         if (rc != 0)
         {
-
-            printk("error in DevVMLock rc = %i\n",rc);
-            // error in VirtToLin or DevVMLock
+            printk("error in KernVMLock rc = %i\n",rc);
             if (linParm != NULL)
             {
                 // linParm present & locked, must to unlock it
-                DevVMUnLock(lhParm);
+                KernVMUnlock(&lhParm);
             }
             return (RPERR_PARAMETER | RPDONE);
         }
@@ -576,32 +522,14 @@ ULONG StratIOCtl(REQPACKET __far* rp)
     if (linParm != NULL)
     {
         // linParm present & locked, must to unlock it
-        DevVMUnLock(lhParm);
+        KernVMUnlock(&lhParm);
     }
     if (linData != NULL)
     {
         // linData present & locked, must to unlock it
-        DevVMUnLock(lhData);
+        KernVMUnlock(&lhData);
     }
 
     // all done
     return (rc);
 }
-
-//******************************************************************************
-// Dispatch Close requests received from the strategy routine
-//******************************************************************************
-ULONG StratClose(REQPACKET __far* rp)
-{
-  // only called if device successfully opened
-  //  printk("strat close\n");
-  numOS2Opens--;
-
-  UniaudCloseAll(rp->open_close.usSysFileNum);
-
-  if (numOS2Opens == 0) {
-	  deviceOwner = DEV_NO_OWNER;
-  }
-  return(RPDONE);
-}
-

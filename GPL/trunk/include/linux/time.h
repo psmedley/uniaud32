@@ -3,6 +3,12 @@
 
 #include <asm/param.h>
 #include <linux/types.h>
+#include <linux/ktime.h>
+#include <linux/time64.h>
+#include <linux/math64.h>
+
+#define NSEC_PER_SEC	1000000000L
+
 
 #ifndef _STRUCT_TIMESPEC
 #define _STRUCT_TIMESPEC
@@ -11,6 +17,12 @@ struct timespec {
 	long	tv_nsec;	/* nanoseconds */
 };
 #endif /* _STRUCT_TIMESPEC */
+
+static inline int timespec_equal(const struct timespec *a,
+                                 const struct timespec *b)
+{
+	return (a->tv_sec == b->tv_sec) && (a->tv_nsec == b->tv_nsec);
+}
 
 /*
  * Change timeval to jiffies, trying to avoid the
@@ -129,4 +141,12 @@ static __inline__ unsigned long msecs_to_jiffies(const unsigned int m)
 
 void msleep(unsigned int msecs);
 
+/**
+ * ns_to_timespec - Convert nanoseconds to timespec
+ * @nsec:	the nanoseconds value to be converted
+ *
+ * Returns the timespec representation of the nsec parameter.
+ */
+extern struct timespec ns_to_timespec(const s64 nsec);
+#define getrawmonotonic(ts) do_posix_clock_monotonic_gettime(ts)
 #endif

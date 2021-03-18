@@ -1,6 +1,9 @@
 #ifndef _LINUX_INIT_H
 #define _LINUX_INIT_H
 
+#include <asm/errno.h>
+
+
 /* These macros are used to mark some functions or 
  * initialized data (doesn't apply to uninitialized data)
  * as `initialization' functions. The kernel can take this
@@ -139,5 +142,5 @@ typedef void (*exitcall_t)(void);
 
 /* subsys_initcall() wrapper */
 #define subsys_initcall(x) module_init(x)
-
+#define __init
 #endif /* _LINUX_INIT_H */

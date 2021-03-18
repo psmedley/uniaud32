@@ -28,35 +28,31 @@
 #include <string.h>
 
 // Device support
-#include <devhelp.h>
 #include <devtype.h>
-//DAZ #include <devrp.h>
-#include <strategy.h>
-#include "devown.h"
+#include <stacktoflat.h>
 #include <version.h>
 #include <ossidc32.h>
 #include <dbgos2.h>
-#include <irqos2.h>
-//#include <bsedos16.h>
-#ifdef KEE
+#include <osspci.h>
 #include <kee.h>
-#endif
+#include <malloc.h>
 #include "parse.h"
-#include "malloc.h"
+#include "sound/version.h"
+#include "strategy.h"
 
 const char ERR_ERROR[]   = "ERROR: ";
 const char ERR_LOCK[]    = "Unable to lock 32 bit data & code segments, exiting...\r\r\n";
 const char ERR_INIT[]    = "Initialization failed\r\r\n";
 const char ERR_NAMES[]    = "Query names failed\r\r\n";
 #ifdef DEBUG
-const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"-DEBUG\r\nBased on ALSA "ALSA_VERSION"\r\n";
+const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"-DEBUG\r\nBased on Linux "ALSA_VERSION"\r\n";
 #else
-const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"\r\nBased on ALSA "ALSA_VERSION"\r\n";
+const char szALSA[]      = "\r\n"PRODUCT_NAME" v"UNIAUD_VERSION"\r\nBased on Linux "ALSA_VERSION"\r\n";
 #endif
 
 //const char szCopyRight1[]= "Copyright 2000-2002 InnoTek Systemberatung GmbH\r\n";
-const char szCopyRight2[]= "Copyright 2000-2010 The ALSA Project\r\n\r\n";
-const char szCopyRight3[]= "Copyright 2005-2010 Netlabs http://www.netlabs.org\r\n";
+const char szCopyRight2[]= "Copyright 2000-2021 The ALSA Project\r\n\r\n";
+const char szCopyRight3[]= "Copyright 2005-2021 Netlabs http://www.netlabs.org\r\n";
 
 const char szCodeStartEnd[] = "Code 0x%0x - 0x%0x\r\n\r\n";
 const char szMixerFound[]= "Detected Mixer: ";
@@ -100,12 +96,7 @@ void DevSaveMessage(char FAR48 *str, int length)
 //SvL: Lock our 32 bits data & code segments
 int LockSegments(void)
 {
-#ifdef KEE
     KEEVMLock lock;
-#else
-    char   lock[12];
-    ULONG  PgCount;
-#endif
     ULONG  segsize;
 
     /*
@@ -119,21 +110,13 @@ int LockSegments(void)
       segsize += PAGE_SIZE;
     }
     segsize &= ~0xFFF;
-#ifdef KEE
-    if(KernVMLock(VMDHL_LONG,
+
+    if(KernVMLock(KEE_VML_LONGLOCK,
                   (PVOID)((OffsetBeginDS32) & ~0xFFF),
                   segsize,
                   &lock,
                   (KEEVMPageList*)-1,
                   0)) {
-#else
-    if(DevVMLock(VMDHL_LONG,
-                   ((OffsetBeginDS32) & ~0xFFF),
-                   segsize,
-                   (LINEAR)-1,
-                   (LINEAR)lock,
-                   (LINEAR)&PgCount)) {
-#endif
       return(1);
     }
     /*
@@ -144,21 +127,13 @@ int LockSegments(void)
       segsize += PAGE_SIZE;
     }
     segsize &= ~0xFFF;
-#ifdef KEE
-    if(KernVMLock(VMDHL_LONG,
+
+    if(KernVMLock(KEE_VML_LONGLOCK,
                   (PVOID)((OffsetBeginCS32) & ~0xFFF),
                   segsize,
                   &lock,
                   (KEEVMPageList*)-1,
                   0)) {
-#else
-    if(DevVMLock(VMDHL_LONG,
-                 ((OffsetBeginCS32) & ~0xFFF),
-                 segsize,
-                 (LINEAR)-1,
-                 (LINEAR)lock,
-                 (LINEAR)&PgCount)) {
-#endif
       return(1);
     }
     return 0;
@@ -200,9 +175,9 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
   char debugmsg[64];
   char FAR48 *args;
 
-#ifdef KEE
-  GetTKSSBase();
-#endif
+  DebugLevel = 1;
+  rp->init_out.usCodeEnd = 0;
+  rp->init_out.usDataEnd = 0;
 
   if(LockSegments())
   {
@@ -211,9 +186,7 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
     return RPDONE | RPERR_BADCOMMAND;
   }
 
-  DebugLevel = 1;
-  rp->init_out.usCodeEnd = 0;
-  rp->init_out.usDataEnd = 0;
+  RMCreateDriverU32(); // register driver in  Resource Manager
 
   if ( szprintBuf == 0 )
   {
@@ -237,6 +210,7 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
   #else
   rprintf(("Uniaud32 version %s",UNIAUD_VERSION));
   #endif
+  rprintf(("Based on linux %s",CONFIG_SND_VERSION));
 
   if(fVerbose)
   {
@@ -250,9 +224,6 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
     sprintf(debugmsg, szCodeStartEnd, OffsetBeginCS32, OffsetFinalCS32);
     WriteString(debugmsg, strlen(debugmsg));
   }
-
-  //get the current time (to force retrieval of GIS pointer)
-  os2gettimemsec();
 
   char szMixerName[64];
   char szDeviceName[128];
@@ -322,4 +293,3 @@ WORD32 DiscardableInit(REQPACKET __far* rp)
   // Confirm a successful installation
   return RPDONE;
 }
-

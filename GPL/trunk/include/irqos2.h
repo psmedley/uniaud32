@@ -59,9 +59,6 @@ BOOL ALSA_SetIrq(ULONG ulIrq, ULONG ulSlotNo, BOOL fShared);
 BOOL ALSA_FreeIrq(ULONG ulIrq);
 
 BOOL process_interrupt(ULONG ulSlotNo, ULONG *pulIrq);
-void PciAdjustInterrupts(void);
-ULONG os2gettimemsec();
-ULONG os2gettimesec();
 
 #ifdef __cplusplus
 }

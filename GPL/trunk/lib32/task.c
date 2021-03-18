@@ -25,7 +25,6 @@
 #include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
-#include <linux/tqueue.h>
 #include <linux/interrupt.h>
 #define LINUX
 #include <ossdefos2.h>

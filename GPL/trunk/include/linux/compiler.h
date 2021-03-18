@@ -113,5 +113,19 @@
 #ifndef noinline
 #define noinline
 #endif
+#define WARN(condition, format,...) { }
+
+#define __must_check
+#define __maybe_unused
+#define __acquires(x)
+#define __releases(x)
+#define BUG() do {} while (1)
+#define READ_ONCE(x) x
+#define WRITE_ONCE(x, val) x=(val)
+#define __force
+#define __always_unused
+#define fallthrough                    do {} while (0)  /* fallthrough */
+#define __builtin_return_address(a)	0
+#define __builtin_expect(x, expected_value) (x)
 
 #endif /* __LINUX_COMPILER_H */

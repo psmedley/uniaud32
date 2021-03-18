@@ -3,6 +3,8 @@
 #ifndef _LINUX_UTSNAME_H
 #define _LINUX_UTSNAME_H
 
+#include <linux/err.h>
+
 #define __OLD_UTS_LEN 8
 
 struct oldold_utsname {
@@ -35,4 +37,5 @@ struct new_utsname {
 extern struct new_utsname system_utsname;
 
 extern struct semaphore uts_sem;
+
 #endif

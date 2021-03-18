@@ -1,6 +1,8 @@
 #ifndef __LINUX_PM_QOS_PARAMS_H
 #define __LINUX_PM_QOS_PARAMS_H
 
+#if 0
+// moved to pm_qos.h
 #define PM_QOS_RESERVED 0
 #define PM_QOS_CPU_DMA_LATENCY 1
 #define PM_QOS_NETWORK_LATENCY 2
@@ -8,6 +10,7 @@
 
 #define PM_QOS_NUM_CLASSES 4
 #define PM_QOS_DEFAULT_VALUE -1
+#endif
 
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)

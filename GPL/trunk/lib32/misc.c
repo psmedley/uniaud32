@@ -28,7 +28,7 @@
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/poll.h>
-#define CONFIG_PROC_FS
+#define CONFIG_PROC_FS 1
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 #include <asm/hardirq.h>
@@ -37,6 +37,7 @@
 #include <linux\module.h>
 #include <linux/workqueue.h>
 #include <linux/firmware.h>
+#include <linux/ctype.h>
 #include <dbgos2.h>
 
 void StringOut(char *DbgStr);
@@ -60,6 +61,85 @@ int  iLastError            = 0;
 //print it in drv32\init.cpp
 //******************************************************************************
 int printk(const char * fmt, ...)
+{
+    va_list argptr;                /* -> variable argument list */
+
+    char *pszLastALSAError;
+
+    pszLastALSAError= iLastError ? szLastALSAError2 : szLastALSAError1;
+
+    va_start(argptr, fmt);           /* get pointer to argument list */
+    vsprintf(pszLastALSAError, fmt, argptr);
+//    strcat(pszLastALSAError, "\r");
+    va_end(argptr);                /* done with variable arguments */
+
+    if(szOverrunTest1 != 0xCC || szOverrunTest2 != 0xCC) {
+        DebugInt3();
+    }
+
+	StringOut(pszLastALSAError);
+//    rprintf( (pszLastALSAError) );
+    if(++iLastError > 1) {
+        iLastError = 0;
+    }
+    return 0;
+}
+
+//******************************************************************************
+//Save error message in szLastALSAError; if card init failed, then we will
+//print it in drv32\init.cpp
+//******************************************************************************
+int dev_dbg(const struct device *dev, const char * fmt, ...)
+{
+    va_list argptr;                /* -> variable argument list */
+
+    char *pszLastALSAError;
+
+    pszLastALSAError= iLastError ? szLastALSAError2 : szLastALSAError1;
+
+    va_start(argptr, fmt);           /* get pointer to argument list */
+    vsprintf(pszLastALSAError, fmt, argptr);
+//    strcat(pszLastALSAError, "\r");
+    va_end(argptr);                /* done with variable arguments */
+
+    if(szOverrunTest1 != 0xCC || szOverrunTest2 != 0xCC) {
+        DebugInt3();
+    }
+
+	StringOut(pszLastALSAError);
+//    rprintf( (pszLastALSAError) );
+    if(++iLastError > 1) {
+        iLastError = 0;
+    }
+    return 0;
+}
+//******************************************************************************
+int pcm_dbg(struct snd_pcm *dev, const char * fmt, ...)
+{
+    va_list argptr;                /* -> variable argument list */
+
+    char *pszLastALSAError;
+
+    pszLastALSAError= iLastError ? szLastALSAError2 : szLastALSAError1;
+
+    va_start(argptr, fmt);           /* get pointer to argument list */
+    vsprintf(pszLastALSAError, fmt, argptr);
+//    strcat(pszLastALSAError, "\r");
+    va_end(argptr);                /* done with variable arguments */
+
+    if(szOverrunTest1 != 0xCC || szOverrunTest2 != 0xCC) {
+        DebugInt3();
+    }
+
+	StringOut(pszLastALSAError);
+//    rprintf( (pszLastALSAError) );
+    if(++iLastError > 1) {
+        iLastError = 0;
+    }
+    return 0;
+}
+//******************************************************************************
+int codec_dbg(struct hda_codec *dev, const char * fmt, ...)
 {
     va_list argptr;                /* -> variable argument list */
 
@@ -168,13 +248,46 @@ int proc_unregister(struct proc_dir_entry *proc, int bla)
 }
 //******************************************************************************
 //******************************************************************************
+struct proc_dir_entry *proc_mkdir_mode(const char *name, umode_t mode,
+	struct proc_dir_entry *parent){
+    struct proc_dir_entry *proc;
+    proc = (struct proc_dir_entry *)kmalloc(sizeof(struct proc_dir_entry), 0);
+    memset(proc, 0, sizeof(struct proc_dir_entry));
+
+    proc->name   = name;
+    proc->parent = parent;
+
+    return proc;
+}
+//******************************************************************************
+//******************************************************************************
+struct proc_dir_entry *proc_mkdir(const char *name, struct proc_dir_entry *parent)
+{
+    return proc_mkdir_mode(name, S_IRUGO | S_IXUGO, parent);
+}
+//******************************************************************************
+//******************************************************************************
+struct proc_dir_entry *proc_symlink(const char *name, struct proc_dir_entry *parent, const char *dest)
+{
+    struct proc_dir_entry *proc;
+    proc = (struct proc_dir_entry *)kmalloc(sizeof(struct proc_dir_entry), 0);
+    memset(proc, 0, sizeof(struct proc_dir_entry));
+
+    proc->name   = name;
+    proc->parent = parent;
+    proc->data = (void*)dest;
+
+    return proc;
+}
+//******************************************************************************
+//******************************************************************************
 int fasync_helper(int a, struct file *b, int c, struct fasync_struct **d)
 {
     return 0;
 }
 //******************************************************************************
 //******************************************************************************
-void kill_fasync(struct fasync_struct *a, int b, int c)
+void kill_fasync(struct fasync_struct **a, int b, int c)
 {
 }
 //******************************************************************************
@@ -272,7 +385,7 @@ void flush_workqueue(struct workqueue_struct *wq)
 	if (wq->task == current) {
 		run_workqueue(wq);
 	} else {
-		wait_queue_t wait;
+		struct wait_queue_entry wait;
 
 		init_waitqueue_entry(&wait, current);
 		set_current_state(TASK_UNINTERRUPTIBLE);
@@ -398,7 +511,7 @@ void release_firmware(const struct firmware *fw)
 }
 //******************************************************************************
 //******************************************************************************
-void *memdup_user(void __user *src, size_t len)
+void *memdup_user(const void __user *src, size_t len)
 {
 	void *p = kmalloc(len, GFP_KERNEL);
 	if (!p)
@@ -424,14 +537,16 @@ int cancel_delayed_work(struct delayed_work *dwork)
 }
 //******************************************************************************
 //******************************************************************************
-int schedule_work(struct work_struct *works)
+struct workqueue_struct *system_wq;
+
+int schedule_work(struct work_struct *work)
 {
-#ifndef TARGET_OS2
-	return kernel_thread(work_caller, works, 0) >= 0;
-#else
-	return 1;
+#ifndef TARGET_OS2 // crashes
+	return queue_work(system_wq, work);
 #endif
+	return 0;
 }
+
 //******************************************************************************
 //******************************************************************************
 bool flush_delayed_work_sync(struct delayed_work *dwork)
@@ -515,4 +630,156 @@ int strict_strtoul(const char *cp, unsigned int base, unsigned long *res)
         }
 
         return -EINVAL;
+}
+//******************************************************************************
+//******************************************************************************
+
+static void u32_swap(void *a, void *b, int size)
+{
+	u32 t = *(u32 *)a;
+	*(u32 *)a = *(u32 *)b;
+	*(u32 *)b = t;
+}
+
+static void generic_swap(void *a, void *b, int size)
+{
+	char t;
+
+	do {
+		t = *(char *)a;
+		*(char *)a++ = *(char *)b;
+		*(char *)b++ = t;
+	} while (--size > 0);
+}
+
+/**
+ * sort - sort an array of elements
+ * @base: pointer to data to sort
+ * @num: number of elements
+ * @size: size of each element
+ * @cmp_func: pointer to comparison function
+ * @swap_func: pointer to swap function or NULL
+ *
+ * This function does a heapsort on the given array. You may provide a
+ * swap_func function optimized to your element type.
+ *
+ * Sorting time is O(n log n) both on average and worst-case. While
+ * qsort is about 20% faster on average, it suffers from exploitable
+ * O(n*n) worst-case behavior and extra memory requirements that make
+ * it less suitable for kernel use.
+ */
+
+void sort(void *base, size_t num, size_t size,
+	  int (*cmp_func)(const void *, const void *),
+	  void (*swap_func)(void *, void *, int size))
+{
+	/* pre-scale counters for performance */
+	int i = (num/2 - 1) * size, n = num * size, c, r;
+
+	if (!swap_func)
+		swap_func = (size == 4 ? u32_swap : generic_swap);
+
+	/* heapify */
+	for ( ; i >= 0; i -= size) {
+		for (r = i; r * 2 + size < n; r  = c) {
+			c = r * 2 + size;
+			if (c < n - size &&
+					cmp_func(base + c, base + c + size) < 0)
+				c += size;
+			if (cmp_func(base + r, base + c) >= 0)
+				break;
+			swap_func(base + r, base + c, size);
+		}
+	}
+
+	/* sort */
+	for (i = n - size; i > 0; i -= size) {
+		swap_func(base, base + i, size);
+		for (r = 0; r * 2 + size < i; r = c) {
+			c = r * 2 + size;
+			if (c < i - size &&
+					cmp_func(base + c, base + c + size) < 0)
+				c += size;
+			if (cmp_func(base + r, base + c) >= 0)
+				break;
+			swap_func(base + r, base + c, size);
+		}
+	}
+}
+//******************************************************************************
+//******************************************************************************
+
+/**
+ * hex_to_bin - convert a hex digit to its real value
+ * @ch: ascii character represents hex digit
+ *
+ * hex_to_bin() converts one hex digit to its actual value or -1 in case of bad
+ * input.
+ */
+int hex_to_bin(char ch)
+{
+	if ((ch >= '0') && (ch <= '9'))
+		return ch - '0';
+	ch = tolower(ch);
+	if ((ch >= 'a') && (ch <= 'f'))
+		return ch - 'a' + 10;
+	return -1;
+}
+//******************************************************************************
+
+
+/*
+ * stream_open is used by subsystems that want stream-like file descriptors.
+ * Such file descriptors are not seekable and don't have notion of position
+ * (file.f_pos is always 0). Contrary to file descriptors of other regular
+ * files, .read() and .write() can run simultaneously.
+ *
+ * stream_open never fails and is marked to return int so that it could be
+ * directly used as file_operations.open .
+ */
+int stream_open(struct inode *inode, struct file *filp)
+{
+	filp->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE | FMODE_ATOMIC_POS);
+	//DAZ f_mode is 16 bit so FMODE_STREAM doesn't fit, but we don't use this on OS/2.
+	//filp->f_mode |= FMODE_STREAM;
+	return 0;
+}
+
+/**
+ * alloc_pages_exact - allocate pages with the given size
+ * @size: the size to allocate in bytes
+ * @gfp_flags: the allocation conditions, GFP_XXX
+ *
+ * Allocates the physically contiguous pages with the given size.
+ *
+ * Return: The pointer of the buffer, or %NULL if no enough memory.
+ */
+void *alloc_pages_exact(size_t size, gfp_t gfp_flags)
+{
+	int pg;
+
+	if (WARN_ON(!size))
+		return NULL;
+	if (WARN_ON(!gfp_flags))
+		return NULL;
+	gfp_flags |= __GFP_COMP;	/* compound page lets parts be mapped */
+	pg = get_order(size);
+	return (void *) __get_free_pages(gfp_flags, pg);
+}
+
+/**
+ * free_pages_exact - release the pages
+ * @ptr: the buffer pointer to release
+ * @size: the allocated buffer size
+ *
+ * Releases the buffer allocated via snd_malloc_pages().
+ */
+void free_pages_exact(void *ptr, size_t size)
+{
+	int pg;
+
+	if (ptr == NULL)
+		return;
+	pg = get_order(size);
+	free_pages((unsigned long) ptr, pg);
 }

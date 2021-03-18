@@ -25,8 +25,6 @@
 #define INCL_DOSINFOSEG      // Need Global info seg in rm.cpp algorithms
 #include <os2.h>
 
-#include <devtype.h>
-#include <devinfo.h>
 #include <devhelp.h>
 #include <include.h>            // Defn's for WatCom based drivers.
 #include <irqos2.h>

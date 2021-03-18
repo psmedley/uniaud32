@@ -5,6 +5,9 @@
 
 #include <asm/signal.h>
 
+#include <linux/bitops.h>
+#include <linux/string.h>
+
 #ifdef __KERNEL__
 
 /*

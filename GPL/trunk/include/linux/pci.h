@@ -15,8 +15,15 @@
 #ifndef LINUX_PCI_H
 #define LINUX_PCI_H
 
+#include <linux/mod_devicetable.h>
+
 #include <linux/types.h>
 #include <linux/list.h>
+#include <linux/kobject.h>
+#include <linux/device.h>
+#include <linux/pm.h>
+#include <linux/io.h>
+
 #pragma pack(1) //!!! by vladest
 /*
  * Under PCI, each device has 256 bytes of configuration address space,
@@ -301,23 +308,15 @@ typedef struct pci_dev;
 #define PCI_D3cold 4
 #define pci_choose_state(pci,state)     ((state) ? PCI_D3hot : PCI_D0)
 
-typedef struct device {
-    struct pci_dev *pci;  /* for PCI and PCI-SG types */
-  struct device   * parent;
-  struct bus_type * bus;    /* type of bus device is on */
-  char  bus_id[BUS_ID_SIZE];  /* position on parent bus */
-  void  (*release)(struct device * dev);
-    unsigned int flags; /* GFP_XXX for continous and ISA types */
-#ifdef CONFIG_SBUS
-    struct sbus_dev *sbus;  /* for SBUS type */
-#endif
-  void *private_data;
-  void *platform_data;
-
-  struct device_driver *driver;
-  struct pm_dev *pm_dev;
-  char  bus_id[20];
-} device;
+struct dev_pm_info2 {
+	unsigned int		async_suspend:1;
+	bool			is_prepared:1;	/* Owned by the PM core */
+	u32			power_state;
+	u8			* saved_state;
+	atomic_t		pm_users;
+	struct device		* pm_parent;
+	struct list_head	entry;
+};
 
 /*
  * The pci_dev structure is used to describe both PCI and ISAPnP devices.
@@ -333,14 +332,14 @@ struct pci_dev {
   void    *sysdata; /* hook for sys-specific extension */
   struct proc_dir_entry *procent; /* device entry in /proc/bus/pci */
 
-        struct device   dev;
-
+  struct device   dev;
+	unsigned int	class;		/* 3 bytes: (base,sub,prog-if) */
+  u8		revision;	/* PCI revision, low byte of class word */
   unsigned int  devfn;    /* encoded device & function index */
   unsigned short  vendor;
   unsigned short  device;
   unsigned short  subsystem_vendor;
   unsigned short  subsystem_device;
-  unsigned int  _class;   /* 3 bytes: (base,sub,prog-if) */
   u8    hdr_type; /* PCI header type (`multi' flag masked out) */
   u8    rom_base_reg; /* Which config register controls the ROM */
 
@@ -368,7 +367,12 @@ struct pci_dev {
   char    slot_name[8]; /* Slot name */
 
   void         *driver_data;
-  unsigned long   dma_mask;
+	u64		dma_mask;	/* Mask of the bits of bus address this
+					   device implements.  Normally this is
+					   0xffffffff.  You only need to change
+					   this if your device has broken DMA
+					   or supports 64-bit transfers.  */
+  unsigned int	no_64bit_msi:1; /* device may only use 32-bit MSIs */
 
   int (*prepare)(struct pci_dev *dev);
   int (*activate)(struct pci_dev *dev);
@@ -377,7 +381,7 @@ struct pci_dev {
 //DAZ unsigned int picirq;
 //DAZ unsigned int apicirq;
   unsigned long hAdapter;
-  unsigned long hDevice;
+//AT  unsigned long hDevice;
   void *pcidriver;
 #endif
 };
@@ -578,28 +582,19 @@ struct pci_device_id {
         unsigned int class, class_mask;
         unsigned long driver_data;
 };
-#if 0
+
 struct pci_driver {
-        struct list_head node;
-        char *name;
-        const struct pci_device_id *id_table;
-        int (*probe)(struct pci_dev *dev, const struct pci_device_id *id);
-        void (*remove)(struct pci_dev *dev);
-        void (*suspend)(struct pci_dev *dev, u32 state);
-        void (*resume)(struct pci_dev *dev);
+	struct list_head node;
+	struct pci_dev *dev;
+	char *name;
+	const struct pci_device_id *id_table; /* NULL if wants all devices */
+	int (*probe)(struct pci_dev *dev, const struct pci_device_id *id); /* New device inserted */
+	void (*remove)(struct pci_dev *dev);  /* Device removed (NULL if not a hot-plug capable driver) */
+	int (*suspend)(struct pci_dev *dev, u32 stgate);  /* Device suspended */
+	int (*resume)(struct pci_dev *dev); /* Device woken up */
+	void (*shutdown) (struct pci_dev *dev);
+	struct device_driver	driver;
 };
-#else
-struct pci_driver {
-  struct list_head node;
-  struct pci_dev *dev;
-  char *name;
-  const struct pci_device_id *id_table; /* NULL if wants all devices */
-  int (*probe)(struct pci_dev *dev, const struct pci_device_id *id); /* New device inserted */
-  void (*remove)(struct pci_dev *dev);  /* Device removed (NULL if not a hot-plug capable driver) */
-  int (*suspend)(struct pci_dev *dev, u32 stgate);  /* Device suspended */
-  int (*resume)(struct pci_dev *dev); /* Device woken up */
-};
-#endif
 
 /*
  * Device identifier
@@ -650,7 +645,7 @@ extern struct pci_bus pci_busses[];
 /*
  *
  */
-const struct pci_device_id *pci_match_device(const struct pci_device_id *ids, struct pci_dev *dev);
+const struct pci_device_id *pci_match_id(const struct pci_device_id *ids, struct pci_dev *dev);
 unsigned long pci_get_size (struct pci_dev *dev, int n_base);
 
 int pci_get_flags (struct pci_dev *dev, int n_base);
@@ -685,6 +680,8 @@ void pci_set_driver_data (struct pci_dev *dev, void *driver_data);
 
 #define pci_get_device  pci_find_device
 #define pci_dev_put(x)
+
+#define to_pci_dev(n)   container_of(n, struct pci_dev, dev)
 
 #pragma pack() //!!! by vladest
 
@@ -726,5 +723,49 @@ static inline void *pci_ioremap_bar(struct pci_dev *pdev, int bar)
  */
 #define DEFINE_PCI_DEVICE_TABLE(_table) \
   const struct pci_device_id _table[] __devinitdata
+
+/**
+ * module_pci_driver() - Helper macro for registering a PCI driver
+ * @__pci_driver: pci_driver struct
+ *
+ * Helper macro for PCI drivers which do not do anything special in module
+ * init/exit. This eliminates a lot of boilerplate. Each module may only
+ * use this macro once, and calling it replaces module_init() and module_exit()
+ */
+#define module_pci_driver(__pci_driver) \
+	module_driver(__pci_driver, pci_register_driver, \
+		       pci_unregister_driver)
+
+static inline bool pci_dev_run_wake(struct pci_dev *dev) { return 0; }
+
+/* If you want to know what to call your pci_dev, ask this function.
+ * Again, it's a wrapper around the generic device.
+ */
+static inline const char *pci_name(struct pci_dev *pdev)
+{
+	return dev_name(&pdev->dev);
+}
+
+/**
+ * PCI_DEVICE_SUB - macro used to describe a specific pci device with subsystem
+ * @vend: the 16 bit PCI Vendor ID
+ * @dev: the 16 bit PCI Device ID
+ * @subvend: the 16 bit PCI Subvendor ID
+ * @subdev: the 16 bit PCI Subdevice ID
+ *
+ * This macro is used to create a struct pci_device_id that matches a
+ * specific device with subsystem information.
+ */
+#define PCI_DEVICE_SUB(vend, dev, subvend, subdev) \
+	.vendor = (vend), .device = (dev), \
+	.subvendor = (subvend), .subdevice = (subdev)
+
+int pci_status_get_and_clear_errors(struct pci_dev *pdev);
+#define PCI_STATUS_ERROR_BITS (PCI_STATUS_DETECTED_PARITY  | \
+			       PCI_STATUS_SIG_SYSTEM_ERROR | \
+			       PCI_STATUS_REC_MASTER_ABORT | \
+			       PCI_STATUS_REC_TARGET_ABORT | \
+			       PCI_STATUS_SIG_TARGET_ABORT | \
+			       PCI_STATUS_PARITY)
 
 #endif /* LINUX_PCI_H */

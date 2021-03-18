@@ -22,10 +22,6 @@
  *
  */
 
-
-extern WORD32 deviceOwner;
-extern WORD32 numOS2Opens;
-
 #define DEV_NO_OWNER		0
 #define DEV_PDD_OWNER		1       //owner is still unknown
 #define DEV_PCM_OWNER		2	//PCM&MIDI

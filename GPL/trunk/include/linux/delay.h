@@ -27,4 +27,6 @@ extern unsigned long loops_per_sec;
 
 void mdelay(unsigned long);
 
+#define usleep_range(_min, _max)	msleep((_max) / 1000)
+
 #endif /* defined(_LINUX_DELAY_H) */

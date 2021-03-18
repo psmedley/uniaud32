@@ -10,6 +10,10 @@
 #include <stdlib.h>
 #include <stdarg.h>
 //#include <linux/linkage.h>
+#include <linux/bitops.h>
+#include <linux/gfp.h>
+#include <linux/types.h>
+#include <linux/log2.h>
 
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */
@@ -57,15 +61,6 @@ extern int session_of_pgrp(int pgrp);
 int cdecl printk(const char * fmt, ...);
 
 
-#if DEBUG
-#define pr_debug(fmt,arg)
-#else
-#define pr_debug(fmt,arg)
-#endif
-
-#define pr_info(fmt,arg) \
-	printk(KERN_INFO fmt,##arg)
-
 /*
  *      Display an IP address in readable format.
  */
@@ -102,5 +97,31 @@ static void complete_and_exit(struct completion *, long);
 #define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
 #define roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 int strict_strtoul(const char *, unsigned int, unsigned long *);
+
+#define BUG_ON(condition)
+#define WARN_ON(condition) (void)0
+#define WARN_ON_ONCE(condition) (void)0
+#define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
+#define SIZE_MAX	(~(size_t)0)
+_WCRTLINK extern int     vsnprintf( char *__s, size_t __bufsize,
+                                    const char *__format, __va_list __arg );
+char *kasprintf(gfp_t gfp, const char *fmt, ...);
+
+char *kvasprintf(gfp_t gfp, const char *fmt, va_list args);
+extern int hex_to_bin(char ch);
+#define __ALIGN_MASK(x, mask)	__ALIGN_KERNEL_MASK((x), (mask))
+#define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
+
+/**
+ * container_of - cast a member of a structure out to the containing structure
+ * @ptr:	the pointer to the member.
+ * @type:	the type of the container struct this is embedded in.
+ * @member:	the name of the member within the struct.
+ *
+ */
+#define container_of(ptr, type, member) \
+( (type *)( (char *)ptr - offsetof(type,member) ) )
+
+_WCRTLINK extern int    sscanf( const char *__s, const char *__format, ... );
 
 #endif

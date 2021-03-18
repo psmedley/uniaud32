@@ -10,6 +10,10 @@
 #ifndef _LINUX_NOTIFIER_H
 #define _LINUX_NOTIFIER_H
 #include <linux/errno.h>
+#include <linux/rwsem.h>
+
+typedef	int (*notifier_fn_t)(struct notifier_block *nb,
+			unsigned long action, void *data);
 
 struct notifier_block
 {
@@ -17,6 +21,17 @@ struct notifier_block
 	struct notifier_block *next;
 	int priority;
 };
+
+struct atomic_notifier_head {
+	spinlock_t lock;
+	struct notifier_block *head;
+};
+
+struct blocking_notifier_head {
+	struct semaphore rwsem;
+	struct notifier_block *head;
+};
+
 
 
 #ifdef __KERNEL__
@@ -112,4 +127,8 @@ extern __inline__ int notifier_call_chain(struct notifier_block **n, unsigned lo
 extern struct notifier_block *boot_notifier_list;
  
 #endif
+#define BLOCKING_INIT_NOTIFIER_HEAD(name) do {	\
+		init_rwsem(&(name)->rwsem);	\
+		(name)->head = NULL;		\
+	} while (0)
 #endif

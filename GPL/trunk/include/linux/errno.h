@@ -12,7 +12,11 @@
 #define ERESTARTNOINTR	513
 #define ERESTARTNOHAND	514	/* restart if no handler.. */
 #define ENOIOCTLCMD	515	/* No ioctl command */
+#define ENOTSUPP	524	/* Operation is not supported */
 
 #endif
-
+#define	ENOENT		2		/* No such file or directory */
+#define	EIO		 5	/* I/O error */
+#define	EEXIST		17		/* File exists */
+#define EINVAL		 22
 #endif

@@ -11,8 +11,22 @@
 #ifdef __KERNEL__
 
 #include <linux/spinlock.h>
-
+#include <linux/list.h>
 #include <asm/page.h>
+
+typedef struct wait_queue_entry wait_queue_entry_t;
+
+typedef int (*wait_queue_func_t)(struct wait_queue_entry *wq_entry, unsigned mode, int flags, void *key);
+
+/*
+ * A single wait-queue entry structure:
+ */
+struct wait_queue_entry {
+	unsigned int		flags;
+	void			*private;
+	wait_queue_func_t	func;
+	struct list_head	entry;
+};
 
 /*
  * Temporary debugging help until all code is converted to the new
@@ -29,6 +43,17 @@ struct __wait_queue {
 #endif
 };
 typedef struct __wait_queue wait_queue_t;
+
+struct __wait_queue_head {
+	spinlock_t		lock;
+	struct list_head	task_list;
+};
+
+struct wait_queue_head {
+	spinlock_t		lock;
+	struct list_head	head;
+};
+typedef struct wait_queue_head wait_queue_head_t;
 
 /*
  * 'dual' spinlock architecture. Can be switched between spinlock_t and
@@ -64,16 +89,6 @@ typedef struct __wait_queue wait_queue_t;
 # define wq_write_unlock spin_unlock
 #endif
 
-struct __wait_queue_head {
-	void * lock;
-	void * task_list;
-#if WAITQUEUE_DEBUG
-	long __magic;
-	long __creator;
-#endif
-};
-typedef struct __wait_queue_head wait_queue_head_t;
-
 #if WAITQUEUE_DEBUG
 # define __WAITQUEUE_DEBUG_INIT(name) \
 		, (long)&(name).__magic, 0
@@ -90,7 +105,7 @@ typedef struct __wait_queue_head wait_queue_head_t;
 	wait_queue_t name = __WAITQUEUE_INITIALIZER(name,task)
 
 #define __WAIT_QUEUE_HEAD_INITIALIZER(name) \
-{ WAITQUEUE_RW_LOCK_UNLOCKED, { &(name).task_list, &(name).task_list } \
+{ WAITQUEUE_RW_LOCK_UNLOCKED, { &(name).head, &(name).head } \
 		__WAITQUEUE_HEAD_DEBUG_INIT(name)}
 
 #define DECLARE_WAIT_QUEUE_HEAD(name) \
@@ -98,7 +113,10 @@ typedef struct __wait_queue_head wait_queue_head_t;
 
 void init_waitqueue_head(wait_queue_head_t *q);
 
-void init_waitqueue_entry(wait_queue_t *q, struct task_struct *p);
+extern void init_waitqueue_entry(struct wait_queue_entry *wq_entry, struct task_struct *p);
+extern void add_wait_queue(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry);
+extern void add_wait_queue_exclusive(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry);
+extern void remove_wait_queue(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry);
 
 int waitqueue_active(wait_queue_head_t *q);
 
@@ -109,7 +127,8 @@ void __add_wait_queue(wait_queue_head_t *head, wait_queue_t *new);
  */
 void __add_wait_queue_tail(wait_queue_head_t *head, wait_queue_t *new);
 void __remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old);
-
+void __wake_up_locked(wait_queue_head_t *q, unsigned int mode, int nr);
 #endif /* __KERNEL__ */
-
+#define wait_event_lock_irq(wq_head, condition, lock)
+#define wake_up_all(x)			
 #endif

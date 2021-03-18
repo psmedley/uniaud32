@@ -11,8 +11,10 @@
 #include <linux/fs.h>
 #include <linux/list.h>
 
+#include <asm/hardirq.h>
 #include <asm/system.h>
 #include <asm/pgtable.h>
+#include <linux/bitops.h>
 
 /*
  * The page cache can done in larger chunks than

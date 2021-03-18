@@ -36,5 +36,5 @@ void restore_flags(u32 flags);
 #define smp_mb()	barrier()
 #define smp_rmb()	barrier()
 #define smp_wmb()	barrier()
-
+#define smp_mb__after_atomic()	barrier()
 #endif

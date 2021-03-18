@@ -5,6 +5,8 @@
 #ifndef MATH64_COMPAT_H
 #define MATH64_COMPAT_H
 
+#include <linux/types.h>
+
 #if BITS_PER_LONG >= 64
 
 static inline u64 div_u64_rem(u64 n, u32 div, u32 *rem)
@@ -12,6 +14,7 @@ static inline u64 div_u64_rem(u64 n, u32 div, u32 *rem)
 	*rem = n % div;
 	return n / div;
 }
+
 
 static inline u64 div_u64(u64 n, u32 div)
 {
@@ -52,6 +55,15 @@ static inline u64 div_u64(u64 n, u32 div)
 		return (u64)high << 32 | low;
 	} else
 		return low / div;
+}
+
+/**
+ * div_s64_rem - signed 64bit divide with 32bit divisor with remainder
+ */
+static inline s64 div_s64_rem(s64 dividend, s32 divisor, s32 *remainder)
+{
+	*remainder = dividend % divisor;
+	return dividend / divisor;
 }
 
 #else
@@ -114,6 +126,15 @@ static inline u64 div_u64(u64 n, u32 div)
 	} else {
 		return low / div;
 	}
+}
+
+/**
+ * div_s64_rem - signed 64bit divide with 32bit divisor with remainder
+ */
+static inline s64 div_s64_rem(s64 dividend, s32 divisor, s32 *remainder)
+{
+	*remainder = dividend % divisor;
+	return dividend / divisor;
 }
 
 #endif
