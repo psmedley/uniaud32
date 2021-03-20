@@ -14,7 +14,7 @@ ROOT=$(%ROOT)
 FILES = emu10k1.obj emu10k1_main.obj &
   irq.obj memory.obj voice.obj emumpu401.obj emupcm.obj io.obj &
   emuproc.obj emumixer.obj emufx.obj &
-  emu10k1_synth.obj emu10k1_callback.obj emu10k1_patch.obj &
+  emu10k1_synth.obj emu10k1_callback.obj &
   timer.obj emu10k1x.obj p16v.obj
 
 TARGET = emu10k1
