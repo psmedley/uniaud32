@@ -16,7 +16,7 @@ FILES = seq_device.obj &
   seq.obj seq_lock.obj seq_clientmgr.obj seq_memory.obj seq_queue.obj &
   seq_fifo.obj seq_prioq.obj seq_timer.obj &
   seq_system.obj seq_ports.obj seq_info.obj &
-  seq_midi.obj seq_midi_emul.obj seq_midi_event.obj seq_dummy.obj seq_virmidi.obj
+  seq_midi.obj seq_midi_emul.obj seq_midi_event.obj seq_dummy.obj
 
 TARGET   = sequencer
 
