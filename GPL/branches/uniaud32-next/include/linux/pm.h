@@ -321,6 +321,7 @@ struct dev_pm_domain {
 	struct dev_pm_ops	ops;
 };
 
+#define PM_EVENT_ON		0x0000
 #define PM_EVENT_RESTORE	0x0040
 
 #endif /* _LINUX_PM_H */
