@@ -6528,8 +6528,27 @@ static int ca0132_alt_add_effect_slider(struct hda_codec *codec, hda_nid_t nid,
 {
 	char namestr[SNDRV_CTL_ELEM_ID_NAME_MAXLEN];
 	int type = dir ? HDA_INPUT : HDA_OUTPUT;
+
+#ifndef TARGET_OS2
 	struct snd_kcontrol_new knew =
 		HDA_CODEC_VOLUME_MONO(namestr, nid, 1, 0, type);
+#else
+	struct snd_kcontrol_new knew = {
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER, 
+		.index = 0,  \
+		.subdevice = HDA_SUBDEV_AMP_FLAG, 
+		.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | 
+		  	    SNDRV_CTL_ELEM_ACCESS_TLV_READ | 
+	  		    SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK, 
+		.info = snd_hda_mixer_amp_volume_info, \
+		.get = snd_hda_mixer_amp_volume_get,
+		.put = snd_hda_mixer_amp_volume_put, 
+		.tlv = { .c = snd_hda_mixer_amp_tlv },		
+
+	};
+	knew.name = namestr;
+	knew.private_value = ((nid) | ((1)<<16) | ((type)<<18) | ((0)<<19) | ((0)<<23)) | 0;
+#endif
 	sprintf(namestr, "FX: %s %s Volume", pfx, dirstr[dir]);
 
 	knew.tlv.c = NULL;
@@ -6563,8 +6582,20 @@ static int add_fx_switch(struct hda_codec *codec, hda_nid_t nid,
 	struct ca0132_spec *spec = codec->spec;
 	char namestr[SNDRV_CTL_ELEM_ID_NAME_MAXLEN];
 	int type = dir ? HDA_INPUT : HDA_OUTPUT;
+#ifndef TARGET_OS2
 	struct snd_kcontrol_new knew =
 		CA0132_CODEC_MUTE_MONO(namestr, nid, 1, type);
+#else
+	struct snd_kcontrol_new knew =
+	{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	  .subdevice = HDA_SUBDEV_AMP_FLAG,
+	  .info = snd_hda_mixer_amp_switch_info,
+	  .get = ca0132_switch_get,
+	  .put = ca0132_switch_put,
+	};
+	knew.name = namestr;
+	knew.private_value = HDA_COMPOSE_AMP_VAL(nid, 1, 0, type);
+#endif
 	/* If using alt_controls, add FX: prefix. But, don't add FX:
 	 * prefix to OutFX or InFX enable controls.
 	 */
@@ -6578,9 +6609,24 @@ static int add_fx_switch(struct hda_codec *codec, hda_nid_t nid,
 
 static int add_voicefx(struct hda_codec *codec)
 {
+#ifndef TARGET_OS2
 	struct snd_kcontrol_new knew =
 		HDA_CODEC_MUTE_MONO(ca0132_voicefx.name,
 				    VOICEFX, 1, 0, HDA_INPUT);
+#else
+	struct snd_kcontrol_new knew =
+	{ 
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.index = 0, 
+	  	.subdevice = HDA_SUBDEV_AMP_FLAG, 
+	  	.info = snd_hda_mixer_amp_switch_info, 
+	  	.get = snd_hda_mixer_amp_switch_get, 
+	  	.put = snd_hda_mixer_amp_switch_put, 
+	};
+	knew.name = ca0132_voicefx.name;
+	knew.private_value = HDA_COMPOSE_AMP_VAL(VOICEFX, 1, 0, HDA_INPUT);
+
+#endif
 	knew.info = ca0132_voicefx_info;
 	knew.get = ca0132_voicefx_get;
 	knew.put = ca0132_voicefx_put;
@@ -6590,9 +6636,23 @@ static int add_voicefx(struct hda_codec *codec)
 /* Create the EQ Preset control */
 static int add_ca0132_alt_eq_presets(struct hda_codec *codec)
 {
+#ifndef TARGET_OS2
 	struct snd_kcontrol_new knew =
 		HDA_CODEC_MUTE_MONO(ca0132_alt_eq_enum.name,
 				    EQ_PRESET_ENUM, 1, 0, HDA_OUTPUT);
+#else
+	struct snd_kcontrol_new knew =
+	{ 
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.index = 0, 
+	  	.subdevice = HDA_SUBDEV_AMP_FLAG, 
+	  	.info = snd_hda_mixer_amp_switch_info, 
+	  	.get = snd_hda_mixer_amp_switch_get, 
+	  	.put = snd_hda_mixer_amp_switch_put, 
+	};
+	knew.name = ca0132_alt_eq_enum.name;
+	knew.private_value = HDA_COMPOSE_AMP_VAL(EQ_PRESET_ENUM, 1, 0, HDA_OUTPUT);
+#endif
 	knew.info = ca0132_alt_eq_preset_info;
 	knew.get = ca0132_alt_eq_preset_get;
 	knew.put = ca0132_alt_eq_preset_put;
@@ -6685,10 +6745,26 @@ static int ca0132_alt_add_rear_full_range_switch(struct hda_codec *codec)
 static int ca0132_alt_add_bass_redirection_crossover(struct hda_codec *codec)
 {
 	const char *namestr = "Bass Redirection Crossover";
+#ifndef TARGET_OS2
 	struct snd_kcontrol_new knew =
 		HDA_CODEC_VOLUME_MONO(namestr, BASS_REDIRECTION_XOVER, 1, 0,
 				HDA_OUTPUT);
-
+#else
+	struct snd_kcontrol_new knew = {
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER, 
+		.index = 0,  \
+		.subdevice = HDA_SUBDEV_AMP_FLAG, 
+		.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | 
+		  	    SNDRV_CTL_ELEM_ACCESS_TLV_READ | 
+	  		    SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK, 
+		.info = snd_hda_mixer_amp_volume_info, \
+		.get = snd_hda_mixer_amp_volume_get,
+		.put = snd_hda_mixer_amp_volume_put, 
+		.tlv = { .c = snd_hda_mixer_amp_tlv },		
+	};
+	knew.name = namestr;
+	knew.private_value = HDA_COMPOSE_AMP_VAL(BASS_REDIRECTION_XOVER, 1, 0, HDA_OUTPUT) | 0;
+#endif
 	knew.tlv.c = NULL;
 	knew.info = ca0132_alt_xbass_xover_slider_info;
 	knew.get = ca0132_alt_xbass_xover_slider_ctl_get;
@@ -6701,9 +6777,21 @@ static int ca0132_alt_add_bass_redirection_crossover(struct hda_codec *codec)
 static int ca0132_alt_add_bass_redirection_switch(struct hda_codec *codec)
 {
 	const char *namestr = "Bass Redirection";
+#ifndef TARGET_OS2
 	struct snd_kcontrol_new knew =
 		CA0132_CODEC_MUTE_MONO(namestr, BASS_REDIRECTION, 1,
 				HDA_OUTPUT);
+#else
+	struct snd_kcontrol_new knew =
+	{ .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	  .subdevice = HDA_SUBDEV_AMP_FLAG,
+	  .info = snd_hda_mixer_amp_switch_info,
+	  .get = ca0132_switch_get,
+	  .put = ca0132_switch_put,
+	};
+	knew.name = namestr;
+	knew.private_value = HDA_COMPOSE_AMP_VAL(BASS_REDIRECTION, 1, 0, HDA_OUTPUT);
+#endif
 
 	return snd_hda_ctl_add(codec, BASS_REDIRECTION,
 			snd_ctl_new1(&knew, codec));

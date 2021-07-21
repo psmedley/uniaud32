@@ -5,6 +5,7 @@
 #include <linux/completion.h>
 #include <linux/bitops.h>
 
+
 #define cancel_work_sync(w)	flush_scheduled_work()
 /* we know this is used below exactly once for at most one waiter */
 
@@ -27,8 +28,14 @@ struct workqueue_struct {
 	wait_queue_head_t work_done;
 	struct completion thread_exited;
 };
+
 struct delayed_work {
 	struct work_struct work;
+	struct timer_list timer;
+
+	/* target workqueue and CPU ->timer uses to queue ->work */
+	struct workqueue_struct *wq;
+	int cpu;
 };
 
 struct workqueue_struct *create_workqueue(const char *name);
@@ -84,5 +91,13 @@ extern struct workqueue_struct *system_wq;
 
 /* I can't find a more suitable replacement... */
 #define flush_work(work) cancel_work_sync(work)
+
+#define container_of(ptr, type, member) \
+( (type *)( (char *)ptr - offsetof(type,member) ) )
+
+static inline struct delayed_work *to_delayed_work(struct work_struct *work)
+{
+	return container_of(work, struct delayed_work, work);
+}
 
 #endif /* __LINUX_WORKQUEUE_H */
