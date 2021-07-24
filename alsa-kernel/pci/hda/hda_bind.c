@@ -49,7 +49,11 @@ static void hda_codec_unsol_event(struct hdac_device *dev, unsigned int ev)
 	/* ignore unsol events during shutdown */
 	if (codec->bus->shutdown)
 		return;
-
+#ifndef TARGET_OS2
+	/* ignore unsol events during system suspend/resume */
+	if (codec->core.dev.power.power_state.event != PM_EVENT_ON)
+		return;
+#endif
 	if (codec->patch_ops.unsol_event)
 		codec->patch_ops.unsol_event(codec, ev);
 }
