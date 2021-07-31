@@ -1,0 +1,31 @@
+extern int unlock_all;
+
+int WaitForControlChange(int card_id, int timeout);
+int WaitForPCMInterrupt(void *file, int timeout);
+int GetNumberOfCards(void);
+int GetNumberOfPcm(int card_id);
+int SetPCMInstance(int card_id, int pcm);
+int GetMaxChannels(ULONG deviceid, int type);
+void FillCaps(ULONG deviceid);
+int GetUniaudPcmCaps(ULONG deviceid, void *caps);
+int UniaudCtlGetPowerState(ULONG deviceid, void *state);
+int UniaudCtlSetPowerState(ULONG deviceid, void *state);
+int GetUniaudCardInfo(ULONG deviceid, void *info);
+int GetUniaudControlNum(ULONG deviceid);
+int GetUniaudControls(ULONG deviceid, void *pids);
+int GetUniaudControlInfo(ULONG deviceid, ULONG id, void *info);
+int GetUniaudControlValueGet(ULONG deviceid, ULONG id, void *value);
+int GetUniaudControlValuePut(ULONG deviceid, ULONG id, void *value);
+int UniaudIoctlHWRefine(OSSSTREAMID streamid, void *pHwParams);
+int UniaudIoctlHWParamSet(OSSSTREAMID streamid, void *pHwParams);
+int UniaudIoctlSWParamSet(OSSSTREAMID streamid, void *pSwParams);
+int UniaudIoctlPCMStatus(OSSSTREAMID streamid, void *pstatus);
+int UniaudIoctlPCMWrite(OSSSTREAMID streamid, char *buf, int size);
+int UniaudIoctlPCMRead(OSSSTREAMID streamid, char *buf, int size);
+int UniaudIoctlPCMPrepare(OSSSTREAMID streamid);
+int UniaudIoctlPCMResume(OSSSTREAMID streamid, int pause);
+int UniaudIoctlPCMStart(OSSSTREAMID streamid);
+int UniaudIoctlPCMDrop(OSSSTREAMID streamid);
+void UniaudCloseAll(USHORT fileid);
+
+void uniaud_set_interrupted_substream(struct snd_pcm_substream *substream);
