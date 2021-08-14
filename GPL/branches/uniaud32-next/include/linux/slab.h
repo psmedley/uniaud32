@@ -115,12 +115,12 @@ static inline void *kmalloc_array(size_t n, size_t size, gfp_t flags)
 static __must_check inline void *
 krealloc_array(void *p, size_t new_n, size_t new_size, gfp_t flags)
 {
-	size_t bytes;
+//	size_t bytes;
 
 //	if (check_mul_overflow(new_n, new_size, &bytes))
 //		return NULL;
 
-	return krealloc(p, bytes, flags);
+	return krealloc(p, new_n*new_size, flags);
 }
 
 #define kmalloc_node_track_caller(size, flags, node) \
