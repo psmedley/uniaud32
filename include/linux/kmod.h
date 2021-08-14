@@ -2,5 +2,7 @@
 
 #ifndef _LINUX_KMOD_H
 #define _LINUX_KMOD_H
+#include <asm/errno.h>
+static inline int request_module(const char *name, ...) { return -ENOSYS; }
 
 #endif /* _LINUX_KMOD_H */

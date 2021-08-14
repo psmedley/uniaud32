@@ -4378,6 +4378,10 @@ static int stac_parse_auto_config(struct hda_codec *codec)
 
 	spec->gen.automute_hook = stac_update_outputs;
 
+#ifndef TARGET_OS2
+	if (spec->gpio_led)
+		snd_hda_gen_add_mute_led_cdev(codec, stac_vmaster_hook);
+#endif
 	err = snd_hda_gen_parse_auto_config(codec, &spec->gen.autocfg);
 	if (err < 0)
 		return err;
@@ -4419,10 +4423,6 @@ static int stac_parse_auto_config(struct hda_codec *codec)
 	}
 #endif
 
-#ifdef CONFIG_SND_HDA_GENERIC_LEDS
-	if (spec->gpio_led)
-		snd_hda_gen_add_mute_led_cdev(codec, stac_vmaster_hook);
-#endif
 	if (spec->aloopback_ctl &&
 	    snd_hda_get_bool_hint(codec, "loopback") == 1) {
 		unsigned int wr_verb =
