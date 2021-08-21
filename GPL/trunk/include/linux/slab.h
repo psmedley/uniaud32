@@ -105,6 +105,24 @@ static inline void *kmalloc_array(size_t n, size_t size, gfp_t flags)
 	return __kmalloc(n * size, flags);
 }
 
+/**
+ * krealloc_array - reallocate memory for an array.
+ * @p: pointer to the memory chunk to reallocate
+ * @new_n: new number of elements to alloc
+ * @new_size: new size of a single member of the array
+ * @flags: the type of memory to allocate (see kmalloc)
+ */
+static __must_check inline void *
+krealloc_array(void *p, size_t new_n, size_t new_size, gfp_t flags)
+{
+//	size_t bytes;
+
+//	if (check_mul_overflow(new_n, new_size, &bytes))
+//		return NULL;
+
+	return krealloc(p, new_n*new_size, flags);
+}
+
 #define kmalloc_node_track_caller(size, flags, node) \
 	kmalloc_track_caller(size, flags)
 #define 	kmalloc_track_caller(size, flags)   __kmalloc(size, flags)
