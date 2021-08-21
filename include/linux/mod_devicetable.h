@@ -11,4 +11,6 @@ struct hda_device_id {
 	unsigned long driver_data;
 };
 
+#define ACPI_ID_LEN	9
+
 #endif /* _LINUX_MOD_DEVICETABLE_H */

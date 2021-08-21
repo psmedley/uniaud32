@@ -9,6 +9,7 @@
 #include <linux/export.h>
 #include <sound/core.h>
 #include <sound/control.h>
+#include <linux/string.h>
 
 #define jack_detect_kctl_info	snd_ctl_boolean_mono_info
 
@@ -35,7 +36,7 @@ static int get_available_index(struct snd_card *card, const char *name)
 
 	sid.index = 0;
 	sid.iface = SNDRV_CTL_ELEM_IFACE_CARD;
-	strlcpy(sid.name, name, sizeof(sid.name));
+	strscpy(sid.name, name, sizeof(sid.name));
 
 	while (snd_ctl_find_id(card, &sid)) {
 		sid.index++;
