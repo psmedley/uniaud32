@@ -99,7 +99,7 @@ struct dma_map_ops {
 #endif
 #define DMA_BIT_MASK(n)	(((n) == 64) ? ~0ULL : ((1ULL<<(n))-1))
 
-extern struct dma_map_ops *dma_ops;
+//extern struct dma_map_ops *dma_ops;
 
 static inline struct dma_map_ops *get_dma_ops(struct device *dev)
 {
