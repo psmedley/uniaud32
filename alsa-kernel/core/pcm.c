@@ -1012,7 +1012,7 @@ void snd_pcm_detach_substream(struct snd_pcm_substream *substream)
 }
 
 #ifndef TARGET_OS2
-static ssize_t show_pcm_class(struct device *dev,
+static ssize_t pcm_show_class(struct device *dev,
 			      struct device_attribute *attr, char *buf)
 {
 	struct snd_pcm_str *pstr = container_of(dev, struct snd_pcm_str, dev);
@@ -1032,7 +1032,7 @@ static ssize_t show_pcm_class(struct device *dev,
 	return sprintf(buf, "%s\n", str);
 }
 
-static DEVICE_ATTR(pcm_class, 0444, show_pcm_class, NULL);
+static DEVICE_ATTR_RO(pcm_class);
 static struct attribute *pcm_dev_attrs[] = {
 	&dev_attr_pcm_class.attr,
 	NULL
