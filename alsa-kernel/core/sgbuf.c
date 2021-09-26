@@ -16,7 +16,21 @@ void *snd_malloc_dev_pages(struct device *dev, size_t size, dma_addr_t *dma);
 #include <linux/vmalloc.h>
 #include <linux/export.h>
 #include <sound/memalloc.h>
+#include "memalloc_local.h"
+ 
+struct snd_sg_page {
+	void *buf;
+	dma_addr_t addr;
+};
 
+struct snd_sg_buf {
+	int size;	/* allocated byte size */
+	int pages;	/* allocated pages */
+	int tblsize;	/* allocated table size */
+	struct snd_sg_page *table;	/* address table */
+	struct page **page_table;	/* page table (for vmap/vunmap) */
+	struct device *dev;
+};
 
 #ifdef CONFIG_SND_DMA_SGBUF
 
