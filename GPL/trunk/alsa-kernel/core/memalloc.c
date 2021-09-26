@@ -2,7 +2,7 @@
 /*
  *  Copyright (c) by Jaroslav Kysela <perex@perex.cz>
  *                   Takashi Iwai <tiwai@suse.de>
- * 
+ *
  *  Generic memory allocators
  */
 
@@ -18,6 +18,10 @@
 #include <asm/set_memory.h>
 #endif
 #include <sound/memalloc.h>
+#include "memalloc_local.h"
+
+extern void *snd_malloc_sgbuf_pages(struct device *device, size_t size, struct snd_dma_buffer *dmab, size_t *res_size);
+extern int snd_free_sgbuf_pages(struct snd_dma_buffer *dmab);
 
 /*
  *
@@ -300,3 +304,35 @@ void snd_dma_free_pages(struct snd_dma_buffer *dmab)
 	}
 }
 EXPORT_SYMBOL(snd_dma_free_pages);
+
+#ifdef TARGET_OS2
+struct snd_sg_page {
+	void *buf;
+	dma_addr_t addr;
+};
+
+struct snd_sg_buf {
+	int size;	/* allocated byte size */
+	int pages;	/* allocated pages */
+	int tblsize;	/* allocated table size */
+	struct snd_sg_page *table;	/* address table */
+	struct page **page_table;	/* page table (for vmap/vunmap) */
+	struct device *dev;
+};
+
+/*
+ * return the physical address at the corresponding offset
+ */
+dma_addr_t snd_sgbuf_get_addr(struct snd_dma_buffer *dmab,
+					   size_t offset)
+{
+	struct snd_sg_buf *sgbuf = dmab->private_data;
+	dma_addr_t addr;
+
+	if (!sgbuf)
+		return dmab->addr + offset;
+	addr = sgbuf->table[offset >> PAGE_SHIFT].addr;
+	addr &= ~((dma_addr_t)PAGE_SIZE - 1);
+	return addr + offset % PAGE_SIZE;
+}
+#endif
