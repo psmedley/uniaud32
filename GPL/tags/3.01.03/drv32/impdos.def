@@ -1,0 +1,13 @@
+LIBRARY DOSCALLS
+
+EXPORTS
+    DOSCLOSE                  @59
+    DOSOPEN                   @70
+    _DOSWRITE                 @138
+    DosExit                   @234
+    DosWrite                  @282
+    DosQueryCp                @291
+    DosQuerySysInfo           @348
+    DOS32FLATDS               @370
+    DosQueryDBCSEnv           @396
+    DOSIODELAYCNT             @427

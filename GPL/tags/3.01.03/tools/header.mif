@@ -1,0 +1,125 @@
+#
+# Target directories.
+# Both bin and lib directories are compiler dependent.
+#
+
+!ifndef ROOT
+!error ROOT is not defined. Please check your SETENV.CMD.
+!endif
+
+!ifndef %DDK
+!error DDK is not defined in the environment. Please check your SETENV.CMD.
+!endif
+DDK=$(%DDK)
+
+!ifndef %WATCOM
+!error WATCOM is not defined in the environment. Please check your SETENV.CMD.
+!endif
+WATCOM=$(%WATCOM)
+
+!if "$(DEBUG)" == "1"
+ALSA_BIN = $(ROOT)\bin\Debug
+ALSA_LIB = $(ROOT)\lib\Debug
+OBJDIR = obj\Debug
+!else
+ALSA_BIN = $(ROOT)\bin\Release
+ALSA_LIB = $(ROOT)\lib\Release
+OBJDIR = obj\Release
+!endif
+
+TOOLS=$(ROOT)\tools
+CREATEPATH=$(TOOLS)\CreatePath.cmd
+WAT2MAP=$(TOOLS)\wat2map.cmd
+
+#===================================================================
+#
+#   Auto-dependency information
+#
+#===================================================================
+.ERASE
+.SUFFIXES:
+.SUFFIXES: .lst .obj .lib .cpp .cpp16 .c .c16 .asm .def
+
+CPPFLAGS = -xd
+ASFLAGS  = -Mb -Li -Sv:M510
+CFLAGS   = -bt=os2v2 -5r -omlinear -s -wx -ze -zdp -zl -zq -nt=CODE32 -zff -zgf -ei
+CFLAGS16 = $(CFLAGS) -mc -zu -zc
+CFLAGS  += -mf
+
+!if "$(DEBUG)" == "1"
+CFLAGS  += -dDEBUG -hc
+ASFLAGS += -D:DEBUG
+!endif
+
+!ifdef PACK_1
+CFLAGS += -zp1
+!else
+CFLAGS += -zp4
+!endif
+
+CDEFINES = -D__KERNEL__ -DMODULE -dTARGET_OS2 -dALSA_BUILD -D__ISAPNP__ -DCONFIG_ISAPNP -D__i386_
+AINCLUDES = $(DDK)\base\H
+%INCLUDE = .;$(ROOT)\include;$(ROOT)\alsa-kernel\include;$(WATCOM)\H;$(WATCOM)\h\os2;
+
+CC = WCC386 $(CFLAGS) -zev -za99 $(CDEFINES)
+CPP = WPP386 $(CFLAGS) $(CPPFLAGS) $(CDEFINES)
+CPP16 = WPP386 $(CFLAGS16) $(CPPFLAGS) $(CDEFINES)
+ASM = alp $(ASFLAGS) $(AINCLUDES)
+
+DFLAGS = -l -s
+DIS = WDISASM $(DFLAGS)
+
+!ifdef USE_WLINK
+!if "$(DEBUG)" == "1"
+LFLAGS = system os2v2 physdevice option int, dosseg, map, eliminate, mang, tog sort global d codeview
+!else
+LFLAGS = system os2v2 physdevice option int, dosseg, map, eliminate, mang, tog sort global
+!endif
+QFLAGS = system os2 option quiet, map, align=512
+LINK = wlink $(LFLAGS)
+!else
+LD2TARGETFLAGS = /PDD /nologo /noe /packcode /packdata /nod /OLDcpp
+!if "$(DEBUG)" == "1"
+LD2FLAGS = /linenumbers /debug $(LD2TARGETFLAGS)
+!else
+LD2FLAGS = /exepack:2 $(LD2TARGETFLAGS)
+!endif
+LINK = ilink $(LD2FLAGS)
+!endif
+
+!if "$(DEBUG)" == "1"
+BFLAGS = -c -b -q -n
+!else
+BFLAGS = -s -t -c -b -q -n
+!endif
+LIB = WLIB $(BFLAGS)
+
+IFLAGS = /nologo
+IMPLIB = IMPLIB $(IFLAGS)
+
+.obj: $(OBJDIR)
+.lib: $(OBJDIR)
+
+.obj.lst:
+  $(DIS) $*
+
+.c.obj: .AUTODEPEND
+  $(CC) -fo$(OBJDIR)\$^&.obj $^&.c
+
+.cpp.obj: .AUTODEPEND
+  $(CPP) -fo$(OBJDIR)\$^&.obj $^&.cpp
+
+.cpp16.obj: .AUTODEPEND
+  $(CPP16) $(CFLAGS16) -fo$(OBJDIR)\$^&.obj $^&.cpp16
+
+.asm.obj: .AUTODEPEND
+  $(ASM) $^&.asm -Fo:$(OBJDIR)\$^&.obj -Fl:$(OBJDIR)\$^&.lst
+
+.def.lib:
+  $(IMPLIB) $(OBJDIR)\$^&.lib $^&.def
+
+!ifndef NOOBJ
+.before
+  @if not exist $(OBJDIR) @$(CREATEPATH) $(OBJDIR)
+!endif
+
