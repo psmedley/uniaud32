@@ -24,6 +24,7 @@
 #include <linux/pm_runtime.h>
 #ifdef TARGET_OS2
 #include <linux/mod_devicetable.h>
+#define wmb()
 #endif
 #include <sound/core.h>
 #include <sound/jack.h>
@@ -50,7 +51,11 @@ module_param(enable_acomp, bool, 0444);
 MODULE_PARM_DESC(enable_acomp, "Enable audio component binding (default=yes)");
 
 static bool enable_silent_stream =
+#ifndef TARGET_OS2
 IS_ENABLED(CONFIG_SND_HDA_INTEL_HDMI_SILENT_STREAM);
+#else
+1
+#endif
 module_param(enable_silent_stream, bool, 0644);
 MODULE_PARM_DESC(enable_silent_stream, "Enable Silent Stream for HDMI devices");
 
@@ -1949,7 +1954,7 @@ static const struct snd_pci_quirk force_connect_list[] = {
 	SND_PCI_QUIRK(0x103c, 0x871a, "HP", 1),
 	SND_PCI_QUIRK(0x1462, 0xec94, "MS-7C94", 1),
 	SND_PCI_QUIRK(0x8086, 0x2081, "Intel NUC 10", 1),
-	{}
+	{0}
 };
 
 static int hdmi_parse_codec(struct hda_codec *codec)
@@ -2663,8 +2668,10 @@ static void generic_acomp_pin_eld_notify(void *audio_ptr, int port, int dev_id)
 	/* skip notification during system suspend (but not in runtime PM);
 	 * the state will be updated at resume
 	 */
+#ifndef TARGET_OS2
 	if (codec->core.dev.power.power_state.event == PM_EVENT_SUSPEND)
 		return;
+#endif
 	/* ditto during suspend/resume process itself */
 	if (snd_hdac_is_in_pm(&codec->core))
 		return;
@@ -2849,8 +2856,10 @@ static void intel_pin_eld_notify(void *audio_ptr, int port, int pipe)
 	/* skip notification during system suspend (but not in runtime PM);
 	 * the state will be updated at resume
 	 */
+#ifndef TARGET_OS2
 	if (codec->core.dev.power.power_state.event == PM_EVENT_SUSPEND)
 		return;
+#endif
 	/* ditto during suspend/resume process itself */
 	if (snd_hdac_is_in_pm(&codec->core))
 		return;
