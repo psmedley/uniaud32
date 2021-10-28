@@ -197,4 +197,9 @@ static inline unsigned fls_long(unsigned long l)
 		return fls(l);
 }
 
+static inline unsigned long hweight_long(unsigned long w)
+{
+	return hweight32(w);
+}
+
 #endif /* _I386_BITOPS_H */
