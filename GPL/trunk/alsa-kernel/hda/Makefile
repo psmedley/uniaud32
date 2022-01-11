@@ -12,7 +12,7 @@ WMAKEOPTS=-h $(__MAKEOPTS__) DEBUG=$(DEBUG)
 #   List of source files
 #
 #===================================================================
-FILES = hdac_device.obj array.obj hdac_stream.obj hdac_controller.obj hdac_bus.obj hda_bus_type.obj hdac_regmap.obj
+FILES = hdac_device.obj array.obj hdac_stream.obj hdac_controller.obj hdac_bus.obj hda_bus_type.obj hdac_regmap.obj hdmi_chmap.obj
 
 TARGET = hdac
 

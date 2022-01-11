@@ -768,4 +768,6 @@ int pci_status_get_and_clear_errors(struct pci_dev *pdev);
 			       PCI_STATUS_SIG_TARGET_ABORT | \
 			       PCI_STATUS_PARITY)
 
+#define dev_is_pci(d) (true)
+
 #endif /* LINUX_PCI_H */
