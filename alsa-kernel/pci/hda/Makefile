@@ -12,9 +12,9 @@ ROOT=$(%ROOT)
 #
 #===================================================================
 FILES = hda_intel.obj hda_codec.obj hda_controller.obj hda_auto_parser.obj hda_jack.obj &
-  hda_proc.obj hda_generic.obj hda_hwdep.obj hda_sysfs.obj hda_bind.obj &
+  hda_proc.obj hda_generic.obj hda_hwdep.obj hda_sysfs.obj hda_bind.obj hda_eld.obj &
   patch_analog.obj patch_cmedia.obj patch_conexant.obj patch_ca0110.obj patch_ca0132.obj patch_cirrus.obj &
-  patch_realtek.obj patch_si3054.obj patch_sigmatel.obj patch_via.obj
+  patch_hdmi.obj patch_realtek.obj patch_si3054.obj patch_sigmatel.obj patch_via.obj
 
 TARGET = hda
 
