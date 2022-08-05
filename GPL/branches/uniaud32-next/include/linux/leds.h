@@ -19,4 +19,9 @@ struct led_classdev {
 	struct device		*dev;
 };
 
+enum led_audio {
+        LED_AUDIO_MUTE,         /* master mute LED */
+        LED_AUDIO_MICMUTE,      /* mic mute LED */
+        NUM_AUDIO_LEDS
+};
 #endif /* _LINUX_LEDS_H */
