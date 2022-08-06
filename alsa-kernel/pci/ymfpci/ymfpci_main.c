@@ -2120,16 +2120,10 @@ static int snd_ymfpci_memalloc(struct snd_ymfpci *chip)
 	       chip->work_size;
 	/* work_ptr must be aligned to 256 bytes, but it's already
 	   covered with the kernel page allocation mechanism */
-#ifndef TARGET_OS2
 	chip->work_ptr = snd_devm_alloc_pages(&chip->pci->dev,
 					      SNDRV_DMA_TYPE_DEV, size);
 	if (!chip->work_ptr)
 		return -ENOMEM;
-#else
-	if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, &chip->pci->dev,
-				size, &chip->work_ptr) < 0) 
-		return -ENOMEM;
-#endif
 	ptr = chip->work_ptr->area;
 	ptr_addr = chip->work_ptr->addr;
 	memset(ptr, 0, size);	/* for sure */

@@ -676,18 +676,18 @@ static int snd_pcm_hw_params_choose(struct snd_pcm_substream *pcm,
 	return 0;
 }
 
-#ifndef TARGET_OS2
 /* acquire buffer_mutex; if it's in r/w operation, return -EBUSY, otherwise
  * block the further r/w operations
  */
 static int snd_pcm_buffer_access_lock(struct snd_pcm_runtime *runtime)
 {
+#ifndef TARGET_OS2
 	if (!atomic_dec_unless_positive(&runtime->buffer_accessing))
 		return -EBUSY;
+#endif
 	mutex_lock(&runtime->buffer_mutex);
 	return 0; /* keep buffer_mutex, unlocked by below */
 }
-#endif
 
 /* release buffer_mutex and clear r/w access flag */
 static void snd_pcm_buffer_access_unlock(struct snd_pcm_runtime *runtime)
@@ -713,11 +713,9 @@ static int snd_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (PCM_RUNTIME_CHECK(substream))
 		return -ENXIO;
 	runtime = substream->runtime;
-#ifndef TARGET_OS2
 	err = snd_pcm_buffer_access_lock(runtime);
 	if (err < 0)
 		return err;
-#endif
 	snd_pcm_stream_lock_irq(substream);
 	switch (runtime->status->state) {
 	case SNDRV_PCM_STATE_OPEN:
@@ -880,11 +878,9 @@ static int snd_pcm_hw_free(struct snd_pcm_substream *substream)
 	if (PCM_RUNTIME_CHECK(substream))
 		return -ENXIO;
 	runtime = substream->runtime;
-#ifndef TARGET_OS2
 	result = snd_pcm_buffer_access_lock(runtime);
 	if (result < 0)
 		return result;
-#endif
 	snd_pcm_stream_lock_irq(substream);
 	switch (runtime->status->state) {
 	case SNDRV_PCM_STATE_SETUP:
@@ -1409,11 +1405,9 @@ static int snd_pcm_action_nonatomic(const struct action_ops *ops,
 
 	/* Guarantee the group members won't change during non-atomic action */
 	down_read(&snd_pcm_link_rwsem);
-#ifndef TARGET_OS2
 	res = snd_pcm_buffer_access_lock(substream->runtime);
 	if (res < 0)
 		goto unlock;
-#endif
 	if (snd_pcm_stream_linked(substream))
 		res = snd_pcm_action_group(ops, substream, state, false);
 	else

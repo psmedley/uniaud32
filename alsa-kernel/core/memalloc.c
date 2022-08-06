@@ -333,3 +333,49 @@ dma_addr_t snd_sgbuf_get_addr(struct snd_dma_buffer *dmab,
 	return addr + offset % PAGE_SIZE;
 }
 #endif
+
+/* called by devres */
+static void __snd_release_pages(struct device *dev, void *res)
+{
+	snd_dma_free_pages(res);
+}
+
+/**
+ * snd_devm_alloc_pages - allocate the buffer and manage with devres
+ * @dev: the device pointer
+ * @type: the DMA buffer type
+ * @size: the buffer size to allocate
+ *
+ * Allocate buffer pages depending on the given type and manage using devres.
+ * The pages will be released automatically at the device removal.
+ *
+ * Unlike snd_dma_alloc_pages(), this function requires the real device pointer,
+ * hence it can't work with SNDRV_DMA_TYPE_CONTINUOUS or
+ * SNDRV_DMA_TYPE_VMALLOC type.
+ *
+ * The function returns the snd_dma_buffer object at success, or NULL if failed.
+ */
+struct snd_dma_buffer *
+snd_devm_alloc_pages(struct device *dev, int type, size_t size)
+{
+	struct snd_dma_buffer *dmab;
+	int err;
+
+	if (WARN_ON(type == SNDRV_DMA_TYPE_CONTINUOUS ||
+		    type == SNDRV_DMA_TYPE_VMALLOC))
+		return NULL;
+
+	dmab = devres_alloc(__snd_release_pages, sizeof(*dmab), GFP_KERNEL);
+	if (!dmab)
+		return NULL;
+
+	err = snd_dma_alloc_pages(type, dev, size, dmab);
+	if (err < 0) {
+		devres_free(dmab);
+		return NULL;
+	}
+
+	devres_add(dev, dmab);
+	return dmab;
+}
+EXPORT_SYMBOL_GPL(snd_devm_alloc_pages);

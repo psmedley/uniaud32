@@ -3330,7 +3330,6 @@ static int snd_trident_tlb_alloc(struct snd_trident *trident)
 	/* TLB array must be aligned to 16kB !!! so we allocate
 	   32kB region and correct offset when necessary */
 
-#ifndef TARGET_OS2
 	trident->tlb.buffer =
 		snd_devm_alloc_pages(&trident->pci->dev, SNDRV_DMA_TYPE_DEV,
 				     2 * SNDRV_TRIDENT_MAX_PAGES * 4);
@@ -3338,18 +3337,10 @@ static int snd_trident_tlb_alloc(struct snd_trident *trident)
 		dev_err(trident->card->dev, "unable to allocate TLB buffer\n");
 		return -ENOMEM;
 	}
-#else
-	if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, &trident->pci->dev,
-				2 * SNDRV_TRIDENT_MAX_PAGES * 4, &trident->tlb.buffer) < 0) {
-		dev_err(trident->card->dev, "unable to allocate TLB buffer\n");
-		return -ENOMEM;
-	}
-#endif
 	trident->tlb.entries = (__le32 *)ALIGN((unsigned long)trident->tlb.buffer->area, SNDRV_TRIDENT_MAX_PAGES * 4);
 	trident->tlb.entries_dmaaddr = ALIGN(trident->tlb.buffer->addr, SNDRV_TRIDENT_MAX_PAGES * 4);
 
 	/* allocate and setup silent page and initialise TLB entries */
-#ifndef TARGET_OS2
 	trident->tlb.silent_page =
 		snd_devm_alloc_pages(&trident->pci->dev, SNDRV_DMA_TYPE_DEV,
 				     SNDRV_TRIDENT_PAGE_SIZE);
@@ -3357,13 +3348,6 @@ static int snd_trident_tlb_alloc(struct snd_trident *trident)
 		dev_err(trident->card->dev, "unable to allocate silent page\n");
 		return -ENOMEM;
 	}
-#else
-	if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, &trident->pci->dev,
-				SNDRV_TRIDENT_PAGE_SIZE, &trident->tlb.silent_page) < 0) {
-		dev_err(trident->card->dev, "unable to allocate silent page\n");
-		return -ENOMEM;
-	}
-#endif
 	memset(trident->tlb.silent_page->area, 0, SNDRV_TRIDENT_PAGE_SIZE);
 	for (i = 0; i < SNDRV_TRIDENT_MAX_PAGES; i++)
 		trident->tlb.entries[i] = cpu_to_le32(trident->tlb.silent_page->addr & ~(SNDRV_TRIDENT_PAGE_SIZE-1));

@@ -2044,26 +2044,17 @@ static int snd_ensoniq_create(struct snd_card *card,
 	if (request_irq(pci->irq, snd_audiopci_interrupt, IRQF_SHARED,
 			KBUILD_MODNAME, ensoniq)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
-		snd_ensoniq_free(ensoniq);
+		snd_ensoniq_free(card);
 		return -EBUSY;
 	}
 #endif
 	ensoniq->irq = pci->irq;
 	card->sync_irq = ensoniq->irq;
 #ifdef CHIP1370
-#ifndef TARGET_OS2
 	ensoniq->dma_bug =
 		snd_devm_alloc_pages(&pci->dev, SNDRV_DMA_TYPE_DEV, 16);
 	if (!ensoniq->dma_bug)
 		return -ENOMEM;
-#else
-	if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, &pci->dev,
-				16, &ensoniq->dma_bug) < 0) {
-		dev_err(card->dev, "unable to allocate space for phantom area - dma_bug\n");
-		snd_ensoniq_free(ensoniq);
-		return -EBUSY;
-	}
-#endif
 #endif
 	pci_set_master(pci);
 #ifndef TARGET_OS2

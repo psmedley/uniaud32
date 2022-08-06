@@ -139,21 +139,12 @@ static int snd_card_emu10k1_probe(struct pci_dev *pci,
 	if (err < 0)
 		return err;
 	/* This stores the periods table. */
-#ifndef TARGET_OS2
 	if (emu->card_capabilities->ca0151_chip) { /* P16V */	
 		emu->p16v_buffer =
 			snd_devm_alloc_pages(&pci->dev, SNDRV_DMA_TYPE_DEV, 1024);
 		if (!emu->p16v_buffer)
 			return -ENOMEM;
 	}
-#else
-	if (emu->card_capabilities->ca0151_chip) { /* P16V */	
-		err = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, &pci->dev,
-					  1024, &emu->p16v_buffer);
-		if (err < 0)
-			return -ENOMEM;
-	}
-#endif
 	err = snd_emu10k1_mixer(emu, 0, 3);
 	if (err < 0)
 		return err;

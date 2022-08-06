@@ -1611,17 +1611,9 @@ static int snd_ca0106_create(int dev, struct snd_card *card,
 	card->sync_irq = chip->irq;
 
 	/* This stores the periods table. */
-#ifndef TARGET_OS2
 	chip->buffer = snd_devm_alloc_pages(&pci->dev, SNDRV_DMA_TYPE_DEV, 1024);
 	if (!chip->buffer)
 		return -ENOMEM;
-#else
-	if (snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, &pci->dev,
-				1024, &chip->buffer) < 0) {
-		snd_ca0106_free(chip);
-		return -ENOMEM;
-	}
-#endif
 	pci_set_master(pci);
 	/* read serial */
 	pci_read_config_dword(pci, PCI_SUBSYSTEM_VENDOR_ID, &chip->serial);

@@ -3011,21 +3011,11 @@ static int snd_intel8x0_init(struct snd_card *card,
 
 	/* allocate buffer descriptor lists */
 	/* the start of each lists must be aligned to 8 bytes */
-#ifndef TARGET_OS2
 	chip->bdbars = snd_devm_alloc_pages(&pci->dev, intel8x0_dma_type(chip),
 					    chip->bdbars_count * sizeof(u32) *
 					    ICH_MAX_FRAGS * 2);
 	if (!chip->bdbars)
 		return -ENOMEM;
-#else
-	if (snd_dma_alloc_pages(intel8x0_dma_type(chip), &pci->dev,
-				chip->bdbars_count * sizeof(u32) * ICH_MAX_FRAGS * 2,
-				&chip->bdbars) < 0) {
-		snd_intel8x0_free(chip);
-		dev_err(card->dev, "cannot allocate buffer descriptors\n");
-		return -ENOMEM;
-	}
-#endif
 	/* tables must be aligned to 8 bytes here, but the kernel pages
 	   are much bigger, so we don't care (on i386) */
 	int_sta_masks = 0;
