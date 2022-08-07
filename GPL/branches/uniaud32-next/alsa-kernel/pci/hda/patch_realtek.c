@@ -5214,6 +5214,7 @@ static void alc274_hp_envy_pcm_hook(struct hda_pcm_stream *hinfo,
 	}
 }
 
+#ifdef NOT_USED
 static void alc274_fixup_hp_envy_gpio(struct hda_codec *codec,
 				      const struct hda_fixup *fix,
 				      int action)
@@ -5227,7 +5228,6 @@ static void alc274_fixup_hp_envy_gpio(struct hda_codec *codec,
 	}
 }
 
-#ifdef NOT_USED
 static void alc_update_coef_led(struct hda_codec *codec,
 				struct alc_coef_led *led,
 				bool polarity, bool on)
@@ -7592,6 +7592,7 @@ enum {
 	ALC285_FIXUP_LEGION_Y9000X_AUTOMUTE,
 };
 
+#ifdef NOT_USED
 /* A special fixup for Lenovo C940 and Yoga Duet 7;
  * both have the very same PCI SSID, and we need to apply different fixups
  * depending on the codec ID
@@ -7608,6 +7609,7 @@ static void alc298_fixup_lenovo_c940_duet7(struct hda_codec *codec,
 		id = ALC287_FIXUP_YOGA7_14ITL_SPEAKERS; /* Duet 7 */
 	__snd_hda_apply_fixup(codec, id, action, 0);
 }
+#endif
 
 #ifdef TARGET_OS2
 static const struct hda_verb ALC269_FIXUP_SONY_VAIO_verbs[] = {

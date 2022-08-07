@@ -885,20 +885,17 @@ int snd_card_register(struct snd_card *card)
 		if (err < 0)
 			return err;
 		card->registered = true;
-#ifndef TARGET_OS2
 	} else {
 		if (card->managed)
 			devm_remove_action(card->dev, trigger_card_free, card);
-#endif
 	}
 
-#ifndef TARGET_OS2
 	if (card->managed) {
 		err = devm_add_action(card->dev, trigger_card_free, card);
 		if (err < 0)
 			return err;
 	}
-#endif
+
 	err = snd_device_register_all(card);
 	if (err < 0)
 		return err;

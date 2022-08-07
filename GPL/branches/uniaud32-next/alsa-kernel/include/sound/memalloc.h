@@ -82,5 +82,12 @@ unsigned int snd_sgbuf_get_chunk_size(struct snd_dma_buffer *dmab,
 /* device-managed memory allocator */
 struct snd_dma_buffer *snd_devm_alloc_pages(struct device *dev, int type,
 					    size_t size);
+#ifdef TARGET_OS2
+int snd_free_sgbuf_pages(struct snd_dma_buffer *dmab);
+void *snd_malloc_sgbuf_pages(struct device *device,
+			     size_t size, struct snd_dma_buffer *dmab,
+			     size_t *res_size);
+
+#endif
 #endif /* __SOUND_MEMALLOC_H */
 
