@@ -238,8 +238,10 @@ int snd_devm_card_new(struct device *parent, int idx, const char *xid,
 		devres_free(card);
 		return err;
 	}
-
+#ifndef TARGET_OS2
+	/* Traps here with non-HDA hardware on OS/2 */
 	devres_add(parent, card);
+#endif
 	*card_ret = card;
 	return 0;
 }

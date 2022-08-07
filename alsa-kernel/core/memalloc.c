@@ -375,7 +375,10 @@ snd_devm_alloc_pages(struct device *dev, int type, size_t size)
 		return NULL;
 	}
 
+#ifndef TARGET_OS2
+	/* Traps here with non-HDA hardware on OS/2 */
 	devres_add(dev, dmab);
+#endif
 	return dmab;
 }
 EXPORT_SYMBOL_GPL(snd_devm_alloc_pages);
