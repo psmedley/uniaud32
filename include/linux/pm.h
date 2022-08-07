@@ -245,6 +245,7 @@ struct dev_pm_info {
 	atomic_t		pm_users;
 	struct device		* pm_parent;
 	struct list_head	entry;
+	enum rpm_status		runtime_status;
 };
 
 extern void device_pm_set_parent(struct device * dev, struct device * parent);
