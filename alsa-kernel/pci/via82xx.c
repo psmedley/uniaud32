@@ -2061,12 +2061,8 @@ static int snd_via686_init_misc(struct via82xx *chip)
 		}
 	}
 	if (mpu_port >= 0x200)
-#ifndef TARGET_OS2
 		chip->mpu_res = devm_request_region(&chip->pci->dev, mpu_port,
 						    2, "VIA82xx MPU401");
-#else
-		chip->mpu_res = request_region(mpu_port, 2, "VIA82xx MPU401");
-#endif
 	if (chip->mpu_res) {
 		if (rev_h)
 			legacy |= VIA_FUNC_MIDI_PNP;	/* enable PCI I/O 2 */
@@ -2353,7 +2349,6 @@ static int snd_via82xx_create(struct snd_card *card,
 	if (err < 0)
 		return err;
 	chip->port = pci_resource_start(pci, 0);
-#ifndef TARGET_OS2
 	if (devm_request_irq(&pci->dev, pci->irq,
 			     chip_type == TYPE_VIA8233 ?
 			     snd_via8233_interrupt : snd_via686_interrupt,
@@ -2362,17 +2357,6 @@ static int snd_via82xx_create(struct snd_card *card,
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}
-#else
-	if (request_irq(pci->irq,
-			chip_type == TYPE_VIA8233 ?
-			snd_via8233_interrupt :	snd_via686_interrupt,
-			IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
-		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
-		snd_via82xx_free(chip);
-		return -EBUSY;
-	}
-#endif
 	chip->irq = pci->irq;
 	card->sync_irq = chip->irq;
 	card->private_free = snd_via82xx_free;

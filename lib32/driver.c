@@ -77,12 +77,15 @@ static void add_dr(struct device *dev, struct devres_node *node)
  */
 void devres_add(struct device *dev, void *res)
 {
+#ifndef TARGET_OS2
+	/* Traps here on OS/2 */
 	struct devres *dr = container_of(res, struct devres, data);
 	unsigned long flags;
 
 	spin_lock_irqsave(&dev->devres_lock, flags);
 	add_dr(dev, &dr->node);
 	spin_unlock_irqrestore(&dev->devres_lock, flags);
+#endif
 }
 
 static struct device *next_device(struct klist_iter *i)

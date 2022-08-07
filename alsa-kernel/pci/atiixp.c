@@ -1577,20 +1577,14 @@ static int snd_atiixp_init(struct snd_card *card, struct pci_dev *pci)
 	chip->addr = pci_resource_start(pci, 0);
 #ifndef TARGET_OS2
 	chip->remap_addr = pcim_iomap_table(pci)[0];
+#else
+	chip->remap_addr = pci_ioremap_bar(pci, 0);
+#endif
 	if (devm_request_irq(&pci->dev, pci->irq, snd_atiixp_interrupt,
 			     IRQF_SHARED, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}
-#else
-	chip->remap_addr = pci_ioremap_bar(pci, 0);
-	if (request_irq(pci->irq, snd_atiixp_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
-		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
-		snd_atiixp_free(chip);
-		return -EBUSY;
-	}
-#endif
 	chip->irq = pci->irq;
 	card->sync_irq = chip->irq;
 	card->private_free = snd_atiixp_free;
