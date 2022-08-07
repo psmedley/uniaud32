@@ -2478,12 +2478,8 @@ static int snd_es1968_create_gameport(struct es1968 *chip, int dev)
 	if (!joystick[dev])
 		return -ENODEV;
 
-#ifndef TARGET_OS2
 	r = devm_request_region(&chip->pci->dev, JOYSTICK_ADDR, 8,
 				"ES1968 gameport");
-#else
-	r = request_region(JOYSTICK_ADDR, 8, "ES1968 gameport");
-#endif
 	if (!r)
 		return -EBUSY;
 
@@ -2711,20 +2707,11 @@ static int snd_es1968_create(struct snd_card *card,
 	if (err < 0)
 		return err;
 	chip->io_port = pci_resource_start(pci, 0);
-#ifndef TARGET_OS2
 	if (devm_request_irq(&pci->dev, pci->irq, snd_es1968_interrupt,
 			     IRQF_SHARED, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}
-#else
-	if (request_irq(pci->irq, snd_es1968_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
-		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
-		snd_es1968_free(chip);
-		return -EBUSY;
-	}
-#endif
 	chip->irq = pci->irq;
 	card->sync_irq = chip->irq;
 	card->private_free = snd_es1968_free;

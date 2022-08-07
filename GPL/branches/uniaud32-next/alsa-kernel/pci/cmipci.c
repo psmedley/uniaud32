@@ -3025,20 +3025,11 @@ static int snd_cmipci_create(struct snd_card *card, struct pci_dev *pci,
 		return err;
 	cm->iobase = pci_resource_start(pci, 0);
 
-#ifndef TARGET_OS2
 	if (devm_request_irq(&pci->dev, pci->irq, snd_cmipci_interrupt,
 			     IRQF_SHARED, KBUILD_MODNAME, cm)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}
-#else
-	if (request_irq(pci->irq, snd_cmipci_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, cm)) {
-		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
-		snd_cmipci_free(cm);
-		return -EBUSY;
-	}
-#endif
 	cm->irq = pci->irq;
 	card->sync_irq = cm->irq;
 	card->private_free = snd_cmipci_free;
