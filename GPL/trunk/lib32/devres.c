@@ -35,6 +35,8 @@ struct devres_group {
 	/* -- 8 pointers */
 };
 
+#define devres_log(dev, node, op)	do {} while (0)
+
 /*
  * Release functions for devres group.  These callbacks are used only
  * for identification.
@@ -74,6 +76,35 @@ static inline struct devres * alloc_dr(dr_release_t release,
 }
 
 #define devres_log(dev, node, op)	do {} while (0)
+
+static void add_dr(struct device *dev, struct devres_node *node)
+{
+	devres_log(dev, node, "ADD");
+	BUG_ON(!list_empty(&node->entry));
+//#ifndef TARGET_OS2
+	/* Traps here on OS/2 */
+	list_add_tail(&node->entry, &dev->devres_head);
+//#endif
+}
+
+/**
+ * devres_add - Register device resource
+ * @dev: Device to add resource to
+ * @res: Resource to register
+ *
+ * Register devres @res to @dev.  @res should have been allocated
+ * using devres_alloc().  On driver detach, the associated release
+ * function will be invoked and devres will be freed automatically.
+ */
+void devres_add(struct device *dev, void *res)
+{
+	/* Traps here on OS/2 */
+	struct devres *dr = container_of(res, struct devres, data);
+	unsigned long flags;
+	spin_lock_irqsave(&dev->devres_lock, flags);
+	add_dr(dev, &dr->node);
+	spin_unlock_irqrestore(&dev->devres_lock, flags);
+}
 
 /**
  * devres_alloc - Allocate device resource data
@@ -271,4 +302,31 @@ void * devres_find(struct device *dev, dr_release_t release,
 	if (dr)
 		return dr->data;
 	return NULL;
+}
+
+/**
+ * devm_add_action() - add a custom action to list of managed resources
+ * @dev: Device that owns the action
+ * @action: Function that should be called
+ * @data: Pointer to data passed to @action implementation
+ *
+ * This adds a custom action to the list of managed resources so that
+ * it gets executed as part of standard resource unwinding.
+ */
+int devm_add_action(struct device *dev, void (*action)(void *), void *data)
+{
+	return 0;
+}
+
+/**
+ * devm_remove_action() - removes previously added custom action
+ * @dev: Device that owns the action
+ * @action: Function implementing the action
+ * @data: Pointer to data passed to @action implementation
+ *
+ * Removes instance of @action previously added by devm_add_action().
+ * Both action and data should match one of the existing entries.
+ */
+void devm_remove_action(struct device *dev, void (*action)(void *), void *data)
+{
 }

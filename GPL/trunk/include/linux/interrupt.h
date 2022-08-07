@@ -153,4 +153,6 @@ int request_irq(unsigned int, irq_handler_t handler,
 		    unsigned long, const char *, void *);
 
 static inline void devm_free_irq(struct device *dev, unsigned int irq, void *dev_id) {}
+#define devm_request_irq(A, B, C, D, E, F) request_irq(B, C, D, E, F)
+
 #endif

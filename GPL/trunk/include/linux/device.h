@@ -289,6 +289,14 @@ extern void *devres_find(struct device *dev, dr_release_t release,
 
 /* debugging and troubleshooting/diagnostic helpers. */
 extern const char *dev_driver_string(const struct device *dev);
+#define devm_kzalloc(A, B, C) kzalloc(B, C)
+#define devm_kmalloc(A, B, C) kmalloc(B, C)
+#define devm_kcalloc(A, B, C, D) kmalloc(B, C)
+#define devm_kmalloc_array(A, B, C, D) kmalloc_array(B, C, D)
 
+
+/* allows to add/remove a custom action to devres stack */
+int devm_add_action(struct device *dev, void (*action)(void *), void *data);
+void devm_remove_action(struct device *dev, void (*action)(void *), void *data);
 #endif /* _LINUX_DEVICE_H */
 

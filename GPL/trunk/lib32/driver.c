@@ -25,24 +25,6 @@
 #include <linux/pm_runtime.h>
 #include "base.h"
 
-#define devres_log(dev, node, op)	do {} while (0)
-
-struct devres_node {
-	struct list_head		entry;
-	dr_release_t			release;
-#ifdef CONFIG_DEBUG_DEVRES
-	const char			*name;
-	size_t				size;
-#endif
-};
-
-struct devres {
-	struct devres_node		node;
-	/* -- 3 pointers */
-	unsigned long long		data[1];	/* guarantee ull alignment */
-};
-
-
 /**
  * dev_set_name - set a device name
  * @dev: device
@@ -59,31 +41,7 @@ int dev_set_name(struct device *dev, const char *fmt, ...)
 	return err;
 }
 
-static void add_dr(struct device *dev, struct devres_node *node)
-{
-	devres_log(dev, node, "ADD");
-	BUG_ON(!list_empty(&node->entry));
-	list_add_tail(&node->entry, &dev->devres_head);
-}
 
-/**
- * devres_add - Register device resource
- * @dev: Device to add resource to
- * @res: Resource to register
- *
- * Register devres @res to @dev.  @res should have been allocated
- * using devres_alloc().  On driver detach, the associated release
- * function will be invoked and devres will be freed automatically.
- */
-void devres_add(struct device *dev, void *res)
-{
-	struct devres *dr = container_of(res, struct devres, data);
-	unsigned long flags;
-
-	spin_lock_irqsave(&dev->devres_lock, flags);
-	add_dr(dev, &dr->node);
-	spin_unlock_irqrestore(&dev->devres_lock, flags);
-}
 
 static struct device *next_device(struct klist_iter *i)
 {

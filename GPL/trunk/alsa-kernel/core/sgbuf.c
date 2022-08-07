@@ -52,8 +52,8 @@ int snd_free_sgbuf_pages(struct snd_dma_buffer *dmab)
 	dmab->area = NULL;
 
 	tmpb.dev.type = SNDRV_DMA_TYPE_DEV;
-	if (dmab->dev.type == SNDRV_DMA_TYPE_DEV_UC_SG)
-		tmpb.dev.type = SNDRV_DMA_TYPE_DEV_UC;
+	if (dmab->dev.type == SNDRV_DMA_TYPE_DEV_WC_SG)
+		tmpb.dev.type = SNDRV_DMA_TYPE_DEV_WC;
 	tmpb.dev.dev = sgbuf->dev;
 	for (i = 0; i < sgbuf->pages; i++) {
 		if (!(sgbuf->table[i].addr & ~PAGE_MASK))
@@ -133,8 +133,8 @@ void *snd_malloc_sgbuf_pages(struct device *device,
 	dmab->private_data = sgbuf = kzalloc(sizeof(*sgbuf), GFP_KERNEL);
 	if (! sgbuf)
 		return NULL;
-	if (dmab->dev.type == SNDRV_DMA_TYPE_DEV_UC_SG) {
-		type = SNDRV_DMA_TYPE_DEV_UC;
+	if (dmab->dev.type == SNDRV_DMA_TYPE_DEV_WC_SG) {
+		type = SNDRV_DMA_TYPE_DEV_WC;
 #ifdef pgprot_noncached
 		prot = pgprot_noncached(PAGE_KERNEL);
 #endif

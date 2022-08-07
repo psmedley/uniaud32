@@ -43,7 +43,7 @@ static void snd_malloc_dev_pages(struct snd_dma_buffer *dmab, size_t size)
 	dmab->area = dma_alloc_coherent(dmab->dev.dev, size, &dmab->addr,
 					gfp_flags);
 #ifdef CONFIG_X86
-	if (dmab->area && dmab->dev.type == SNDRV_DMA_TYPE_DEV_UC)
+	if (dmab->area && dmab->dev.type == SNDRV_DMA_TYPE_DEV_WC)
 		set_memory_wc((unsigned long)dmab->area,
 			      PAGE_ALIGN(size) >> PAGE_SHIFT);
 #endif
@@ -70,7 +70,7 @@ void *snd_malloc_dev_pages(struct device *dev, size_t size, dma_addr_t *dma)
 static void snd_free_dev_pages(struct snd_dma_buffer *dmab)
 {
 #ifdef CONFIG_X86
-	if (dmab->dev.type == SNDRV_DMA_TYPE_DEV_UC)
+	if (dmab->dev.type == SNDRV_DMA_TYPE_DEV_WC)
 		set_memory_wb((unsigned long)dmab->area,
 			      PAGE_ALIGN(dmab->bytes) >> PAGE_SHIFT);
 #endif
@@ -203,7 +203,7 @@ int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 		fallthrough;
 #endif /* CONFIG_GENERIC_ALLOCATOR */
 	case SNDRV_DMA_TYPE_DEV:
-	case SNDRV_DMA_TYPE_DEV_UC:
+	case SNDRV_DMA_TYPE_DEV_WC:
 #ifndef TARGET_OS2
 		snd_malloc_dev_pages(dmab, size);
 #else
@@ -213,7 +213,7 @@ int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 #endif
 #ifdef CONFIG_SND_DMA_SGBUF
 	case SNDRV_DMA_TYPE_DEV_SG:
-	case SNDRV_DMA_TYPE_DEV_UC_SG:
+	case SNDRV_DMA_TYPE_DEV_WC_SG:
 		snd_malloc_sgbuf_pages(device, size, dmab, NULL);
 		break;
 #endif
@@ -285,7 +285,7 @@ void snd_dma_free_pages(struct snd_dma_buffer *dmab)
 		break;
 #endif /* CONFIG_GENERIC_ALLOCATOR */
 	case SNDRV_DMA_TYPE_DEV:
-	case SNDRV_DMA_TYPE_DEV_UC:
+	case SNDRV_DMA_TYPE_DEV_WC:
 #ifndef TARGET_OS2
 		snd_free_dev_pages(dmab);
 #else
@@ -295,7 +295,7 @@ void snd_dma_free_pages(struct snd_dma_buffer *dmab)
 #endif
 #ifdef CONFIG_SND_DMA_SGBUF
 	case SNDRV_DMA_TYPE_DEV_SG:
-	case SNDRV_DMA_TYPE_DEV_UC_SG:
+	case SNDRV_DMA_TYPE_DEV_WC_SG:
 		snd_free_sgbuf_pages(dmab);
 		break;
 #endif
@@ -336,3 +336,49 @@ dma_addr_t snd_sgbuf_get_addr(struct snd_dma_buffer *dmab,
 	return addr + offset % PAGE_SIZE;
 }
 #endif
+
+/* called by devres */
+static void __snd_release_pages(struct device *dev, void *res)
+{
+	snd_dma_free_pages(res);
+}
+
+/**
+ * snd_devm_alloc_pages - allocate the buffer and manage with devres
+ * @dev: the device pointer
+ * @type: the DMA buffer type
+ * @size: the buffer size to allocate
+ *
+ * Allocate buffer pages depending on the given type and manage using devres.
+ * The pages will be released automatically at the device removal.
+ *
+ * Unlike snd_dma_alloc_pages(), this function requires the real device pointer,
+ * hence it can't work with SNDRV_DMA_TYPE_CONTINUOUS or
+ * SNDRV_DMA_TYPE_VMALLOC type.
+ *
+ * The function returns the snd_dma_buffer object at success, or NULL if failed.
+ */
+struct snd_dma_buffer *
+snd_devm_alloc_pages(struct device *dev, int type, size_t size)
+{
+	struct snd_dma_buffer *dmab;
+	int err;
+
+	if (WARN_ON(type == SNDRV_DMA_TYPE_CONTINUOUS ||
+		    type == SNDRV_DMA_TYPE_VMALLOC))
+		return NULL;
+
+	dmab = devres_alloc(__snd_release_pages, sizeof(*dmab), GFP_KERNEL);
+	if (!dmab)
+		return NULL;
+
+	err = snd_dma_alloc_pages(type, dev, size, dmab);
+	if (err < 0) {
+		devres_free(dmab);
+		return NULL;
+	}
+
+	devres_add(dev, dmab);
+	return dmab;
+}
+EXPORT_SYMBOL_GPL(snd_devm_alloc_pages);

@@ -769,5 +769,7 @@ int pci_status_get_and_clear_errors(struct pci_dev *pdev);
 			       PCI_STATUS_PARITY)
 
 #define dev_is_pci(d) (true)
-
+int pcim_enable_device(struct pci_dev *pdev);
+#define pcim_iomap pci_iomap
+int pcim_iomap_regions(struct pci_dev *pdev, int mask, const char *name);
 #endif /* LINUX_PCI_H */

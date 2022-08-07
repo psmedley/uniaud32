@@ -301,6 +301,7 @@ struct hdac_stream *snd_hdac_stream_assign(struct hdac_bus *bus,
 	int key = (substream->pcm->device << 16) | (substream->number << 2) |
 		(substream->stream + 1);
 
+	spin_lock_irq(&bus->reg_lock);
 	list_for_each_entry(azx_dev, &bus->stream_list, list, struct hdac_stream) {
 		if (azx_dev->direction != substream->stream)
 			continue;
@@ -314,13 +315,12 @@ struct hdac_stream *snd_hdac_stream_assign(struct hdac_bus *bus,
 			res = azx_dev;
 	}
 	if (res) {
-		spin_lock_irq(&bus->reg_lock);
 		res->opened = 1;
 		res->running = 0;
 		res->assigned_key = key;
 		res->substream = substream;
-		spin_unlock_irq(&bus->reg_lock);
 	}
+	spin_unlock_irq(&bus->reg_lock);
 	return res;
 }
 EXPORT_SYMBOL_GPL(snd_hdac_stream_assign);
@@ -538,6 +538,14 @@ static void azx_timecounter_init(struct hdac_stream *azx_dev,
 	cc->read = azx_cc_read;
 	cc->mask = CLOCKSOURCE_MASK(32);
 
+#ifndef TARGET_OS2
+	/*
+	 * Calculate the optimal mult/shift values. The counter wraps
+	 * around after ~178.9 seconds.
+	 */
+	clocks_calc_mult_shift(&cc->mult, &cc->shift, 24000000,
+			       NSEC_PER_SEC, 178);
+#else
 	/*
 	 * Converting from 24 MHz to ns means applying a 125/3 factor.
 	 * To avoid any saturation issues in intermediate operations,
@@ -550,7 +558,7 @@ static void azx_timecounter_init(struct hdac_stream *azx_dev,
 
 	cc->mult = 125; /* saturation after 195 years */
 	cc->shift = 0;
-
+#endif
 	nsec = 0; /* audio time is elapsed time since trigger */
 	timecounter_init(tc, cc, nsec);
 	if (force) {
