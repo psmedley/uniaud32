@@ -110,5 +110,10 @@ extern void __release_region(struct resource *, unsigned long, unsigned long);
 extern void autoirq_setup(int waittime);
 extern int autoirq_report(int waittime);
 
-#define devm_request_region(A, B, C, D) request_region(B, C, D)
+extern struct resource * __devm_request_region(struct device *dev,
+				struct resource *parent, resource_size_t start,
+				resource_size_t n, const char *name);
+
+#define devm_request_region(dev,start,n,name) \
+	__devm_request_region(dev, &ioport_resource, (start), (n), (name))
 #endif	/* _LINUX_IOPORT_H */

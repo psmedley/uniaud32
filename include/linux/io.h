@@ -6,5 +6,4 @@
 #include <linux/types.h>
 #include <linux/err.h>
 
-#define devm_ioremap(A, B, C) ioremap(B, C)
 #endif /* _LINUX_IO_H */
