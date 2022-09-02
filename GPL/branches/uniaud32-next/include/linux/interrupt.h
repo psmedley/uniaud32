@@ -153,6 +153,18 @@ int request_irq(unsigned int, irq_handler_t handler,
 		    unsigned long, const char *, void *);
 
 static inline void devm_free_irq(struct device *dev, unsigned int irq, void *dev_id) {}
-#define devm_request_irq(A, B, C, D, E, F) request_irq(B, C, D, E, F)
 
+extern int __must_check
+devm_request_threaded_irq(struct device *dev, unsigned int irq,
+			  irq_handler_t handler, irq_handler_t thread_fn,
+			  unsigned long irqflags, const char *devname,
+			  void *dev_id);
+
+static inline int __must_check
+devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler,
+		 unsigned long irqflags, const char *devname, void *dev_id)
+{
+	return devm_request_threaded_irq(dev, irq, handler, NULL, irqflags,
+					 devname, dev_id);
+}
 #endif
