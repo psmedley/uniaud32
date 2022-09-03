@@ -1731,7 +1731,7 @@ EXPORT_SYMBOL_GPL(regmap_get_device);
 
 		/* If the write goes beyond the end of the window split it */
 		while (val_num > win_residue) {
-			dev_dbg(map->dev, "Writing window %d/%zu\n",
+			dev_dbg(map->dev, "Writing window %d/%lu\n",
 				win_residue, val_len / map->format.val_bytes);
 			ret = _regmap_raw_write_impl(map, reg, val,
 						     win_residue *
