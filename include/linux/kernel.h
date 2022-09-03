@@ -14,6 +14,8 @@
 #include <linux/gfp.h>
 #include <linux/types.h>
 #include <linux/log2.h>
+#include <linux/string.h>
+#include <linux/math.h>
 
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */

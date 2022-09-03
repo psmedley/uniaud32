@@ -5198,6 +5198,7 @@ static void alc245_fixup_hp_x360_amp(struct hda_codec *codec,
 	}
 }
 
+#ifndef TARGET_OS2
 /* toggle GPIO2 at each time stream is started; we use PREPARE state instead */
 static void alc274_hp_envy_pcm_hook(struct hda_pcm_stream *hinfo,
 				    struct hda_codec *codec,
@@ -5214,7 +5215,6 @@ static void alc274_hp_envy_pcm_hook(struct hda_pcm_stream *hinfo,
 	}
 }
 
-#ifdef NOT_USED
 static void alc274_fixup_hp_envy_gpio(struct hda_codec *codec,
 				      const struct hda_fixup *fix,
 				      int action)
