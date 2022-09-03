@@ -150,7 +150,6 @@ void devres_free(void *res)
 	}
 }
 
-#if 0 //2022-09-02
 static int remove_nodes(struct device *dev,
 			struct list_head *first, struct list_head *end,
 			struct list_head *todo)
@@ -263,7 +262,6 @@ int devres_release_all(struct device *dev)
 	return release_nodes(dev, dev->devres_head.next, &dev->devres_head,
 			     flags);
 }
-#endif
 
 static struct devres *find_dr(struct device *dev, dr_release_t release,
 			      dr_match_t match, void *match_data)
@@ -376,11 +374,6 @@ static void devm_kmalloc_release(struct device *dev, void *res)
 	/* noop */
 }
 
-static int devm_kmalloc_match(struct device *dev, void *res, void *data)
-{
-	return res == data;
-}
-
 /**
  * devm_kmalloc - Resource-managed kmalloc
  * @dev: Device to allocate memory for
@@ -426,11 +419,6 @@ enum devm_ioremap_type {
 void devm_ioremap_release(struct device *dev, void *res)
 {
 	iounmap(*(void __iomem **)res);
-}
-
-static int devm_ioremap_match(struct device *dev, void *res, void *match_data)
-{
-	return *(void **)res == match_data;
 }
 
 static void *__devm_ioremap(struct device *dev, resource_size_t offset,
