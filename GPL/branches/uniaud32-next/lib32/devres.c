@@ -81,18 +81,11 @@ static inline struct devres * alloc_dr(dr_release_t release,
 	return dr;
 }
 
-#define devres_log(dev, node, op)	do {} while (0)
-
 static void add_dr(struct device *dev, struct devres_node *node)
 {
 	devres_log(dev, node, "ADD");
 	BUG_ON(!list_empty(&node->entry));
-//#ifndef TARGET_OS2
-	/* Traps here on OS/2 - release builds on non-HDA hardware only */
-	rprintf(("add_dr"));
 	list_add_tail(&node->entry, &dev->devres_head);
-	rprintf(("add_dr2"));
-//#endif
 }
 
 /**

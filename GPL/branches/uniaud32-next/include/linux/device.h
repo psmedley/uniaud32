@@ -222,19 +222,11 @@ typedef void (*dr_release_t)(struct device *dev, void *res);
 typedef int (*dr_match_t)(struct device *dev, void *res, void *match_data);
 
 #define	NUMA_NO_NODE	(-1)
-#if 0
-extern void *devres_alloc_node(dr_release_t release, size_t size, gfp_t gfp,
-			       int nid);
-static inline void *devres_alloc(dr_release_t release, size_t size, gfp_t gfp)
-{
-	return devres_alloc_node(release, size, gfp, NUMA_NO_NODE);
-}
-#else
 void *__devres_alloc_node(dr_release_t release, size_t size, gfp_t gfp,
 			  int nid, const char *name);
 #define devres_alloc(release, size, gfp) \
 	__devres_alloc_node(release, size, gfp, NUMA_NO_NODE, #release)
-#endif
+
 /**
  * struct class - device classes
  * @name:	Name of the class.

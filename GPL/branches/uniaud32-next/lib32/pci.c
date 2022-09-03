@@ -204,6 +204,7 @@ int pcidev_deactivate(struct pci_dev *dev)
         pcidev->dma_mask = 0xffffffff;
 	pcidev->dev.dma_mask = &pcidev->dma_mask;
 	pcidev->dev.coherent_dma_mask = 0xffffffffull;
+	INIT_LIST_HEAD(&pcidev->dev.devres_head);
 
         // Subsystem ID
         pci_read_config_word(pcidev, PCI_SUBSYSTEM_VENDOR_ID, &pcidev->subsystem_vendor);
