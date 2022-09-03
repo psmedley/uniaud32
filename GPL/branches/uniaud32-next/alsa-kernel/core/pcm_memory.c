@@ -85,7 +85,11 @@ static int preallocate_pcm_pages(struct snd_pcm_substream *substream,
 		size >>= 1;
 	} while (size >= snd_minimum_buffer);
 	dmab->bytes = 0; /* tell error */
+#ifndef TARGET_OS2
 	pr_warn("ALSA pcmC%dD%d%c,%d:%s: cannot preallocate for size %zu\n",
+#else
+	pr_warn("ALSA pcmC%dD%d%c,%d:%s: cannot preallocate for size %lu\n",
+#endif
 		substream->pcm->card->number, substream->pcm->device,
 		substream->stream ? 'c' : 'p', substream->number,
 		substream->pcm->name, orig_size);
@@ -180,7 +184,11 @@ static void snd_pcm_lib_preallocate_proc_write(struct snd_info_entry *entry,
 					   substream->dma_buffer.dev.dev,
 					   size, &new_dmab) < 0) {
 				buffer->error = -ENOMEM;
+#ifndef TARGET_OS2
 				pr_debug("ALSA pcmC%dD%d%c,%d:%s: cannot preallocate for size %zu\n",
+#else
+				pr_debug("ALSA pcmC%dD%d%c,%d:%s: cannot preallocate for size %lu\n",
+#endif
 					 substream->pcm->card->number, substream->pcm->device,
 					 substream->stream ? 'c' : 'p', substream->number,
 					 substream->pcm->name, size);
@@ -423,7 +431,11 @@ int snd_pcm_lib_malloc_pages(struct snd_pcm_substream *substream, size_t size)
 				   substream->dma_buffer.dev.dev,
 				   size, dmab) < 0) {
 			kfree(dmab);
+#ifndef TARGET_OS2
 			pr_debug("ALSA pcmC%dD%d%c,%d:%s: cannot preallocate for size %zu\n",
+#else
+			pr_debug("ALSA pcmC%dD%d%c,%d:%s: cannot preallocate for size %lu\n",
+#endif
 				 substream->pcm->card->number, substream->pcm->device,
 				 substream->stream ? 'c' : 'p', substream->number,
 				 substream->pcm->name, size);

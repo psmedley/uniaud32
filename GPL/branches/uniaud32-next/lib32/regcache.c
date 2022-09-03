@@ -728,7 +728,7 @@ int regcache_lookup_reg(struct regmap *map, unsigned int reg)
 
 	count = (cur - base) / map->reg_stride;
 
-	dev_dbg(map->dev, "Writing %zu bytes for %d registers from 0x%x-0x%x\n",
+	dev_dbg(map->dev, "Writing %lu bytes for %d registers from 0x%x-0x%x\n",
 		count * val_bytes, count, base, cur - map->reg_stride);
 
 	map->cache_bypass = true;
