@@ -669,15 +669,6 @@ void __kfree(const void *ptr)
 }
 
 //******************************************************************************
-void *kzalloc(size_t size, unsigned int flags)
-{
-	void *ret;
-	ret = _kmalloc(size, flags);
-	if (ret)
-		memset(ret, 0, size);
-	return ret;
-}
-//******************************************************************************
 //******************************************************************************
 void *kcalloc(size_t n, size_t size, unsigned int flags)
 {
