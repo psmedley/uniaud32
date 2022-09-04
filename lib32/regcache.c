@@ -21,7 +21,7 @@
 //#include "trace.h"
 #include "internal.h"
 
-/*static*/ const struct regcache_ops *cache_types[] = {
+static const struct regcache_ops *cache_types[] = {
 	&regcache_rbtree_ops,
 #if IS_ENABLED(CONFIG_REGCACHE_COMPRESSED)
 	&regcache_lzo_ops,
@@ -29,7 +29,7 @@
 	&regcache_flat_ops,
 };
 
-/*static*/ int regcache_hw_init(struct regmap *map)
+static int regcache_hw_init(struct regmap *map)
 {
 	int i, j;
 	int ret;
@@ -282,7 +282,7 @@ int regcache_write(struct regmap *map,
 	return 0;
 }
 
-/*static*/ bool regcache_reg_needs_sync(struct regmap *map, unsigned int reg,
+static bool regcache_reg_needs_sync(struct regmap *map, unsigned int reg,
 				    unsigned int val)
 {
 	int ret;
@@ -298,7 +298,7 @@ int regcache_write(struct regmap *map,
 	return true;
 }
 
-/*static*/ int regcache_default_sync(struct regmap *map, unsigned int min,
+static int regcache_default_sync(struct regmap *map, unsigned int min,
 				 unsigned int max)
 {
 	unsigned int reg;
@@ -648,7 +648,7 @@ unsigned int regcache_get_val(struct regmap *map, const void *base,
 	return -1;
 }
 
-/*static*/ int regcache_default_cmp(const void *a, const void *b)
+static int regcache_default_cmp(const void *a, const void *b)
 {
 	const struct reg_default *_a = a;
 	const struct reg_default *_b = b;
@@ -673,7 +673,7 @@ int regcache_lookup_reg(struct regmap *map, unsigned int reg)
 		return -ENOENT;
 }
 
-/*static*/ bool regcache_reg_present(unsigned long *cache_present, unsigned int idx)
+static bool regcache_reg_present(unsigned long *cache_present, unsigned int idx)
 {
 	if (!cache_present)
 		return true;
@@ -681,7 +681,7 @@ int regcache_lookup_reg(struct regmap *map, unsigned int reg)
 	return test_bit(idx, cache_present);
 }
 
-/*static*/ int regcache_sync_block_single(struct regmap *map, void *block,
+static int regcache_sync_block_single(struct regmap *map, void *block,
 				      unsigned long *cache_present,
 				      unsigned int block_base,
 				      unsigned int start, unsigned int end)
@@ -717,7 +717,7 @@ int regcache_lookup_reg(struct regmap *map, unsigned int reg)
 	return 0;
 }
 
-/*static*/ int regcache_sync_block_raw_flush(struct regmap *map, const void **data,
+static int regcache_sync_block_raw_flush(struct regmap *map, const void **data,
 					 unsigned int base, unsigned int cur)
 {
 	size_t val_bytes = map->format.val_bytes;
@@ -745,7 +745,7 @@ int regcache_lookup_reg(struct regmap *map, unsigned int reg)
 	return ret;
 }
 
-/*static*/ int regcache_sync_block_raw(struct regmap *map, void *block,
+static int regcache_sync_block_raw(struct regmap *map, void *block,
 			    unsigned long *cache_present,
 			    unsigned int block_base, unsigned int start,
 			    unsigned int end)
