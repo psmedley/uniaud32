@@ -181,7 +181,7 @@ int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 		gfp = snd_mem_get_gfp_flags(device, GFP_KERNEL);
 		dmab->area = alloc_pages_exact(size, gfp);
 		break;
-#ifndef TARGET_OS2 //as of 5.5.19, no driver's we're targetting need this
+#ifndef TARGET_OS2 //as of 5.5.19, no drivers we are targetting need this
 	case SNDRV_DMA_TYPE_VMALLOC:
 		gfp = snd_mem_get_gfp_flags(device, GFP_KERNEL | __GFP_HIGHMEM);
 		dmab->area = __vmalloc(size, gfp);

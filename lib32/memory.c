@@ -636,6 +636,8 @@ void *__kmalloc(int size, int flags)
     	DebugInt3();
     	return 0;
     }
+    if (flags & __GFP_ZERO)
+        memset((LINEAR)addr, 0, size);
 	//dprintf(("kmalloc %d returned %x", size, addr));
     return addr;
 }
