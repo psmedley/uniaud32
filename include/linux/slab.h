@@ -93,7 +93,7 @@ extern void  __kfree(const void near *);
  */
 static inline void *kzalloc(size_t size, gfp_t flags)
 {
-	return kmalloc(size, flags | __GFP_ZERO);
+	return __kmalloc(size, flags | __GFP_ZERO);
 }
 
 void *kcalloc(size_t n, size_t size, unsigned int __nocast gfp_flags);
