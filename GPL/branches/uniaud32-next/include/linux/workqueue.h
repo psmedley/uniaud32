@@ -18,6 +18,9 @@ struct work_struct {
         struct timer_list timer;
 };
 
+#define WORK_DATA_STATIC_INIT()	\
+	ATOMIC_LONG_INIT((unsigned long)(WORK_STRUCT_NO_POOL | WORK_STRUCT_STATIC))
+
 struct workqueue_struct {
 	spinlock_t lock;
 	const char *name;
@@ -51,12 +54,13 @@ int cancel_delayed_work(struct delayed_work *dwork);
 		(_work)->data = _data;			\
 		init_timer(&(_work)->timer);		\
 	} while (0)
-#define __WORK_INITIALIZER(n, f, d) {			\
-		.func = (f),				\
-		.data = (d),				\
+#define __WORK_INITIALIZER(n, f) {			\
+	.data = 0,				\
+	.func = (f),				\
 	}
-#define DECLARE_WORK(n, f, d)                           \
-        struct work_struct n = __WORK_INITIALIZER(n, f, d)
+
+#define DECLARE_WORK(n, f)						\
+	struct work_struct n = __WORK_INITIALIZER(n, f)
 
 /* redefine INIT_WORK() */
 static inline void snd_INIT_WORK(struct work_struct *w, void (*f)(struct work_struct *))
