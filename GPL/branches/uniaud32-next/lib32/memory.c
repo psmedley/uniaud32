@@ -609,6 +609,7 @@ int _put_user(int size, int x, void *ptr)
 }
 
 //******************************************************************************
+//******************************************************************************
 #ifdef DEBUGHEAP
 void *__kmalloc(int size, int flags, const char *filename, int lineno)
 #else
@@ -643,6 +644,7 @@ void *__kmalloc(int size, int flags)
 }
 
 //******************************************************************************
+//******************************************************************************
 #ifdef DEBUGHEAP
 void __kfree(const void *ptr, const char *filename, int lineno)
 #else
@@ -668,6 +670,16 @@ void __kfree(const void *ptr)
     else  vfree((PVOID)addr);
 }
 
+//******************************************************************************
+//******************************************************************************
+void *kzalloc(size_t size, unsigned int flags)
+{
+        void *ret;
+        ret = _kmalloc(size, flags);
+        if (ret)
+                memset(ret, 0, size);
+        return ret;
+}
 //******************************************************************************
 //******************************************************************************
 void *kcalloc(size_t n, size_t size, unsigned int flags)
