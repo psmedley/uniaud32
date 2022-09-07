@@ -91,7 +91,11 @@ extern void  __kfree(const void near *);
  * @size: how many bytes of memory are required.
  * @flags: the type of memory to allocate (see kmalloc).
  */
-void *kzalloc(size_t n, gfp_t gfp_flags);
+static inline void *kzalloc(size_t size, gfp_t flags)
+{
+	return kmalloc(size, flags | __GFP_ZERO);
+}
+
 void *kcalloc(size_t n, size_t size, unsigned int __nocast gfp_flags);
 void *krealloc(const void *, size_t, gfp_t);
 

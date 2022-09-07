@@ -626,13 +626,14 @@ void *__kmalloc(int size, int flags)
         DebugInt3();
     }
     if(size >= 4096) {
-        return vmalloc(size);
-    }
+        addr = (LINEAR)vmalloc(size);
+    } else {
 #ifdef DEBUGHEAP
-    addr = (LINEAR)malloc(size, filename, lineno);
+        addr = (LINEAR)malloc(size, filename, lineno);
 #else
-    addr = (LINEAR)malloc(size);
+        addr = (LINEAR)malloc(size);
 #endif
+    }
     if(addr == NULL) {
     	DebugInt3();
     	return 0;
@@ -670,16 +671,6 @@ void __kfree(const void *ptr)
     else  vfree((PVOID)addr);
 }
 
-//******************************************************************************
-//******************************************************************************
-void *kzalloc(size_t size, unsigned int flags)
-{
-        void *ret;
-        ret = _kmalloc(size, flags);
-        if (ret)
-                memset(ret, 0, size);
-        return ret;
-}
 //******************************************************************************
 //******************************************************************************
 void *kcalloc(size_t n, size_t size, unsigned int flags)
