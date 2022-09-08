@@ -10,40 +10,6 @@
 #include <linux/err.h>
 
 #define	NUMA_NO_NODE	(-1)
-/*
- * GFP bitmasks..
- */
-#define __GFP_WAIT	0x01
-#define __GFP_LOW	0x02
-#define __GFP_MED	0x04
-#define __GFP_HIGH	0x08
-#define __GFP_IO	0x10
-#define __GFP_SWAP	0x20
-#define ___GFP_ZERO		0x100u
-#define __GFP_ZERO	((__force gfp_t)___GFP_ZERO)
-
-#ifdef TARGET_OS2
-#define __GFP_DMAHIGHMEM  0x100
-#define GFP_DMAHIGHMEM    __GFP_DMAHIGHMEM
-#endif
-
-#define GFP_BUFFER	(__GFP_LOW | __GFP_WAIT)
-#define GFP_ATOMIC	(__GFP_HIGH)
-#define GFP_USER	(__GFP_LOW | __GFP_WAIT | __GFP_IO)
-#define GFP_HIGHUSER	(GFP_USER | __GFP_HIGHMEM)
-#define GFP_KERNEL	(__GFP_MED | __GFP_WAIT | __GFP_IO)
-#define GFP_NFS		(__GFP_HIGH | __GFP_WAIT | __GFP_IO)
-#define GFP_KSWAPD	(__GFP_IO | __GFP_SWAP)
-
-/* Flag - indicates that the buffer will be suitable for DMA.  Ignored on some
-   platforms, used as appropriate on others */
-
-#define GFP_DMA		__GFP_DMA
-
-/* Flag - indicates that the buffer can be taken from high memory which is not
-   directly addressable by the kernel */
-
-#define GFP_HIGHMEM	__GFP_HIGHMEM
 
 /*
  * This struct defines a memory VMM memory area. There is one of these
