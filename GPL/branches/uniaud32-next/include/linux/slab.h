@@ -148,7 +148,6 @@ struct kmem_cache {
 	struct list_head list;	/* List of all slab caches on the system */
 };
 
-#define kvzalloc kzalloc
 size_t ksize(const void *);
 
 static inline void *__kmalloc_node(size_t size, gfp_t flags, int node)

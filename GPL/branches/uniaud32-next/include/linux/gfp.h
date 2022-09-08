@@ -1,10 +1,17 @@
 #ifndef __LINUX_GFP_H
 #define __LINUX_GFP_H
 
-#include <asm/page.h>
-#include <linux/export.h>
-#include <linux/mm.h>
 #include <linux/types.h>
+
+/*
+ * GFP bitmasks..
+ */
+#define __GFP_WAIT	0x01
+#define __GFP_LOW	0x02
+#define __GFP_MED	0x04
+#define __GFP_HIGH	0x08
+#define __GFP_IO	0x10
+#define __GFP_SWAP	0x20
 
 /* Plain integer GFP bitmasks. Do not use this directly. */
 #define ___GFP_DMA		0x01u
@@ -43,6 +50,14 @@
 #define __GFP_ZERO	((__force gfp_t)___GFP_ZERO)
 #define __GFP_RETRY_MAYFAIL	((__force gfp_t)___GFP_RETRY_MAYFAIL)
 #define GFP_DMA32 0		/* driver must check for 32-bit address */
+#define GFP_BUFFER	(__GFP_LOW | __GFP_WAIT)
+#define GFP_ATOMIC	(__GFP_HIGH)
+#define GFP_USER	(__GFP_LOW | __GFP_WAIT | __GFP_IO)
+#define GFP_HIGHUSER	(GFP_USER | __GFP_HIGHMEM)
+#define GFP_KERNEL	(__GFP_MED | __GFP_WAIT | __GFP_IO)
+#define GFP_NFS		(__GFP_HIGH | __GFP_WAIT | __GFP_IO)
+#define GFP_KSWAPD	(__GFP_IO | __GFP_SWAP)
+
 
 /*
  * Physical address zone modifiers (see linux/mmzone.h - low four bits)
@@ -56,6 +71,18 @@
 #define __GFP_DMA32	((__force gfp_t)___GFP_DMA32)
 #define __GFP_MOVABLE	((__force gfp_t)___GFP_MOVABLE)  /* ZONE_MOVABLE allowed */
 #define GFP_ZONEMASK	(__GFP_DMA|__GFP_HIGHMEM|__GFP_DMA32|__GFP_MOVABLE)
+/* Flag - indicates that the buffer will be suitable for DMA.  Ignored on some
+   platforms, used as appropriate on others */
+
+#define GFP_DMA		__GFP_DMA
+
+/* Flag - indicates that the buffer can be taken from high memory which is not
+   directly addressable by the kernel */
+
+#define GFP_HIGHMEM	__GFP_HIGHMEM
+#define __GFP_DMAHIGHMEM  0x100
+#define GFP_DMAHIGHMEM    __GFP_DMAHIGHMEM
+
 void *alloc_pages_exact(size_t size, gfp_t gfp_mask);
 void free_pages_exact(void *virt, size_t size);
 

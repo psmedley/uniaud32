@@ -423,7 +423,13 @@ void *vmalloc(unsigned long size)
 //******************************************************************************
 void *__vmalloc(unsigned long size, gfp_t gfp_mask)
 {
-	return vmalloc(size);
+    LINEAR addr;
+    addr = (LINEAR) vmalloc(size);
+
+    if (gfp_mask & __GFP_ZERO)
+        memset((LINEAR)addr, 0, size);
+
+    return addr;
 }
 //******************************************************************************
 //******************************************************************************

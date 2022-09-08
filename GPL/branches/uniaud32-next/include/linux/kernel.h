@@ -16,6 +16,7 @@
 #include <linux/log2.h>
 #include <linux/string.h>
 #include <linux/math.h>
+#include <linux/export.h>
 
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */

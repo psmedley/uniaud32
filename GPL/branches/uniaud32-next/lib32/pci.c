@@ -29,6 +29,7 @@
 #include <linux/init.h>
 #include <linux/poll.h>
 #include <linux/dma-mapping.h>
+#include <linux/gfp.h>
 #include <asm/uaccess.h>
 #include <asm/hardirq.h>
 #include <asm/io.h>
