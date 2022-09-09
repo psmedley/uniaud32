@@ -68,6 +68,8 @@ typedef struct device {
   struct dev_pm_info	power;
   struct list_head	dma_pools;	/* dma pools (if dma'ble) */
   struct device_driver *driver;
+  void		*driver_data;	/* Driver data, set and get with
+					   dev_set_drvdata/dev_get_drvdata */
   struct pm_dev *pm_dev;
   char  bus_id[20];
   struct class		*class;
@@ -148,9 +150,6 @@ extern int __must_check driver_register(struct device_driver *drv);
 extern void driver_unregister(struct device_driver *drv);
 extern struct device_driver *driver_find(const char *name,
 					 struct bus_type *bus);
-
-#define dev_set_drvdata(dev,ptr)	((dev)->private_data = (ptr))
-#define dev_get_drvdata(dev)	(dev)->private_data
 
 #define MODULE_ALIAS_CHARDEV_MAJOR(x)
 
@@ -322,5 +321,16 @@ static inline int dev_to_node(struct device *dev)
 {
 	return NUMA_NO_NODE;
 }
+
+static inline void *dev_get_drvdata(const struct device *dev)
+{
+	return dev->driver_data;
+}
+
+static inline void dev_set_drvdata(struct device *dev, void *data)
+{
+	dev->driver_data = data;
+}
+
 #endif /* _LINUX_DEVICE_H */
 

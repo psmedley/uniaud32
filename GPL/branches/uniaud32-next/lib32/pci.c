@@ -801,22 +801,6 @@ void pci_free_consistent(struct pci_dev *hwdev, long size,
   free_pages((unsigned long)vaddr, __compat_get_order(size));
 }
 
-/**
- */
-void pci_set_driver_data (struct pci_dev *dev, void *driver_data)
-{
-  if (dev)
-    dev->driver_data = driver_data;
-}
-
-/**
- */
-void *pci_get_driver_data (struct pci_dev *dev)
-{
-  if (dev)
-    return dev->driver_data;
-  return 0;
-}
 
 /**
  */
@@ -1038,54 +1022,6 @@ int snd_pci_dev_present(const struct pci_device_id *ids)
   }
   return 0;
 }
-
-struct pci_driver_mapping {
-  struct pci_dev *dev;
-  struct pci_driver *drv;
-  unsigned long dma_mask;
-  void *driver_data;
-  u32 saved_config[16];
-};
-
-#define PCI_MAX_MAPPINGS 64
-static struct pci_driver_mapping drvmap [PCI_MAX_MAPPINGS] = { { NULL, } , };
-
-
-static struct pci_driver_mapping *get_pci_driver_mapping(struct pci_dev *dev)
-{
-  int i;
-
-  for (i = 0; i < PCI_MAX_MAPPINGS; i++)
-    if (drvmap[i].dev == dev)
-      return &drvmap[i];
-  return NULL;
-}
-
-struct pci_driver *snd_pci_compat_get_pci_driver(struct pci_dev *dev)
-{
-  struct pci_driver_mapping *map = get_pci_driver_mapping(dev);
-  if (map)
-    return map->drv;
-  return NULL;
-}
-#if 0
-void * pci_get_drvdata (struct pci_dev *dev)
-{
-  struct pci_driver_mapping *map = get_pci_driver_mapping(dev);
-  if (map)
-    return map->driver_data;
-  return NULL;
-}
-
-
-void pci_set_drvdata (struct pci_dev *dev, void *driver_data)
-{
-  struct pci_driver_mapping *map = get_pci_driver_mapping(dev);
-  if (map)
-    map->driver_data = driver_data;
-}
-#endif
-
 
 //******************************************************************************
 //******************************************************************************
