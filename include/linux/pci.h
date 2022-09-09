@@ -671,9 +671,6 @@ unsigned long pci_get_dma_mask(struct pci_dev *);
 void *pci_get_driver_data (struct pci_dev *dev);
 void pci_set_driver_data (struct pci_dev *dev, void *driver_data);
 
-#define pci_get_drvdata(a)   pci_get_driver_data(a)
-#define pci_set_drvdata(a,b) pci_set_driver_data(a, b)
-
 #define PCI_DEVICE(vend,dev) \
         .vendor = (vend), .device = (dev), \
         .subvendor = PCI_ANY_ID, .subdevice = PCI_ANY_ID
@@ -738,6 +735,20 @@ static inline void *pci_ioremap_bar(struct pci_dev *pdev, int bar)
 
 static inline bool pci_dev_run_wake(struct pci_dev *dev) { return 0; }
 
+/*
+ * Similar to the helpers above, these manipulate per-pci_dev
+ * driver-specific data.  They are really just a wrapper around
+ * the generic device structure functions of these calls.
+ */
+static inline void *pci_get_drvdata(struct pci_dev *pdev)
+{
+	return dev_get_drvdata(&pdev->dev);
+}
+
+static inline void pci_set_drvdata(struct pci_dev *pdev, void *data)
+{
+	dev_set_drvdata(&pdev->dev, data);
+}
 /* If you want to know what to call your pci_dev, ask this function.
  * Again, it's a wrapper around the generic device.
  */

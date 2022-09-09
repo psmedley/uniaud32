@@ -244,7 +244,7 @@ static void codec_bind_module(struct hda_codec *codec)
 #endif
 }
 
-#if IS_ENABLED(CONFIG_SND_HDA_CODEC_HDMI)
+#if IS_ENABLED(CONFIG_SND_HDA_CODEC_HDMI) || defined(CONFIG_SND_HDA_CODEC_HDMI)
 /* if all audio out widgets are digital, let's assume the codec as a HDMI/DP */
 static bool is_likely_hdmi_codec(struct hda_codec *codec)
 {
