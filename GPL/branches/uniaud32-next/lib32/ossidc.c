@@ -63,6 +63,7 @@ typedef struct cardcalls_t {
 }cardcalls_t;
 
 cardcalls_t cardcalls[CARDS_NUM] = {
+	{ CARD_AZX,	 &name_module_init(azx_driver_init),		&name_module_exit(azx_driver_exit)	  },
 	{ CARD_ICH,	 &name_module_init(intel8x0_driver_init),	&name_module_exit(intel8x0_driver_exit)	  },
 	{ CARD_VIA82XX,	 &name_module_init(via82xx_driver_init),	&name_module_exit(via82xx_driver_exit)	  },
 	{ CARD_SBLIVE,	 &name_module_init(emu10k1_driver_init),	&name_module_exit(emu10k1_driver_exit)	  },
@@ -88,7 +89,6 @@ cardcalls_t cardcalls[CARDS_NUM] = {
 	{ CARD_FM801,	 &name_module_init(fm801_driver_init),		&name_module_exit(fm801_driver_exit)	  },
 	{ CARD_ATIIXP,	 &name_module_init(atiixp_driver_init),		&name_module_exit(atiixp_driver_exit)	  },
 	{ CARD_AUDIGYLS, &name_module_init(ca0106_driver_init),		&name_module_exit(ca0106_driver_exit)	  },
-	{ CARD_AZX,	 &name_module_init(azx_driver_init),		&name_module_exit(azx_driver_exit)	  },
 	{ CARD_BT87X,	 &name_module_init(alsa_card_bt87x_init),	&name_module_exit(alsa_card_bt87x_exit)	  },
 };
 
