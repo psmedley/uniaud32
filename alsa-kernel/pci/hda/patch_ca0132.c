@@ -29,6 +29,7 @@
 
 #ifdef TARGET_OS2
 #define KBUILD_MODNAME "patch_ca0132"
+#pragma disable_message (302)
 #endif
 
 /* Enable this to see controls for tuning purpose. */
