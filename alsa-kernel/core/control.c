@@ -1432,8 +1432,7 @@ static int snd_ctl_elem_init_enum_names(struct user_element *ue)
 	char *names, *p;
 	size_t buf_len, name_len;
 	unsigned int i;
-//	const
-uintptr_t user_ptrval = ue->info.value.enumerated.names_ptr;
+	const uintptr_t user_ptrval = ue->info.value.enumerated.names_ptr;
 
 	buf_len = ue->info.value.enumerated.names_length;
 	if (buf_len > 64 * 1024)

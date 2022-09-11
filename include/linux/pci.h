@@ -42,6 +42,7 @@
 #define  PCI_COMMAND_WAIT   0x80  /* Enable address/data stepping */
 #define  PCI_COMMAND_SERR 0x100 /* Enable SERR */
 #define  PCI_COMMAND_FAST_BACK  0x200 /* Enable back-to-back writes */
+#define  PCI_COMMAND_INTX_DISABLE 0x400 /* INTx Emulation Disable */
 
 #define PCI_STATUS    0x06  /* 16 bits */
 #define  PCI_STATUS_CAP_LIST  0x10  /* Support Capability List */
@@ -362,6 +363,7 @@ struct pci_dev {
   struct resource resource[DEVICE_COUNT_RESOURCE]; /* I/O and memory regions + expansion ROMs */
   struct resource dma_resource[DEVICE_COUNT_DMA];
   struct resource irq_resource[DEVICE_COUNT_IRQ];
+	unsigned int	is_managed:1;
 
   char    name[48]; /* Device name */
   char    slot_name[8]; /* Slot name */
@@ -691,9 +693,6 @@ static inline unsigned char snd_pci_revision(struct pci_dev *pci)
   return rev;
 }
 
-/* pci_intx() wrapper */
-#define pci_intx(pci,x)
-
 /* MSI */
 extern int snd_pci_enable_msi(struct pci_dev *dev);
 #undef pci_enable_msi
@@ -783,4 +782,11 @@ int pci_status_get_and_clear_errors(struct pci_dev *pdev);
 int pcim_enable_device(struct pci_dev *pdev);
 #define pcim_iomap pci_iomap
 int pcim_iomap_regions(struct pci_dev *pdev, int mask, const char *name);
+
+static inline int pci_is_managed(struct pci_dev *pdev)
+{
+	return pdev->is_managed;
+}
+void pci_intx(struct pci_dev *pdev, int enable);
+
 #endif /* LINUX_PCI_H */

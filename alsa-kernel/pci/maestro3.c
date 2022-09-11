@@ -2564,13 +2564,8 @@ snd_m3_create(struct snd_card *card, struct pci_dev *pci,
 		chip->is_omnibook = 1;
 
 	chip->num_substreams = NR_DSPS;
-#ifndef TARGET_OS2
 	chip->substreams = devm_kcalloc(&pci->dev, chip->num_substreams,
 					sizeof(struct m3_dma), GFP_KERNEL);
-#else
-	chip->substreams = kcalloc(chip->num_substreams, sizeof(struct m3_dma),
-				   GFP_KERNEL);
-#endif
 	if (!chip->substreams)
 		return -ENOMEM;
 
@@ -2602,19 +2597,11 @@ snd_m3_create(struct snd_card *card, struct pci_dev *pci,
 
 	snd_m3_hv_init(chip);
 
-#ifndef TARGET_OS2
 	if (devm_request_irq(&pci->dev, pci->irq, snd_m3_interrupt, IRQF_SHARED,
 			     KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		return -ENOMEM;
 	}
-#else
-	if (request_irq(pci->irq, snd_m3_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
-		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
-		return -ENOMEM;
-	}
-#endif
 	chip->irq = pci->irq;
 	card->sync_irq = chip->irq;
 

@@ -1801,15 +1801,11 @@ static int azx_create(struct snd_card *card, struct pci_dev *pci,
 
 	*rchip = NULL;
 
-	err = pci_enable_device(pci);
+	err = pcim_enable_device(pci);
 	if (err < 0)
 		return err;
 
-#ifndef TARGET_OS2
 	hda = devm_kzalloc(&pci->dev, sizeof(*hda), GFP_KERNEL);
-#else
-	hda = kzalloc(sizeof(*hda), GFP_KERNEL);
-#endif
 	if (!hda)
  		return -ENOMEM;
 
