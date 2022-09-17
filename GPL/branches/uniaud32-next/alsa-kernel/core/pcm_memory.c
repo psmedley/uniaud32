@@ -490,11 +490,7 @@ int _snd_pcm_lib_alloc_vmalloc_buffer(struct snd_pcm_substream *substream,
 			return 0; /* already large enough */
 		vfree(runtime->dma_area);
 	}
-#ifndef TARGET_OS2
 	runtime->dma_area = __vmalloc(size, gfp_flags);
-#else
-	runtime->dma_area = vmalloc(size);
-#endif
 	if (!runtime->dma_area)
 		return -ENOMEM;
 	runtime->dma_bytes = size;
