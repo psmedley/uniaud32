@@ -86,7 +86,16 @@ extern void  __kfree(const void near *);
 #define kfree_nocheck(a)	kfree(a)
 #endif
 
-void *kzalloc(size_t n, gfp_t gfp_flags);
+/**
+ * kzalloc - allocate memory. The memory is set to zero.
+ * @size: how many bytes of memory are required.
+ * @flags: the type of memory to allocate (see kmalloc).
+ */
+static inline void *kzalloc(size_t size, gfp_t flags)
+{
+	return kmalloc(size, flags | __GFP_ZERO);
+}
+
 void *kcalloc(size_t n, size_t size, unsigned int __nocast gfp_flags);
 void *krealloc(const void *, size_t, gfp_t);
 
@@ -139,7 +148,6 @@ struct kmem_cache {
 	struct list_head list;	/* List of all slab caches on the system */
 };
 
-#define kvzalloc kzalloc
 size_t ksize(const void *);
 
 static inline void *__kmalloc_node(size_t size, gfp_t flags, int node)

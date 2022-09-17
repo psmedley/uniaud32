@@ -237,14 +237,14 @@ static void request_codec_module(struct hda_codec *codec)
 /* try to auto-load and bind the codec module */
 static void codec_bind_module(struct hda_codec *codec)
 {
-#ifdef MODULE
+//#ifdef MODULE
 	request_codec_module(codec);
 	if (codec_probed(codec))
 		return;
-#endif
+//#endif
 }
 
-#if IS_ENABLED(CONFIG_SND_HDA_CODEC_HDMI)
+#if IS_ENABLED(CONFIG_SND_HDA_CODEC_HDMI) || defined(CONFIG_SND_HDA_CODEC_HDMI)
 /* if all audio out widgets are digital, let's assume the codec as a HDMI/DP */
 static bool is_likely_hdmi_codec(struct hda_codec *codec)
 {
@@ -326,7 +326,7 @@ int snd_hda_codec_configure(struct hda_codec *codec)
 	if (!codec->preset) {
 		err = codec_bind_generic(codec);
 		if (err < 0) {
-			codec_dbg(codec, "Unable to bind the codec\n");
+			codec_dbg(codec, "Unable to bind the codec - err = %d\n",err);
 			return err;
 		}
 	}

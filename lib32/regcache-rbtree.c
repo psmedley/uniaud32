@@ -169,7 +169,7 @@ static int rbtree_show(struct seq_file *s, void *ignored)
 	else
 		average = 0;
 
-	seq_printf(s, "%d nodes, %d registers, average %d registers, used %zu bytes\n",
+	seq_printf(s, "%d nodes, %d registers, average %d registers, used %lu bytes\n",
 		   nodes, registers, average, mem_size);
 
 	map->unlock(map->lock_arg);

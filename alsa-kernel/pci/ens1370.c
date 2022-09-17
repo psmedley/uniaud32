@@ -748,7 +748,11 @@ static void snd_es1371_dac1_rate(struct ensoniq * ensoniq, unsigned int rate)
 	unsigned int freq, r;
 
 	mutex_lock(&ensoniq->src_mutex);
+#ifndef TARGET_OS2
 	freq = DIV_ROUND_CLOSEST(rate << 15, 3000);
+#else
+	freq = ((rate << 15) + 1500) / 3000;
+#endif
 	r = (snd_es1371_wait_src_ready(ensoniq) & (ES_1371_SRC_DISABLE |
 						   ES_1371_DIS_P2 | ES_1371_DIS_R1)) |
 		ES_1371_DIS_P1;
@@ -769,7 +773,11 @@ static void snd_es1371_dac2_rate(struct ensoniq * ensoniq, unsigned int rate)
 	unsigned int freq, r;
 
 	mutex_lock(&ensoniq->src_mutex);
+#ifndef TARGET_OS2
 	freq = DIV_ROUND_CLOSEST(rate << 15, 3000);
+#else
+	freq = ((rate << 15) + 1500) / 3000;
+#endif
 	r = (snd_es1371_wait_src_ready(ensoniq) & (ES_1371_SRC_DISABLE |
 						   ES_1371_DIS_P1 | ES_1371_DIS_R1)) |
 		ES_1371_DIS_P2;
@@ -2034,20 +2042,11 @@ static int snd_ensoniq_create(struct snd_card *card,
 	if (err < 0)
 		return err;
 	ensoniq->port = pci_resource_start(pci, 0);
-#ifndef TARGET_OS2
 	if (devm_request_irq(&pci->dev, pci->irq, snd_audiopci_interrupt,
 			     IRQF_SHARED, KBUILD_MODNAME, ensoniq)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}
-#else
-	if (request_irq(pci->irq, snd_audiopci_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, ensoniq)) {
-		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
-		snd_ensoniq_free(card);
-		return -EBUSY;
-	}
-#endif
 	ensoniq->irq = pci->irq;
 	card->sync_irq = ensoniq->irq;
 #ifdef CHIP1370

@@ -134,4 +134,9 @@ typedef s64			int64_t;
 #define DECLARE_BITMAP(name,bits) \
         unsigned long name[((bits)+BITS_PER_LONG-1)/BITS_PER_LONG]
 
+typedef u32 phys_addr_t;
+typedef phys_addr_t resource_size_t;
+
+#define ATOMIC_INIT(i) { (i) }
+#define ATOMIC_LONG_INIT(i)		ATOMIC_INIT(i)
 #endif /* _LINUX_TYPES_H */

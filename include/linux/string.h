@@ -26,7 +26,7 @@ static inline void *kmemdup(const void *src, size_t len, gfp_t gfp)
 	memcpy(dst, src, len);
 	return dst;
 }
-ssize_t strscpy(char *, const char *, size_t);
+
 #define vmemdup_user memdup_user
 #define scnprintf snprintf
 ssize_t strscpy(char *dest, const char *src, size_t count);

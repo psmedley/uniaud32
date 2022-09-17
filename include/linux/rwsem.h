@@ -13,7 +13,7 @@
 #define down_write(x) down(x)
 #define up_read(x) up(x)
 #define up_write(x) up(x)
-#define downgrade_write(a)
+static inline void downgrade_write(struct rw_semaphore *sem) {}
 
 static inline int down_write_trylock(struct rw_semaphore *sem) {return 0;}
 #endif /* _LINUX_RWSEM_H */

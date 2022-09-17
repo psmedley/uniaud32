@@ -172,7 +172,11 @@ const char *dev_driver_string(const struct device *dev)
 	 * never change once they are set, so they don't need special care.
 	 */
 	drv = dev->driver;
+#if 0
 	return drv ? drv->name :
 			(dev->bus ? dev->bus->name :
 			(dev->class ? dev->class->name : ""));
+#else
+	return "uniaud32";
+#endif
 }

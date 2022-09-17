@@ -42,6 +42,7 @@
 #define  PCI_COMMAND_WAIT   0x80  /* Enable address/data stepping */
 #define  PCI_COMMAND_SERR 0x100 /* Enable SERR */
 #define  PCI_COMMAND_FAST_BACK  0x200 /* Enable back-to-back writes */
+#define  PCI_COMMAND_INTX_DISABLE 0x400 /* INTx Emulation Disable */
 
 #define PCI_STATUS    0x06  /* 16 bits */
 #define  PCI_STATUS_CAP_LIST  0x10  /* Support Capability List */
@@ -362,6 +363,7 @@ struct pci_dev {
   struct resource resource[DEVICE_COUNT_RESOURCE]; /* I/O and memory regions + expansion ROMs */
   struct resource dma_resource[DEVICE_COUNT_DMA];
   struct resource irq_resource[DEVICE_COUNT_IRQ];
+	unsigned int	is_managed:1;
 
   char    name[48]; /* Device name */
   char    slot_name[8]; /* Slot name */
@@ -671,9 +673,6 @@ unsigned long pci_get_dma_mask(struct pci_dev *);
 void *pci_get_driver_data (struct pci_dev *dev);
 void pci_set_driver_data (struct pci_dev *dev, void *driver_data);
 
-#define pci_get_drvdata(a)   pci_get_driver_data(a)
-#define pci_set_drvdata(a,b) pci_set_driver_data(a, b)
-
 #define PCI_DEVICE(vend,dev) \
         .vendor = (vend), .device = (dev), \
         .subvendor = PCI_ANY_ID, .subdevice = PCI_ANY_ID
@@ -693,9 +692,6 @@ static inline unsigned char snd_pci_revision(struct pci_dev *pci)
   pci_read_config_byte(pci, PCI_REVISION_ID, &rev);
   return rev;
 }
-
-/* pci_intx() wrapper */
-#define pci_intx(pci,x)
 
 /* MSI */
 extern int snd_pci_enable_msi(struct pci_dev *dev);
@@ -738,6 +734,20 @@ static inline void *pci_ioremap_bar(struct pci_dev *pdev, int bar)
 
 static inline bool pci_dev_run_wake(struct pci_dev *dev) { return 0; }
 
+/*
+ * Similar to the helpers above, these manipulate per-pci_dev
+ * driver-specific data.  They are really just a wrapper around
+ * the generic device structure functions of these calls.
+ */
+static inline void *pci_get_drvdata(struct pci_dev *pdev)
+{
+	return dev_get_drvdata(&pdev->dev);
+}
+
+static inline void pci_set_drvdata(struct pci_dev *pdev, void *data)
+{
+	dev_set_drvdata(&pdev->dev, data);
+}
 /* If you want to know what to call your pci_dev, ask this function.
  * Again, it's a wrapper around the generic device.
  */
@@ -772,4 +782,11 @@ int pci_status_get_and_clear_errors(struct pci_dev *pdev);
 int pcim_enable_device(struct pci_dev *pdev);
 #define pcim_iomap pci_iomap
 int pcim_iomap_regions(struct pci_dev *pdev, int mask, const char *name);
+
+static inline int pci_is_managed(struct pci_dev *pdev)
+{
+	return pdev->is_managed;
+}
+void pci_intx(struct pci_dev *pdev, int enable);
+
 #endif /* LINUX_PCI_H */

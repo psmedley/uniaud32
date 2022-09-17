@@ -3625,12 +3625,10 @@ static bool dspload_wait_loaded(struct hda_codec *codec)
 	unsigned long timeout = jiffies + msecs_to_jiffies(2000);
 
 	do {
-	  #ifndef TARGET_OS2
 		if (dspload_is_loaded(codec)) {
 			codec_info(codec, "ca0132 DSP downloaded and running\n");
 			return true;
 		}
-		#endif
 		msleep(20);
 	} while (time_before(jiffies, timeout));
 
@@ -6660,15 +6658,15 @@ static int ca0132_alt_add_effect_slider(struct hda_codec *codec, hda_nid_t nid,
 		HDA_CODEC_VOLUME_MONO(namestr, nid, 1, 0, type);
 #else
 	struct snd_kcontrol_new knew = {
-		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER, 
 		.index = 0,  \
-		.subdevice = HDA_SUBDEV_AMP_FLAG,
-		.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |
-		  	    SNDRV_CTL_ELEM_ACCESS_TLV_READ |
-	  		    SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK,
+		.subdevice = HDA_SUBDEV_AMP_FLAG, 
+		.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | 
+		  	    SNDRV_CTL_ELEM_ACCESS_TLV_READ | 
+	  		    SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK, 
 		.info = snd_hda_mixer_amp_volume_info, \
 		.get = snd_hda_mixer_amp_volume_get,
-		.put = snd_hda_mixer_amp_volume_put,
+		.put = snd_hda_mixer_amp_volume_put, 
 		.tlv = { .c = snd_hda_mixer_amp_tlv },		
 
 	};
@@ -6741,13 +6739,13 @@ static int add_voicefx(struct hda_codec *codec)
 				    VOICEFX, 1, 0, HDA_INPUT);
 #else
 	struct snd_kcontrol_new knew =
-	{
+	{ 
 		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-		.index = 0,
-	  	.subdevice = HDA_SUBDEV_AMP_FLAG,
-	  	.info = snd_hda_mixer_amp_switch_info,
-	  	.get = snd_hda_mixer_amp_switch_get,
-	  	.put = snd_hda_mixer_amp_switch_put,
+		.index = 0, 
+	  	.subdevice = HDA_SUBDEV_AMP_FLAG, 
+	  	.info = snd_hda_mixer_amp_switch_info, 
+	  	.get = snd_hda_mixer_amp_switch_get, 
+	  	.put = snd_hda_mixer_amp_switch_put, 
 	};
 	knew.name = ca0132_voicefx.name;
 	knew.private_value = HDA_COMPOSE_AMP_VAL(VOICEFX, 1, 0, HDA_INPUT);
@@ -6768,13 +6766,13 @@ static int add_ca0132_alt_eq_presets(struct hda_codec *codec)
 				    EQ_PRESET_ENUM, 1, 0, HDA_OUTPUT);
 #else
 	struct snd_kcontrol_new knew =
-	{
+	{ 
 		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-		.index = 0,
-	  	.subdevice = HDA_SUBDEV_AMP_FLAG,
-	  	.info = snd_hda_mixer_amp_switch_info,
-	  	.get = snd_hda_mixer_amp_switch_get,
-	  	.put = snd_hda_mixer_amp_switch_put,
+		.index = 0, 
+	  	.subdevice = HDA_SUBDEV_AMP_FLAG, 
+	  	.info = snd_hda_mixer_amp_switch_info, 
+	  	.get = snd_hda_mixer_amp_switch_get, 
+	  	.put = snd_hda_mixer_amp_switch_put, 
 	};
 	knew.name = ca0132_alt_eq_enum.name;
 	knew.private_value = HDA_COMPOSE_AMP_VAL(EQ_PRESET_ENUM, 1, 0, HDA_OUTPUT);
@@ -6877,15 +6875,15 @@ static int ca0132_alt_add_bass_redirection_crossover(struct hda_codec *codec)
 				HDA_OUTPUT);
 #else
 	struct snd_kcontrol_new knew = {
-		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER, 
 		.index = 0,  \
-		.subdevice = HDA_SUBDEV_AMP_FLAG,
-		.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |
-		  	    SNDRV_CTL_ELEM_ACCESS_TLV_READ |
-	  		    SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK,
+		.subdevice = HDA_SUBDEV_AMP_FLAG, 
+		.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | 
+		  	    SNDRV_CTL_ELEM_ACCESS_TLV_READ | 
+	  		    SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK, 
 		.info = snd_hda_mixer_amp_volume_info, \
 		.get = snd_hda_mixer_amp_volume_get,
-		.put = snd_hda_mixer_amp_volume_put,
+		.put = snd_hda_mixer_amp_volume_put, 
 		.tlv = { .c = snd_hda_mixer_amp_tlv },		
 	};
 	knew.name = namestr;
@@ -9156,10 +9154,9 @@ static void zxr_exit_chip(struct hda_codec *codec)
 static void ca0132_exit_chip(struct hda_codec *codec)
 {
 	/* put any chip cleanup stuffs here. */
-  #ifndef TARGET_OS2
+
 	if (dspload_is_loaded(codec))
 		dsp_reset(codec);
-  #endif
 }
 
 /*

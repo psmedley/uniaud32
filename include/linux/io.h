@@ -6,5 +6,7 @@
 #include <linux/types.h>
 #include <linux/err.h>
 
-#define devm_ioremap(A, B, C) ioremap(B, C)
+void __iomem *devm_ioremap(struct device *dev, resource_size_t offset,
+			   resource_size_t size);
+
 #endif /* _LINUX_IO_H */

@@ -651,6 +651,7 @@ int regmap_attach_dev(struct device *dev, struct regmap *map,
 	if (ret)
 		return ret;
 
+	regmap_debugfs_exit(map);
 	regmap_debugfs_init(map);
 
 	/* Add a devres resource for dev_get_regmap() */
@@ -1730,7 +1731,7 @@ static int _regmap_raw_write_impl(struct regmap *map, unsigned int reg,
 
 		/* If the write goes beyond the end of the window split it */
 		while (val_num > win_residue) {
-			dev_dbg(map->dev, "Writing window %d/%zu\n",
+			dev_dbg(map->dev, "Writing window %d/%lu\n",
 				win_residue, val_len / map->format.val_bytes);
 			ret = _regmap_raw_write_impl(map, reg, val,
 						     win_residue *

@@ -238,8 +238,8 @@ int snd_devm_card_new(struct device *parent, int idx, const char *xid,
 		devres_free(card);
 		return err;
 	}
-	devres_add(parent, card);
 
+	devres_add(parent, card);
 	*card_ret = card;
 	return 0;
 }

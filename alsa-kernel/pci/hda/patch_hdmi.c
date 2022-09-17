@@ -2033,12 +2033,10 @@ static bool check_non_pcm_per_cvt(struct hda_codec *codec, hda_nid_t cvt_nid)
 	/* Add sanity check to pass klockwork check.
 	 * This should never happen.
 	 */
-	#ifndef TARGET_OS2
 	if (WARN_ON(spdif == NULL)) {
 		mutex_unlock(&codec->spdif_mutex);
 		return true;
 	}
-	#endif
 	non_pcm = !!(spdif->status & IEC958_AES0_NONAUDIO);
 	mutex_unlock(&codec->spdif_mutex);
 	return non_pcm;
@@ -2058,9 +2056,7 @@ static int generic_hdmi_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
 	struct hdmi_spec *spec = codec->spec;
 	int pin_idx;
 	struct hdmi_spec_per_pin *per_pin;
-	#ifndef TARGET_OS2
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	#endif
 	bool non_pcm;
 	int pinctl, stripe;
 	int err = 0;
@@ -2096,11 +2092,9 @@ static int generic_hdmi_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
 
 	/* Call sync_audio_rate to set the N/CTS/M manually if necessary */
 	/* Todo: add DP1.2 MST audio support later */
-	#ifndef TARGET_OS2
 	if (codec_has_acomp(codec))
 		snd_hdac_sync_audio_rate(&codec->core, per_pin->pin_nid,
 					 per_pin->dev_id, runtime->rate);
-	#endif
 
 	non_pcm = check_non_pcm_per_cvt(codec, cvt_nid);
 	mutex_lock(&per_pin->lock);
@@ -2486,10 +2480,8 @@ static void generic_hdmi_free(struct hda_codec *codec)
 
 	if (spec->acomp_registered) {
 		snd_hdac_acomp_exit(&codec->bus->core);
-	#ifndef TARGET_OS2
 	} else if (codec_has_acomp(codec)) {
 		snd_hdac_acomp_register_notifier(&codec->bus->core, NULL);
-	#endif
 	}
 	codec->relaxed_resume = 0;
 

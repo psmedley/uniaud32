@@ -68,6 +68,8 @@ typedef struct device {
   struct dev_pm_info	power;
   struct list_head	dma_pools;	/* dma pools (if dma'ble) */
   struct device_driver *driver;
+  void		*driver_data;	/* Driver data, set and get with
+					   dev_set_drvdata/dev_get_drvdata */
   struct pm_dev *pm_dev;
   char  bus_id[20];
   struct class		*class;
@@ -91,11 +93,15 @@ static inline struct device *kobj_to_dev(struct kobject *kobj)
 
 static inline const char *dev_name(const struct device *dev)
 {
+#if 0
 	/* Use the init name until the kobject becomes available */
 	if (dev->init_name)
 		return dev->init_name;
 
 	return kobject_name(&dev->kobj);
+#else
+	return "uniaud32";
+#endif
 }
 
 struct bus_type {
@@ -144,9 +150,6 @@ extern int __must_check driver_register(struct device_driver *drv);
 extern void driver_unregister(struct device_driver *drv);
 extern struct device_driver *driver_find(const char *name,
 					 struct bus_type *bus);
-
-#define dev_set_drvdata(dev,ptr)	((dev)->private_data = (ptr))
-#define dev_get_drvdata(dev)	(dev)->private_data
 
 #define MODULE_ALIAS_CHARDEV_MAJOR(x)
 
@@ -217,13 +220,11 @@ extern int driver_attach(struct device_driver *drv);
 typedef void (*dr_release_t)(struct device *dev, void *res);
 typedef int (*dr_match_t)(struct device *dev, void *res, void *match_data);
 
-extern void *devres_alloc_node(dr_release_t release, size_t size, gfp_t gfp,
-			       int nid);
 #define	NUMA_NO_NODE	(-1)
-static inline void *devres_alloc(dr_release_t release, size_t size, gfp_t gfp)
-{
-	return devres_alloc_node(release, size, gfp, NUMA_NO_NODE);
-}
+void *__devres_alloc_node(dr_release_t release, size_t size, gfp_t gfp,
+			  int nid, const char *name);
+#define devres_alloc(release, size, gfp) \
+	__devres_alloc_node(release, size, gfp, NUMA_NO_NODE, #release)
 
 /**
  * struct class - device classes
@@ -289,14 +290,47 @@ extern void *devres_find(struct device *dev, dr_release_t release,
 
 /* debugging and troubleshooting/diagnostic helpers. */
 extern const char *dev_driver_string(const struct device *dev);
-#define devm_kzalloc(A, B, C) kzalloc(B, C)
-#define devm_kmalloc(A, B, C) kmalloc(B, C)
-#define devm_kcalloc(A, B, C, D) kmalloc(B, C)
-#define devm_kmalloc_array(A, B, C, D) kmalloc_array(B, C, D)
+void *devm_kmalloc(struct device *dev, size_t size, gfp_t gfp);
 
+static inline void *devm_kzalloc(struct device *dev, size_t size, gfp_t gfp)
+{
+	return devm_kmalloc(dev, size, gfp | __GFP_ZERO);
+}
+
+static inline void *devm_kmalloc_array(struct device *dev,
+				       size_t n, size_t size, gfp_t flags)
+{
+//	size_t bytes;
+
+//	if (unlikely(check_mul_overflow(n, size, &bytes)))
+//		return NULL;
+
+	return devm_kmalloc(dev, n * size, flags);
+}
+static inline void *devm_kcalloc(struct device *dev,
+				 size_t n, size_t size, gfp_t flags)
+{
+	return devm_kmalloc_array(dev, n, size, flags | __GFP_ZERO);
+}
 
 /* allows to add/remove a custom action to devres stack */
 int devm_add_action(struct device *dev, void (*action)(void *), void *data);
 void devm_remove_action(struct device *dev, void (*action)(void *), void *data);
+
+static inline int dev_to_node(struct device *dev)
+{
+	return NUMA_NO_NODE;
+}
+
+static inline void *dev_get_drvdata(const struct device *dev)
+{
+	return dev->driver_data;
+}
+
+static inline void dev_set_drvdata(struct device *dev, void *data)
+{
+	dev->driver_data = data;
+}
+
 #endif /* _LINUX_DEVICE_H */
 

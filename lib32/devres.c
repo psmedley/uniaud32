@@ -12,20 +12,19 @@
 #include <linux/slab.h>
 #include <linux/gfp.h>
 #include <linux/errno.h>
+#include <asm/io.h>
 
 struct devres_node {
 	struct list_head		entry;
 	dr_release_t			release;
-#ifdef CONFIG_DEBUG_DEVRES
 	const char			*name;
 	size_t				size;
-#endif
 };
 
 struct devres {
 	struct devres_node		node;
 	/* -- 3 pointers */
-	unsigned long long		data[];	/* guarantee ull alignment */
+	u8		data[];	/* guarantee ull alignment */
 };
 
 struct devres_group {
@@ -34,6 +33,13 @@ struct devres_group {
 	int				color;
 	/* -- 8 pointers */
 };
+
+static void set_node_dbginfo(struct devres_node *node, const char *name,
+			     size_t size)
+{
+	node->name = name;
+	node->size = size;
+}
 
 #define devres_log(dev, node, op)	do {} while (0)
 
@@ -75,16 +81,11 @@ static inline struct devres * alloc_dr(dr_release_t release,
 	return dr;
 }
 
-#define devres_log(dev, node, op)	do {} while (0)
-
 static void add_dr(struct device *dev, struct devres_node *node)
 {
 	devres_log(dev, node, "ADD");
 	BUG_ON(!list_empty(&node->entry));
-//#ifndef TARGET_OS2
-	/* Traps here on OS/2 */
 	list_add_tail(&node->entry, &dev->devres_head);
-//#endif
 }
 
 /**
@@ -98,20 +99,21 @@ static void add_dr(struct device *dev, struct devres_node *node)
  */
 void devres_add(struct device *dev, void *res)
 {
-	/* Traps here on OS/2 */
 	struct devres *dr = container_of(res, struct devres, data);
 	unsigned long flags;
+
 	spin_lock_irqsave(&dev->devres_lock, flags);
 	add_dr(dev, &dr->node);
 	spin_unlock_irqrestore(&dev->devres_lock, flags);
 }
 
 /**
- * devres_alloc - Allocate device resource data
+ * __devres_alloc_node - Allocate device resource data
  * @release: Release function devres will be associated with
  * @size: Allocation size
  * @gfp: Allocation flags
  * @nid: NUMA node
+ * @name: Name of the resource
  *
  * Allocate devres of @size bytes.  The allocated area is zeroed, then
  * associated with @release.  The returned pointer can be passed to
@@ -120,11 +122,15 @@ void devres_add(struct device *dev, void *res)
  * RETURNS:
  * Pointer to allocated devres on success, NULL on failure.
  */
-void * devres_alloc_node(dr_release_t release, size_t size, gfp_t gfp, int nid)
+void *__devres_alloc_node(dr_release_t release, size_t size, gfp_t gfp, int nid,
+			  const char *name)
 {
 	struct devres *dr;
 
 	dr = alloc_dr(release, size, gfp | __GFP_ZERO, nid);
+	if (unlikely(!dr))
+		return NULL;
+	set_node_dbginfo(&dr->node, name, size);
 	return dr->data;
 }
 
@@ -304,6 +310,23 @@ void * devres_find(struct device *dev, dr_release_t release,
 	return NULL;
 }
 
+/*
+ * Custom devres actions allow inserting a simple function call
+ * into the teadown sequence.
+ */
+
+struct action_devres {
+	void *data;
+	void (*action)(void *);
+};
+
+static void devm_action_release(struct device *dev, void *res)
+{
+	struct action_devres *devres = res;
+
+	devres->action(devres->data);
+}
+
 /**
  * devm_add_action() - add a custom action to list of managed resources
  * @dev: Device that owns the action
@@ -315,6 +338,18 @@ void * devres_find(struct device *dev, dr_release_t release,
  */
 int devm_add_action(struct device *dev, void (*action)(void *), void *data)
 {
+	struct action_devres *devres;
+
+	devres = devres_alloc(devm_action_release,
+			      sizeof(struct action_devres), GFP_KERNEL);
+	if (!devres)
+		return -ENOMEM;
+
+	devres->data = data;
+	devres->action = action;
+
+	devres_add(dev, devres);
+
 	return 0;
 }
 
@@ -330,3 +365,109 @@ int devm_add_action(struct device *dev, void (*action)(void *), void *data)
 void devm_remove_action(struct device *dev, void (*action)(void *), void *data)
 {
 }
+
+/*
+ * Managed kmalloc/kfree
+ */
+static void devm_kmalloc_release(struct device *dev, void *res)
+{
+	/* noop */
+}
+
+/**
+ * devm_kmalloc - Resource-managed kmalloc
+ * @dev: Device to allocate memory for
+ * @size: Allocation size
+ * @gfp: Allocation gfp flags
+ *
+ * Managed kmalloc.  Memory allocated with this function is
+ * automatically freed on driver detach.  Like all other devres
+ * resources, guaranteed alignment is unsigned long long.
+ *
+ * RETURNS:
+ * Pointer to allocated memory on success, NULL on failure.
+ */
+void *devm_kmalloc(struct device *dev, size_t size, gfp_t gfp)
+{
+	struct devres *dr;
+
+	if (unlikely(!size))
+		return ZERO_SIZE_PTR;
+
+	/* use raw alloc_dr for kmalloc caller tracing */
+	dr = alloc_dr(devm_kmalloc_release, size, gfp, dev_to_node(dev));
+	if (unlikely(!dr))
+		return NULL;
+
+	/*
+	 * This is named devm_kzalloc_release for historical reasons
+	 * The initial implementation did not support kmalloc, only kzalloc
+	 */
+	set_node_dbginfo(&dr->node, "devm_kzalloc_release", size);
+	devres_add(dev, dr->data);
+	return dr->data;
+}
+EXPORT_SYMBOL_GPL(devm_kmalloc);
+
+enum devm_ioremap_type {
+	DEVM_IOREMAP = 0,
+	DEVM_IOREMAP_UC,
+	DEVM_IOREMAP_WC,
+	DEVM_IOREMAP_NP,
+};
+
+void devm_ioremap_release(struct device *dev, void *res)
+{
+	iounmap(*(void __iomem **)res);
+}
+
+static void *__devm_ioremap(struct device *dev, resource_size_t offset,
+				    resource_size_t size,
+				    enum devm_ioremap_type type)
+{
+	void __iomem **ptr, *addr = NULL;
+
+	ptr = devres_alloc(devm_ioremap_release, sizeof(*ptr), GFP_KERNEL);
+	if (!ptr)
+		return NULL;
+
+	switch (type) {
+	case DEVM_IOREMAP:
+		addr = ioremap(offset, size);
+		break;
+#if 0
+	case DEVM_IOREMAP_UC:
+		addr = ioremap_uc(offset, size);
+		break;
+	case DEVM_IOREMAP_WC:
+		addr = ioremap_wc(offset, size);
+		break;
+	case DEVM_IOREMAP_NP:
+		addr = ioremap_np(offset, size);
+		break;
+#endif
+	}
+
+	if (addr) {
+		*ptr = addr;
+		devres_add(dev, ptr);
+	} else
+		devres_free(ptr);
+
+	return addr;
+}
+
+/**
+ * devm_ioremap - Managed ioremap()
+ * @dev: Generic device to remap IO address for
+ * @offset: Resource address to map
+ * @size: Size of map
+ *
+ * Managed ioremap().  Map is automatically unmapped on driver detach.
+ */
+void __iomem *devm_ioremap(struct device *dev, resource_size_t offset,
+			   resource_size_t size)
+{
+	return __devm_ioremap(dev, offset, size, DEVM_IOREMAP);
+}
+EXPORT_SYMBOL(devm_ioremap);

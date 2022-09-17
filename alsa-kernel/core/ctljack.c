@@ -9,7 +9,6 @@
 #include <linux/export.h>
 #include <sound/core.h>
 #include <sound/control.h>
-#include <linux/string.h>
 
 #define jack_detect_kctl_info	snd_ctl_boolean_mono_info
 

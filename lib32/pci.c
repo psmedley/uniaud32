@@ -29,6 +29,7 @@
 #include <linux/init.h>
 #include <linux/poll.h>
 #include <linux/dma-mapping.h>
+#include <linux/gfp.h>
 #include <asm/uaccess.h>
 #include <asm/hardirq.h>
 #include <asm/io.h>
@@ -204,6 +205,7 @@ int pcidev_deactivate(struct pci_dev *dev)
         pcidev->dma_mask = 0xffffffff;
 	pcidev->dev.dma_mask = &pcidev->dma_mask;
 	pcidev->dev.coherent_dma_mask = 0xffffffffull;
+	INIT_LIST_HEAD(&pcidev->dev.devres_head);
 
         // Subsystem ID
         pci_read_config_word(pcidev, PCI_SUBSYSTEM_VENDOR_ID, &pcidev->subsystem_vendor);
@@ -799,22 +801,6 @@ void pci_free_consistent(struct pci_dev *hwdev, long size,
   free_pages((unsigned long)vaddr, __compat_get_order(size));
 }
 
-/**
- */
-void pci_set_driver_data (struct pci_dev *dev, void *driver_data)
-{
-  if (dev)
-    dev->driver_data = driver_data;
-}
-
-/**
- */
-void *pci_get_driver_data (struct pci_dev *dev)
-{
-  if (dev)
-    return dev->driver_data;
-  return 0;
-}
 
 /**
  */
@@ -1037,54 +1023,6 @@ int snd_pci_dev_present(const struct pci_device_id *ids)
   return 0;
 }
 
-struct pci_driver_mapping {
-  struct pci_dev *dev;
-  struct pci_driver *drv;
-  unsigned long dma_mask;
-  void *driver_data;
-  u32 saved_config[16];
-};
-
-#define PCI_MAX_MAPPINGS 64
-static struct pci_driver_mapping drvmap [PCI_MAX_MAPPINGS] = { { NULL, } , };
-
-
-static struct pci_driver_mapping *get_pci_driver_mapping(struct pci_dev *dev)
-{
-  int i;
-
-  for (i = 0; i < PCI_MAX_MAPPINGS; i++)
-    if (drvmap[i].dev == dev)
-      return &drvmap[i];
-  return NULL;
-}
-
-struct pci_driver *snd_pci_compat_get_pci_driver(struct pci_dev *dev)
-{
-  struct pci_driver_mapping *map = get_pci_driver_mapping(dev);
-  if (map)
-    return map->drv;
-  return NULL;
-}
-#if 0
-void * pci_get_drvdata (struct pci_dev *dev)
-{
-  struct pci_driver_mapping *map = get_pci_driver_mapping(dev);
-  if (map)
-    return map->driver_data;
-  return NULL;
-}
-
-
-void pci_set_drvdata (struct pci_dev *dev, void *driver_data)
-{
-  struct pci_driver_mapping *map = get_pci_driver_mapping(dev);
-  if (map)
-    map->driver_data = driver_data;
-}
-#endif
-
-
 //******************************************************************************
 //******************************************************************************
 OSSRET OSS32_APMResume()
@@ -1179,3 +1117,99 @@ int pci_status_get_and_clear_errors(struct pci_dev *pdev)
 	return status;
 }
 
+struct region_devres {
+	struct resource *parent;
+	resource_size_t start;
+	resource_size_t n;
+};
+
+static void devm_region_release(struct device *dev, void *res)
+{
+	struct region_devres *this = res;
+
+	__release_region(this->parent, this->start, this->n);
+}
+
+struct resource *
+__devm_request_region(struct device *dev, struct resource *parent,
+		      resource_size_t start, resource_size_t n, const char *name)
+{
+	struct region_devres *dr = NULL;
+	struct resource *res;
+
+	dr = devres_alloc(devm_region_release, sizeof(struct region_devres),
+			  GFP_KERNEL);
+	if (!dr)
+		return NULL;
+
+	dr->parent = parent;
+	dr->start = start;
+	dr->n = n;
+
+	res = __request_region(parent, start, n, name);
+	if (res)
+		devres_add(dev, dr);
+	else
+		devres_free(dr);
+
+	return res;
+}
+EXPORT_SYMBOL(__devm_request_region);
+
+/*
+ * Managed PCI resources.  This manages device on/off, INTx/MSI/MSI-X
+ * on/off and BAR regions.  pci_dev itself records MSI/MSI-X status, so
+ * there's no need to track it separately.  pci_devres is initialized
+ * when a device is enabled using managed PCI device enable interface.
+ */
+struct pci_devres {
+	unsigned int enabled:1;
+	unsigned int pinned:1;
+	unsigned int orig_intx:1;
+	unsigned int restore_intx:1;
+	unsigned int mwi:1;
+	u32 region_mask;
+};
+
+static void pcim_release(struct device *gendev, void *res)
+{
+}
+
+static struct pci_devres *find_pci_dr(struct pci_dev *pdev)
+{
+	if (pci_is_managed(pdev))
+		return devres_find(&pdev->dev, pcim_release, NULL, NULL);
+	return NULL;
+}
+
+/**
+ * pci_intx - enables/disables PCI INTx for device dev
+ * @pdev: the PCI device to operate on
+ * @enable: boolean: whether to enable or disable PCI INTx
+ *
+ * Enables/disables PCI INTx for device @pdev
+ */
+void pci_intx(struct pci_dev *pdev, int enable)
+{
+	u16 pci_command, new;
+
+	pci_read_config_word(pdev, PCI_COMMAND, &pci_command);
+
+	if (enable)
+		new = pci_command & ~PCI_COMMAND_INTX_DISABLE;
+	else
+		new = pci_command | PCI_COMMAND_INTX_DISABLE;
+
+	if (new != pci_command) {
+		struct pci_devres *dr;
+
+		pci_write_config_word(pdev, PCI_COMMAND, new);
+
+		dr = find_pci_dr(pdev);
+		if (dr && !dr->restore_intx) {
+			dr->restore_intx = 1;
+			dr->orig_intx = !enable;
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(pci_intx);
