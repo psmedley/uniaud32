@@ -12527,7 +12527,6 @@ static int patch_alc662(struct hda_codec *codec)
 	if (err < 0)
 		goto error;
 
-#ifndef TARGET_OS2
 	if (!spec->gen.no_analog && spec->gen.beep_nid) {
 		switch (codec->core.vendor_id) {
 		case 0x10ec0662:
@@ -12546,7 +12545,7 @@ static int patch_alc662(struct hda_codec *codec)
 		if (err < 0)
 			goto error;
 	}
-#endif
+
 	snd_hda_apply_fixup(codec, HDA_FIXUP_ACT_PROBE);
 
 	return 0;
