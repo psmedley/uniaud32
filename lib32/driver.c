@@ -713,7 +713,6 @@ static int __device_attach(struct device_driver *drv, void *data)
 int device_attach(struct device *dev)
 {
 	int ret = 0;
-rprintf(("device_attach"));
 	device_lock(dev);
 	if (dev->driver) {
 		if (klist_node_attached(&dev->p->knode_driver)) {
