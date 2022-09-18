@@ -347,5 +347,8 @@ static inline void dev_set_drvdata(struct device *dev, void *data)
 int device_match_name(struct device *dev, const void *name);
 int device_match_of_node(struct device *dev, const void *np);
 
+char *devm_kasprintf(struct device *dev, gfp_t gfp,
+				    const char *fmt, ...);
+
 #endif /* _LINUX_DEVICE_H */
 
