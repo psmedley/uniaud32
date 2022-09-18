@@ -3237,7 +3237,6 @@ static int snd_cmipci_probe(struct pci_dev *pci,
 {
 	static int dev;
 	struct snd_card *card;
-	struct cmipci *cm;
 	int err;
 
 	if (dev >= SNDRV_CARDS)
@@ -3248,10 +3247,9 @@ static int snd_cmipci_probe(struct pci_dev *pci,
 	}
 
 	err = snd_devm_card_new(&pci->dev, index[dev], id[dev], THIS_MODULE,
-				sizeof(*cm), &card);
+				sizeof(struct cmipci), &card);
 	if (err < 0)
 		return err;
-	cm = card->private_data;
 	
 	switch (pci->device) {
 	case PCI_DEVICE_ID_CMEDIA_CM8738:
@@ -3269,19 +3267,15 @@ static int snd_cmipci_probe(struct pci_dev *pci,
 
 	err = snd_cmipci_create(card, pci, dev);
 	if (err < 0)
-		goto error;
+		return err;
 
 	err = snd_card_register(card);
 	if (err < 0)
-		goto error;
+		return err;
 
 	pci_set_drvdata(pci, card);
 	dev++;
 	return 0;
-
- error:
-	snd_card_free(card);
-	return err;
 }
 
 #ifdef CONFIG_PM_SLEEP
