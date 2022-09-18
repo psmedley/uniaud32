@@ -119,6 +119,9 @@ void snd_pcm_playback_silence(struct snd_pcm_substream *substream, snd_pcm_ufram
 		frames -= transfer;
 		ofs = 0;
 	}
+#ifndef TARGET_OS2
+	snd_pcm_dma_buffer_sync(substream, SNDRV_DMA_SYNC_DEVICE);
+#endif
 }
 
 #ifdef CONFIG_SND_DEBUG
@@ -2309,8 +2312,16 @@ snd_pcm_sframes_t __snd_pcm_lib_xfer(struct snd_pcm_substream *substream,
 		}
 #endif
 		snd_pcm_stream_unlock_irq(substream);
+#ifndef TARGET_OS2
+		if (!is_playback)
+			snd_pcm_dma_buffer_sync(substream, SNDRV_DMA_SYNC_CPU);
+#endif
 		err = writer(substream, appl_ofs, data, offset, frames,
 			     transfer);
+#ifndef TARGET_OS2
+		if (is_playback)
+			snd_pcm_dma_buffer_sync(substream, SNDRV_DMA_SYNC_DEVICE);
+#endif
 		snd_pcm_stream_lock_irq(substream);
 #ifndef TARGET_OS2
 		atomic_dec(&runtime->buffer_accessing);
