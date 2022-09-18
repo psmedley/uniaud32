@@ -1194,14 +1194,9 @@ static int snd_fm801_create(struct snd_card *card,
 	struct fm801 *chip = card->private_data;
 	int err;
 
-#ifndef TARGET_OS2
 	err = pcim_enable_device(pci);
 	if (err < 0)
 		return err;
-#else
-	if ((err = pci_enable_device(pci)) < 0)
-		return err;
-#endif
 	spin_lock_init(&chip->reg_lock);
 	chip->card = card;
 	chip->dev = &pci->dev;

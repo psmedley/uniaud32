@@ -1894,20 +1894,12 @@ static int azx_first_init(struct azx *chip)
 	}
 #endif
 
-#ifndef TARGET_OS2
 	err = pcim_iomap_regions(pci, 1 << 0, "ICH HD audio");
-#else
-	err = pci_request_regions(pci, "ICH HD audio");
-#endif
 	if (err < 0)
 		return err;
 
 	bus->addr = pci_resource_start(pci, 0);
-#ifndef TARGET_OS2
 	bus->remap_addr = pcim_iomap_table(pci)[0];
-#else
-	bus->remap_addr = pci_ioremap_bar(pci, 0);
-#endif
 	if (chip->driver_type == AZX_DRIVER_SKL)
 		snd_hdac_bus_parse_capabilities(bus);
 

@@ -1562,24 +1562,11 @@ static int snd_atiixp_init(struct snd_card *card, struct pci_dev *pci)
 	chip->card = card;
 	chip->pci = pci;
 	chip->irq = -1;
-#ifndef TARGET_OS2
 	err = pcim_iomap_regions(pci, 1 << 0, "ATI IXP AC97");
 	if (err < 0)
 		return err;
-#else
-	err = pci_request_regions(pci, "ATI IXP AC97");
-	if (err < 0) {
-		pci_disable_device(pci);
-		kfree(chip);
-		return err;
-	}
-#endif
 	chip->addr = pci_resource_start(pci, 0);
-#ifndef TARGET_OS2
 	chip->remap_addr = pcim_iomap_table(pci)[0];
-#else
-	chip->remap_addr = pci_ioremap_bar(pci, 0);
-#endif
 	if (devm_request_irq(&pci->dev, pci->irq, snd_atiixp_interrupt,
 			     IRQF_SHARED, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
