@@ -43,6 +43,16 @@ struct device_type {
 	const struct dev_pm_ops *pm;
 };
 
+struct device_dma_parameters {
+	/*
+	 * a low level driver may set these to teach IOMMU code about
+	 * sg limitations.
+	 */
+	unsigned int max_segment_size;
+	unsigned int min_align_mask;
+	unsigned long segment_boundary_mask;
+};
+
 typedef struct device {
     struct pci_dev *pci;  /* for PCI and PCI-SG types */
   struct device   * parent;
@@ -66,6 +76,7 @@ typedef struct device {
   void *private_data;
   void *platform_data;
   struct dev_pm_info	power;
+	struct device_dma_parameters *dma_parms;
   struct list_head	dma_pools;	/* dma pools (if dma'ble) */
   struct device_driver *driver;
   void		*driver_data;	/* Driver data, set and get with
@@ -331,6 +342,10 @@ static inline void dev_set_drvdata(struct device *dev, void *data)
 {
 	dev->driver_data = data;
 }
+
+/* Generic device matching functions that all busses can use to match with */
+int device_match_name(struct device *dev, const void *name);
+int device_match_of_node(struct device *dev, const void *np);
 
 #endif /* _LINUX_DEVICE_H */
 

@@ -27,6 +27,21 @@
 #include <linux/list.h>
 
 
+struct device_node {
+	const char *name;
+//	phandle phandle;
+	const char *full_name;
+//	struct fwnode_handle fwnode;
+
+	struct	property *properties;
+	struct	property *deadprops;	/* removed properties */
+	struct	device_node *parent;
+	struct	device_node *child;
+	struct	device_node *sibling;
+	struct	kobject kobj;
+	unsigned long _flags;
+	void	*data;
+};
 struct property {
 	char	*name;
 	int	length;
@@ -59,5 +74,6 @@ static inline bool of_property_read_bool(const struct device_node *np,
 
 	return prop ? true : false;
 }
+extern void of_node_put(struct device_node *node);
 
 #endif /* _LINUX_OF_H */

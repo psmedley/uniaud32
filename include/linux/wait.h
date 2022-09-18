@@ -132,4 +132,7 @@ void __wake_up_locked(wait_queue_head_t *q, unsigned int mode, int nr);
 #define wait_event_lock_irq(wq_head, condition, lock)
 #define wait_event(wq_head, condition)
 #define wake_up_all(x)			
+
+#define wait_event_cmd(wq_head, condition, cmd1, cmd2)
+
 #endif

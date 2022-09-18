@@ -324,6 +324,10 @@ struct snd_sg_buf {
 	struct device *dev;
 };
 
+#ifdef CONFIG_SND_DMA_SGBUF
+static void *snd_dma_sg_fallback_alloc(struct snd_dma_buffer *dmab, size_t size);
+#endif
+
 /*
  * return the physical address at the corresponding offset
  */

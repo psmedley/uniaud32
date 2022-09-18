@@ -134,4 +134,13 @@ static inline bool dma_can_mmap(struct device *dev)
 	return false;
 }
 #define pci_set_consistent_dma_mask(p,x) pci_set_dma_mask(p,x)
+
+static inline int dma_set_max_seg_size(struct device *dev, unsigned int size)
+{
+	if (dev->dma_parms) {
+		dev->dma_parms->max_segment_size = size;
+		return 0;
+	}
+	return -EIO;
+}
 #endif

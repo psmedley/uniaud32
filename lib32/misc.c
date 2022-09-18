@@ -27,6 +27,7 @@
 #include "linux.h"
 #include <linux/init.h>
 #include <linux/fs.h>
+#include <linux/of.h>
 #include <linux/poll.h>
 #define CONFIG_PROC_FS 1
 #include <linux/proc_fs.h>
@@ -783,3 +784,41 @@ void free_pages_exact(void *ptr, size_t size)
 	pg = get_order(size);
 	free_pages((unsigned long) ptr, pg);
 }
+
+/**
+ * of_node_put() - Decrement refcount of a node
+ * @node:	Node to dec refcount, NULL is supported to simplify writing of
+ *		callers
+ */
+void of_node_put(struct device_node *node)
+{
+	if (node)
+		kobject_put(&node->kobj);
+}
+
+/**
+ * sysfs_streq - return true if strings are equal, modulo trailing newline
+ * @s1: one string
+ * @s2: another string
+ *
+ * This routine returns true iff two strings are equal, treating both
+ * NUL and newline-then-NUL as equivalent string terminations.  It's
+ * geared for use with sysfs input strings, which generally terminate
+ * with newlines but are compared against values without newlines.
+ */
+bool sysfs_streq(const char *s1, const char *s2)
+{
+	while (*s1 && *s1 == *s2) {
+		s1++;
+		s2++;
+	}
+
+	if (*s1 == *s2)
+		return true;
+	if (!*s1 && *s2 == '\n' && !s2[1])
+		return true;
+	if (*s1 == '\n' && !s1[1] && !*s2)
+		return true;
+	return false;
+}
+EXPORT_SYMBOL(sysfs_streq);
