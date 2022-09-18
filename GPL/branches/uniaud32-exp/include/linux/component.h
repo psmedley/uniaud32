@@ -82,6 +82,8 @@ struct component_master_ops {
 	void (*unbind)(struct device *master);
 };
 
+int component_compare_dev_name(struct device *dev, void *data);
+
 void component_master_del(struct device *,
 	const struct component_master_ops *);
 
