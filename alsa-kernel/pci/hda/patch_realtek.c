@@ -7826,7 +7826,7 @@ static void alc298_fixup_lenovo_c940_duet7(struct hda_codec *codec,
 		id = ALC287_FIXUP_YOGA7_14ITL_SPEAKERS; /* Duet 7 */
 	__snd_hda_apply_fixup(codec, id, action, 0);
 }
-#nedif
+#endif
 
 #ifdef TARGET_OS2
 static const struct hda_verb ALC269_FIXUP_SONY_VAIO_verbs[] = {

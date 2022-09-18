@@ -251,6 +251,9 @@ int snd_hdmi_parse_eld(struct hda_codec *codec, struct parsed_hdmi_eld *e,
 
 #ifndef TARGET_OS2 //FIXME Error! E1029: Expression must be 'pointer to ...'
 	e->aud_synch_delay = GRAB_BITS(buf, 6, 0, 8) * 2;
+#else
+	int delay = GRAB_BITS(buf, 6, 0, 8);
+	e->aud_synch_delay = delay *2;
 #endif
 	e->spk_alloc	= GRAB_BITS(buf, 7, 0, 7);
 
