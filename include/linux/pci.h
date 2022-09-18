@@ -780,7 +780,6 @@ int pci_status_get_and_clear_errors(struct pci_dev *pdev);
 
 #define dev_is_pci(d) (true)
 int pcim_enable_device(struct pci_dev *pdev);
-#define pcim_iomap pci_iomap
 int pcim_iomap_regions(struct pci_dev *pdev, int mask, const char *name);
 
 static inline int pci_is_managed(struct pci_dev *pdev)
@@ -788,5 +787,9 @@ static inline int pci_is_managed(struct pci_dev *pdev)
 	return pdev->is_managed;
 }
 void pci_intx(struct pci_dev *pdev, int enable);
+#define PCI_STD_NUM_BARS	6	/* Number of standard BARs */
+int __must_check pci_request_region(struct pci_dev *, int, char *);
+void pci_release_region(struct pci_dev *, int);
+void __iomem * const *pcim_iomap_table(struct pci_dev *pdev);
 
 #endif /* LINUX_PCI_H */

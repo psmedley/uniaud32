@@ -7,6 +7,7 @@
 
 #include <asm/page.h>
 
+#define VM_MAP			0x00000004	/* vmap()ed pages */
 
 struct vm_struct {
 	unsigned long flags;
