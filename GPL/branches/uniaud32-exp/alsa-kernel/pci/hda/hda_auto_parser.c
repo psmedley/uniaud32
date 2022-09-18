@@ -87,6 +87,15 @@ static int compare_input_type(const void *ap, const void *bp)
 	return (int)(b->has_boost_on_pin - a->has_boost_on_pin);
 }
 
+#ifdef TARGET_OS2
+/**
+ * swap - swap values of @a and @b
+ * @a: first value
+ * @b: second value
+ */
+#define swap(a, b) \
+	do { u16 __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
+#endif
 /* Reorder the surround channels
  * ALSA sequence is front/surr/clfe/side
  * HDA sequence is:
@@ -96,14 +105,10 @@ static int compare_input_type(const void *ap, const void *bp)
  */
 static void reorder_outputs(unsigned int nums, hda_nid_t *pins)
 {
-	hda_nid_t nid;
-
 	switch (nums) {
 	case 3:
 	case 4:
-		nid = pins[1];
-		pins[1] = pins[2];
-		pins[2] = nid;
+		swap(pins[1], pins[2]);
 		break;
 	}
 }

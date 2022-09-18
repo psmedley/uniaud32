@@ -9,6 +9,6 @@
 #endif
 
 #undef offsetof
-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#define offsetof(__typ,__id) ((size_t)&(((__typ*)0)->__id))
 
 #endif

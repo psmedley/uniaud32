@@ -29,7 +29,7 @@ FILES = spinlock.obj malloc.obj pci.obj irq.obj ioctl.obj devres.obj &
   seq_file.obj strncpy.obj strscpy.obj task.obj rbtree.obj &
   strncmp.obj timer.obj kobject.obj driver.obj drivers_base.obj &
   instropl2.obj instropl3.obj vsprintf.obj bitmap.obj find_next_bit.obj &
-  regmap.obj regcache.obj regcache-flat.obj regcache-rbtree.obj
+  regmap.obj regcache.obj regcache-flat.obj regcache-rbtree.obj component.obj
 
 TARGET = linuxlib
 

@@ -30,6 +30,7 @@ static inline void *kmemdup(const void *src, size_t len, gfp_t gfp)
 #define vmemdup_user memdup_user
 #define scnprintf snprintf
 ssize_t strscpy(char *dest, const char *src, size_t count);
+extern bool sysfs_streq(const char *s1, const char *s2);
 
 #endif
 
