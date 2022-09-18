@@ -1185,7 +1185,6 @@ static void snd_fm801_free(struct snd_card *card)
 #endif
 }
 
-
 static int snd_fm801_create(struct snd_card *card,
 			    struct pci_dev *pci,
 			    int tea575x_tuner,
@@ -1194,14 +1193,9 @@ static int snd_fm801_create(struct snd_card *card,
 	struct fm801 *chip = card->private_data;
 	int err;
 
-#ifndef TARGET_OS2
 	err = pcim_enable_device(pci);
 	if (err < 0)
 		return err;
-#else
-	if ((err = pci_enable_device(pci)) < 0)
-		return err;
-#endif
 	spin_lock_init(&chip->reg_lock);
 	chip->card = card;
 	chip->dev = &pci->dev;
@@ -1230,13 +1224,8 @@ static int snd_fm801_create(struct snd_card *card,
 	}
 
 	if ((chip->tea575x_tuner & TUNER_ONLY) == 0) {
-#ifndef TARGET_OS2
 		if (devm_request_irq(&pci->dev, pci->irq, snd_fm801_interrupt,
 				IRQF_SHARED, KBUILD_MODNAME, chip)) {
-#else
-		if (request_irq(pci->irq, snd_fm801_interrupt, IRQF_SHARED,
-				KBUILD_MODNAME, chip)) {
-#endif
 			dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 			return -EBUSY;
 		}
