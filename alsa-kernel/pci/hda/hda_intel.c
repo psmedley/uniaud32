@@ -2111,11 +2111,16 @@ static DECLARE_BITMAP(probed_devs, SNDRV_CARDS);
 static int azx_probe(struct pci_dev *pci,
 		     const struct pci_device_id *pci_id)
 {
+#ifdef TARGET_OS2
+	static int dev;
+#endif
 	struct snd_card *card;
 	struct hda_intel *hda;
 	struct azx *chip;
 	bool schedule_probe;
+#ifndef TARGET_OS2
 	int dev;
+#endif
 	int err;
 
 	if (pci_match_id(driver_denylist, pci)) {
@@ -2123,11 +2128,17 @@ static int azx_probe(struct pci_dev *pci,
 		return -ENODEV;
 	}
 
+#ifndef TARGET_OS2
 	dev = find_first_zero_bit(probed_devs, SNDRV_CARDS);
-	if (dev >= SNDRV_CARDS)
-		return -ENODEV;
+#endif
+	if (dev >= SNDRV_CARDS){
+		return -ENODEV;}
 	if (!enable[dev]) {
+#ifdef TARGET_OS2
+		dev++;
+#else
 		set_bit(dev, probed_devs);
+#endif
 		return -ENOENT;
 	}
 
