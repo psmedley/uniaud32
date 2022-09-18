@@ -705,20 +705,10 @@ static int snd_bt87x_create(struct snd_card *card,
 	chip->irq = -1;
 	spin_lock_init(&chip->reg_lock);
 
-#ifndef TARGET_OS2
 	err = pcim_iomap_regions(pci, 1 << 0, "Bt87x audio");
 	if (err < 0)
 		return err;
 	chip->mmio = pcim_iomap_table(pci)[0];
-#else
-	err = pci_request_regions(pci, "Bt87x audio");
-	if (err < 0) {
-		kfree(chip);
-		pci_disable_device(pci);
-		return err;
-	}
-	chip->mmio = pci_ioremap_bar(pci, 0);
-#endif
 	chip->reg_control = CTL_A_PWRDN | CTL_DA_ES2 |
 			    CTL_PKTP_16 | (15 << CTL_DA_SDR_SHIFT);
 	chip->interrupt_mask = MY_INTERRUPTS;

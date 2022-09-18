@@ -99,11 +99,7 @@ static int snd_cs5530_create(struct snd_card *card,
 	if (err < 0)
 		return err;
 	chip->pci_base = pci_resource_start(pci, 0);
-#ifndef TARGET_OS2
 	mem = pcim_iomap_table(pci)[0];
-#else
-	mem = pci_ioremap_bar(pci, 0);
-#endif
 	map = readw(mem + 0x18);
 
 	/* Map bits
