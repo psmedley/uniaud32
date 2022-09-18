@@ -798,7 +798,7 @@ static const struct hda_fixup cxt_fixups[] = {
 		.type = HDA_FIXUP_PINS,
 		.v.pins = cxt_pincfg_lemote,
 	},
-#ifdef TARGET_OS2xxx
+#ifdef NOT_USED
 	[CXT_PINCFG_COMPAQ_CQ60] = {
 		.type = HDA_FIXUP_PINS,
 		.v.pins = (const struct hda_pintbl[]) {
@@ -813,7 +813,7 @@ static const struct hda_fixup cxt_fixups[] = {
 		.type = HDA_FIXUP_FUNC,
 		.v.func = cxt_fixup_stereo_dmic,
 	},
-#ifdef TARGET_OS2xxx
+#ifdef NOT_USED
 	[CXT_PINCFG_LENOVO_NOTEBOOK] = {
 		.type = HDA_FIXUP_PINS,
 		.v.pins = (const struct hda_pintbl[]) {
@@ -909,7 +909,7 @@ static const struct hda_fixup cxt_fixups[] = {
 		.type = HDA_FIXUP_FUNC,
 		.v.func = cxt_fixup_mute_led_eapd,
 	},
-#ifdef TARGET_OS2xxx
+#ifdef NOT_USED
 	[CXT_FIXUP_HP_DOCK] = {
 		.type = HDA_FIXUP_PINS,
 		.v.pins = (const struct hda_pintbl[]) {
@@ -945,7 +945,7 @@ static const struct hda_fixup cxt_fixups[] = {
 		.type = HDA_FIXUP_FUNC,
 		.v.func = cxt_fixup_headset_mic,
 	},
-#ifdef TARGET_OS2xxx
+#ifdef NOT_USED
 	[CXT_FIXUP_HP_MIC_NO_PRESENCE] = {
 		.type = HDA_FIXUP_PINS,
 		.v.pins = (const struct hda_pintbl[]) {

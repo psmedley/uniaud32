@@ -556,7 +556,7 @@ static int really_probe(struct device *dev, struct device_driver *drv)
 //		if (ret)
 //			goto probe_failed;
 	}
-#ifdef TARGET_OS2xxx
+#ifdef NOT_USED
 	driver_bound(dev);
 	ret = 1;
 	pr_debug("bus: '%s': %s: bound device %s to driver %s\n",
